@@ -1,0 +1,83 @@
+// Extra Simplified Chinese UI strings for the outputs screens. Key = English UI text.
+const zh: Record<string, string> = {
+  // shared
+  Both: '双语',
+  Labels: '标签语言',
+  // bulletin
+  'Full texts': '完整内容',
+  'Order only': '仅程序',
+  Roster: '事奉名单',
+  'Show print sheets': '显示印刷拼版',
+  pages: '页',
+  sheet: '张纸',
+  sheets: '张纸',
+  Sheet: '纸张',
+  front: '正面',
+  back: '背面',
+  'Some content is taller than a page — reduce the font size.': '部分内容超过一页高度——请缩小字号。',
+  // slides
+  'Previous slide': '上一张',
+  'Clear text': '清除文字',
+  Overview: '总览',
+  'End of slides': '投影结束',
+  'Full screen': '全屏',
+  'Open presenter window': '打开主控窗口',
+  'Current slide': '当前投影',
+  // run sheet
+  'A4 landscape': 'A4 横向',
+  'Leader / role': '带领 / 岗位',
+  'AV cue': '影音提示',
+  'Not in bulletin': '不印在程序单',
+  End: '结束',
+  // share
+  'This link is no longer active': '此链接已失效',
+  'Could not load this service': '无法加载此崇拜程序',
+  'The share link may have been turned off or replaced. Please ask the service coordinator for a new link.':
+    '分享链接可能已被停用或更换。请向崇拜统筹同工索取新的链接。',
+  'Show all words': '展开全部内容',
+  'Hide all words': '收起全部内容',
+  'Read-only view for the service team': '事奉团队只读页面',
+  // languages
+  'All languages': '全部语言',
+  // bulletin cover & season (design)
+  Cover: '封面',
+  Plain: '简洁',
+  Cross: '十字架',
+  'Church logo': '教会标志',
+  'Verse of the week': '本周经文',
+  'For this printout only': '仅用于本次打印',
+  'Bulletin cover': '程序单封面',
+  'Each service can choose its own.': '每堂崇拜可另行选择。',
+  'Church default': '教会默认',
+  'Cover verse': '封面经文',
+  'Printed in every language of the service.': '以本堂崇拜的各语言印出。',
+  'Liturgical season': '教会节期',
+  Auto: '自动',
+  'Season colours': '节期颜色',
+  'Accent services, bulletins and slides with the colour of the church year.': '以教会年历的节期颜色点缀崇拜程序、程序单与投影。',
+  'Show liturgical season colours': '显示教会节期颜色',
+  // church logo
+  'No logo': '尚无标志',
+  'Upload logo': '上传标志',
+  'Replace logo': '更换标志',
+  'Logo saved.': '标志已保存。',
+  'Logo removed.': '标志已移除。',
+  'Remove the church logo?': '要移除教会标志吗？',
+  'Upload a PNG, JPEG, WebP or SVG image': '请上传 PNG、JPEG、WebP 或 SVG 图片',
+  'The logo must be 2 MB or smaller': '标志文件不能超过 2 MB',
+  'PNG, JPEG, WebP or SVG, up to 2 MB. Shown in the sidebar, on the sign-in page, share page, slides and the “Church logo” bulletin cover.':
+    'PNG、JPEG、WebP 或 SVG，最大 2 MB。显示于侧栏、登录页、分享页、投影及“教会标志”程序单封面。',
+  // run sheet AV cues
+  'Section slide': '段落标题',
+  'Sermon title slide': '讲题投影',
+  'Title slide': '标题投影',
+  'Title slide (no song chosen)': '标题（未选诗歌）',
+  'Title slide (no reference)': '标题（未填经文）',
+  'Lyrics: {n} slide': '歌词：{n} 张',
+  'Lyrics: {n} slides': '歌词：{n} 张',
+  'Text: {n} slide': '礼文：{n} 张',
+  'Text: {n} slides': '礼文：{n} 张',
+  'Reading: {ref} · {n} slide': '读经：{ref} · {n} 张',
+  'Reading: {ref} · {n} slides': '读经：{ref} · {n} 张',
+};
+export default zh;

@@ -1,0 +1,289 @@
+// Shared pieces for groups (committees, fellowships 团契, cell groups 小组, ministries) and team rosters:
+// types, labels, the group form and the group detail modal. Used by Groups, Co-workers, Volunteers and Members.
+import { useMemo, useState, type CSSProperties } from 'react';
+import { hasAnyText } from '../../shared/labels.ts';
+import { isChinese } from '../../shared/languages.ts';
+import { api, useApi } from '../api.ts';
+import { tr, useContentLangs, useI18n } from '../i18n.tsx';
+import { Bi, ErrorBox, Field, L10nInput, Loading, Modal, confirmAction, fmtDate, useAction, useSession } from '../components/ui.tsx';
+import { Icon } from '../components/icons.tsx';
+import type { Group, GroupKind, GroupMember, L10n, PersonRow, TeamWithRoles } from '../types-client.ts';
+import { PeopleMultiSelect, PersonName } from './people-common.tsx';
+import './groups.css';
+
+// ---------------------------------------------------------------- types (server payloads)
+
+export type GroupRow = Group & { member_count: number; leaders: { person_id: number; name: string; role: string | null }[] };
+export type MemberRow = GroupMember & {
+  name: string; first_name: string; last_name: string; preferred_name: string | null; native_name: string | null;
+  status: string; phone: string | null; email: string | null; current: boolean;
+};
+export type GroupDetail = Group & { members: MemberRow[] };
+export type CommitteeTag = { member_id: number; group_id: number; name: L10n; color: string; role: string | null };
+export type CommitteesView = {
+  committees: (GroupRow & { members: { id: number; person_id: number; name: string; role: string | null; start_date: string | null; end_date: string | null; positions: string[] }[] })[];
+  tags: Record<number, CommitteeTag[]>;
+};
+export type PersonGroups = {
+  groups: { id: number; group_id: number; name: L10n; kind: GroupKind; color: string; active: boolean; role: string | null; start_date: string | null; end_date: string | null; current: boolean }[];
+  teams: { team_id: number; name: L10n; color: string; is_leader: boolean }[];
+};
+export type TeamMemberRef = { person_id: number; name: string; is_leader: boolean };
+/** /api/teams payload: teams with roles and their member roster. */
+export type TeamFull = TeamWithRoles & { members: TeamMemberRef[] };
+
+// ---------------------------------------------------------------- labels
+
+export const KINDS: GroupKind[] = ['committee', 'fellowship', 'cell_group', 'ministry', 'other'];
+export const KIND_LABEL: Record<GroupKind, string> = {
+  committee: 'Committee', fellowship: 'Fellowship', cell_group: 'Cell group', ministry: 'Ministry', other: 'Other group',
+};
+export const KIND_PLURAL: Record<GroupKind, string> = {
+  committee: 'Committees', fellowship: 'Fellowships', cell_group: 'Cell groups', ministry: 'Ministries', other: 'Other groups',
+};
+
+/** Suggested member roles. Stored as typed; these English values have translations. Free text is allowed. */
+export const ROLE_PRESETS = ['Moderator', 'Chair', 'Vice-chair', 'Secretary', 'Clerk', 'Treasurer', 'Leader', 'Assistant leader', 'Advisor', 'Member'];
+const roleKey = (role: string) => `Group role · ${role}`;
+/** A stored member role in a given UI language (preset roles are translated; anything else is shown as typed). */
+export const roleIn = (role: string | null | undefined, lang: string) => {
+  if (!role) return '';
+  if (!ROLE_PRESETS.includes(role)) return role;
+  const v = tr(roleKey(role), lang);
+  return v === roleKey(role) ? role : v;
+};
+
+/** Role in the UI language, followed by the church's next language (e.g. "Moderator 议长"). */
+export function RoleLabel({ role, className }: { role: string | null | undefined; className?: string }) {
+  const { lang } = useI18n();
+  const church = useContentLangs();
+  if (!role) return null;
+  const first = roleIn(role, lang);
+  const other = church.find((l) => l !== lang && !(isChinese(l) && isChinese(lang)));
+  const second = other ? roleIn(role, other) : '';
+  return (
+    <span className={className}>
+      {first}
+      {second && second !== first && <span className="muted" style={{ marginLeft: 4, fontWeight: 400 }}>{second}</span>}
+    </span>
+  );
+}
+
+/** Text input with role suggestions. */
+export function RoleInput({ value, onChange, onBlur, className, placeholder }: { value: string; onChange: (v: string) => void; onBlur?: () => void; className?: string; placeholder?: string }) {
+  const { lang, t } = useI18n();
+  return (
+    <>
+      <input className={className} list="canon-group-roles" value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder ?? t('Role in group')} />
+      <datalist id="canon-group-roles">
+        {ROLE_PRESETS.map((r) => <option key={r} value={r}>{roleIn(r, lang) !== r ? roleIn(r, lang) : undefined}</option>)}
+      </datalist>
+    </>
+  );
+}
+
+/** Coloured tag for a group membership, e.g. [Session · Clerk]. */
+export function GroupTag({ name, color, role, onRemove, title }: { name: L10n; color: string; role?: string | null; onRemove?: () => void; title?: string }) {
+  const { lt, t, lang } = useI18n();
+  return (
+    <span className="gtag" style={{ '--gc': color } as CSSProperties} title={title}>
+      {lt(name)}
+      {role && role !== 'Member' && <span className="r">· {roleIn(role, lang)}</span>}
+      {onRemove && <button type="button" onClick={onRemove} aria-label={`${t('Remove')} ${lt(name)}`} title={t('Remove')}>×</button>}
+    </span>
+  );
+}
+
+export const groupStyle = (color: string) => ({ '--gc': color } as CSSProperties);
+
+// ---------------------------------------------------------------- group form (create / edit)
+
+export function GroupFormModal({
+  group, kind, nextSort = 0, onClose, onSaved,
+}: { group: Group | null; kind?: GroupKind; nextSort?: number; onClose: () => void; onSaved: (g: Group) => void }) {
+  const { t } = useI18n();
+  const { run, busy } = useAction();
+  const [name, setName] = useState<L10n>(group?.name ?? {});
+  const [k, setK] = useState<GroupKind>(group?.kind ?? kind ?? 'fellowship');
+  const [meeting, setMeeting] = useState(group?.meeting ?? '');
+  const [description, setDescription] = useState(group?.description ?? '');
+  const [color, setColor] = useState(group?.color ?? (k === 'committee' ? '#7a2f2f' : '#2f4a7a'));
+  const [active, setActive] = useState(group?.active ?? true);
+  const [sort, setSort] = useState(group?.sort ?? nextSort);
+  const save = async () => {
+    const g = await run(async () => {
+      if (!hasAnyText(name)) throw new Error(t('Name is required.'));
+      const body = { name, kind: k, meeting: meeting.trim() || null, description: description.trim() || null, color, active, sort };
+      return group ? api.patch<Group>(`/groups/${group.id}`, body) : api.post<Group>('/groups', body);
+    }, t('Saved.'));
+    if (g) {
+      onSaved(g);
+      onClose();
+    }
+  };
+  const placeholder = k === 'committee' ? { en: 'Session', zh: '堂会' } : k === 'cell_group' ? { en: 'Cheras Cell Group', zh: '蕉赖小组' } : { en: 'Young Adults Fellowship', zh: '青年团契' };
+  return (
+    <Modal title={group ? t('Edit group') : k === 'committee' && kind ? t('Add committee') : t('Add group')} onClose={onClose}
+      footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></>}>
+      <div className="stack">
+        <Field label={t('Group name')}><L10nInput value={name} onChange={setName} placeholder={placeholder} /></Field>
+        <div className="form-grid">
+          <Field label={t('Kind')}>
+            <select value={k} onChange={(e) => setK(e.target.value as GroupKind)} disabled={!!kind && !group}>
+              {KINDS.map((x) => <option key={x} value={x}>{t(KIND_LABEL[x])}</option>)}
+            </select>
+          </Field>
+          <Field label={t('Meeting')} hint={t('e.g. Fridays 8pm, church hall')}><input value={meeting} onChange={(e) => setMeeting(e.target.value)} /></Field>
+          <Field label={t('Colour')}><input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></Field>
+          <Field label={t('Order')}><input type="number" value={sort} onChange={(e) => setSort(Number(e.target.value) || 0)} /></Field>
+          <Field label={t('Description')} className="span-all"><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+          <label className="check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{t('Active')}</label>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------- group detail (members, terms)
+
+/** All people (for pickers), loaded once per modal. */
+export const usePeople = () => useApi<{ total: number; rows: PersonRow[] }>('/people?limit=5000');
+
+export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: number; onClose: () => void; onChanged: () => void }) {
+  const { t, lang } = useI18n();
+  const { canEdit } = useSession();
+  const { data, error, reload } = useApi<GroupDetail>(`/groups/${groupId}`);
+  const people = usePeople();
+  const { run, busy } = useAction();
+  const [editing, setEditing] = useState(false);
+  const [showPast, setShowPast] = useState(false);
+  const [adding, setAdding] = useState<number[]>([]);
+  const [addRole, setAddRole] = useState('');
+  const [addStart, setAddStart] = useState('');
+
+  const changed = () => {
+    reload();
+    onChanged();
+  };
+  const members = useMemo(() => (data?.members ?? []).filter((m) => showPast || m.current), [data, showPast]);
+  const pastCount = (data?.members ?? []).filter((m) => !m.current).length;
+  const memberIds = useMemo(() => new Set((data?.members ?? []).map((m) => m.person_id)), [data]);
+  const candidates = useMemo(() => (people.data?.rows ?? []).filter((p) => !memberIds.has(p.id)), [people.data, memberIds]);
+
+  const patch = async (m: MemberRow, body: Partial<Pick<GroupMember, 'role' | 'start_date' | 'end_date'>>) => {
+    if (await run(() => api.patch(`/group-members/${m.id}`, body))) changed();
+  };
+  const remove = async (m: MemberRow) => {
+    if (!confirmAction(t('Remove {name} from this group? To keep the record of a finished term, set an end date instead.').replace('{name}', m.name))) return;
+    if (await run(() => api.del(`/group-members/${m.id}`), t('Removed.'))) changed();
+  };
+  const add = async () => {
+    if (!adding.length) return;
+    const ok = await run(async () => {
+      for (const pid of adding) await api.post(`/groups/${groupId}/members`, { person_id: pid, role: addRole.trim() || null, start_date: addStart || null });
+      return true;
+    }, t('Saved.'));
+    if (ok) {
+      setAdding([]);
+      setAddRole('');
+      changed();
+    }
+  };
+  const delGroup = async () => {
+    if (!data || !confirmAction(t('Delete this group and all its memberships? To keep the history, mark it inactive instead.'))) return;
+    if (await run(() => api.del(`/groups/${groupId}`), t('Deleted.'))) {
+      onChanged();
+      onClose();
+    }
+  };
+
+  return (
+    <Modal
+      title={data ? <span className="row" style={{ gap: 8 }}><span className="dot" style={{ background: data.color, width: 10, height: 10 }} /><Bi v={data.name} /></span> : t('Group')}
+      onClose={onClose} size="lg"
+      footer={
+        <>
+          {canEdit && data && <button className="btn danger" onClick={delGroup} disabled={busy} style={{ marginRight: 'auto' }}><Icon name="trash" />{t('Delete')}</button>}
+          <button className="btn" onClick={onClose}>{t('Close')}</button>
+        </>
+      }
+    >
+      {error && <ErrorBox error={error} />}
+      {!data ? <Loading /> : (
+        <div className="stack">
+          <div className="row between" style={{ alignItems: 'flex-start' }}>
+            <div className="stack tight">
+              <div className="row" style={{ gap: 6 }}>
+                <span className="badge lapis">{t(KIND_LABEL[data.kind])}</span>
+                {!data.active && <span className="badge">{t('Inactive')}</span>}
+                {data.meeting && <span className="small muted row" style={{ gap: 4 }}><Icon name="clock" width={13} height={13} />{data.meeting}</span>}
+              </div>
+              {data.description && <p className="small" style={{ margin: 0 }}>{data.description}</p>}
+            </div>
+            {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
+          </div>
+
+          <div>
+            <div className="row between" style={{ marginBottom: 6 }}>
+              <h3 className="sect" style={{ margin: 0 }}>{t('Group members')} <span className="muted">· {data.members.filter((m) => m.current).length}</span></h3>
+              {pastCount > 0 && (
+                <label className="check small"><input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />{t('Show past terms')} ({pastCount})</label>
+              )}
+            </div>
+            {members.length ? (
+              <div className="table-wrap card flush">
+                <table className="t gm-table">
+                  <thead><tr><th>{t('Name')}</th><th>{t('Role in group')}</th><th>{t('Term from')}</th><th>{t('Term to')}</th>{canEdit && <th />}</tr></thead>
+                  <tbody>
+                    {members.map((m) => (
+                      <MemberLine key={m.id} m={m} canEdit={canEdit} busy={busy} onPatch={(b) => patch(m, b)} onRemove={() => remove(m)} lang={lang} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="muted small">{t('No members yet')}</p>}
+          </div>
+
+          {canEdit && (
+            <div className="gm-add stack tight">
+              <h3 className="sect" style={{ margin: 0 }}>{t('Add members')}</h3>
+              {people.data ? <PeopleMultiSelect people={candidates} value={adding} onChange={setAdding} height={180} /> : <Loading />}
+              <div className="row">
+                <div style={{ width: 170 }}><RoleInput value={addRole} onChange={setAddRole} /></div>
+                <label className="small muted row" style={{ gap: 6 }}>{t('Term from')}<input type="date" value={addStart} onChange={(e) => setAddStart(e.target.value)} style={{ width: 150 }} /></label>
+                <button className="btn primary" onClick={add} disabled={busy || !adding.length}><Icon name="plus" />{t('Add')} {adding.length > 0 && `(${adding.length})`}</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {editing && data && <GroupFormModal group={data} onClose={() => setEditing(false)} onSaved={changed} />}
+    </Modal>
+  );
+}
+
+function MemberLine({
+  m, canEdit, busy, onPatch, onRemove, lang,
+}: { m: MemberRow; canEdit: boolean; busy: boolean; onPatch: (b: Partial<Pick<GroupMember, 'role' | 'start_date' | 'end_date'>>) => void; onRemove: () => void; lang: string }) {
+  const { t } = useI18n();
+  const [role, setRole] = useState(m.role ?? '');
+  const commitRole = () => {
+    if ((role.trim() || null) !== (m.role ?? null)) onPatch({ role: role.trim() || null });
+  };
+  return (
+    <tr className={m.current ? '' : 'past'}>
+      <td>
+        <PersonName p={m} />
+        {!m.current && <span className="badge" style={{ marginLeft: 6 }}>{t('Past')}</span>}
+      </td>
+      <td>{canEdit ? <RoleInput className="role" value={role} onChange={setRole} onBlur={commitRole} /> : <RoleLabel role={m.role} />}</td>
+      <td className="nowrap">
+        {canEdit ? <input type="date" value={m.start_date ?? ''} onChange={(e) => onPatch({ start_date: e.target.value || null })} disabled={busy} /> : fmtDate(m.start_date, lang)}
+      </td>
+      <td className="nowrap">
+        {canEdit ? <input type="date" value={m.end_date ?? ''} onChange={(e) => onPatch({ end_date: e.target.value || null })} disabled={busy} /> : fmtDate(m.end_date, lang)}
+      </td>
+      {canEdit && <td className="right"><button className="btn ghost sm icon" onClick={onRemove} disabled={busy} aria-label={t('Remove')} title={t('Remove')}><Icon name="trash" /></button></td>}
+    </tr>
+  );
+}

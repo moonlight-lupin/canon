@@ -1,0 +1,72 @@
+{
+  "name": "canon",
+  "version": "0.6.2",
+  "private": true,
+  "description": "Canon — local-first, multilingual church system: service planner with bulletins & slides, member and co-worker registers, groups, volunteer rota, and an OAuth MCP server for AI agents.",
+  "license": "MIT",
+  "keywords": [
+    "church",
+    "worship",
+    "liturgy",
+    "bulletin",
+    "reformed",
+    "presbyterian",
+    "bilingual",
+    "chinese",
+    "mcp",
+    "local-first"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "node --watch --disable-warning=ExperimentalWarning server/index.ts",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "node --disable-warning=ExperimentalWarning server/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "import:bible": "node --disable-warning=ExperimentalWarning scripts/import-bible.ts",
+    "import:standards": "node --disable-warning=ExperimentalWarning scripts/import-standards.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test \"tests/**/*.test.ts\"",
+    "backup": "node --disable-warning=ExperimentalWarning scripts/backup.ts",
+    "i18n": "node --disable-warning=ExperimentalWarning scripts/gen-i18n-hant.ts",
+    "prebuild": "npm run i18n"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "docx": "^9.8.1",
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.14",
+    "opencc-js": "^1.4.2",
+    "qrcode": "^1.5.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "@types/nodemailer": "^8.0.2",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moonlight-lupin/canon.git"
+  },
+  "homepage": "https://github.com/moonlight-lupin/canon",
+  "bugs": {
+    "url": "https://github.com/moonlight-lupin/canon/issues"
+  }
+}

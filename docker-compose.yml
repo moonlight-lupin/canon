@@ -1,0 +1,35 @@
+# Canon with Docker Compose.
+#
+#   docker compose up -d                         # start Canon on http://localhost:3000
+#   docker compose --profile tunnel up -d        # also start a Cloudflare Tunnel (needs TUNNEL_TOKEN in .env)
+#   docker compose exec canon npm run backup     # write a backup into ./backups
+#
+# The public address for claude.ai is entered in Canon itself: Settings → AI / MCP → Public address.
+services:
+  canon:
+    build: .
+    image: canon:latest
+    container_name: canon
+    restart: unless-stopped
+    ports:
+      - "${CANON_HTTP_PORT:-3000}:3000"
+    environment:
+      TZ: ${TZ:-Asia/Kuala_Lumpur}
+    volumes:
+      - canon-data:/app/data
+      - ./backups:/app/backups
+
+  # Optional: expose Canon to the internet for claude.ai through Cloudflare Tunnel.
+  # Create a tunnel in the Cloudflare dashboard pointing to http://canon:3000 and put its token in .env.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - canon
+
+volumes:
+  canon-data:

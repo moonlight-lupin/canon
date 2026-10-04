@@ -1,0 +1,169 @@
+// MCP tools for the library: songs (with hymnal numbers), liturgical texts (with catechism / confession parts),
+// hymnals and the Bible.
+import { z } from 'zod';
+import * as S from '../../shared/schemas.ts';
+import { parsePartSelection, partRuns } from '../../shared/parts.ts';
+import { isCJK, isChinese } from '../../shared/languages.ts';
+import type { Lang } from '../../shared/types.ts';
+import { tx } from '../db.ts';
+import { BadRequest } from '../lib/table.ts';
+import * as lib from '../repo/library.ts';
+import * as bible from '../repo/bible.ts';
+import { getSettings } from '../repo/settings.ts';
+import { Id, Limit, RO, WRITE, type ToolDef } from './common.ts';
+
+const SONG_CATEGORIES = ['hymn', 'psalm', 'song', 'doxology', 'response'] as const;
+const TEXT_CATEGORIES = S.TextCategorySchema.options;
+const CJK = /[㐀-鿿]/;
+const MAX_VERSES = 200;
+const MAX_PARTS = 60;
+
+const songSummary = (s: ReturnType<typeof lib.songs.get>) => ({
+  id: s.id,
+  key: s.key,
+  title: s.title,
+  category: s.category,
+  author: s.author,
+  tune: s.tune,
+  meter: s.meter,
+  psalm: s.psalm,
+  public_domain: s.public_domain,
+  ccli: s.ccli,
+  stanzas: s.stanzas.map((x) => x.label),
+  has_words: s.stanzas.length > 0 ? undefined : false,
+  hymnals: s.hymnals?.length ? s.hymnals : undefined,
+});
+const textSummary = (t: ReturnType<typeof lib.texts.get>) => ({
+  id: t.id, key: t.key, category: t.category, title: t.title, source: t.source, public_domain: t.public_domain,
+  part_count: t.parts?.length || undefined,
+});
+const hymnalSummary = (h: ReturnType<typeof lib.listHymnals>[number]) => ({
+  id: h.id, abbr: h.abbr, name: h.name, publisher: h.publisher, year: h.year, song_count: h.song_count,
+});
+
+const firstLine = (body: Record<string, string | undefined>) =>
+  (Object.values(body).find((v) => v?.trim()) ?? '').split('\n')[0].replace(/^[LCA]:\s?/, '').slice(0, 120);
+
+function textItem(id: number, selection?: string) {
+  const t = lib.texts.get(id);
+  const parts = t.parts ?? [];
+  if (!parts.length) {
+    if (selection) throw new BadRequest(`text ${t.id} has no parts — omit "parts" to read it`);
+    return t;
+  }
+  const all = parts.map((p) => p.label);
+  if (!selection) {
+    return { ...lib.textOverview(t), hint: 'Pass parts "index" for the part list, or a selection such as "1-3"; use the labels as stanzas of a text item.' };
+  }
+  if (selection.trim().toLowerCase() === 'index') {
+    return {
+      id: t.id, key: t.key, title: t.title, category: t.category, part_count: parts.length,
+      parts: parts.map((p) => ({ label: p.label, title: p.title && Object.values(p.title).find(Boolean), first_line: firstLine(p.body) })),
+    };
+  }
+  const sel = parsePartSelection(selection, all);
+  if (!sel.labels.length) throw new BadRequest(`no parts match "${selection}" (labels run ${partRuns(all, all).join(', ')})`);
+  if (sel.labels.length > MAX_PARTS) throw new BadRequest(`${sel.labels.length} parts selected — ask for at most ${MAX_PARTS} at a time`);
+  const want = new Set(sel.labels);
+  return {
+    id: t.id, key: t.key, title: t.title, category: t.category,
+    stanzas: sel.labels,
+    unknown: sel.unknown.length ? sel.unknown : undefined,
+    parts: parts.filter((p) => want.has(p.label)),
+  };
+}
+
+export const LIBRARY_TOOLS: ToolDef[] = [
+  {
+    name: 'canon_search_library', module: 'library', access: 'read', title: 'Search the library', annotations: RO,
+    description: 'Search songs (hymns, psalms) and liturgical texts (calls to worship, confessions, creeds, catechisms, prayers, benedictions…) by words in any language, or songs by hymnal number ("HP 123", "#123"). type: all (default) | songs | texts | hymnals (the hymnbooks, with ids and song counts). category narrows to one song or text category. Returns summaries {songs, texts, hymnals}; song summaries carry stanza labels and hymnal numbers [{hymnal_id, abbr, number}]. Example: {"q":"Amazing grace","type":"songs"}.',
+    input: {
+      q: z.string().max(200).optional(),
+      type: z.enum(['all', 'songs', 'texts', 'hymnals']).default('all'),
+      category: z.enum([...SONG_CATEGORIES, ...TEXT_CATEGORIES]).optional(),
+      limit: Limit(30, 100),
+    },
+    handler: (a) => {
+      const q: string = a.q?.trim() ?? '';
+      if (a.type === 'hymnals') {
+        const ql = q.toLowerCase();
+        return { hymnals: lib.listHymnals().filter((h) => !ql || JSON.stringify([h.abbr, h.name]).toLowerCase().includes(ql)).map(hymnalSummary) };
+      }
+      const songCat = (SONG_CATEGORIES as readonly string[]).includes(a.category ?? '');
+      const textCat = (TEXT_CATEGORIES as readonly string[]).includes(a.category ?? '');
+      const wantSongs = (a.type === 'all' || a.type === 'songs') && !textCat;
+      const wantTexts = (a.type === 'all' || a.type === 'texts') && !songCat;
+      return {
+        songs: wantSongs ? lib.searchSongs(q, a.category, a.limit).map(songSummary) : undefined,
+        texts: wantTexts ? lib.searchTexts(q, a.category, a.limit).map(textSummary) : undefined,
+      };
+    },
+  },
+  {
+    name: 'canon_get_library_item', module: 'library', access: 'read', title: 'Get a library item', annotations: RO,
+    description: 'One library item in full. type "song": title, stanzas {label, text {lang: …}}, author, tune, meter, copyright / CCLI and hymnal numbers. type "text": the liturgical text (responsive lines start "L: " leader, "C: " congregation, "A: " all). Long texts in parts (Westminster Shorter Catechism key "wsc" parts "1".."107", Larger "wlc", Confession "wcf" parts "I.1" = chapter.section): parts "index" lists labels with first lines, a selection like "1-3", "1,4,7-9", "I.1-3" or "XXI" returns those parts (max 60). type "hymnal": the hymnbook with its songs by number. Example: {"type":"text","id":5,"parts":"1-3"}.',
+    input: {
+      type: z.enum(['song', 'text', 'hymnal']),
+      id: Id,
+      parts: z.string().max(200).optional().describe('texts only: "index" or a selection such as "1-3"'),
+    },
+    handler: (a) => {
+      if (a.type === 'song') return lib.songs.get(a.id);
+      if (a.type === 'text') return textItem(a.id, a.parts);
+      const h = lib.hymnals.get(a.id);
+      return {
+        ...h,
+        songs: lib.hymnalSongs(a.id).map((s) => ({ number: s.number, song_id: s.id, title: s.title, has_words: s.stanzas.length > 0 ? undefined : false })),
+      };
+    },
+  },
+  {
+    name: 'canon_bible', module: 'library', access: 'read', title: 'Bible passage or search', annotations: RO,
+    description: `Bible text. With ref: the passage, e.g. "John 3:16-21", "Ps 23", "罗马书 8:28-39", in lang (default the church's first language) using the church's Bible for that language unless translation is given; returns {ref, translation, verses:[{chapter, verse, text}]} (max ${MAX_VERSES}). With q instead: verses containing a word or phrase (Chinese queries search the Chinese Bible); returns [{ref, text}]. With neither: the installed Bible versions [{code, lang, name, source, verses, default}] (church uploads such as ESV or 和合本修订版 included) — use a code as translation here, or in a service's / reading's bibles {lang: code}. Example: {"ref":"Psalm 23","lang":"zh"}.`,
+    input: {
+      ref: z.string().min(1).max(200).optional(),
+      q: z.string().min(2).max(100).optional(),
+      lang: S.LangSchema.optional(),
+      translation: z.string().max(20).optional(),
+      limit: Limit(30, 100).describe('search results, max 100'),
+    },
+    handler: (a) => {
+      if (a.ref) {
+        const lang = (a.lang ?? getSettings().languages[0] ?? 'en') as Lang;
+        if (a.translation) bible.checkTranslation(a.translation.toUpperCase(), lang);
+        const p = bible.passage(a.ref, lang, a.translation?.toUpperCase() ?? bible.defaultTranslation(lang));
+        if (!p.verses.length) throw new BadRequest(`No verses found for "${a.ref}" in ${p.translation} (is the Bible imported?)`);
+        const verses = p.verses.slice(0, MAX_VERSES).map(({ chapter, verse, text }) => ({ chapter, verse, text }));
+        return { ref: p.ref, translation: p.translation, lang: p.lang, verses, truncated: p.verses.length > MAX_VERSES || undefined };
+      }
+      if (!a.q) {
+        const defaults = getSettings().bibles;
+        return bible.translations().map((t) => ({ code: t.code, lang: t.lang, name: t.name, source: t.source, verses: t.verses, default: defaults[t.lang] === t.code || undefined }));
+      }
+      const langs = getSettings().languages;
+      const lang = (a.lang ?? (CJK.test(a.q) ? langs.find(isChinese) ?? 'zh' : langs.find((l) => !isCJK(l)) ?? 'en')) as Lang;
+      const tr = a.translation ?? bible.defaultTranslation(lang);
+      if (!tr) throw new BadRequest(`No Bible is set up for language ${lang}`);
+      return bible.searchBible(a.q, tr, a.limit).map((v) => ({ ref: v.ref, text: v.text }));
+    },
+  },
+  {
+    name: 'canon_save_song', module: 'library', access: 'write', title: 'Save a song', annotations: { ...WRITE, idempotentHint: true },
+    description: 'Create a song (no id; fields.title required) or update one (id; only the given fields change, stanzas replaces the whole list). title and stanza texts are L10n {lang: text}; stanza labels "1","2"… and "R" for a refrain (refrain_after_each repeats it). Copyrighted songs: public_domain=false with copyright and ccli — never invent copyrighted lyrics. hymnal_numbers replaces all the song\'s hymnal numbers [{hymnal_id, number}] ([] removes them). Returns the song summary. Example: {"fields":{"title":{"en":"Doxology"},"category":"doxology"},"hymnal_numbers":[{"hymnal_id":1,"number":"512"}]}.',
+    input: { id: Id.optional(), fields: S.SongInput.partial().default({}), hymnal_numbers: S.SongHymnalsInput.optional() },
+    handler: (a) => tx(() => {
+      const id = a.id ? lib.songs.update(a.id, a.fields).id : lib.songs.insert(S.SongInput.parse(a.fields)).id;
+      if (a.hymnal_numbers) lib.setSongHymnals(id, a.hymnal_numbers);
+      return { ...songSummary(lib.songs.get(id)), created: a.id ? undefined : true };
+    }),
+  },
+  {
+    name: 'canon_save_text', module: 'library', access: 'write', title: 'Save a liturgical text', annotations: { ...WRITE, idempotentHint: true },
+    description: 'Create a liturgical text (no id; fields.category, title, body required) or update one (id; only the given fields change). body is L10n; use "L: ", "C: ", "A: " line prefixes for responsive readings, blank lines between paragraphs. Long documents may carry parts [{label, title?, body}]. category: call_to_worship|invocation|confession|assurance|creed|catechism|prayer|sacrament|benediction|liturgy|other. Returns the summary.',
+    input: { id: Id.optional(), fields: S.TextInput.partial().default({}) },
+    handler: (a) => {
+      const t = a.id ? lib.texts.update(a.id, a.fields) : lib.texts.insert(S.TextInput.parse(a.fields));
+      return { ...textSummary(t), created: a.id ? undefined : true };
+    },
+  },
+];

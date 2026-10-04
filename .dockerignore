@@ -1,0 +1,10 @@
+node_modules
+dist
+data
+backups
+_workings
+.claude
+.git
+*.log
+tests
+docs

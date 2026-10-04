@@ -1,0 +1,35 @@
+/* CSV tools (CsvTools.tsx): import dialog, preview and column guide — additions to styles.css. */
+
+.csv-tools { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.csv-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px; text-align: center;
+  border: 1.5px dashed var(--rule-strong); border-radius: 8px; background: var(--paper-2); color: var(--ink-2); cursor: pointer;
+}
+.csv-drop.over { border-color: var(--lapis); background: var(--lapis-wash); }
+.csv-drop strong { color: var(--ink); font-size: 15px; }
+.csv-drop svg { width: 26px; height: 26px; color: var(--reed-ink); }
+
+.csv-summary { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.csv-summary .badge { font-size: 12.5px; padding: 3px 10px; }
+
+.csv-rows { border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-3); max-height: 340px; overflow-y: auto; }
+.csv-row { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; padding: 7px 10px; border-top: 1px solid var(--rule); font-size: 13px; }
+.csv-row:first-child { border-top: 0; }
+.csv-row .rn { color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.csv-row.error { background: var(--danger-wash); }
+.csv-row.error .rn { color: var(--danger); font-weight: 600; }
+.csv-row ul { margin: 2px 0 0; padding-left: 18px; }
+.csv-row .warn-line { color: var(--warn); }
+.csv-diff { margin: 3px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 1px 10px; font-size: 12px; }
+.csv-diff dt { color: var(--ink-3); }
+.csv-diff dd { margin: 0; overflow-wrap: anywhere; }
+.csv-diff del { color: var(--danger); text-decoration: line-through; opacity: 0.8; }
+.csv-diff ins { color: var(--ok); text-decoration: none; font-weight: 500; }
+
+.csv-details > summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 4px 0; color: var(--ink-2); }
+.csv-details > summary:hover { color: var(--ink); }
+
+.csv-guide td, .csv-guide th { vertical-align: top; font-size: 12.5px; }
+.csv-guide code { font-family: var(--mono); font-size: 12px; background: var(--sunk); padding: 0 4px; border-radius: 3px; white-space: nowrap; }
+.csv-guide .vals { display: flex; flex-wrap: wrap; gap: 3px; }

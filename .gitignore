@@ -1,0 +1,30 @@
+# dependencies & build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# church data — NEVER commit (members' personal data, PDPA)
+data/
+backups/
+*.db
+*.db-wal
+*.db-shm
+
+# secrets & local configuration
+.env
+.env.*
+!.env.example
+
+# scratch / test artefacts
+_workings/
+coverage/
+*.log
+
+# editors & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code project memory & local settings stay on this machine
+.claude/
