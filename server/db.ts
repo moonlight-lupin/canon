@@ -355,6 +355,10 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE service_items ADD COLUMN slide_blocks TEXT NOT NULL DEFAULT '[]';  -- JSON block ids, shown after the item's slides
   `,
+  // v0.7 — bulletin page layout: weekly sections filled per service (announcements, pastor's note, prayer requests …)
+  `
+  ALTER TABLE services ADD COLUMN bulletin_content TEXT NOT NULL DEFAULT '{}';  -- JSON {section_key: L10n}
+  `,
 ];
 
 function migrate() {

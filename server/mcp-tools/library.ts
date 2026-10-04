@@ -10,7 +10,8 @@ import { BadRequest } from '../lib/table.ts';
 import * as lib from '../repo/library.ts';
 import * as bible from '../repo/bible.ts';
 import { getSettings } from '../repo/settings.ts';
-import { Id, Limit, RO, WRITE, type ToolDef } from './common.ts';
+import { songUsage, textPartsHistory } from '../repo/history.ts';
+import { DateStr, Id, Limit, RO, WRITE, canRead, type Ctx, type ToolDef } from './common.ts';
 
 const SONG_CATEGORIES = ['hymn', 'psalm', 'song', 'doxology', 'response'] as const;
 const TEXT_CATEGORIES = S.TextCategorySchema.options;
@@ -44,7 +45,14 @@ const hymnalSummary = (h: ReturnType<typeof lib.listHymnals>[number]) => ({
 const firstLine = (body: Record<string, string | undefined>) =>
   (Object.values(body).find((v) => v?.trim()) ?? '').split('\n')[0].replace(/^[LCA]:\s?/, '').slice(0, 120);
 
-function textItem(id: number, selection?: string) {
+/** Which parts earlier (and already planned) services used, and the label to continue the series from. */
+function partsHistory(id: number, ctx: Ctx) {
+  if (!canRead(ctx, 'services')) return {};
+  const h = textPartsHistory(id);
+  return { history: h.history.length ? h.history.map((x) => ({ date: x.date, service_id: x.service_id, parts: x.runs, planned: x.planned })) : undefined, next_suggested_label: h.next_suggested_label };
+}
+
+function textItem(id: number, selection: string | undefined, ctx: Ctx) {
   const t = lib.texts.get(id);
   const parts = t.parts ?? [];
   if (!parts.length) {
@@ -53,12 +61,13 @@ function textItem(id: number, selection?: string) {
   }
   const all = parts.map((p) => p.label);
   if (!selection) {
-    return { ...lib.textOverview(t), hint: 'Pass parts "index" for the part list, or a selection such as "1-3"; use the labels as stanzas of a text item.' };
+    return { ...lib.textOverview(t), hint: 'Pass parts "index" for the part list, or a selection such as "1-3"; use the labels as stanzas of a text item.', ...partsHistory(t.id, ctx) };
   }
   if (selection.trim().toLowerCase() === 'index') {
     return {
       id: t.id, key: t.key, title: t.title, category: t.category, part_count: parts.length,
       parts: parts.map((p) => ({ label: p.label, title: p.title && Object.values(p.title).find(Boolean), first_line: firstLine(p.body) })),
+      ...partsHistory(t.id, ctx),
     };
   }
   const sel = parsePartSelection(selection, all);
@@ -70,20 +79,24 @@ function textItem(id: number, selection?: string) {
     stanzas: sel.labels,
     unknown: sel.unknown.length ? sel.unknown : undefined,
     parts: parts.filter((p) => want.has(p.label)),
+    ...partsHistory(t.id, ctx),
   };
 }
 
 export const LIBRARY_TOOLS: ToolDef[] = [
   {
     name: 'canon_search_library', module: 'library', access: 'read', title: 'Search the library', annotations: RO,
-    description: 'Search songs (hymns, psalms) and liturgical texts (calls to worship, confessions, creeds, catechisms, prayers, benedictions…) by words in any language, or songs by hymnal number ("HP 123", "#123"). type: all (default) | songs | texts | hymnals (the hymnbooks, with ids and song counts). category narrows to one song or text category. Returns summaries {songs, texts, hymnals}; song summaries carry stanza labels and hymnal numbers [{hymnal_id, abbr, number}]. Example: {"q":"Amazing grace","type":"songs"}.',
+    description: 'Search songs (hymns, psalms) and liturgical texts (calls to worship, confessions, creeds, catechisms, prayers, benedictions…) by words in any language, or songs by hymnal number ("HP 123", "#123"). type: all (default) | songs | texts | hymnals (the hymnbooks, with ids and song counts). category narrows to one song or text category. Returns summaries {songs, texts, hymnals}; songs carry stanza labels, hymnal numbers [{hymnal_id, abbr, number}] and usage {last_used, times_12m} (services before `before`, default today; usage=false omits it) — avoid hymns sung in the last ~4 weeks. sort "least_recent" (sung before, longest ago first; never-sung last) or "most_used" (12 months). Example: {"q":"grace","type":"songs","before":"2026-10-11"}.',
     input: {
       q: z.string().max(200).optional(),
       type: z.enum(['all', 'songs', 'texts', 'hymnals']).default('all'),
       category: z.enum([...SONG_CATEGORIES, ...TEXT_CATEGORIES]).optional(),
+      usage: z.boolean().default(true).describe('songs: add last_used and times_12m'),
+      sort: z.enum(['least_recent', 'most_used']).optional().describe('songs, by usage'),
+      before: DateStr.optional().describe('count usage before this date, e.g. the service being planned'),
       limit: Limit(30, 100),
     },
-    handler: (a) => {
+    handler: (a, ctx) => {
       const q: string = a.q?.trim() ?? '';
       if (a.type === 'hymnals') {
         const ql = q.toLowerCase();
@@ -93,23 +106,41 @@ export const LIBRARY_TOOLS: ToolDef[] = [
       const textCat = (TEXT_CATEGORIES as readonly string[]).includes(a.category ?? '');
       const wantSongs = (a.type === 'all' || a.type === 'songs') && !textCat;
       const wantTexts = (a.type === 'all' || a.type === 'texts') && !songCat;
+      // usage comes from the services module: only when this connection may read services
+      const withUsage = (a.usage || a.sort) && canRead(ctx, 'services');
+      let songs: ReturnType<typeof lib.searchSongs> | undefined;
+      let usage = new Map<number, { last_used: string; times: number }>();
+      if (wantSongs) {
+        songs = lib.searchSongs(q, a.category, a.sort && withUsage ? 5000 : a.limit);
+        if (withUsage) usage = songUsage(songs.length <= 500 ? songs.map((s) => s.id) : null, { before: a.before });
+        if (a.sort && withUsage) {
+          const last = (id: number) => usage.get(id)?.last_used ?? '9999';
+          const times = (id: number) => usage.get(id)?.times ?? 0;
+          songs = [...songs].sort(a.sort === 'most_used' ? (x, y) => times(y.id) - times(x.id) : (x, y) => last(x.id).localeCompare(last(y.id)));
+        }
+        songs = songs.slice(0, a.limit);
+      }
       return {
-        songs: wantSongs ? lib.searchSongs(q, a.category, a.limit).map(songSummary) : undefined,
+        songs: songs?.map((s) => {
+          if (!withUsage) return songSummary(s);
+          const u = usage.get(s.id);
+          return { ...songSummary(s), last_used: u?.last_used, times_12m: u?.times ?? 0 };
+        }),
         texts: wantTexts ? lib.searchTexts(q, a.category, a.limit).map(textSummary) : undefined,
       };
     },
   },
   {
     name: 'canon_get_library_item', module: 'library', access: 'read', title: 'Get a library item', annotations: RO,
-    description: 'One library item in full. type "song": title, stanzas {label, text {lang: …}}, author, tune, meter, copyright / CCLI and hymnal numbers. type "text": the liturgical text (responsive lines start "L: " leader, "C: " congregation, "A: " all). Long texts in parts (Westminster Shorter Catechism key "wsc" parts "1".."107", Larger "wlc", Confession "wcf" parts "I.1" = chapter.section): parts "index" lists labels with first lines, a selection like "1-3", "1,4,7-9", "I.1-3" or "XXI" returns those parts (max 60). type "hymnal": the hymnbook with its songs by number. Example: {"type":"text","id":5,"parts":"1-3"}.',
+    description: 'One library item in full. type "song": title, stanzas {label, text {lang: …}}, author, tune, meter, copyright / CCLI and hymnal numbers. type "text": the liturgical text (responsive lines start "L: " leader, "C: " congregation, "A: " all). Long texts in parts (Westminster Shorter Catechism key "wsc" parts "1".."107", Larger "wlc", Confession "wcf" parts "I.1" = chapter.section): parts "index" lists labels with first lines, a selection like "1-3", "1,4,7-9", "I.1-3" or "XXI" returns those parts (max 60); history lists the parts earlier and planned services used, and next_suggested_label continues the series. type "hymnal": the hymnbook with its songs by number. Example: {"type":"text","id":5,"parts":"1-3"}.',
     input: {
       type: z.enum(['song', 'text', 'hymnal']),
       id: Id,
       parts: z.string().max(200).optional().describe('texts only: "index" or a selection such as "1-3"'),
     },
-    handler: (a) => {
+    handler: (a, ctx) => {
       if (a.type === 'song') return lib.songs.get(a.id);
-      if (a.type === 'text') return textItem(a.id, a.parts);
+      if (a.type === 'text') return textItem(a.id, a.parts, ctx);
       const h = lib.hymnals.get(a.id);
       return {
         ...h,

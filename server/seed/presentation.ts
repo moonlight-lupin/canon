@@ -2,7 +2,7 @@
 // settings meta `presentation_builtins`). Re-running adds only what is missing; built-ins are read-only in the app.
 import type { L10n } from '../../shared/types.ts';
 import {
-  DEFAULT_BULLETIN_OPTIONS, DEFAULT_THEME_VARS, FONT_PRESETS, LIGHT_THEME_COLOURS,
+  DEFAULT_BULLETIN_OPTIONS, DEFAULT_THEME_VARS, FONT_PRESETS, LIGHT_THEME_COLOURS, legacyLayout,
   type BulletinOptions, type SlideThemeVars,
 } from '../../shared/presentation.ts';
 import { tx } from '../db.ts';
@@ -49,6 +49,9 @@ const largePrint: BulletinOptions = {
   languages: 'primary',
   sections: { ...DEFAULT_BULLETIN_OPTIONS.sections, sermon_notes: false },
 };
+// Explicit page layouts, matching what the built-ins printed before layouts existed:
+// cover → order → sermon notes on a spare booklet page → back cover (service notes, roster, notices, contact).
+largePrint.page_layout = legacyLayout(largePrint);
 
 export const BUILTIN_TEMPLATES: { key: string; name: L10n; description: L10n; options: BulletinOptions }[] = [
   {
@@ -93,7 +96,10 @@ export function seedPresentation(): number {
     });
     BUILTIN_TEMPLATES.forEach((t, i) => {
       const id = b.bulletin[t.key];
-      if (id && bulletinTemplates.find(id)) return;
+      const cur = id ? bulletinTemplates.find(id) : undefined;
+      // built-ins saved before page layouts existed get their explicit layout (they are read-only in the app)
+      if (cur && !Array.isArray((cur.options as Partial<BulletinOptions> | null)?.page_layout)) bulletinTemplates.update(cur.id, { options: t.options });
+      if (cur) return;
       b.bulletin[t.key] = bulletinTemplates.insert({ name: t.name, description: t.description, options: t.options, sort: i - 100 }).id;
       added++;
     });

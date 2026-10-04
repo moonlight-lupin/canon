@@ -27,6 +27,7 @@ import type {
 import type { Hymnal, TextPart } from '../types-client.ts';
 import { BulletinChoice, BulletinTemplateField, SlideThemeField } from './presentation-pickers.tsx';
 import { SlideBlocksPicker } from './Blocks.tsx';
+import { ServiceBulletinTab } from './ServiceBulletinTab.tsx';
 import type { BulletinBlock } from '../../shared/presentation.ts';
 import { BibleSelect, useBibles, useChurchBible } from '../components/BibleTools.tsx';
 
@@ -75,7 +76,7 @@ export default function ServiceEditor() {
   /** a library item being dragged from the panel, and the agenda item it would land before */
   const [libDrag, setLibDrag] = useState<{ label: string; item: Partial<ServiceItem> } | null>(null);
   const [dropBefore, setDropBefore] = useState<number | 'end' | null>(null);
-  const [tab, setTab] = useState<'order' | 'team'>('order');
+  const [tab, setTab] = useState<'order' | 'team' | 'bulletin'>('order');
   const [showDetails, setShowDetails] = useState(false);
   const [dialog, setDialog] = useState<null | 'duplicate' | 'template'>(null);
 
@@ -107,6 +108,9 @@ export default function ServiceEditor() {
     const timer = window.setTimeout(() => flush(itemId), immediate ? 0 : 600);
     pending.current.set(itemId, { patch: merged, timer });
   }, [setSvc, flush]);
+
+  // the Bulletin tab saves the weekly sections itself; keep the loaded service in step
+  const onBulletinContent = useCallback((c: ServiceFull['bulletin_content']) => setSvc((s) => (s ? { ...s, bulletin_content: c } : s)), [setSvc]);
 
   const patchService = useCallback(async (patch: Partial<ServiceFull>) => {
     setSvc((s) => (s ? { ...s, ...patch } : s));
@@ -306,6 +310,7 @@ export default function ServiceEditor() {
         <button className={tab === 'team' ? 'on' : ''} onClick={() => setTab('team')}>
           {t('Team & roster')} <span className="badge" style={{ marginLeft: 4 }}>{svc.assignments.filter((a) => a.status !== 'declined').length}</span>
         </button>
+        <button className={tab === 'bulletin' ? 'on' : ''} onClick={() => setTab('bulletin')}>{t('Bulletin')}</button>
         <div className="grow" />
         <button onClick={() => setShowDetails((s) => !s)}><Icon name="edit" style={{ width: 14, height: 14, verticalAlign: -2, marginRight: 4 }} />{t('Edit')}…</button>
       </div>
@@ -321,7 +326,7 @@ export default function ServiceEditor() {
                   {svc.items.map((it, i) => (
                     <Fragment key={it.id}>
                     {canEdit && (insertAt === i ? (
-                      <QuickAdd at={i} time={fmtMin(times[i])} songs={songs ?? []} texts={texts ?? []} onAdd={addItem} onClose={() => setInsertAt(null)} />
+                      <QuickAdd at={i} time={fmtMin(times[i])} date={svc.date} songs={songs ?? []} texts={texts ?? []} onAdd={addItem} onClose={() => setInsertAt(null)} />
                     ) : (
                       <InsertPoint active={dropBefore === it.id} onClick={() => { setInsertAt(i); setOpenId(null); }} label={`${t('Insert here')} · ${fmtMin(times[i])}`} />
                     ))}
@@ -376,7 +381,7 @@ export default function ServiceEditor() {
                     </Fragment>
                   ))}
                   {canEdit && (insertAt === svc.items.length ? (
-                    <QuickAdd at={svc.items.length} time={fmtMin(start + total)} songs={songs ?? []} texts={texts ?? []} onAdd={addItem} onClose={() => setInsertAt(null)} />
+                    <QuickAdd at={svc.items.length} time={fmtMin(start + total)} date={svc.date} songs={songs ?? []} texts={texts ?? []} onAdd={addItem} onClose={() => setInsertAt(null)} />
                   ) : (
                     <AgendaEnd active={dropBefore === 'end'} empty={!svc.items.length} onAdd={() => { setInsertAt(svc.items.length); setOpenId(null); }} />
                   ))}
@@ -389,6 +394,7 @@ export default function ServiceEditor() {
           </div>
           {canEdit && (
             <LibraryPanel
+              date={svc.date}
               songs={songs ?? []}
               texts={texts ?? []}
               openItem={svc.items.find((i) => i.id === openId) ?? null}
@@ -400,6 +406,8 @@ export default function ServiceEditor() {
           {libDrag && <div className="drag-chip"><Icon name="plus" width={14} height={14} />{libDrag.label}</div>}
         </DragOverlay>
         </DndContext>
+      ) : tab === 'bulletin' ? (
+        <ServiceBulletinTab svc={svc} canEdit={canEdit} onContent={onBulletinContent} />
       ) : (
         <TeamTab svc={svc} teams={teams ?? []} canEdit={canEdit} onChange={reload} />
       )}
@@ -936,12 +944,34 @@ function LibDrag({ id, label, item, children }: { id: string; label: string; ite
 
 const QUICK_KINDS: ItemKind[] = ['song', 'scripture', 'text', 'prayer', 'sermon', 'section', 'offering', 'sacrament', 'announcements', 'music', 'other'];
 
+// ------------------------------------------------------------------ song usage ("last sung")
+
+type SongUse = Record<number, { last_used: string; times_12m: number }>;
+const RECENT_DAYS = 28;
+
+/** When each song was last sung before the service date, and how often in the 12 months before it. */
+const useSongUsage = (date: string) => useApi<SongUse>(`/songs/usage?before=${date}`).data ?? {};
+
+/** "last sung 21 Sep" / "上次 9月21日" or "never sung"; warn colour when sung in the 4 weeks before the service. */
+function UsageBadge({ use, date }: { use?: SongUse[number]; date: string }) {
+  const { t, lang } = useI18n();
+  if (!use) return <span className="badge" style={{ marginLeft: 6, opacity: 0.75 }}>{t('never sung')}</span>;
+  const days = (Date.parse(date) - Date.parse(use.last_used)) / 86400_000;
+  const opts: Intl.DateTimeFormatOptions = use.last_used.slice(0, 4) === date.slice(0, 4) ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' };
+  return (
+    <span className={`badge${days <= RECENT_DAYS ? ' warn' : ''}`} style={{ marginLeft: 6 }} title={`${use.times_12m} × ${t('in the 12 months before this service')}`}>
+      {t('last sung')} {fmtDate(use.last_used, lang, opts)}
+    </span>
+  );
+}
+
 /** Inline card for inserting an item at a position: pick a kind, then (for hymns / texts / scripture) what. */
-function QuickAdd({ at, time, songs, texts, onAdd, onClose }: {
-  at: number; time: string; songs: Song[]; texts: LiturgyText[];
+function QuickAdd({ at, time, date, songs, texts, onAdd, onClose }: {
+  at: number; time: string; date: string; songs: Song[]; texts: LiturgyText[];
   onAdd: (item: Partial<ServiceItem>, at?: number) => void; onClose: () => void;
 }) {
   const { t, lt } = useI18n();
+  const usage = useSongUsage(date);
   const [mode, setMode] = useState<'menu' | 'song' | 'text' | 'scripture'>('menu');
   const [q, setQ] = useState('');
   const [ref, setRef] = useState('');
@@ -985,7 +1015,7 @@ function QuickAdd({ at, time, songs, texts, onAdd, onClose }: {
               {mode === 'song' && songHits.map((s) => (
                 <div key={s.id} className="lib-item" onClick={() => add({ kind: 'song', ref_id: s.id, title: s.category === 'psalm' ? { en: 'Psalm', zh: '诗篇' } : s.category === 'doxology' ? { en: 'Doxology', zh: '三一颂' } : KIND_LABEL.song, duration_min: 4 })}>
                   <Icon name="music" width={15} height={15} style={{ marginTop: 2, color: 'var(--reed)' }} />
-                  <div className="grow"><div className="t"><Bi v={s.title} /></div><div className="s">{[(s.hymnals ?? []).map((h) => `${h.abbr} ${h.number}`).join(', '), s.author, s.tune].filter(Boolean).join(' · ')}</div></div>
+                  <div className="grow"><div className="t"><Bi v={s.title} /></div><div className="s">{[(s.hymnals ?? []).map((h) => `${h.abbr} ${h.number}`).join(', '), s.author, s.tune].filter(Boolean).join(' · ')}<UsageBadge use={usage[s.id]} date={date} /></div></div>
                 </div>
               ))}
               {mode === 'text' && textHits.map((x) => (
@@ -1013,8 +1043,9 @@ function QuickAdd({ at, time, songs, texts, onAdd, onClose }: {
 
 // ------------------------------------------------------------------ library panel
 
-function LibraryPanel({ songs, texts, openItem, onAdd }: { songs: Song[]; texts: LiturgyText[]; openItem: ServiceItem | null; onAdd: (i: Partial<ServiceItem>) => void }) {
+function LibraryPanel({ date, songs, texts, openItem, onAdd }: { date: string; songs: Song[]; texts: LiturgyText[]; openItem: ServiceItem | null; onAdd: (i: Partial<ServiceItem>) => void }) {
   const { t, lt } = useI18n();
+  const usage = useSongUsage(date);
   const [tab, setTab] = useState<'songs' | 'texts' | 'scripture' | 'elements'>('songs');
   const [q, setQ] = useState('');
   const [ref, setRef] = useState('');
@@ -1046,7 +1077,7 @@ function LibraryPanel({ songs, texts, openItem, onAdd }: { songs: Song[]; texts:
                 <Icon name="music" width={15} height={15} style={{ marginTop: 2, color: 'var(--reed)' }} />
                 <div className="grow">
                   <div className="t"><Bi v={s.title} /></div>
-                  <div className="s">{[(s.hymnals ?? []).map((h) => `${h.abbr} ${h.number}`).join(', '), s.author, s.tune, ...(s.tags ?? []).slice(0, 3)].filter(Boolean).join(' · ')}</div>
+                  <div className="s">{[(s.hymnals ?? []).map((h) => `${h.abbr} ${h.number}`).join(', '), s.author, s.tune, ...(s.tags ?? []).slice(0, 3)].filter(Boolean).join(' · ')}<UsageBadge use={usage[s.id]} date={date} /></div>
                 </div>
                 <span className="btn sm icon add" aria-label={t('Add')}><Icon name="plus" /></span>
               </div></LibDrag>

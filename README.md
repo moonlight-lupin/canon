@@ -155,7 +155,7 @@ npm run build          # regenerates the Traditional Chinese UI dictionary, then
   - No enums or namespaces, so Node's type stripping works.
   - Put scratch files in `_workings/` (git-ignored).
 
-Contributions are welcome. Please open an issue to discuss larger changes first, and keep `npm test` and `npm run typecheck` green.
+Contributions are welcome. Every change that users or AI agents can see must also update the guide (`docs/guide/en.md` and `zh.md`) and the agent playbooks (`docs/AGENT-PLAYBOOKS.md`, `skills/canon/`). `tests/docs-coverage.test.ts` checks the basics. Please open an issue to discuss larger changes first, and keep `npm test` and `npm run typecheck` green.
 
 ## Content and copyright
 

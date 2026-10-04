@@ -15,9 +15,9 @@ import { personL10n } from '../../shared/people-names.ts';
 import { complete, pick } from '../lib/chinese.ts';
 import { seasonInfo } from '../../shared/season.ts';
 import { all, get } from '../db.ts';
-import { listBlocks, resolveBulletinTemplate, resolveSlideThemeId } from './presentation.ts';
+import { listBlocks, resolveBulletinTemplate, resolveSlideThemeId, type ResolvedBulletin } from './presentation.ts';
 import type { BulletinBlock } from '../../shared/presentation.ts';
-import { bulletinDecision } from '../../shared/presentation.ts';
+import { ANNOUNCEMENTS_KEY, bulletinDecision, layoutBlockIds } from '../../shared/presentation.ts';
 
 /** Split a liturgical body into paragraphs of (speaker, text) lines. */
 export function parseParas(body: string | undefined): Paras {
@@ -332,8 +332,43 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
       return out;
     })(),
     has_logo: !!get('SELECT 1 FROM assets WHERE key = ?', 'logo'),
-    bulletin: { ...bulletin, name: complete(bulletin.name, langs) },
+    bulletin: bulletinPart(svc, bulletin, langs),
     slide_theme_id: resolveSlideThemeId(svc),
+  };
+}
+
+/**
+ * The bulletin template in effect with what its page layout prints: headings and fixed texts, the weekly texts
+ * (service.bulletin_content) and the blocks, all completed for the service languages. Services written before
+ * weekly sections existed keep their announcements in the Announcements item's body: that text is used when the
+ * weekly announcements are empty.
+ */
+function bulletinPart(svc: ServiceFull, b: ResolvedBulletin, langs: Lang[]): RenderedService['bulletin'] {
+  const c = (v: L10n | undefined) => complete(v ?? {}, langs);
+  const page_layout = b.options.page_layout.map((s) => ({ ...s, ...(s.heading ? { heading: c(s.heading) } : {}), ...(s.text ? { text: c(s.text) } : {}) }));
+  const content: Record<string, L10n> = {};
+  for (const [k, v] of Object.entries(svc.bulletin_content ?? {})) if (hasText(v)) content[k] = c(v);
+  let fromItem = false;
+  if (!hasText(content[ANNOUNCEMENTS_KEY])) {
+    const it = svc.items.find((x) => x.kind === 'announcements' && hasText(x.body ?? undefined));
+    if (it) {
+      content[ANNOUNCEMENTS_KEY] = c(it.body ?? {});
+      fromItem = true;
+    }
+  }
+  const want = layoutBlockIds(page_layout);
+  const blocks = want.length
+    ? listBlocks()
+        .filter((x) => want.includes(x.id))
+        .map((x) => ({ ...x, data: { ...x.data, ...(x.data.caption ? { caption: c(x.data.caption) } : {}), ...(x.data.text ? { text: c(x.data.text) } : {}) } }))
+    : [];
+  return {
+    template_id: b.template_id,
+    name: c(b.name),
+    options: { ...b.options, page_layout },
+    content,
+    ...(fromItem ? { announcements_from_item: true } : {}),
+    blocks,
   };
 }
 

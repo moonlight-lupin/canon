@@ -1,24 +1,25 @@
 // "Bulletin & slides": how slides look on the projector (slide themes: colours, fonts, background picture,
 // custom CSS) and what the printed bulletin includes (bulletin templates: what to print for each kind of item).
-// Both previews use the real renderers (SlideFace, the bulletin's buildFlow) on a small sample service.
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+// Both previews use the real renderers (SlideFace, the bulletin's BulletinPages) on a small sample service.
+import { useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { useContentLangs, useI18n } from '../i18n.tsx';
 import { Bi, ErrorBox, Field, L10nInput, Loading, PageHead, Seg, confirmAction, useAction, useSession, useToast } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
-import { SlideFace, SlideThemeCtx, Stage, sigOf } from '../outputs/Slides.tsx';
+import { DeckSizeCtx, SlideFace, SlideThemeCtx, Stage, sigOf, useDeckSizes } from '../outputs/Slides.tsx';
 import { buildSlides, type SlideDef } from '../outputs/slideModel.ts';
-import { COVER_LABEL, PAPERS, PAPER_ORDER, buildBack, buildFlow, flowFormat, type Block } from '../outputs/Bulletin.tsx';
+import { COVER_LABEL, PAPERS, PAPER_ORDER } from '../outputs/Bulletin.tsx';
+import { BulletinSample, PageLayoutEditor } from './BulletinLayoutEditor.tsx';
 import {
   COVER_STYLES, CSS_EXAMPLE, DEFAULT_THEME_VARS, FONT_PRESETS, LIGHT_THEME_COLOURS, SLIDE_CLASS_HOOKS,
-  bulletinDecision, compileThemeCss, themeBgUrl,
-  type BulletinBackPage, type BulletinBlock, type BulletinOptions, type BulletinTemplate,
+  compileThemeCss, themeBgUrl,
+  type BulletinOptions, type BulletinTemplate,
   type FontScript, type HymnNumberStyle, type SlideTheme, type SlideThemeVars,
 } from '../../shared/presentation.ts';
 import { sampleLangs, sampleService } from './presentation-sample.ts';
-import { BLOCK_KIND_LABEL, Card } from './Blocks.tsx';
-import type { L10n, Lang, RenderedService, TeamWithRoles } from '../types-client.ts';
+import { Card } from './Blocks.tsx';
+import type { L10n, Lang, RenderedService } from '../types-client.ts';
 import '../outputs/outputs.css';
 import './presentation.css';
 
@@ -160,7 +161,6 @@ function ThemesTab() {
           isDefault={draft.id === defaultId}
           canEdit={canEdit}
           isAdmin={isAdmin}
-          slides={slides}
           langs={langs}
           r={r}
           onSaved={async (th) => {
@@ -193,7 +193,7 @@ const PREVIEW_CAPTION: Record<string, string> = {
 };
 
 function ThemeEditor({
-  draft, setDraft, dirty, isDefault, canEdit, isAdmin, slides, langs, r, onSaved, onPicture, onDuplicated, onDeleted, onDefault,
+  draft, setDraft, dirty, isDefault, canEdit, isAdmin, langs, r, onSaved, onPicture, onDuplicated, onDeleted, onDefault,
 }: {
   draft: SlideTheme;
   setDraft: (f: SlideTheme | ((d: SlideTheme | null) => SlideTheme | null)) => void;
@@ -201,7 +201,6 @@ function ThemeEditor({
   isDefault: boolean;
   canEdit: boolean;
   isAdmin: boolean;
-  slides: SlideDef[];
   langs: Lang[];
   r: RenderedService;
   onSaved: (t: SlideTheme) => Promise<void>;
@@ -219,6 +218,10 @@ function ThemeEditor({
   const setV = (p: Partial<SlideThemeVars>) => setDraft({ ...draft, vars: { ...draft.vars, ...p } });
   const bg = bgOf(draft);
   const compiled = useMemo(() => compileSafe('draft', draft.vars, draft.css, bg), [draft.vars, draft.css, bg]);
+  // the sample service cut with this theme's lines per slide, and its one text size (as the projector computes it)
+  const slides = useMemo(() => buildSlides(r, langs, draft.vars), [r, langs, draft.vars]);
+  const previewTheme = useMemo(() => ({ id: 'draft', sig: sigOf(compiled.css) }), [compiled.css]);
+  const deck = useDeckSizes({ slides, langs, split: false, r, theme: previewTheme, enabled: v.uniform_size });
 
   const preview = useMemo(() => {
     const lyrics = slides.find((s) => s.type === 'lyrics' && Object.keys(s.lines ?? {}).length > 1) ?? slides.find((s) => s.type === 'lyrics');
@@ -346,6 +349,24 @@ function ThemeEditor({
             </Field>
           </div>
           <label className="check"><input type="checkbox" checked={v.uppercase_titles} onChange={(e) => setV({ uppercase_titles: e.target.checked })} />{t('Titles in capital letters')}</label>
+          <Field label={t('Lines per slide')} hint={t('A line is a hymn line, or one sentence of a reading or the liturgy. The rest continues on the next slide, with every language kept together.')}>
+            <div className="row pr-lines">
+              <label>
+                <span>{t('two or more languages')}</span>
+                <select value={v.max_lines_multi} onChange={(e) => setV({ max_lines_multi: Number(e.target.value) })}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{t('one language')}</span>
+                <select value={v.max_lines_single} onChange={(e) => setV({ max_lines_single: Number(e.target.value) })}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+            </div>
+          </Field>
+          <label className="check"><input type="checkbox" checked={v.uniform_size} onChange={(e) => setV({ uniform_size: e.target.checked })} />{t('Same text size on every slide')}</label>
+          <span className="field-hint">{t('Hymns, readings and liturgy all use the size that fits the fullest slide, so the words do not grow and shrink from slide to slide. Turn it off to make each slide as large as it can be.')}</span>
 
           <div className="pr-sec">{t('Footer')}</div>
           <div className="row" style={{ gap: 16 }}>
@@ -369,7 +390,9 @@ function ThemeEditor({
         <div className="pr-side">
           <div className="pr-sec" style={{ marginTop: 0 }}>{t('Live preview')}</div>
           <style>{compiled.css}</style>
-          <SlideThemeCtx.Provider value={{ id: 'draft', sig: sigOf(compiled.css) }}>
+          <SlideThemeCtx.Provider value={previewTheme}>
+          <DeckSizeCtx.Provider value={deck.ctx}>
+            {deck.measurer}
             <div className="pr-preview">
               {preview.map((s) => (
                 <figure key={s.key}>
@@ -378,6 +401,7 @@ function ThemeEditor({
                 </figure>
               ))}
             </div>
+          </DeckSizeCtx.Provider>
           </SlideThemeCtx.Provider>
           <span className="field-hint">{dirty ? t('Showing your unsaved changes.') : lt({ en: 'Drawn exactly as the projector shows it.', zh: '与投影画面完全相同。' })}</span>
         </div>
@@ -555,7 +579,6 @@ function TemplateEditor({
   const o = draft.options;
   const setO = (p: Partial<BulletinOptions>) => setDraft({ ...draft, options: { ...o, ...p } });
   const setPrint = (k: PrintKey, v: string) => setO({ print: { ...o.print, [k]: v } });
-  const setSec = (k: keyof BulletinOptions['sections'], v: boolean) => setO({ sections: { ...o.sections, [k]: v } });
 
   const save = async () => {
     const x = await run(() => api.patch<BulletinTemplate>(`/bulletin-templates/${draft.id}`, { name: draft.name, description: draft.description, options: draft.options }), t('Saved.'));
@@ -588,6 +611,7 @@ function TemplateEditor({
         <div className="callout" style={{ marginBottom: 14 }}>{t("Built-in templates can't be changed. Press Duplicate to make your own copy, then change that.")}</div>
       )}
       <div className="pr-editor">
+        <div className="stack" style={{ minWidth: 0 }}>
         <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }} className="stack">
           <Field label={t('Name')}><L10nInput value={draft.name} onChange={(n) => setDraft({ ...draft, name: n })} /></Field>
           <Field label={t('Description')}><L10nInput value={draft.description} onChange={(n) => setDraft({ ...draft, description: n })} /></Field>
@@ -654,78 +678,25 @@ function TemplateEditor({
             </Field>
           </div>
 
-          <div className="pr-sec">{t('Also include')}</div>
-          <div className="pr-grid">
-            <label className="check"><input type="checkbox" checked={o.sections.roster} onChange={(e) => setSec('roster', e.target.checked)} />{t('Serving today (roster)')}</label>
-            <label className="check"><input type="checkbox" checked={o.sections.notes} onChange={(e) => setSec('notes', e.target.checked)} />{t('Announcements (service notes)')}</label>
-            <label className="check"><input type="checkbox" checked={o.sections.ccli} onChange={(e) => setSec('ccli', e.target.checked)} />{t('Copyright and CCLI notices')}</label>
-            <label className="check"><input type="checkbox" checked={o.sections.sermon_notes} onChange={(e) => setSec('sermon_notes', e.target.checked)} />{t('Sermon notes page (booklets)')}</label>
-            <label className="check"><input type="checkbox" checked={o.sections.contact} onChange={(e) => setSec('contact', e.target.checked)} />{t('Church address and contact')}</label>
-            <label className="check"><input type="checkbox" checked={o.show_leaders} onChange={(e) => setO({ show_leaders: e.target.checked })} />{t('Names of those leading each item')}</label>
-            <label className="check"><input type="checkbox" checked={o.show_times} onChange={(e) => setO({ show_times: e.target.checked })} />{t('Time of each item')}</label>
-          </div>
-
-          <OrderOptions o={o} setO={setO} />
-          <BackPageOptions o={o} setO={setO} />
+          <div className="pr-sec">{t('Page layout')}</div>
+          <span className="field-hint">{t('The sections in print order. Drag them (or use ↑ ↓) to reorder; add page breaks where a new page should start. Weekly texts are typed in each service’s Bulletin tab.')}</span>
         </fieldset>
+        <PageLayoutEditor layout={o.page_layout} onChange={(l) => setO({ page_layout: l })} readOnly={ro} />
+        <fieldset disabled={ro} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }} className="stack">
+          <OrderOptions o={o} setO={setO} />
+        </fieldset>
+        </div>
         <div className="pr-side">
           <div className="pr-sec" style={{ marginTop: 0 }}>{t('Live preview')}</div>
           <BulletinSample options={o} />
-          <span className="field-hint">{t('The first and the last page of a sample service, drawn by the real bulletin. Your own services print the same way.')}</span>
+          <span className="field-hint">{t('Every page of a sample service, drawn by the real bulletin. Your own services print the same way.')}</span>
         </div>
       </div>
     </div>
   );
 }
 
-/** Page 1 and the back cover of the sample service, laid out by the real bulletin renderer. */
-function BulletinSample({ options: o }: { options: BulletinOptions }) {
-  const { langs: all, r } = useSample();
-  const { data: blockList } = useApi<BulletinBlock[]>(o.back_page.blocks.length ? '/bulletin-blocks' : null);
-  const langs = o.languages === 'primary' ? all.slice(0, 1) : all;
-  const layout = langs.length > 1 ? o.layout : 'stacked';
-  const cover = o.cover === 'banner' ? 'banner' : 'plain';
-  const flow = useMemo(
-    () => buildFlow(r, langs, layout, (it) => bulletinDecision(it.kind, it.bulletin_text, o), { leaders: o.show_leaders, times: o.show_times, posture: o.show_posture }, flowFormat(o, cover, o.sections.notes)),
-    [r, langs, layout, o, cover],
-  );
-  // the order up to the first forced page break (the separate full-text / announcements pages come later)
-  const first = useMemo(() => {
-    const i = flow.findIndex((b, j) => j > 0 && b.breakBefore);
-    return i < 0 ? flow : flow.slice(0, i);
-  }, [flow]);
-  const back = useMemo(
-    () => buildBack(r, langs, { roster: o.sections.roster, notes: false, ccli: false, contact: false, page: o.back_page, blocks: blockList ?? [] }),
-    [r, langs, o, blockList],
-  );
-  return (
-    <div className="pr-pages">
-      <SamplePage o={o} blocks={first} />
-      {back.length > 0 && <SamplePage o={o} blocks={back} />}
-    </div>
-  );
-}
-
-function SamplePage({ o, blocks }: { o: BulletinOptions; blocks: Block[] }) {
-  const spec = PAPERS[o.paper];
-  const [pw, ph] = spec.page;
-  const widthPx = 340;
-  const scale = widthPx / ((pw * 96) / 25.4);
-  const style = {
-    width: `${pw}mm`, height: `${ph}mm`, padding: `${spec.margin}mm`, fontSize: `${o.font_pt ?? spec.font}pt`, transform: `scale(${scale})`,
-  } as CSSProperties;
-  return (
-    <div className="pr-paper-wrap" style={{ width: widthPx, height: Math.round(widthPx * (ph / pw)) }}>
-      <div className="bl-doc pr-paper" style={style}>
-        <div className="bl-body" style={{ height: '100%' }}>
-          {blocks.map((b) => <div key={b.key} className="bb">{b.node}</div>)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ================================================================= template editor: page 1, order and back cover
+// ================================================================= template editor: the order of service
 
 const HYMN_NUMBER_LABEL: Record<HymnNumberStyle, string> = {
   abbr: 'Hymnal and number: HP 123 · Title',
@@ -733,12 +704,12 @@ const HYMN_NUMBER_LABEL: Record<HymnNumberStyle, string> = {
   none: 'Title only',
 };
 
-/** Page 1, the order of service, separate sections. */
+/** Banner colours and how the order of service is printed. */
 function OrderOptions({ o, setO }: { o: BulletinOptions; setO: (p: Partial<BulletinOptions>) => void }) {
   const { t } = useI18n();
   return (
     <>
-      <div className="pr-sec">{t('Page 1 and the order of service')}</div>
+      <div className="pr-sec">{t('Order of service')}</div>
       {o.cover === 'banner' && (
         <div className="pr-grid">
           <Field label={t('Banner background')}>
@@ -749,7 +720,7 @@ function OrderOptions({ o, setO }: { o: BulletinOptions; setO: (p: Partial<Bulle
           </Field>
         </div>
       )}
-      <Field label={t('Order of service')} hint={t('A table has three columns: the item, what (hymn, reading, sermon title) and who leads it.')}>
+      <Field label={t('Layout')} hint={t('A table has three columns: the item, what (hymn, reading, sermon title) and who leads it.')}>
         <div><Seg<BulletinOptions['order_style']> value={o.order_style} onChange={(v) => setO({ order_style: v })} options={[{ value: 'list', label: t('List') }, { value: 'table', label: t('Table with shaded rows') }]} /></div>
       </Field>
       <div className="pr-grid">
@@ -762,87 +733,9 @@ function OrderOptions({ o, setO }: { o: BulletinOptions; setO: (p: Partial<Bulle
       <div className="pr-grid">
         <label className="check"><input type="checkbox" checked={o.show_posture} onChange={(e) => setO({ show_posture: e.target.checked })} />{t('Posture (All stand / 众立)')}</label>
         <label className="check"><input type="checkbox" checked={o.sermon_brackets} onChange={(e) => setO({ sermon_brackets: e.target.checked })} />{t('Sermon and creed titles in 【】')}</label>
+        <label className="check"><input type="checkbox" checked={o.show_leaders} onChange={(e) => setO({ show_leaders: e.target.checked })} />{t('Names of those leading each item')}</label>
+        <label className="check"><input type="checkbox" checked={o.show_times} onChange={(e) => setO({ show_times: e.target.checked })} />{t('Time of each item')}</label>
       </div>
-      <Field label={t('Full words (creeds, catechism, hymns)')}>
-        <div><Seg<BulletinOptions['full_text_section']> value={o.full_text_section} onChange={(v) => setO({ full_text_section: v })} options={[{ value: 'inline', label: t('Under each item') }, { value: 'separate', label: t('On their own pages after the order') }]} /></div>
-      </Field>
-      <Field label={t('Announcements')} hint={t('Printed from the Announcements item. Numbered lines (1. 2. 3.) keep their numbers.')}>
-        <div><Seg<BulletinOptions['announcements_section']> value={o.announcements_section} onChange={(v) => setO({ announcements_section: v })} options={[{ value: 'inline', label: t('Under the item') }, { value: 'separate', label: t('On a page of their own') }]} /></div>
-      </Field>
-      {o.announcements_section === 'separate' && (
-        <Field label={t('Heading of the announcements page')} hint={t('Leave empty for "Announcements / 报告事项".')}>
-          <L10nInput value={o.announcements_heading} onChange={(v) => setO({ announcements_heading: v })} placeholder={{ en: 'Announcements', zh: '家讯' }} />
-        </Field>
-      )}
-    </>
-  );
-}
-
-/** An ordered list of chosen names (roles or blocks) with a picker to add more. */
-function OrderedPicker<T extends string | number>({ value, options, onChange, placeholder }: {
-  value: T[]; options: { value: T; label: ReactNode }[]; onChange: (v: T[]) => void; placeholder: string;
-}) {
-  const label = (v: T) => options.find((o) => o.value === v)?.label ?? String(v);
-  const rest = options.filter((o) => !value.includes(o.value));
-  const move = (i: number, d: number) => {
-    const a = [...value];
-    const [m] = a.splice(i, 1);
-    a.splice(i + d, 0, m);
-    onChange(a);
-  };
-  return (
-    <div className="pr-chips">
-      {value.map((v, i) => (
-        <span key={String(v)} className="pr-chip">
-          {i > 0 && <button type="button" className="pr-chip-x" aria-label="←" onClick={() => move(i, -1)}>‹</button>}
-          {label(v)}
-          <button type="button" className="pr-chip-x" aria-label="×" onClick={() => onChange(value.filter((x) => x !== v))}>×</button>
-        </span>
-      ))}
-      {rest.length > 0 && (
-        <select value="" onChange={(e) => { const o = rest.find((x) => String(x.value) === e.target.value); if (o) onChange([...value, o.value]); }}>
-          <option value="">{placeholder}</option>
-          {rest.map((o) => <option key={String(o.value)} value={String(o.value)}>{typeof o.label === 'string' ? o.label : String(o.value)}</option>)}
-        </select>
-      )}
-    </div>
-  );
-}
-
-/** The back cover: this week's and next week's serving tables, a note and blocks (QR codes, pictures). */
-function BackPageOptions({ o, setO }: { o: BulletinOptions; setO: (p: Partial<BulletinOptions>) => void }) {
-  const { t, lt } = useI18n();
-  const { data: teams } = useApi<TeamWithRoles[]>('/teams');
-  const { data: blocks } = useApi<BulletinBlock[]>('/bulletin-blocks');
-  const bp = o.back_page;
-  const setBp = (p: Partial<BulletinBackPage>) => setO({ back_page: { ...bp, ...p } });
-  // roles are stored by their English name (any language works when matching)
-  const roles = useMemo(() => {
-    const out: { value: string; label: string }[] = [];
-    for (const tm of teams ?? []) for (const r of tm.roles) {
-      const key = r.name.en?.trim() || Object.values(r.name).find((v) => v?.trim()) || '';
-      if (key && !out.some((x) => x.value === key)) out.push({ value: key, label: lt(r.name) });
-    }
-    for (const k of [...bp.this_week_roles, ...bp.next_week_roles]) if (!out.some((x) => x.value === k)) out.push({ value: k, label: k });
-    return out;
-  }, [teams, lt, bp.this_week_roles, bp.next_week_roles]);
-  const blockOpts = (blocks ?? []).map((b) => ({ value: b.id, label: `${b.name} (${t(BLOCK_KIND_LABEL[b.kind])})` }));
-  return (
-    <>
-      <div className="pr-sec">{t('Back cover')}</div>
-      <span className="field-hint">{t('Printed on the last page of the booklet. Leave empty for none.')}</span>
-      <Field label={t('Serving today (table)')} hint={t('One column per role, e.g. Ushers and Welcome team.')}>
-        <OrderedPicker value={bp.this_week_roles} options={roles} onChange={(v) => setBp({ this_week_roles: v })} placeholder={t('Add a role…')} />
-      </Field>
-      <Field label={t('Serving next week (table)')} hint={t('The roster of the next service, e.g. Preacher, Worship leader, Musician, Scripture reader.')}>
-        <OrderedPicker value={bp.next_week_roles} options={roles} onChange={(v) => setBp({ next_week_roles: v })} placeholder={t('Add a role…')} />
-      </Field>
-      <Field label={t('Note (bold, centred)')}>
-        <L10nInput value={bp.note} onChange={(v) => setBp({ note: v })} placeholder={{ en: 'Please stay for the prayer meeting!', zh: '敬请留下参加祷告会！' }} />
-      </Field>
-      <Field label={t('QR codes, pictures and notes')} hint={t('Make them in Library → QR codes & notes.')}>
-        <OrderedPicker value={bp.blocks} options={blockOpts} onChange={(v) => setBp({ blocks: v })} placeholder={t('Add a block…')} />
-      </Field>
     </>
   );
 }

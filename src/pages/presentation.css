@@ -27,6 +27,9 @@
 .pr-colour input[type='color'] { flex: none; height: 32px; }
 .pr-colour code { font: 12px var(--mono); color: var(--ink-3); }
 .pr-range { display: flex; align-items: center; gap: 10px; }
+.pr-lines { gap: 10px 18px; flex-wrap: wrap; }
+.pr-lines label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.pr-lines select { width: auto; min-width: 58px; }
 .pr-range input[type='range'] { padding: 0; border: 0; background: none; accent-color: var(--lapis); min-height: 0; }
 .pr-range output { font: 12px var(--mono); color: var(--ink-2); min-width: 3.4em; text-align: right; }
 .pr-bg { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

@@ -28,6 +28,7 @@ import * as lib from './repo/library.ts';
 import * as bible from './repo/bible.ts';
 import * as svc from './repo/services.ts';
 import { renderService } from './repo/render.ts';
+import { songUsage } from './repo/history.ts';
 import { getSettings, updateSettings, type Settings } from './repo/settings.ts';
 import { serviceDocx } from './export/docx.ts';
 import { freeshowProject } from './export/freeshow.ts';
@@ -288,6 +289,11 @@ api.get('/services/:id/warnings', h((req) => vol.rosterWarnings(id(req))));
 // ---------------------------------------------------------------- library
 
 api.get('/songs', h((req) => lib.searchSongs(str(req.query.q), str(req.query.category))));
+// When each song was last sung (before ?before=YYYY-MM-DD, default today) and how often in the 12 months before.
+api.get('/songs/usage', h((req) => {
+  const before = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().parse(str(req.query.before));
+  return Object.fromEntries([...songUsage(null, { before })].map(([sid, u]) => [sid, { last_used: u.last_used, times_12m: u.times }]));
+}));
 api.get('/songs/:id', h((req) => lib.songs.get(id(req))));
 api.post('/songs', h((req) => lib.songs.insert(S.SongInput.parse(req.body))));
 api.patch('/songs/:id', h((req) => lib.songs.update(id(req), S.SongInput.partial().parse(req.body))));

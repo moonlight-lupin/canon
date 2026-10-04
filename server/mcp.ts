@@ -75,6 +75,7 @@ function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, lan
     'Canon is a local-first church management system for a Reformed / Presbyterian congregation.',
     `Localised fields are L10n objects {"<lang>": "..."}; the church's languages are ${langs} (primary first) — fill each of them when you can.`,
     'Tools: find_* / get_* / search_* read (find and search return summaries, get returns detail); save_* create (no id) or update (id + fields); edit_order, update_rota, update_team_members and update_group_members apply a batch of ops all-or-nothing and return per-op errors if any op fails.',
+    levels.services !== 'off' && 'PRECEDENT FIRST: before proposing or writing any plan, ALWAYS look at similar past services (canon_find_services {similar_to: <service id>} or {like: {date, sermon_ref}}, or canon_get_service {include_similar: true}) and at hymn history (canon_search_library returns last_used / times_12m per song). Treat them as the church\'s practice: its order, typical hymns, durations and who serves. Avoid a hymn sung in the last ~4 weeks unless the church clearly repeats it; continue a catechism series from the last question used (canon_get_library_item gives next_suggested_label). Say which past services you based a proposal on.',
     'Typical service workflow: canon_find_services (or canon_get_templates → canon_create_service with template_id or copy_from) → canon_get_service → canon_search_library for songs / liturgy / hymnal numbers → canon_edit_order with add / update / move / remove ops → canon_update_service {status: "final"} → canon_update_rota to staff it (canon_get_rota shows teams, roles and who is free).',
     'Item kinds: section, song, scripture, text, sermon, prayer, sacrament, offering, announcements, music, other. A song item has ref_id = song id and optional stanzas ("1","3","R"); a text item has ref_id = liturgical text id (catechism / confession parts go in stanzas, e.g. ["1","2","3"]); a scripture item has scripture_ref such as "Romans 8:28-39" and the Bible text is filled in automatically.',
     'A typical Reformed order: Call to Worship, Invocation, Hymn, Reading of the Law / Confession of Sin, Assurance of Pardon, Creed, Pastoral Prayer, Scripture Reading, Sermon, Hymn, Offering, Doxology, Benediction.',
@@ -85,7 +86,7 @@ function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, lan
       : 'Member contact details, addresses, birth dates and notes are withheld by the administrator (PDPA); do not try to obtain or infer them.',
     'Ask the user before removing or overwriting anything.',
     `Read the agent handbook resource canon://guide/agents before larger tasks (canon://guide/user is the staff user guide).${prompts.length ? ` Step-by-step playbooks are available as prompts: ${prompts.join(', ')}.` : ''}`,
-  ].join('\n');
+  ].filter((x): x is string => typeof x === 'string').join('\n');
 }
 
 // ---------------------------------------------------------------- results, errors, audit
@@ -234,7 +235,7 @@ export function buildServer(auth: McpAuth) {
   const settings = getSettings();
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
-  const ctx: Ctx = { auth, pii: cfg.expose_member_pii };
+  const ctx: Ctx = { auth, pii: cfg.expose_member_pii, levels };
   const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, cfg.expose_member_pii, settings.languages) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;

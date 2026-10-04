@@ -180,6 +180,7 @@ export const ServiceInput = z.object({
   cover: z.object({ style: z.enum(['plain', 'cross', 'logo', 'verse']).optional(), verse_ref: z.string().max(200).optional() }).optional(),
   slide_theme_id: z.number().int().nullable().optional(),
   bibles: z.record(LangSchema, z.string().max(20)).optional(),
+  bulletin_content: z.record(z.string().regex(/^[a-z0-9_-]{1,40}$/), L10nSchema).optional(),
   bulletin_template_id: z.number().int().nullable().optional(),
 });
 

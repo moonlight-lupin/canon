@@ -26,7 +26,8 @@ import { langInfo } from '../../shared/languages.ts';
 import { speakerLabel } from '../../shared/labels.ts';
 import { OUTPUT_LABEL, formatDate, isRefrain, stanzaLabel } from '../../shared/output-labels.ts';
 import {
-  DEFAULT_BULLETIN_OPTIONS, bracket, bracketL10n, firstStanza, hymnLine, withVersion, type BulletinBlock, type BulletinOptions,
+  ANNOUNCEMENTS_KEY, DEFAULT_BULLETIN_OPTIONS, bracket, bracketL10n, firstStanza, hasSection, hymnLine, withVersion,
+  type BulletinBlock, type BulletinOptions, type BulletinSection,
 } from '../../shared/presentation.ts';
 import { postureL10n, roleMatches, servingOnLabel } from '../../shared/labels.ts';
 import { assetRow, listBlocks, qrPng } from '../repo/presentation.ts';
@@ -417,10 +418,10 @@ function rosterBlock(r: RenderedService, langs: Lang[]): (Paragraph | Table)[] {
   ];
 }
 
-function backMatter(r: RenderedService, langs: Lang[], o: BulletinOptions): Paragraph[] {
+function backMatter(r: RenderedService, langs: Lang[], show: { ccli: boolean; contact: boolean }): Paragraph[] {
   const out: Paragraph[] = [];
   const small = (text: string, o: RunOpts = {}) => run(text, { size: SZ.tiny, color: GREY, ...o });
-  if (o.sections.ccli && (r.notices.length || r.church.ccli_license)) {
+  if (show.ccli && (r.notices.length || r.church.ccli_license)) {
     out.push(rule(200, 60));
     for (const n of r.notices) out.push(new Paragraph({ spacing: { after: 10 }, children: [small(n)] }));
     if (r.church.ccli_license) {
@@ -428,7 +429,7 @@ function backMatter(r: RenderedService, langs: Lang[], o: BulletinOptions): Para
     }
   }
   const contact = [r.church.address, r.church.contact].map((s) => s?.trim()).filter(Boolean) as string[];
-  if (o.sections.contact && (contact.length || has(r.church.name, langs))) {
+  if (show.contact && (contact.length || has(r.church.name, langs))) {
     out.push(rule(120, 60));
     if (has(r.church.name, langs)) out.push(centered([small(bi(r.church.name, langs, '  ·  '), { bold: true, color: '444444' })], 10));
     for (const c of contact) out.push(centered(splitLines(c).flatMap((l, i) => [small(l, { break: i ? 1 : undefined })]), 10));
@@ -564,89 +565,117 @@ function roleColumns(names: string[], rows: { role: L10n; people: L10n[] }[], r:
   return cols.some((c) => c.people) ? cols : [];
 }
 
-/** Back-page content designed by the template: serving tables, the note, QR codes and pictures. */
-async function backPageBlocks(r: RenderedService, langs: Lang[], o: BulletinOptions): Promise<(Paragraph | Table)[]> {
-  const bp = o.back_page;
+/** A serving table for this service's roles (one column per role). */
+function servingThisWeek(r: RenderedService, langs: Lang[], roles: string[]): (Paragraph | Table)[] {
+  const rows = r.roster.map((x) => ({ role: x.role, people: x.people_l10n ?? x.people.map((p) => ({ [langs[0]]: p })) }));
+  const cols = roleColumns(roles, rows, r, langs);
+  return cols.length ? [new Paragraph({ spacing: { before: 120 }, children: [] }), roleTable(cols)] : [];
+}
+
+/** The next service's roster table ("Serving on 11 Oct"). */
+function servingNextWeek(r: RenderedService, langs: Lang[], roles: string[]): (Paragraph | Table)[] {
+  if (!roles.length || !r.next_roster) return [];
+  const cols = roleColumns(roles, r.next_roster.roles, r, langs);
+  if (!cols.length) return [];
+  const head = bi(Object.fromEntries(langs.map((l) => [l, servingOnLabel(r.next_roster!.date, l)])), langs, '  ·  ');
+  return [centered([run(head, { bold: true, font: DOC.head })], 60, 240), roleTable(cols)];
+}
+
+/** QR codes, pictures (three to a row) and notes from Library → QR codes & notes. */
+async function blockParas(ids: number[], langs: Lang[], known: BulletinBlock[] | undefined): Promise<(Paragraph | Table)[]> {
   const out: (Paragraph | Table)[] = [];
-  if (bp.this_week_roles.length) {
-    const rows = r.roster.map((x) => ({ role: x.role, people: x.people_l10n ?? x.people.map((p) => ({ [langs[0]]: p })) }));
-    const cols = roleColumns(bp.this_week_roles, rows, r, langs);
-    if (cols.length) out.push(new Paragraph({ spacing: { before: 120 }, children: [] }), roleTable(cols));
-  }
-  if (bp.next_week_roles.length && r.next_roster) {
-    const cols = roleColumns(bp.next_week_roles, r.next_roster.roles, r, langs);
-    if (cols.length) {
-      const head = bi(Object.fromEntries(langs.map((l) => [l, servingOnLabel(r.next_roster!.date, l)])), langs, '  ·  ');
-      out.push(centered([run(head, { bold: true, font: DOC.head })], 60, 240), roleTable(cols));
-    }
-  }
-  if (has(bp.note, langs)) out.push(centered([run(bi(bp.note, langs, '  ·  '), { bold: true, size: SZ.item })], 120, 240));
-  if (bp.blocks.length) {
-    const all = listBlocks();
-    let row: { img: ImageRun | null; caption: string[] }[] = [];
-    const flush = () => {
-      if (!row.length) return;
-      const w = Math.floor(CONTENT_W / 3);
-      out.push(new Paragraph({ spacing: { before: 160 }, children: [] }));
-      out.push(new Table({
-        width: { size: w * row.length, type: WidthType.DXA },
-        columnWidths: Array(row.length).fill(w),
-        layout: TableLayoutType.FIXED,
-        alignment: AlignmentType.CENTER,
-        borders: NO_BORDERS,
-        rows: [new TableRow({
-          cantSplit: true,
-          children: row.map((c) => new TableCell({
-            width: { size: w, type: WidthType.DXA },
-            children: [
-              ...(c.img ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [c.img] })] : []),
-              ...c.caption.map((t) => centered([run(t, { size: SZ.small })])),
-            ],
-          })),
-        })],
-      }));
-      row = [];
-    };
-    for (const id of bp.blocks) {
-      const b: BulletinBlock | undefined = all.find((x) => x.id === id);
-      if (!b) continue;
-      const caption = langs.flatMap((l) => (pick(b.data.caption, l) ? pick(b.data.caption, l).split('\n') : [])).filter((x, i, a) => a.indexOf(x) === i);
-      if (b.kind === 'text') {
-        flush();
-        if (has(b.data.text, langs)) {
-          const lines = [...new Set(langs.map((l) => pick(b.data.text, l)).filter(Boolean))];
-          out.push(new Paragraph({
-            alignment: b.data.align === 'left' ? AlignmentType.LEFT : AlignmentType.CENTER,
-            spacing: { before: 160, after: 80 },
-            children: lines.flatMap((t, i) => t.split('\n').map((ln, j) => run(ln, { bold: b.data.bold !== false, break: i || j ? 1 : undefined }))),
-          }));
-        }
-        continue;
+  if (!ids.length) return out;
+  const all = known?.length ? known : listBlocks();
+  let row: { img: ImageRun | null; caption: string[] }[] = [];
+  const flush = () => {
+    if (!row.length) return;
+    const w = Math.floor(CONTENT_W / 3);
+    out.push(new Paragraph({ spacing: { before: 160 }, children: [] }));
+    out.push(new Table({
+      width: { size: w * row.length, type: WidthType.DXA },
+      columnWidths: Array(row.length).fill(w),
+      layout: TableLayoutType.FIXED,
+      alignment: AlignmentType.CENTER,
+      borders: NO_BORDERS,
+      rows: [new TableRow({
+        cantSplit: true,
+        children: row.map((c) => new TableCell({
+          width: { size: w, type: WidthType.DXA },
+          children: [
+            ...(c.img ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [c.img] })] : []),
+            ...c.caption.map((t) => centered([run(t, { size: SZ.small })])),
+          ],
+        })),
+      })],
+    }));
+    row = [];
+  };
+  for (const id of ids) {
+    const b: BulletinBlock | undefined = all.find((x) => x.id === id);
+    if (!b) continue;
+    const caption = langs.flatMap((l) => (pick(b.data.caption, l) ? pick(b.data.caption, l).split('\n') : [])).filter((x, i, a) => a.indexOf(x) === i);
+    if (b.kind === 'text') {
+      flush();
+      if (has(b.data.text, langs)) {
+        const lines = [...new Set(langs.map((l) => pick(b.data.text, l)).filter(Boolean))];
+        out.push(new Paragraph({
+          alignment: b.data.align === 'left' ? AlignmentType.LEFT : AlignmentType.CENTER,
+          spacing: { before: 160, after: 80 },
+          children: lines.flatMap((t, i) => t.split('\n').map((ln, j) => run(ln, { bold: b.data.bold !== false, break: i || j ? 1 : undefined }))),
+        }));
       }
-      let img: ImageRun | null = null;
-      const size = { width: PX(28), height: PX(28) };
-      if (b.kind === 'qr' && b.data.value) {
-        img = new ImageRun({ type: 'png', data: await qrPng(b.data.value, 400), transformation: size });
-      } else if (b.kind === 'image' && b.data.image) {
-        const a = assetRow(`bulletin-block-${b.id}`);
-        // Word can't show WebP: those pictures print in the browser bulletin only
-        const type = a?.mime === 'image/png' ? 'png' : a?.mime === 'image/jpeg' ? 'jpg' : null;
-        if (a && type) img = new ImageRun({ type, data: Buffer.from(a.data), transformation: size });
-      }
-      if (!img && !caption.length) continue;
-      if (row.length === 3) flush();
-      row.push({ img, caption });
+      continue;
     }
-    flush();
+    let img: ImageRun | null = null;
+    const size = { width: PX(28), height: PX(28) };
+    if (b.kind === 'qr' && b.data.value) {
+      img = new ImageRun({ type: 'png', data: await qrPng(b.data.value, 400), transformation: size });
+    } else if (b.kind === 'image' && b.data.image) {
+      const a = assetRow(`bulletin-block-${b.id}`);
+      // Word cannot show WebP: those pictures print in the browser bulletin only
+      const type = a?.mime === 'image/png' ? 'png' : a?.mime === 'image/jpeg' ? 'jpg' : null;
+      if (a && type) img = new ImageRun({ type, data: Buffer.from(a.data), transformation: size });
+    }
+    if (!img && !caption.length) continue;
+    if (row.length === 3) flush();
+    row.push({ img, caption });
   }
+  flush();
   return out;
 }
+
+/** A centred bold heading of an announcements / weekly / fixed-text section. */
+const textHeading = (v: L10n, langs: Lang[]) =>
+  new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { after: 160 }, children: [run(bi(v, langs, '  ·  '), { bold: true, size: SZ.title - 4, font: DOC.head })] });
+
+/** Lines of a text per language, one after another (blank lines dropped). */
+const textLinesOf = (v: L10n | undefined, langs: Lang[]) =>
+  langs.flatMap((l) => splitLines(v?.[l]).map((text) => ({ text: text.trim(), lang: l })));
+
+/** A ruled page for sermon notes. */
+function sermonNotesPage(langs: Lang[]): Paragraph[] {
+  const line = { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D0D0', space: 1 } };
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: RULE, space: 2 } },
+      children: [run(bi(OUTPUT_LABEL.sermonNotes, langs, ' / '), { smallCaps: true, bold: true, size: SZ.section, font: DOC.head, color: ACCENT })],
+    }),
+    ...Array.from({ length: 22 }, () => new Paragraph({ spacing: { before: 200 }, border: line, children: [] })),
+  ];
+}
+
+/** A Word page break: an empty paragraph that starts a new page. */
+const pageBreak = () => new Paragraph({ pageBreakBefore: true, children: [] });
 
 // ---------------------------------------------------------------- document
 
 export async function serviceDocx(r: RenderedService): Promise<Buffer> {
-  // The bulletin template decides languages, layout, back-page sections and (per item) full words or title only.
+  // The bulletin template decides languages, layout, the page layout (sections and page breaks) and (per item) full
+  // words or title only. Word has no booklet padding: it prints the pages in order ("Book fold" folds them).
   const o = r.bulletin?.options ?? DEFAULT_BULLETIN_OPTIONS;
+  const L = o.page_layout ?? DEFAULT_BULLETIN_OPTIONS.page_layout;
   const all: Lang[] = r.languages.length ? r.languages : ['en'];
   const langs = o.languages === 'primary' ? all.slice(0, 1) : all;
   const parallel = o.layout === 'parallel' && langs.length > 1 && langs.length <= MAX_COLUMNS;
@@ -655,57 +684,109 @@ export async function serviceDocx(r: RenderedService): Promise<Buffer> {
 
   const banner = r.cover?.style === 'banner';
   const table = o.order_style === 'table';
-  const separateText = o.full_text_section === 'separate';
-  const separateAnn = o.announcements_section === 'separate';
+  const separateText = hasSection(L, 'full_texts');
+  const separateAnn = hasSection(L, 'announcements');
+  const content = r.bulletin?.content ?? {};
   const readings = new Set(r.items.filter((x) => x.in_bulletin && x.kind === 'scripture').map((x) => bi(x.subtitle, langs)));
-  const body: (Paragraph | Table)[] = banner ? bannerBlock(r, langs, o) : [...headerBlock(r, langs)];
+
+  // the order of service, and the words gathered for a full-texts section
+  const order: (Paragraph | Table)[] = [];
   const fullText: (Paragraph | Table)[] = [];
-  const ann: { text: string; lang?: Lang }[] = [];
   const rows = new OrderTable();
   for (const it of r.items) {
     if (!it.in_bulletin) continue;
     if (it.kind === 'section') {
       if (table) rows.section(bi(it.title, langs, '  ·  '));
-      else body.push(...sectionHeading(it, langs));
+      else order.push(...sectionHeading(it, langs));
       continue;
     }
-    let content: (Paragraph | Table)[] = [];
-    if (it.kind === 'announcements' && separateAnn) {
-      for (const l of langs) for (const para of it.paras?.[l] ?? []) for (const ln of para) ann.push({ text: ln.text, lang: l });
-    } else {
+    let body: (Paragraph | Table)[] = [];
+    // with an announcements section the item stays in the order, its words print in that section
+    if (!(it.kind === 'announcements' && separateAnn)) {
       const full = it.bulletin_full ?? true;
       const shown = full === 'first_stanza' && it.song ? { ...it, song: { ...it.song, stanzas: firstStanza(it.song.stanzas) } } : it;
-      content = full ? itemContent(shown, langs, parallel) : [];
-      if (separateText && content.length) {
+      body = full ? itemContent(shown, langs, parallel) : [];
+      if (separateText && body.length) {
         const head = it.text_title && has(it.text_title, langs) ? it.text_title : it.song ? it.song.title : has(it.subtitle, langs) ? it.subtitle : it.title;
-        const title = bi(Object.fromEntries(langs.map((l) => [l, isCjk(l) ? bracket(pick(head, l), l) : pick(head, l)])), langs, '  ·  ');
-        fullText.push(new Paragraph({ alignment: AlignmentType.CENTER, pageBreakBefore: !fullText.length, keepNext: true, spacing: { before: fullText.length ? 200 : 0, after: 60 }, children: [run(title, { bold: true, size: SZ.item, font: DOC.head })] }));
-        fullText.push(...content);
-        content = [];
+        const title = bi(Object.fromEntries(langs.map((l) => [l, o.sermon_brackets && isCjk(l) ? bracket(pick(head, l), l) : pick(head, l)])), langs, '  ·  ');
+        fullText.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: fullText.length ? 200 : 0, after: 60 }, children: [run(title, { bold: true, size: SZ.item, font: DOC.head })] }));
+        fullText.push(...body);
+        body = [];
       }
     }
     const subs = whatLines(it, langs, r, o, readings);
     if (table) {
       rows.item(bi(it.title, langs), subs, whoText(it, langs, o), o.show_times ? it.start : null);
-      if (content.length) body.push(...rows.flush(), ...content);
+      if (body.length) order.push(...rows.flush(), ...body);
     } else {
-      body.push(...itemHeader(it, langs, subs, content.length > 0, o));
-      body.push(...content);
+      order.push(...itemHeader(it, langs, subs, body.length > 0, o));
+      order.push(...body);
     }
   }
-  body.push(...rows.flush());
-  body.push(...fullText);
-  if (separateAnn && o.sections.notes && r.notes?.trim()) for (const ln of r.notes.replace(/\r/g, '').split('\n')) if (ln.trim()) ann.push({ text: ln.trim() });
-  if (ann.length) {
-    const heading = has(o.announcements_heading, langs) ? o.announcements_heading : OUTPUT_LABEL.announcements;
-    body.push(new Paragraph({ alignment: AlignmentType.CENTER, pageBreakBefore: true, spacing: { after: 160 }, children: [run(bi(heading, langs, '  ·  '), { bold: true, size: SZ.title - 4, font: DOC.head })] }));
-    body.push(...announcementParas(ann));
+  order.push(...rows.flush());
+
+  const section = async (s: BulletinSection): Promise<(Paragraph | Table)[]> => {
+    switch (s.type) {
+      case 'cover':
+        return banner ? bannerBlock(r, langs, o) : headerBlock(r, langs);
+      case 'order':
+        return order;
+      case 'full_texts':
+        return fullText;
+      case 'announcements': {
+        const lines = [...textLinesOf(content[ANNOUNCEMENTS_KEY], langs), ...(s.service_notes ? splitLines(r.notes ?? '').map((text) => ({ text: text.trim() })) : [])];
+        return lines.length ? [textHeading(has(s.heading, langs) ? s.heading! : OUTPUT_LABEL.announcements, langs), ...announcementParas(lines)] : [];
+      }
+      case 'weekly_text':
+      case 'fixed_text': {
+        const lines = textLinesOf(s.type === 'weekly_text' ? (s.key ? content[s.key] : undefined) : s.text, langs);
+        return lines.length ? [...(has(s.heading, langs) ? [textHeading(s.heading!, langs)] : []), ...announcementParas(lines)] : [];
+      }
+      case 'service_notes': {
+        if (!r.notes?.trim()) return [];
+        const head = has(s.heading, langs) ? s.heading! : OUTPUT_LABEL.announcements;
+        return [
+          new Paragraph({
+            alignment: AlignmentType.CENTER, spacing: { before: 200, after: 80 }, keepNext: true,
+            border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: RULE, space: 2 } },
+            children: [run(bi(head, langs, ' / '), { smallCaps: true, bold: true, size: SZ.section, font: DOC.head, color: ACCENT })],
+          }),
+          ...r.notes.replace(/\r/g, '').split(/\n\s*\n/).filter((p) => p.trim()).map((p) => new Paragraph({ spacing: { after: 80 }, children: lineRuns(splitLines(p)) })),
+        ];
+      }
+      case 'serving_this_week':
+        return s.roles?.length ? servingThisWeek(r, langs, s.roles) : rosterBlock(r, langs);
+      case 'serving_next_week':
+        return servingNextWeek(r, langs, s.roles ?? []);
+      case 'note':
+        return has(s.text, langs) ? [centered([run(bi(s.text, langs, '  ·  '), { bold: true, size: SZ.item })], 120, 240)] : [];
+      case 'blocks':
+        return blockParas(s.blocks ?? [], langs, r.bulletin?.blocks);
+      case 'sermon_notes':
+        // a spare-page notes page belongs to folded booklets printed from the browser
+        return s.spare_only ? [] : sermonNotesPage(langs);
+      case 'ccli_contact':
+        return backMatter(r, langs, { ccli: s.ccli !== false, contact: s.contact !== false });
+      default:
+        return [];
+    }
+  };
+
+  // Walk the layout: a page break (or "starts a new page") becomes a Word page break before the next printed
+  // section; a section that prints nothing makes no blank page. A cover page (not a banner) is a page of its own.
+  const body: (Paragraph | Table)[] = [];
+  let pending = false;
+  for (const s of L) {
+    if (s.type === 'page_break') {
+      pending = true;
+      continue;
+    }
+    const els = await section(s);
+    if (!els.length) continue;
+    if ((pending || s.new_page) && body.length) body.push(pageBreak());
+    pending = s.type === 'cover' && !banner;
+    body.push(...els);
   }
-  const back = await backPageBlocks(r, langs, o);
-  // the template's back page starts on a page of its own (the back cover when folded)
-  if (back.length) body.push(new Paragraph({ pageBreakBefore: true, children: [] }), ...back);
-  if (o.sections.roster) body.push(...rosterBlock(r, langs));
-  body.push(...backMatter(r, langs, o));
 
   const doc = new Document({
     creator: 'Canon',

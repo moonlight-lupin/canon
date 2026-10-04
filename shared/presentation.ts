@@ -5,6 +5,8 @@
 //
 // The scoper and the theme compiler are pure functions so the server validates exactly what the editor previews.
 import type { ItemKind, L10n } from './types.ts';
+import { DEFAULT_LINE_LIMITS } from './slide-chunks.ts';
+import { legacyFromLayout, legacyLayout, normaliseLayout, type BulletinSection } from './bulletin-layout.ts';
 
 export type PaperSize = 'a4-booklet' | 'a4' | 'a5' | 'letter-booklet' | 'letter';
 export type CoverStyle = 'plain' | 'cross' | 'logo' | 'verse';
@@ -49,6 +51,12 @@ export interface SlideThemeVars {
   footer_number: boolean;
   /** a small "All stand" / 众立 cue on the first slide of an item that has a posture */
   show_posture: boolean;
+  /** lines per language on a slide that shows two or more languages (a "line" = a lyric line or a sentence) */
+  max_lines_multi: number;
+  /** lines on a slide that shows one language */
+  max_lines_single: number;
+  /** one text size for all hymn, scripture and liturgy slides of a service (else each slide fits on its own) */
+  uniform_size: boolean;
 }
 
 export interface SlideTheme {
@@ -112,6 +120,9 @@ export const DEFAULT_THEME_VARS: SlideThemeVars = {
   footer_church: false,
   footer_number: false,
   show_posture: false,
+  max_lines_multi: DEFAULT_LINE_LIMITS.max_lines_multi,
+  max_lines_single: DEFAULT_LINE_LIMITS.max_lines_single,
+  uniform_size: true,
 };
 
 /** "Papyrus" — the original light slides. */
@@ -167,6 +178,10 @@ export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAUL
     footer_church: bool('footer_church'),
     footer_number: bool('footer_number'),
     show_posture: typeof v.show_posture === 'boolean' ? v.show_posture : (base.show_posture ?? false),
+    // themes saved before these settings existed get the defaults
+    max_lines_multi: Math.round(clamp(v.max_lines_multi, 1, 6, base.max_lines_multi ?? DEFAULT_LINE_LIMITS.max_lines_multi)),
+    max_lines_single: Math.round(clamp(v.max_lines_single, 1, 8, base.max_lines_single ?? DEFAULT_LINE_LIMITS.max_lines_single)),
+    uniform_size: typeof v.uniform_size === 'boolean' ? v.uniform_size : (base.uniform_size ?? true),
   };
 }
 
@@ -187,6 +202,7 @@ export const SLIDE_CLASS_HOOKS: { cls: string; what: L10n }[] = [
   { cls: '.slide-heading', what: { en: 'the small heading at the top (hymn title, reading)', zh: '顶部小标题（诗歌名、读经）' } },
   { cls: '.slide-lyrics', what: { en: 'hymn words', zh: '诗歌歌词' } },
   { cls: '.slide-stanza-label', what: { en: 'stanza label, e.g. "2" or "Refrain"', zh: '节数标签，如「2」或「副歌」' } },
+  { cls: '.slide-cont', what: { en: 'the small "…" on a slide that continues a stanza', zh: '诗节接续投影片上的小「…」' } },
   { cls: '.slide-scripture', what: { en: 'Bible passage', zh: '经文' } },
   { cls: '.slide-verse-num', what: { en: 'verse numbers', zh: '节数' } },
   { cls: '.slide-text', what: { en: 'liturgy, creeds, prayers', zh: '礼文、信经、祷文' } },
@@ -522,6 +538,12 @@ export interface BulletinOptions {
   /** heading of the separate announcements page; empty = "Announcements / 报告事项" */
   announcements_heading: L10n;
   back_page: BulletinBackPage;
+  /**
+   * The page layout: the sections in print order, with page breaks and the back-cover group (the source of truth).
+   * The four fields above (full_text_section, announcements_section, announcements_heading, back_page) and
+   * `sections` are derived from it, kept readable for older tools for one release.
+   */
+  page_layout: BulletinSection[];
 }
 
 export interface BulletinTemplate {
@@ -538,7 +560,7 @@ export interface BulletinTemplate {
 export const DEFAULT_BANNER = { bg: '#141414', fg: '#ffffff' };
 
 /** "Full words booklet" — what the bulletin printed before templates existed. */
-export const DEFAULT_BULLETIN_OPTIONS: BulletinOptions = {
+const LEGACY_DEFAULT: Omit<BulletinOptions, 'page_layout'> = {
   paper: 'a4-booklet',
   layout: 'parallel',
   font_pt: null,
@@ -558,6 +580,7 @@ export const DEFAULT_BULLETIN_OPTIONS: BulletinOptions = {
   announcements_heading: {},
   back_page: { this_week_roles: [], next_week_roles: [], note: {}, blocks: [] },
 };
+export const DEFAULT_BULLETIN_OPTIONS: BulletinOptions = { ...LEGACY_DEFAULT, page_layout: legacyLayout(LEGACY_DEFAULT) };
 
 /** A language-keyed text map from untrusted input (language-code keys, non-empty strings, 500 characters each). */
 export function l10nOf(v: unknown, d: L10n = {}): L10n {
@@ -584,7 +607,7 @@ export function normaliseBulletinOptions(input: unknown, base: BulletinOptions =
   const one = <T extends string>(v: unknown, allowed: readonly T[], dflt: T): T => (allowed.includes(v as T) ? (v as T) : dflt);
   const b = (v: unknown, dflt: boolean) => (typeof v === 'boolean' ? v : dflt);
   const colour = (v: unknown, dflt: string) => (typeof v === 'string' && COLOUR.test(v) ? v.toLowerCase() : dflt);
-  return {
+  const res: Omit<BulletinOptions, 'page_layout'> = {
     paper: one(o.paper, PAPER_SIZES, base.paper),
     layout: one(o.layout, ['parallel', 'stacked'] as const, base.layout),
     font_pt: o.font_pt === null ? null : typeof o.font_pt === 'number' && Number.isFinite(o.font_pt) ? Math.min(16, Math.max(7, Math.round(o.font_pt * 2) / 2)) : base.font_pt,
@@ -622,6 +645,14 @@ export function normaliseBulletinOptions(input: unknown, base: BulletinOptions =
         : baseBack.blocks,
     },
   };
+  // The page layout is the source of truth: given → kept from the stored template (a PATCH without it) → built
+  // from the old fields of a template saved before layouts existed, printing exactly what it printed then.
+  const page_layout = Array.isArray(o.page_layout)
+    ? normaliseLayout(o.page_layout)
+    : base !== DEFAULT_BULLETIN_OPTIONS && Array.isArray(base.page_layout)
+      ? normaliseLayout(base.page_layout)
+      : legacyLayout(res);
+  return { ...res, ...legacyFromLayout(page_layout), page_layout };
 }
 
 /** What the bulletin prints for an item: true = its words, false = title / reference only, 'first_stanza' (hymns). */
@@ -697,6 +728,8 @@ export function hymnLine(
   }
   return out;
 }
+
+export * from './bulletin-layout.ts';
 
 // ================================================================= bulletin blocks (QR codes, pictures, notes)
 

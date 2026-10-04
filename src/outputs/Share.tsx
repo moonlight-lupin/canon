@@ -9,6 +9,8 @@ import { SeasonChip, Tagline, logoUrl, useLogo } from '../components/brand.tsx';
 import { UI_LANGS, isChinese } from '../../shared/languages.ts';
 import type { L10n, RenderedService } from '../types-client.ts';
 import { Bi, ItemContent, LABEL, biText, formatDate, hasAny, hasContent, itemSubtitles, langOptions, langsFor, modeFor, timeRange, type LangMode } from './content.tsx';
+import { ANNOUNCEMENTS_KEY, weeklySections } from '../../shared/presentation.ts';
+import { isNumberedLine } from './Bulletin.tsx';
 import './outputs.css';
 
 function useNarrow(q = '(max-width: 640px)') {
@@ -162,6 +164,26 @@ export default function Share() {
           })}
         </ol>
       </section>
+
+      {/* the bulletin's weekly sections (announcements, a pastor's note …), as typed for this service */}
+      {weeklySections(r.bulletin.options.page_layout).map((w) => {
+        const v = r.bulletin.content?.[w.key];
+        const present = langs.filter((l) => v?.[l]?.trim());
+        if (!present.length) return null;
+        const heading = Object.keys(w.heading).length ? w.heading : w.announcements ? LABEL.announcements : null;
+        return (
+          <section key={w.key} className="sh-weekly" data-key={w.key === ANNOUNCEMENTS_KEY ? 'announcements' : w.key}>
+            {heading && <div className="sh-sec-head"><h2><Bi v={heading} langs={langs} sep=" · " /></h2></div>}
+            {present.map((l) => (
+              <div key={l} className="sh-weekly-lang" lang={l}>
+                {v![l]!.split(/\r?\n/).filter((x) => x.trim()).map((ln, i) => (
+                  <p key={i} className={`bl-an${isNumberedLine(ln) ? ' num' : ''}`}>{ln.trim()}</p>
+                ))}
+              </div>
+            ))}
+          </section>
+        );
+      })}
 
       {teams.length > 0 && (
         <section>

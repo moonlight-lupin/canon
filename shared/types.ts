@@ -298,6 +298,8 @@ export interface Service {
   cover: CoverOptions;
   /** Bible version per language for this service, e.g. {en:'ESV'}; missing = church default */
   bibles: Record<Lang, string>;
+  /** text for the bulletin template's weekly sections, keyed by section key (e.g. announcements, pastor_note) */
+  bulletin_content: Record<string, L10n>;
   /** presentation choices; null = church default */
   slide_theme_id: number | null;
   bulletin_template_id: number | null;

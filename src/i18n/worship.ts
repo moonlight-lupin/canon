@@ -127,5 +127,9 @@ const zh: Record<string, string> = {
   'For every reading in this service; a reading can choose its own.': '用于本堂崇拜的所有读经；个别读经可另选译本。',
   'Bible version': '圣经译本',
   'Service default': '本堂默认',
+  // ---- song usage in the planner (precedent worker)
+  'last sung': '上次',
+  'never sung': '未唱过',
+  'in the 12 months before this service': '次（本堂崇拜之前 12 个月内）',
 };
 export default zh;

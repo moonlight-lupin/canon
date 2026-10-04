@@ -1,0 +1,10 @@
+/* Bulletin page layout: whole-page blocks (cover, sermon notes), the booklet padding warning and the template
+   editor's sample pages (real pages, scaled down, with visible boundaries and page numbers). */
+.bl-body > .bb-page { height: 100%; }
+.bl-padwarn { font-size: 12px; white-space: normal; text-align: left; }
+
+.bl-sample { display: flex; flex-direction: column; gap: 8px; }
+.bl-sample .bl-info { margin-bottom: 0; text-align: left; }
+.bl-sample-pages { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.bl-sample-pages > .bl-page { box-shadow: 0 0 0 1px #d9d2c2, 0 4px 14px rgb(30 36 48 / 0.14); }
+.bl-sample-pages .bl-foot { font-size: 9pt; color: #6b6f78; }

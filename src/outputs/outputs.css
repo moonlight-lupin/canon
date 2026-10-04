@@ -226,6 +226,12 @@
 .sl-head { height: 44px; flex: none; display: flex; justify-content: space-between; align-items: baseline; gap: 40px; font: 500 28px var(--sans); color: var(--s-accent); letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; }
 .sl-head .bi-cjk { letter-spacing: 0.08em; }
 .sl-label { font-style: italic; }
+.sl-cont { opacity: 0.75; letter-spacing: 0.12em; }
+/* hidden full-size copies of the slides, measured for the deck's single text size (Slides.tsx useDeckSizes) */
+.sl-measure { position: fixed; left: -40000px; top: 0; width: 1920px; height: 1080px; overflow: hidden; visibility: hidden; pointer-events: none; z-index: -1; }
+.sl-measure .sl-stage { width: 1920px; }
+.sl-measure-face { contain: strict; width: 1920px; height: 1080px; }
+@media print { .sl-measure { display: none; } }
 .sl-posture { display: var(--slide-show-posture); margin-left: 0.8em; padding: 0.05em 0.6em; border: 2px solid var(--slide-accent); border-radius: 0.4em; color: var(--slide-accent); font-style: normal; }
 .sl-box { flex: 1; min-height: 0; margin: 20px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .sl-fit { width: 100%; line-height: var(--slide-line-height); overflow-wrap: break-word; }
@@ -246,6 +252,8 @@
 .sl-lang:lang(zh) { letter-spacing: 0.04em; }
 .sl-divider { width: 3em; border-top: 2px solid var(--s-accent); opacity: 0.55; margin: 0.05em auto; margin-left: var(--slide-rule-left); }
 .sl-line.strong { font-weight: 700; }
+/* a sentence that spans several lines of a creed or prayer keeps its line breaks */
+.t-text .sl-line { white-space: pre-line; }
 /* lyric lines are sung as units: shrink rather than wrap mid-line */
 .t-lyrics .sl-line { white-space: nowrap; }
 .sl-who { font: 600 0.42em var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--s-accent); margin-right: 0.6em; vertical-align: 0.28em; }

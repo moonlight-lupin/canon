@@ -36,6 +36,8 @@ Open [Settings](/settings) → **Church**: the church name, **Church logo** (**U
 
 ## Every week
 
+The [Dashboard](/) is the home page: the next service and its status, open roster roles and clashes for the coming weeks, upcoming birthdays, and quick links to the bulletin and slides.
+
 ### 1. Plan Sunday's service
 
 1. Go to [Services](/services) and press **＋ New service**.
@@ -46,6 +48,7 @@ Open [Settings](/settings) → **Church**: the church name, **Church logo** (**U
 
 - Hover between two items and press the small **＋** (**Insert here**). Pick a kind (**Hymn**, **Scripture Reading**, **Liturgy**, **Prayer**…), then search, or choose **Add an empty slot to fill later**.
 - Or use the library panel on the right (**Hymns & psalms**, **Creeds & liturgy**, **Scripture**, **Elements**): click an entry to add it, or drag it into the order.
+- Each hymn shows when it was **last sung** before this service's date (or **never sung**); it is highlighted when it was sung in the four weeks before, so you notice repetition.
 - To reorder, drag the grip, or open an item and press **Move up** / **Move down**.
 - A **Hymn ?** or **Reference ?** badge means a slot still needs filling.
 
@@ -78,11 +81,13 @@ Open the **Team & roster** tab.
 
 ### 3. Print the bulletin
 
+**This week's announcements** — open the planner's **Bulletin** tab (next to **Order of worship** and **Team & roster**). It lists the weekly sections of the service's bulletin template: **Announcements** first (家讯 / 报告事项), then any weekly text such as a **Pastor's note**. Type each one in every language you need; it saves by itself. **Numbered lines print as a list.** The **Announcements** item stays in the order of worship as a timed item, but its words now print in the announcements section. An older service whose announcements were typed in that item shows them pre-filled with **save to keep**. If the tab says **This template has no weekly sections**, add an **Announcements** or **Weekly text** section to the template's page layout.
+
 1. In the planner's **Outputs** bar, press **Bulletin**.
 2. Choose the **Template**, **Paper** (usually **A4 landscape, folded (A5 booklet)**), languages, layout and **Font size**.
 3. Press **Print**.
 
-> **Tip:** For booklets: **print double-sided, flip on short edge, then fold.** If a warning says content is taller than a page, reduce the font size or print fewer words (change **In bulletin** on long items).
+> **Tip:** For booklets: **print double-sided, flip on short edge, then fold.** A folded booklet needs a multiple of 4 pages: a note such as "5 pages — 3 blank pages will be added to make a folded booklet (8 pages)" means blank pages go in before the back cover. If a warning says content is taller than a page, reduce the font size or print fewer words (change **In bulletin** on long items).
 
 ### 4. Project the slides
 
@@ -136,8 +141,11 @@ Open [Library](/library).
 ## Templates
 
 - [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**.
-- [Bulletin templates](/bulletin-templates): **What to print** for each kind of item (all the words, first verse, title only), paper, cover, the back cover (**Serving today**, notes, QR codes) and more, with a **Live preview**. Built-in templates can't be changed: press **Duplicate** first. **Set as church default** chooses the usual one.
-- [Slide templates](/slide-templates): colours, background picture, fonts, text size and footer, with a live preview. **Custom CSS (advanced)** is optional.
+- [Bulletin templates](/bulletin-templates): **What to print** for each kind of item (all the words, first verse, title only), paper, cover, fonts and the **Page layout**, with a **Live preview** that shows every page of a sample service. Built-in templates can't be changed: press **Duplicate** first. **Set as church default** chooses the usual one.
+  - **Page layout** is the list of sections in print order: **Cover page or banner**, **Order of service**, **Full words** (creeds, catechism and hymns gathered after the order), **Announcements**, **Weekly text**, **Fixed text**, **Serving today**, **Serving next week**, a bold **Note**, **QR codes, pictures and notes**, a **Sermon notes page** and **Copyright notices and church contact**. Drag a section (or use ↑ ↓) to reorder it; **Add section ▾** and **Add page break** add more.
+  - Each section can **Start a new page**, be **Kept together** on one page, or go **On the back cover**, which always prints on the last page (a folded booklet puts its blank pages before it).
+  - A **Fixed text** (a welcome, the church's vision, giving details) is the same every week and is typed in the template. A **Weekly text** (a pastor's note, prayer requests) and the **Announcements** are typed per service in the planner's **Bulletin** tab.
+- [Slide templates](/slide-templates): colours, background picture, fonts, text size and footer, with a live preview. **Lines per slide** sets how much text a slide holds (default: 2 lines per language when two or more languages show, 3 for one language; in readings, creeds and prayers a line is one sentence; a sentence can span several lines of a creed or prayer, and keeps its line breaks on the slide). **Same text size on every slide** keeps the size steady through the whole service. **Custom CSS (advanced)** is optional.
 
 ## People
 
@@ -181,6 +189,8 @@ Canon can connect to Claude (claude.ai) so you can ask, for example, "plan next 
 4. In claude.ai: **Settings → Connectors → Add custom connector**, paste the **Connector URL**, leave the client ID blank, sign in to Canon and approve.
 
 Claude also gets ready-made playbooks (plan a service, suggest hymns, check the rota, proofread a service, plan a catechism series…).
+
+Claude looks at your past services first: the same Sunday last year, the same season, earlier sermons on the same book, when each hymn was last sung and which catechism question you reached. It follows your church's usual order, hymns and rota, avoids hymns sung in the last few weeks, and tells you which past services it based a plan on.
 
 ### What Claude can and can't see
 

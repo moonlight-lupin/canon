@@ -11,9 +11,9 @@ export const services = table<Service>({
   name: 'services',
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
-    'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles',
+    'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
   ],
-  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles'],
+  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content'],
   touch: true,
 });
 

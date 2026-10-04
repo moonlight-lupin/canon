@@ -1,14 +1,19 @@
 // Builds the projector slide list from a rendered service (shared by Slides and the run sheet's AV cues).
 import type { L10n, Lang, Line, Paras, Posture, RenderedItem, RenderedService } from '../types-client.ts';
 import type { RenderedSlideBlock, RenderedVerse } from '../../shared/render-types.ts';
-import { biText, hasAny, isRefrain, stanzaLabel, textWeight } from '../../shared/output-labels.ts';
+import { biText, hasAny, isRefrain, stanzaLabel } from '../../shared/output-labels.ts';
+import { alignChunks, chunkParagraph, groupUnits, joinPieces, lineLimit, splitSentences, type ChunkLine, type LineLimits } from '../../shared/slide-chunks.ts';
 
 export type SlideType = 'title' | 'section' | 'lyrics' | 'scripture' | 'text' | 'sermon' | 'item' | 'blocks';
 
 export interface SlideVerse {
+  /** verse number ('' on the later parts of a verse split over several slides) */
   n: string;
   text: string;
 }
+
+/** A line on a slide; `cont` = it continues a line from the slide before. */
+export type SlideLine = ChunkLine;
 
 export interface SlideDef {
   key: string;
@@ -22,11 +27,15 @@ export interface SlideDef {
   /** stanza label, e.g. "2" or "Refrain" */
   label?: L10n;
   refrain?: boolean;
+  /** continues the stanza / paragraph / verse of the slide before (songs show a small "…" instead of the label) */
+  cont?: boolean;
+  /** the item has more than one speaker (Leader / People): show the speaker labels */
+  speakers?: boolean;
   /** big title (title / section / sermon / item slides) */
   big?: L10n;
   sub?: L10n;
   meta?: string[];
-  lines?: Partial<Record<Lang, Line[]>>;
+  lines?: Partial<Record<Lang, SlideLine[]>>;
   verses?: Partial<Record<Lang, SlideVerse[]>>;
   /** footer, e.g. scripture reference + translation */
   footer?: L10n;
@@ -53,12 +62,6 @@ export function blocksSlide(it: RenderedItem, titled: boolean): SlideDef | null 
   return { key: `${it.id}-blocks`, type: 'blocks', itemId: it.id, kind: it.kind, ...(titled ? { big: it.title } : { heading: it.title }), blocks };
 }
 
-const CHUNK = 350;
-/** Width-weighted length: in a CJK language (isCJK) a character takes about 2.2 Latin characters of room. */
-export const weight = (s: string, lang?: Lang) => textWeight(s, lang);
-/** Text budget per slide: three stacked languages share the height, so each gets less. */
-const budget = (n: number, nLangs: number) => (nLangs > 2 ? Math.round(n * 0.7) : n);
-
 const splitLines = (s: string | undefined): Line[] =>
   (s ?? '')
     .replace(/\r/g, '')
@@ -67,20 +70,38 @@ const splitLines = (s: string | undefined): Line[] =>
     .filter(Boolean)
     .map((text) => ({ who: null, text }));
 
-function songSlides(it: RenderedItem, langs: Lang[]): SlideDef[] {
+/**
+ * Hymn words: each stanza is cut by line index into slides of at most `limit` lines per language (balanced: four
+ * lines at three a slide give 2 + 2). Languages with different line counts are spread proportionally so they finish
+ * on the same slide. The stanza label goes on the first slide; the others carry `cont`.
+ */
+function songSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
   const s = it.song!;
-  return s.stanzas
-    .map((st, i): SlideDef | null => {
-      const lines: Partial<Record<Lang, Line[]>> = {};
-      for (const l of langs) if (st.text[l]?.trim()) lines[l] = splitLines(st.text[l]);
-      if (!Object.keys(lines).length) return null;
-      const label: L10n | undefined = s.stanzas.length > 1 ? Object.fromEntries(langs.map((l) => [l, stanzaLabel(st.label, l)])) : undefined;
-      return { key: `${it.id}-s${i}`, type: 'lyrics', itemId: it.id, heading: s.number ? it.subtitle : s.title, label, refrain: isRefrain(st.label), lines };
-    })
-    .filter((x): x is SlideDef => !!x);
+  const out: SlideDef[] = [];
+  s.stanzas.forEach((st, i) => {
+    const sl = langs.filter((l) => st.text[l]?.trim());
+    if (!sl.length) return;
+    const label: L10n | undefined = s.stanzas.length > 1 ? Object.fromEntries(langs.map((l) => [l, stanzaLabel(st.label, l)])) : undefined;
+    const chunks = alignChunks(sl.map((l) => splitLines(st.text[l])), lineLimit(sl.length, limits));
+    chunks.forEach((c, j) => {
+      const lines: Partial<Record<Lang, SlideLine[]>> = {};
+      sl.forEach((l, li) => {
+        if (c[li].length) lines[l] = c[li];
+      });
+      out.push({
+        key: `${it.id}-s${i}${chunks.length > 1 ? `.${j}` : ''}`, type: 'lyrics', itemId: it.id, heading: s.number ? it.subtitle : s.title,
+        ...(j === 0 ? { label } : { cont: true }), refrain: isRefrain(st.label), lines,
+      });
+    });
+  });
+  return out;
 }
 
-function scriptureSlides(it: RenderedItem, langs: Lang[]): SlideDef[] {
+/**
+ * A reading: whole verses are grouped while every language stays within `limit` sentences; a verse longer than that
+ * is cut into parts holding the same share of the verse in each language, the verse number on the first part only.
+ */
+function scriptureSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
   const sc = it.scripture;
   const vLangs = langs.filter((l) => sc?.passages[l]?.verses.length);
   const out: SlideDef[] = [];
@@ -99,87 +120,59 @@ function scriptureSlides(it: RenderedItem, langs: Lang[]): SlideDef[] {
       }
     }
     const firstCh = Number(keys[0]?.split(':')[0]);
-    const chunks: string[][] = [];
-    let cur: string[] = [];
-    const size = (ks: string[]) => Math.max(...vLangs.map((l) => ks.reduce((n, k) => n + weight(by[k][l]?.text ?? '', l), 0)));
-    const cap = budget(CHUNK, vLangs.length);
-    for (const k of keys) {
-      if (cur.length && size([...cur, k]) > cap) {
-        chunks.push(cur);
-        cur = [];
-      }
-      cur.push(k);
-    }
-    if (cur.length) chunks.push(cur);
+    const units = keys.map((k) => vLangs.map((l) => (by[k][l] ? splitSentences(by[k][l]!.text, l) : [])));
+    const groups = groupUnits(units, lineLimit(vLangs.length, limits), vLangs);
     const trans = (l: Lang) => sc!.passages[l]?.translation ?? '';
     const footer: L10n = {};
     for (const l of langs) {
       const ref = sc!.ref[l] ?? sc!.ref.en ?? '';
       footer[l] = [ref, trans(l)].filter(Boolean).join(' · ');
     }
-    chunks.forEach((ks, ci) => {
+    groups.forEach((pieces, ci) => {
       const verses: Partial<Record<Lang, SlideVerse[]>> = {};
-      for (const l of vLangs) {
-        verses[l] = ks
-          .filter((k) => by[k][l])
-          .map((k) => {
-            const v = by[k][l]!;
-            return { n: v.chapter !== firstCh ? `${v.chapter}:${v.verse}` : String(v.verse), text: v.text.trim() };
+      vLangs.forEach((l, li) => {
+        const vs = pieces
+          .filter((p) => p.sentences[li].length)
+          .map((p) => {
+            const v = by[keys[p.unit]][l]!;
+            return { n: p.part > 0 ? '' : v.chapter !== firstCh ? `${v.chapter}:${v.verse}` : String(v.verse), text: joinPieces(p.sentences[li]) };
           });
-      }
-      out.push({ key: `${it.id}-v${ci}`, type: 'scripture', itemId: it.id, heading: it.title, verses, footer });
+        if (vs.length) verses[l] = vs;
+      });
+      out.push({ key: `${it.id}-v${ci}`, type: 'scripture', itemId: it.id, heading: it.title, verses, footer, ...(pieces[0].part > 0 ? { cont: true } : {}) });
     });
     return out;
   }
-  // Pasted text only (e.g. a licensed translation): one slide per paragraph.
-  if (it.paras) return textSlides(it, langs, sc?.ref);
+  // Pasted text only (e.g. a licensed translation): sentences per slide, paragraph by paragraph.
+  if (it.paras) return textSlides(it, langs, limits, sc?.ref);
   return [];
 }
 
-/** Weighted size above which a paragraph is spread over several slides. */
-const PARA_LIMIT = 320;
-const lineWeight = (ls: Line[], lang?: Lang) => ls.reduce((n, l) => n + weight(l.text, lang), 0);
-
-/** Break over-long single lines at sentence / clause punctuation. */
-function breakLongLines(lines: Line[], lang?: Lang): Line[] {
-  return lines.flatMap((ln) => {
-    if (weight(ln.text, lang) <= PARA_LIMIT / 2) return [ln];
-    const parts = ln.text.match(/[^.;:!?。；：！？]+[.;:!?。；：！？]*["'”’」』）)]*\s*/g) ?? [ln.text];
-    return parts.map((p) => p.trim()).filter(Boolean).map((text) => ({ who: ln.who, text }));
-  });
-}
-
-/** Split lines into k contiguous groups of roughly equal weight. */
-function splitInto(lines: Line[], k: number, lang?: Lang): Line[][] {
-  const total = lineWeight(lines, lang);
-  const groups: Line[][] = Array.from({ length: k }, () => []);
-  let acc = 0;
-  for (const ln of lines) {
-    const g = Math.min(k - 1, Math.floor((acc / total) * k));
-    groups[g].push(ln);
-    acc += weight(ln.text, lang);
-  }
-  return groups;
-}
-
-function textSlides(it: RenderedItem, langs: Lang[], footer?: L10n): SlideDef[] {
+/**
+ * Liturgy, creeds, prayers: paragraph by paragraph, at most `limit` sentences per language a slide, languages
+ * kept aligned. A line split over two slides repeats its speaker label (Leader / People) on the second.
+ */
+function textSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null, footer?: L10n): SlideDef[] {
   const paras = it.paras ?? {};
   const pl = langs.filter((l) => paras[l]?.length);
   const n = Math.max(0, ...pl.map((l) => (paras[l] as Paras).length));
+  const speakers = pl.some((l) => new Set((paras[l] as Paras).flat().map((x) => x.who).filter(Boolean)).size > 1);
   const out: SlideDef[] = [];
   for (let i = 0; i < n; i++) {
-    const src: Partial<Record<Lang, Line[]>> = {};
-    for (const l of pl) if (paras[l]![i]) src[l] = breakLongLines(paras[l]![i], l);
-    const present = Object.keys(src) as Lang[];
-    const limit = budget(PARA_LIMIT, present.length);
-    const k = Math.max(1, Math.min(Math.ceil(Math.max(...present.map((l) => lineWeight(src[l]!, l))) / limit), Math.min(...present.map((l) => src[l]!.length))));
-    const parts: Partial<Record<Lang, Line[][]>> = {};
-    for (const l of present) parts[l] = k > 1 ? splitInto(src[l]!, k, l) : [src[l]!];
-    for (let j = 0; j < k; j++) {
-      const lines: Partial<Record<Lang, Line[]>> = {};
-      for (const l of present) if (parts[l]![j]?.length) lines[l] = parts[l]![j];
-      out.push({ key: `${it.id}-p${i}${k > 1 ? `.${j}` : ''}`, type: 'text', itemId: it.id, heading: it.title, lines, footer: footer && hasAny(footer) ? footer : undefined });
-    }
+    const present = pl.filter((l) => paras[l]![i]?.length);
+    if (!present.length) continue;
+    const chunks = chunkParagraph(present.map((l) => paras[l]![i]), present, lineLimit(present.length, limits));
+    chunks.forEach((c, j) => {
+      const lines: Partial<Record<Lang, SlideLine[]>> = {};
+      present.forEach((l, li) => {
+        if (c[li].length) lines[l] = c[li];
+      });
+      if (!Object.keys(lines).length) return;
+      out.push({
+        key: `${it.id}-p${i}${chunks.length > 1 ? `.${j}` : ''}`, type: 'text', itemId: it.id, heading: it.title, lines,
+        footer: footer && hasAny(footer) ? footer : undefined, ...(speakers ? { speakers } : {}), ...(j > 0 ? { cont: true } : {}),
+      });
+    });
   }
   return out;
 }
@@ -188,11 +181,16 @@ function titleSlide(it: RenderedItem): SlideDef {
   return { key: `${it.id}-t`, type: 'item', itemId: it.id, big: it.title, sub: hasAny(it.subtitle) ? it.subtitle : undefined, meta: it.leader ? [it.leader] : [] };
 }
 
-export function buildSlides(r: RenderedService, langs: Lang[]): SlideDef[] {
+/**
+ * The slides of a service in the languages shown. `limits` (the slide theme's max_lines_multi / max_lines_single)
+ * caps the lines (lyric lines or sentences) per language on a slide; the limit depends on how many of the shown
+ * languages an item actually has.
+ */
+export function buildSlides(r: RenderedService, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
   const slides: SlideDef[] = [];
   slides.push({ key: 'title', type: 'title', itemId: null, kind: 'service', heading: r.church.name, big: r.title, sub: hasAny(r.theme) ? r.theme : undefined });
   for (const it of r.items) {
-    if (it.on_slides) slides.push(...itemSlides(r, it, langs));
+    if (it.on_slides) slides.push(...itemSlides(r, it, langs, limits));
     // QR codes / notes: one slide after the item's own; an item that is not on the slides shows only this one
     const b = it.kind === 'section' ? null : blocksSlide(it, !it.on_slides);
     if (b) slides.push(b);
@@ -200,7 +198,7 @@ export function buildSlides(r: RenderedService, langs: Lang[]): SlideDef[] {
   return slides;
 }
 
-function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[]): SlideDef[] {
+function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
   if (it.kind === 'section') return [{ key: `${it.id}-sec`, type: 'section', itemId: it.id, kind: it.kind, big: it.title }];
   if (it.kind === 'sermon') {
     const m: string[] = [];
@@ -209,9 +207,9 @@ function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[]): SlideD
     return [{ key: `${it.id}-sermon`, type: 'sermon', itemId: it.id, kind: it.kind, heading: it.title, big: title, sub: hasAny(r.sermon_ref) ? r.sermon_ref : undefined, meta: m, ...(it.posture ? { posture: it.posture } : {}) }];
   }
   let s: SlideDef[] = [];
-  if (it.song?.stanzas.length) s = songSlides(it, langs);
-  else if (it.kind === 'scripture') s = scriptureSlides(it, langs);
-  else if (it.paras) s = textSlides(it, langs);
+  if (it.song?.stanzas.length) s = songSlides(it, langs, limits);
+  else if (it.kind === 'scripture') s = scriptureSlides(it, langs, limits);
+  else if (it.paras) s = textSlides(it, langs, limits);
   if (!s.length) s = [titleSlide(it)];
   return s.map((x, i) => ({ ...x, kind: it.kind, ...(i === 0 && it.posture ? { posture: it.posture } : {}) }));
 }
@@ -219,11 +217,31 @@ function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[]): SlideD
 /** One line of plain text describing a slide (for the "next" preview). */
 export function slideText(s: SlideDef, langs: Lang[], max = 90): string {
   let txt = '';
-  if (s.lines) txt = langs.map((l) => s.lines![l]?.map((x) => x.text).join(' / ')).filter(Boolean)[0] ?? '';
+  if (s.lines) txt = langs.map((l) => s.lines![l]?.map((x) => x.text.replace(/\n/g, ' ')).join(' / ')).filter(Boolean)[0] ?? '';
   else if (s.verses) txt = langs.map((l) => s.verses![l]?.map((v) => `${v.n} ${v.text}`).join(' ')).filter(Boolean)[0] ?? '';
   else if (s.blocks) txt = `▦ ${s.blocks.map((b) => biText(b.kind === 'text' ? b.text : b.caption, langs.slice(0, 1)).split('\n')[0] || (b.kind === 'qr' ? 'QR' : '…')).join(' · ')}`;
   else txt = biText(s.big, langs);
   const head = s.label ? `${biText(s.label, langs.slice(0, 1))} · ` : '';
   const full = head + txt;
   return full.length > max ? full.slice(0, max - 1) + '…' : full;
+}
+
+/**
+ * Where to go in a re-chunked deck (the language mode changed, so slides hold more or fewer lines): the same slide
+ * if it still exists, else the same position within the same item, else the nearest index.
+ */
+export function mapSlideIndex(from: SlideDef[], idx: number, to: SlideDef[]): number {
+  if (!to.length) return 0;
+  const cur = from[idx];
+  if (!cur) return Math.min(Math.max(0, idx), to.length - 1);
+  const exact = to.findIndex((s) => s.key === cur.key);
+  if (exact >= 0) return exact;
+  const mine = (xs: SlideDef[]) => xs.map((s, i) => ({ s, i })).filter((x) => x.s.itemId === cur.itemId);
+  const a = mine(from);
+  const b = mine(to);
+  if (cur.itemId != null && b.length) {
+    const pos = a.findIndex((x) => x.i === idx) / Math.max(1, a.length);
+    return b[Math.min(b.length - 1, Math.floor(pos * b.length))].i;
+  }
+  return Math.min(idx, to.length - 1);
 }

@@ -10,6 +10,7 @@ import * as vol from '../repo/volunteers.ts';
 import { renderService, serviceAsText } from '../repo/render.ts';
 import { getSettings } from '../repo/settings.ts';
 import { listBlocks } from '../repo/presentation.ts';
+import { similarServices } from '../repo/history.ts';
 import { DESTRUCTIVE, DateStr, Id, InputError, Limit, RO, WRITE, need, runBatch, type ToolDef } from './common.ts';
 
 // ---------------------------------------------------------------- output shaping
@@ -58,6 +59,8 @@ function serviceDetail(id: number, includeText: boolean) {
     ...serviceSummary(full),
     end_time: r.end_time,
     notes: full.notes,
+    // weekly bulletin sections (announcements, pastor's note …) by section key
+    bulletin_content: Object.keys(full.bulletin_content ?? {}).length ? full.bulletin_content : undefined,
     items: full.items.map((it, i) => {
       const ri = r.items[i];
       const out: Record<string, unknown> = {
@@ -129,6 +132,27 @@ const templateSummary = (t: ReturnType<typeof svc.templates.get>) => ({
 const serviceMatches = (s: Service, q: string) =>
   JSON.stringify([s.title, s.sermon_title, s.theme, s.preacher, s.sermon_ref, s.date]).toLowerCase().includes(q);
 
+// ---------------------------------------------------------------- precedent
+
+const Like = z.object({
+  date: DateStr.optional(),
+  service_type: z.string().max(50).optional(),
+  sermon_ref: z.string().max(200).optional(),
+  title: z.string().max(200).optional(),
+  template_id: Id.optional(),
+  song_ids: z.array(Id).max(30).optional(),
+  text_ids: z.array(Id).max(30).optional(),
+});
+type Like = z.infer<typeof Like>;
+
+/** Top 3 similar earlier services with one-line outline entries ("song: Hymn — HP 12 Holy, Holy, Holy"). */
+function shortSimilar(id: number) {
+  return similarServices(id, { limit: 3 }).map(({ outline, ...s }) => ({
+    ...s,
+    outline: outline.map((o) => `${o.kind}: ${o.subtitle ? `${o.title} — ${o.subtitle}` : o.title}`),
+  }));
+}
+
 // ---------------------------------------------------------------- order-of-service batch
 
 const OrderOp = z.object({
@@ -180,30 +204,47 @@ function applyOrderOp(serviceId: number, o: OrderOp) {
 export const SERVICE_TOOLS: ToolDef[] = [
   {
     name: 'canon_find_services', module: 'services', access: 'read', title: 'Find services', annotations: RO,
-    description: 'List services (orders of worship) by date range and/or text (title, sermon, theme, preacher, reference). Without dates: most recent first; with only from: ascending. Returns summaries (id, date, title, status, preacher, sermon, item_count, assigned_count). Example: {"from":"2026-10-01","to":"2026-10-31"}.',
-    input: { from: DateStr.optional(), to: DateStr.optional(), q: z.string().max(200).optional(), limit: Limit(30, 200) },
+    description: 'List services by date range and/or text (title, sermon, theme, preacher, reference). Without dates: most recent first; with only from: ascending. Returns summaries. ' +
+      'PRECEDENT: similar_to (a service id) or like {date, sermon_ref, service_type, template_id, title, song_ids, text_ids} returns the most similar EARLIER services (same Sunday last year, same season, same sermon book / chapter, shared hymns…) with score, reasons, outline (kind, title, hymn / reading / text + parts, minutes) and roster_summary. Use it before proposing any plan. ' +
+      'Examples: {"from":"2026-10-01","to":"2026-10-31"}; {"similar_to":12}; {"like":{"date":"2026-12-20","sermon_ref":"Luke 2:1-20"}}.',
+    input: {
+      from: DateStr.optional(),
+      to: DateStr.optional(),
+      q: z.string().max(200).optional(),
+      similar_to: Id.optional().describe('service id: return similar earlier services'),
+      like: Like.optional().describe('criteria for a service not created yet; date defaults to today'),
+      limit: z.number().int().min(1).max(200).optional().describe('default 30 (5 with similar_to / like, max 20)'),
+    },
     handler: (a) => {
+      if (a.similar_to && a.like) throw new InputError('give similar_to or like, not both');
+      if (a.similar_to || a.like) {
+        const target = a.similar_to ?? (a.like as Like);
+        return { similar: similarServices(target, { limit: Math.min(a.limit ?? 5, 20) }) };
+      }
+      const limit = a.limit ?? 30;
       const q = a.q?.trim().toLowerCase();
-      const rows = svc.listServices({ from: a.from, to: a.to, limit: q ? 2000 : a.limit });
-      return (q ? rows.filter((s) => serviceMatches(s, q)).slice(0, a.limit) : rows).map(serviceSummary);
+      const rows = svc.listServices({ from: a.from, to: a.to, limit: q ? 2000 : limit });
+      return (q ? rows.filter((s) => serviceMatches(s, q)).slice(0, limit) : rows).map(serviceSummary);
     },
   },
   {
     name: 'canon_get_service', module: 'services', access: 'read', title: 'Get a service', annotations: RO,
-    description: 'One service in full: items (id, position, kind, title, start time, duration, song / text / scripture refs, stanzas, leader, slide_blocks = QR codes / notes by id and name), the roster (names only) and roster warnings (unavailable, double-booked, unfilled roles). Hymn words, Bible text and liturgy only with include_text=true. format "text" returns a plain-text run sheet in lang instead. Example: {"id":12}.',
+    description: 'One service in full: items (id, position, kind, title, start time, duration, song / text / scripture refs, stanzas, leader, slide_blocks = QR codes / notes by id and name), bulletin_content (weekly bulletin sections such as announcements, by key), the roster (names only) and roster warnings (unavailable, double-booked, unfilled roles). Hymn words, Bible text and liturgy only with include_text=true. include_similar=true adds similar_past: the 3 most similar earlier services with reasons and short outlines (the church\'s precedent). format "text" returns a plain-text run sheet in lang instead. Example: {"id":12,"include_similar":true}.',
     input: {
       id: Id,
       format: z.enum(['structured', 'text']).default('structured'),
       include_text: z.boolean().default(false),
+      include_similar: z.boolean().default(false),
       lang: S.LangSchema.optional().describe('for format "text"; default the church\'s first language'),
     },
     handler: (a) => {
       const warnings = vol.rosterWarnings(a.id);
+      const similar_past = a.include_similar ? shortSimilar(a.id) : undefined;
       if (a.format === 'text') {
         const lang = (a.lang ?? getSettings().languages[0] ?? 'en') as Lang;
-        return { format: 'text', text: serviceAsText(renderService(a.id), lang), warnings };
+        return { format: 'text', text: serviceAsText(renderService(a.id), lang), warnings, similar_past };
       }
-      return { ...serviceDetail(a.id, a.include_text), warnings };
+      return { ...serviceDetail(a.id, a.include_text), warnings, similar_past };
     },
   },
   {
@@ -232,7 +273,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_update_service', module: 'services', access: 'write', title: 'Update a service', annotations: { ...WRITE, idempotentHint: true },
-    description: 'Change service details: date, start_time, title, preacher, sermon_title, sermon_ref, theme, languages, season, notes, and status ("draft" or "final" = ready to print / project). Only fields in patch change. bibles {lang: code} picks the Bible version per language for every reading (codes from canon_bible with no ref; {} = church default). Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
+    description: 'Change service details: date, start_time, title, preacher, sermon_title, sermon_ref, theme, languages, season, notes, and status ("draft" or "final" = ready to print / project). Only fields in patch change. bibles {lang: code} picks the Bible version per language for every reading (codes from canon_bible with no ref; {} = church default). bulletin_content {section_key: {lang: text}} sets the weekly bulletin sections, e.g. {"announcements":{"zh":"1. …"},"pastor_note":{"en":"…"}} (keys from the page layout of the bulletin template; it replaces the whole object, so send every section). Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
     input: { id: Id, patch: S.ServiceInput.partial() },
     handler: (a) => serviceSummary(svc.services.update(a.id, a.patch)),
   },

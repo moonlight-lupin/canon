@@ -1,5 +1,5 @@
 import type { CoverOptions, ItemKind, L10n, Lang, Posture, Season } from './types.ts';
-import type { BulletinFull, BulletinOptions } from './presentation.ts';
+import type { BulletinBlock, BulletinFull, BulletinOptions } from './presentation.ts';
 
 export interface Line {
   who: 'L' | 'C' | 'A' | null; // leader / congregation / all / plain
@@ -113,8 +113,22 @@ export interface RenderedService {
   cover: Omit<CoverOptions, 'style'> & { style: 'plain' | 'cross' | 'logo' | 'verse' | 'banner'; verse?: { ref: L10n; text: L10n } };
   /** a church logo has been uploaded (GET /api/assets/logo) */
   has_logo: boolean;
-  /** bulletin template in effect (service → church default → "Full words booklet") and its options */
-  bulletin: { template_id: number | null; name: L10n; options: BulletinOptions };
+  /**
+   * bulletin template in effect (service → church default → "Full words booklet") and its options (the page
+   * layout's headings and fixed texts completed for the service languages), plus what its sections print:
+   *  - content: the weekly texts per section key (service.bulletin_content, completed); announcements fall back to
+   *    the body of the Announcements item for services written before weekly sections existed;
+   *  - announcements_from_item: that fallback was used;
+   *  - blocks: the QR codes / pictures / notes the layout prints (captions and notes completed).
+   */
+  bulletin: {
+    template_id: number | null;
+    name: L10n;
+    options: BulletinOptions;
+    content?: Record<string, L10n>;
+    announcements_from_item?: boolean;
+    blocks?: BulletinBlock[];
+  };
   /** slide theme in effect (service → church default → Ink); its CSS is GET /api/slide-themes/:id/css */
   slide_theme_id: number | null;
 }

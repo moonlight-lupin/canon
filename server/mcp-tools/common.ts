@@ -2,7 +2,7 @@
 // people.ts, groups.ts) exports a ToolDef[] array which server/mcp.ts merges into the tool table.
 import { z, ZodError } from 'zod';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import type { ModuleKey } from '../../shared/types.ts';
+import type { ModuleAccess, ModuleKey } from '../../shared/types.ts';
 import { RefError } from '../../shared/bible.ts';
 import { db, tx } from '../db.ts';
 import type { McpAuth } from '../oauth.ts';
@@ -12,7 +12,12 @@ export interface Ctx {
   auth: McpAuth;
   /** member contact details / birth dates / notes may be returned */
   pii: boolean;
+  /** effective access per module on this connection (absent = assume every module readable) */
+  levels?: Record<ModuleKey, ModuleAccess>;
 }
+
+/** May this request read `module`? Used where one tool adds data from another module (e.g. song usage from services). */
+export const canRead = (ctx: Ctx, module: ModuleKey) => !ctx.levels || ctx.levels[module] !== 'off';
 // Handlers receive arguments already validated against `input` by the MCP SDK.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Args = Record<string, any>;

@@ -43,9 +43,9 @@
 //    (importProject passes the old project id to its history "UPDATE").
 import type { L10n, Lang } from '../../shared/types.ts';
 import type { Line, Paras, RenderedItem, RenderedService, RenderedVerse } from '../../shared/render-types.ts';
-import { textWeight } from '../../shared/output-labels.ts';
 import { blockImageKey } from '../../shared/presentation.ts';
-import { assetRow, qrPng } from '../repo/presentation.ts';
+import { alignChunks, chunkParagraph, groupUnits, joinPieces, lineLimit, splitSentences, type LineLimits } from '../../shared/slide-chunks.ts';
+import { assetRow, getTheme, qrPng } from '../repo/presentation.ts';
 
 // ---------------------------------------------------------------- FreeShow shapes (subset of src/types/Show.ts)
 
@@ -88,9 +88,8 @@ const LEFT = 'text-align:left;';
 
 const COLORS = { verse: '#5825f5', chorus: '#f525d2', bridge: '#f52598', tag: '#7525f5', intro: '#d525f5', text: '#3a7bd5', title: '#888888' };
 
-/** Scripture chunk budget, in "Latin characters"; a character in a CJK language (isCJK) is wider on screen. */
-const CHUNK = 350;
-const weight = (s: string, lang?: Lang) => textWeight(s, lang);
+/** Lines per slide: the service's slide theme (max_lines_multi / max_lines_single), as on Canon's own slides. */
+type Limits = Partial<LineLimits> | null | undefined;
 
 // ---------------------------------------------------------------- helpers
 
@@ -165,73 +164,70 @@ function titleSlide(it: RenderedItem, langs: Lang[], extra: string[] = []): FsSl
   return slide(bi(it.title, langs) || 'Title', COLORS.title, boxes(perLang));
 }
 
-function songSlides(it: RenderedItem, langs: Lang[]): Built {
+/** A stanza becomes one slide per chunk of lines (by line index, the same chunking as Canon's slides). */
+function songSlides(it: RenderedItem, langs: Lang[], limits?: Limits): Built {
   const b = newBuilt();
   for (const st of it.song!.stanzas) {
     const key = `${st.label}|${langs.map((l) => st.text[l] ?? '').join('|')}`;
     const { name, color } = stanzaGroup(st.label);
     const perLang = langs.map((l) => splitLines(st.text[l]));
-    const n = Math.max(...perLang.map((p) => p.length));
-    const size = fontSize(n, perLang.filter((p) => p.length).length);
-    addSlide(b, key, slide(name, color, boxes(perLang.map((p) => p.map((t) => line(t, textStyle(size)))))));
+    const shown = perLang.filter((p) => p.length).length;
+    const chunks = alignChunks(perLang, lineLimit(shown, limits));
+    chunks.forEach((c, j) => {
+      const size = fontSize(Math.max(...c.map((p) => p.length)), shown);
+      // a repeated refrain re-uses the same slides (same keys)
+      addSlide(b, chunks.length > 1 ? `${key}#${j}` : key, slide(name, color, boxes(c.map((p) => p.map((t) => line(t, textStyle(size)))))));
+    });
   }
   return b;
 }
 
-function verseText(v: RenderedVerse, showChapter: boolean, first: boolean): FsText[] {
+function verseText(v: RenderedVerse, showChapter: boolean, first: boolean, number = true): FsText[] {
+  if (!number) return [{ value: `${first ? '' : ' '}${v.text.trim()}`, style: '' }];
   return [
     { value: `${first ? '' : ' '}${showChapter ? `${v.chapter}:` : ''}${v.verse} `, style: 'font-size:40px;color:#bbbbbb;' },
     { value: v.text.trim(), style: '' },
   ];
 }
 
-function scriptureSlides(it: RenderedItem, langs: Lang[]): Built {
+function scriptureSlides(it: RenderedItem, langs: Lang[], limits?: Limits): Built {
   const b = newBuilt();
   const ref = bi(it.scripture?.ref ?? it.subtitle, langs, ' · ');
   const withVerses = langs.filter((l) => it.scripture?.passages[l]?.verses.length);
   const withParas = langs.filter((l) => !withVerses.includes(l) && it.paras?.[l]?.length);
 
   if (withVerses.length) {
-    // Chunk on verse boundaries so every language shows the same verses on a slide.
+    // Whole verses while every language stays within the lines (sentences) per slide; a longer verse is cut into
+    // parts with the same share in each language, the verse number on the first part (as on Canon's own slides).
     const master = it.scripture!.passages[withVerses[0]]!.verses;
     const byKey: Map<string, RenderedVerse>[] = [];
     for (const l of withVerses) byKey.push(new Map(it.scripture!.passages[l]!.verses.map((v) => [`${v.chapter}:${v.verse}`, v])));
     const multiChapter = new Set(master.map((v) => v.chapter)).size > 1;
-    const cap = withVerses.length > 2 ? Math.round(CHUNK * 0.7) : CHUNK;
-    const chunks: RenderedVerse[][] = [];
-    let cur: RenderedVerse[] = [];
-    let w = new Array(withVerses.length).fill(0);
-    for (const v of master) {
-      const key = `${v.chapter}:${v.verse}`;
-      const add = byKey.map((m, i) => weight(m.get(key)?.text ?? '', withVerses[i]));
-      if (cur.length && add.some((a, i) => w[i] + a > cap)) {
-        chunks.push(cur);
-        cur = [];
-        w = w.map(() => 0);
-      }
-      cur.push(v);
-      w = w.map((x, i) => x + add[i]);
-    }
-    if (cur.length) chunks.push(cur);
+    const keyOf = (v: RenderedVerse) => `${v.chapter}:${v.verse}`;
+    const units = master.map((mv) => withVerses.map((l, i) => {
+      const v = byKey[i].get(keyOf(mv));
+      return v ? splitSentences(v.text, l) : [];
+    }));
+    const groups = groupUnits(units, lineLimit(withVerses.length, limits), withVerses);
 
-    chunks.forEach((chunk, ci) => {
+    groups.forEach((pieces, ci) => {
       const perLang = langs.map((l) => {
         const li = withVerses.indexOf(l);
         if (li < 0) return [];
-        const texts = chunk.flatMap((mv, vi) => {
-          const v = byKey[li].get(`${mv.chapter}:${mv.verse}`);
-          return v ? verseText(v, multiChapter, vi === 0) : [];
+        const texts = pieces.flatMap((p, pi) => {
+          const v = byKey[li].get(keyOf(master[p.unit]));
+          return v && p.sentences[li].length ? verseText({ ...v, text: joinPieces(p.sentences[li]) }, multiChapter, pi === 0, p.part === 0) : [];
         });
         const size = withVerses.length > 2 ? 44 : withVerses.length > 1 ? 52 : 68;
         return texts.length ? [{ align: LEFT, text: texts.map((t) => ({ ...t, style: t.style || textStyle(size) })) }] : [];
       });
-      const first = chunk[0];
-      const last = chunk[chunk.length - 1];
+      const first = master[pieces[0].unit];
+      const last = master[pieces[pieces.length - 1].unit];
       const range = first === last ? `${first.chapter}:${first.verse}` : `${first.chapter}:${first.verse}-${last.chapter === first.chapter ? '' : `${last.chapter}:`}${last.verse}`;
-      addSlide(b, `chunk${ci}`, slide(range, COLORS.verse, boxes(perLang), ref));
+      addSlide(b, `chunk${ci}`, slide(pieces[0].part > 0 ? `${range} …` : range, COLORS.verse, boxes(perLang), ref));
     });
   } else if (withParas.length) {
-    return parasSlides(it, langs, ref);
+    return parasSlides(it, langs, ref, limits);
   } else {
     addSlide(b, 'title', titleSlide(it, langs));
   }
@@ -239,19 +235,25 @@ function scriptureSlides(it: RenderedItem, langs: Lang[]): Built {
 }
 
 function parasLines(para: Line[] | undefined, size: number): FsLine[] {
-  return (para ?? []).map((ln) => line(ln.text, textStyle(size, ln.who === 'C' || ln.who === 'A' ? 'font-weight:bold;' : '')));
+  // a sentence that spans several source lines keeps its line breaks
+  return (para ?? []).flatMap((ln) => ln.text.split('\n').map((t) => line(t, textStyle(size, ln.who === 'C' || ln.who === 'A' ? 'font-weight:bold;' : ''))));
 }
 
-function parasSlides(it: RenderedItem, langs: Lang[], notes = ''): Built {
+/** Paragraph by paragraph, at most the lines (sentences) per slide in each language, languages kept aligned. */
+function parasSlides(it: RenderedItem, langs: Lang[], notes = '', limits?: Limits): Built {
   const b = newBuilt();
-  const present = langs.filter((l) => it.paras?.[l]?.length);
-  const n = Math.max(0, ...present.map((l) => (it.paras![l] as Paras).length));
+  const withParas = langs.filter((l) => it.paras?.[l]?.length);
+  const n = Math.max(0, ...withParas.map((l) => (it.paras![l] as Paras).length));
   const group = bi(it.title, langs) || 'Text';
   for (let i = 0; i < n; i++) {
-    const lineCount = Math.max(...present.map((l) => it.paras![l]![i]?.length ?? 0));
-    const size = fontSize(lineCount, present.length);
-    const perLang = langs.map((l) => parasLines(it.paras?.[l]?.[i], size));
-    addSlide(b, `p${i}`, slide(group, COLORS.text, boxes(perLang), notes));
+    const present = withParas.filter((l) => it.paras![l]![i]?.length);
+    if (!present.length) continue;
+    const chunks = chunkParagraph(present.map((l) => it.paras![l]![i]), present, lineLimit(present.length, limits));
+    chunks.forEach((c, j) => {
+      const size = fontSize(Math.max(...c.map((p) => p.length)), present.length);
+      const perLang = langs.map((l) => (present.includes(l) ? parasLines(c[present.indexOf(l)], size) : []));
+      addSlide(b, chunks.length > 1 ? `p${i}.${j}` : `p${i}`, slide(group, COLORS.text, boxes(perLang), notes));
+    });
   }
   return b;
 }
@@ -393,6 +395,12 @@ export function freeshowFilename(r: RenderedService): string {
 export async function freeshowProject(r: RenderedService): Promise<FreeShowProjectFile> {
   const media = await blockMedia(r);
   const langs: Lang[] = r.languages.length ? r.languages : ['en'];
+  let limits: Limits = null;
+  try {
+    limits = r.slide_theme_id ? getTheme(r.slide_theme_id).vars : null;
+  } catch {
+    /* theme gone: the default lines per slide */
+  }
   const id = ids(r.id);
   const now = Date.now();
   const created = Date.parse(`${r.date}T00:00:00Z`) || now;
@@ -416,7 +424,7 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
       built = newBuilt();
       addSlide(built, 'title', titleSlide(it, langs));
     } else if (it.song?.stanzas.length) {
-      built = songSlides(it, langs);
+      built = songSlides(it, langs, limits);
       const s = it.song;
       meta = Object.fromEntries(
         Object.entries({
@@ -428,13 +436,13 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
         }).filter(([, v]) => v),
       );
     } else if (it.kind === 'scripture') {
-      built = scriptureSlides(it, langs);
+      built = scriptureSlides(it, langs, limits);
     } else if (it.kind === 'sermon') {
       built = newBuilt();
       const extra = [r.preacher ?? it.leader].filter((x): x is string => !!x);
       addSlide(built, 'title', titleSlide(it, langs, extra));
     } else if (it.paras && Object.values(it.paras).some((p) => p?.length)) {
-      built = parasSlides(it, langs);
+      built = parasSlides(it, langs, '', limits);
     } else {
       built = newBuilt();
       addSlide(built, 'title', titleSlide(it, langs));

@@ -10,6 +10,7 @@ import { Bi, LABEL, biText, formatDate, hasAny, itemSubtitles, langOptions, time
 import { isChinese } from '../../shared/languages.ts';
 import { postureL10n } from '../../shared/labels.ts';
 import { buildSlides } from './slideModel.ts';
+import type { SlideTheme } from '../../shared/presentation.ts';
 import './outputs.css';
 
 type Orientation = 'portrait' | 'landscape';
@@ -42,6 +43,9 @@ export default function RunSheet() {
   const { id } = useParams();
   const { t, lang } = useI18n();
   const { data: r, error } = useApi<RenderedService>(`/services/${id}/render`);
+  // slide counts follow the service's slide theme (its lines per slide)
+  const { data: themes } = useApi<SlideTheme[]>('/slide-themes');
+  const limits = themes?.find((x) => x.id === r?.slide_theme_id)?.vars;
   const [orientation, setOrientation] = useState<Orientation>('portrait');
   const [labelSel, setLabelMode] = useState<LangMode | null>(null);
   const svcLangs: Lang[] = r?.languages.length ? r.languages : ['en'];
@@ -55,9 +59,9 @@ export default function RunSheet() {
   const slideCounts = useMemo(() => {
     const m = new Map<number, number>();
     if (!r) return m;
-    for (const s of buildSlides(r, r.languages)) if (s.itemId) m.set(s.itemId, (m.get(s.itemId) ?? 0) + 1);
+    for (const s of buildSlides(r, r.languages, limits)) if (s.itemId) m.set(s.itemId, (m.get(s.itemId) ?? 0) + 1);
     return m;
-  }, [r]);
+  }, [r, limits]);
 
   const teams = useMemo(() => {
     const out: { team: L10n; rows: RenderedService['roster'] }[] = [];

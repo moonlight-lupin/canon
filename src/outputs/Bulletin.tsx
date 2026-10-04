@@ -2,9 +2,9 @@
 // container at the page width, paginated into fixed page boxes and — for booklets — imposed onto
 // landscape sheets for duplex printing (fold in half to read).
 //
-// The bulletin template decides the shape: a cover page or a banner on page 1, the order as a list or a
-// three-column table, full texts under each item or gathered after the order, announcements inline or on a
-// page of their own, and a back cover with serving tables, a note and QR codes / pictures (bulletin blocks).
+// The bulletin template's page layout decides the shape: an ordered list of sections (cover or banner, the order
+// as a list or a three-column table, full texts, the weekly announcements, a pastor's note, fixed texts, serving
+// tables, QR codes …) with page breaks and a back-cover group that always lands on the last page.
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
@@ -18,12 +18,14 @@ import {
 } from './content.tsx';
 import { CrossMark, logoUrl, useLogo } from '../components/brand.tsx';
 import {
-  DEFAULT_BULLETIN_OPTIONS, blockImageUrl, blockQrUrl, bracket, bracketL10n, bulletinDecision, firstStanza, hymnLine, withVersion,
-  type BulletinBackPage, type BulletinBlock, type BulletinFull, type BulletinOptions, type BulletinTemplate,
+  ANNOUNCEMENTS_KEY, DEFAULT_BULLETIN_OPTIONS, blockImageUrl, blockQrUrl, bracket, bracketL10n, bulletinDecision, firstStanza, hasSection, hymnLine,
+  padBooklet, withVersion,
+  type BulletinBlock, type BulletinFull, type BulletinOptions, type BulletinSection, type BulletinTemplate,
 } from '../../shared/presentation.ts';
 import { postureL10n, roleMatches, servingOnLabel } from '../../shared/labels.ts';
 import { langInfo } from '../../shared/languages.ts';
 import './outputs.css';
+import './bulletin-layout.css';
 
 // ---------------------------------------------------------------- paper geometry (mm)
 
@@ -54,15 +56,18 @@ export const PAPER_ORDER: PaperSize[] = ['a4-booklet', 'a4', 'a5', 'letter-bookl
 export interface Block {
   key: string;
   node: ReactNode;
-  /** keep with the following block (headings) */
+  /** keep with the following block (headings, a section kept together) */
   keep?: boolean;
-  /** start a new page with this block (separate full-text / announcements sections) */
+  /** start a new page with this block (a page break, or a section that starts a new page) */
   breakBefore?: boolean;
   split?: () => Block[];
+  /** a whole page on its own: the cover page or a ruled sermon-notes page */
+  page?: 'cover' | 'notes';
+  /** the page holding this block has no page number (the banner on page 1) */
+  nonum?: boolean;
 }
 
 type PageSpec =
-  | { kind: 'cover' }
   | { kind: 'flow'; keys: string[] }
   | { kind: 'blank'; notes: boolean };
 
@@ -76,14 +81,21 @@ export function impose(n: number): { side: 'front' | 'back'; pages: [number, num
   return out;
 }
 
-/** Greedy pagination with keep-with-next chains and forced page breaks. Returns groups of block indices. */
-function paginate(heights: number[], keep: boolean[], cap: number, brk: boolean[] = []): number[][] {
+/** Greedy pagination with keep-with-next chains, forced page breaks and whole-page blocks. Returns groups of block indices. */
+function paginate(heights: number[], keep: boolean[], cap: number, brk: boolean[] = [], whole: boolean[] = []): number[][] {
   const pages: number[][] = [];
   let cur: number[] = [];
   let used = 0;
   for (let i = 0; i < heights.length; i++) {
+    if (whole[i]) {
+      if (cur.length) pages.push(cur);
+      pages.push([i]);
+      cur = [];
+      used = 0;
+      continue;
+    }
     let need = heights[i];
-    for (let j = i; keep[j] && j + 1 < heights.length; j++) need += heights[j + 1];
+    for (let j = i; keep[j] && j + 1 < heights.length && !whole[j + 1] && !brk[j + 1]; j++) need += heights[j + 1];
     if (need > cap) need = heights[i];
     if (cur.length && (brk[i] || used + need > cap)) {
       pages.push(cur);
@@ -121,25 +133,18 @@ export interface ItemShow {
   posture?: boolean;
 }
 
-/** How the order is laid out (from the bulletin template); missing fields keep the classic look. */
-export type FlowFormat = Pick<
-  BulletinOptions,
-  'order_style' | 'hymn_number' | 'sermon_brackets' | 'full_text_section' | 'announcements_section' | 'announcements_heading' | 'banner'
-> & {
-  /** the banner (dark band) opens page 1 instead of a cover page */
+/** How the order is laid out (from the bulletin template and its page layout). */
+export interface FlowFormat {
+  order_style: BulletinOptions['order_style'];
+  hymn_number: BulletinOptions['hymn_number'];
+  sermon_brackets: boolean;
+  /** the layout has a full-texts section: the words are gathered there instead of under each item */
+  separateText: boolean;
+  /** the layout has an announcements section: the Announcements item prints its title only */
+  separateAnn: boolean;
+  /** the banner (dark band) opens page 1 instead of a cover page: no "Order of service" heading */
   bannerCover: boolean;
-  /** the service notes join the separate announcements page */
-  serviceNotes: boolean;
-};
-const FLOW_DEFAULT: FlowFormat = {
-  order_style: 'list', hymn_number: 'abbr', sermon_brackets: false, full_text_section: 'inline', announcements_section: 'inline',
-  announcements_heading: {}, banner: DEFAULT_BULLETIN_OPTIONS.banner, bannerCover: false, serviceNotes: false,
-};
-export const flowFormat = (o: BulletinOptions, cover: string, serviceNotes: boolean): FlowFormat => ({
-  order_style: o.order_style, hymn_number: o.hymn_number, sermon_brackets: o.sermon_brackets, full_text_section: o.full_text_section,
-  announcements_section: o.announcements_section, announcements_heading: o.announcements_heading, banner: o.banner,
-  bannerCover: cover === 'banner', serviceNotes,
-});
+}
 
 /** The secondary lines of an item as the template wants them: hymn numbers, 【sermon】 and 【creed】 titles. */
 function whatLines(it: RenderedItem, r: RenderedService, langs: Lang[], f: FlowFormat, skip: Set<string>): L10n[] {
@@ -219,60 +224,43 @@ function Banner({ r, langs, colours }: { r: RenderedService; langs: Lang[]; colo
   );
 }
 
-const isNumberedLine = (s: string) => /^\s*(\d+|[一二三四五六七八九十]+|[A-Za-z])\s*[.)、．）]/.test(s);
+export const isNumberedLine = (s: string) => /^\s*(\d+|[一二三四五六七八九十]+|[A-Za-z])\s*[.)、．）]/.test(s);
 
-/** Announcements as typed: one paragraph per line, numbered lines with a hanging indent. */
-function announcementBlocks(it: RenderedItem | null, notes: string | null, langs: Lang[], prefix: string): Block[] {
+/** Text as typed, one paragraph per line, numbered lines with a hanging indent; the languages one after another. */
+function textLines(v: L10n | undefined, langs: Lang[], prefix: string): Block[] {
   const out: Block[] = [];
-  const present = langs.filter((l) => it?.paras?.[l]?.length);
+  const present = langs.filter((l) => v?.[l]?.trim());
   present.forEach((l, li) => {
     if (li > 0) out.push({ key: `${prefix}gap${l}`, node: <div className="ic-langgap" /> });
-    it!.paras![l]!.forEach((para, pi) =>
-      para.forEach((ln, i) =>
-        out.push({
-          key: `${prefix}${l}-${pi}-${i}`,
-          node: <p className={`bl-an${isNumberedLine(ln.text) ? ' num' : ''}`} lang={LANG_ATTR[l]}>{ln.text}</p>,
-        }),
-      ),
+    v![l]!.replace(/\r/g, '').split('\n').filter((x) => x.trim()).forEach((ln, i) =>
+      out.push({ key: `${prefix}${l}-${i}`, node: <p className={`bl-an${isNumberedLine(ln) ? ' num' : ''}`} lang={LANG_ATTR[l]}>{ln.trim()}</p> }),
     );
   });
-  if (notes?.trim()) {
-    notes
-      .replace(/\r/g, '')
-      .split('\n')
-      .filter((p) => p.trim())
-      .forEach((p, i) => out.push({ key: `${prefix}n${i}`, node: <p className={`bl-an${isNumberedLine(p) ? ' num' : ''}`}>{p.trim()}</p> }));
-  }
   return out;
 }
 
+/** The service's Notes box, one paragraph per line. */
+function notesLines(notes: string | null, prefix: string): Block[] {
+  return (notes ?? '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .filter((p) => p.trim())
+    .map((p, i) => ({ key: `${prefix}n${i}`, node: <p className={`bl-an${isNumberedLine(p) ? ' num' : ''}`}>{p.trim()}</p> }));
+}
+
 /**
- * The order of service as blocks. `decide` says per item whether its words are printed (true), only its title /
- * reference (false) or, for hymns, the first stanza only. `fmt` (from the template) shapes the order.
+ * The order of service as blocks, and the words gathered for a full-texts section. `decide` says per item whether
+ * its words are printed (true), only its title / reference (false) or, for hymns, the first stanza only.
  */
-export function buildFlow(
-  r: RenderedService, langs: Lang[], layout: Layout, decide: (it: RenderedItem) => BulletinFull, show: ItemShow, fmt: Partial<FlowFormat> = {},
-): Block[] {
-  const f: FlowFormat = { ...FLOW_DEFAULT, ...fmt };
+export function buildOrder(
+  r: RenderedService, langs: Lang[], layout: Layout, decide: (it: RenderedItem) => BulletinFull, show: ItemShow, f: FlowFormat,
+): { order: Block[]; fullText: Block[] } {
   const table = f.order_style === 'table';
-  const separateText = f.full_text_section === 'separate';
-  const separateAnn = f.announcements_section === 'separate';
   const blocks: Block[] = [];
-  if (f.bannerCover) {
-    const date = dateParts(r.date, langs);
-    blocks.push({ key: 'banner', node: <Banner r={r} langs={langs} colours={f.banner} /> });
-    blocks.push({
-      key: 'bdate',
-      keep: true,
-      node: <div className="bl-banner-date">{[...new Set(langs.map((l) => date[l]))].map((d, i) => <Fragment key={i}>{i > 0 && '  ·  '}<span>{d}</span></Fragment>)}</div>,
-    });
-  } else {
-    blocks.push({ key: 'oos', node: <div className="bl-oos"><Bi v={LABEL.orderOfService} langs={langs} sep="  ·  " /></div>, keep: true });
-  }
+  if (!f.bannerCover) blocks.push({ key: 'oos', node: <div className="bl-oos"><Bi v={LABEL.orderOfService} langs={langs} sep="  ·  " /></div>, keep: true });
   // readings already in the order: the sermon row doesn't repeat their reference
   const readings = new Set(r.items.filter((x) => x.in_bulletin && x.kind === 'scripture').map((x) => biText(x.subtitle, langs)));
   const fullText: Block[] = [];
-  const ann: Block[] = [];
   let row = 0;
   for (const it of r.items) {
     if (!it.in_bulletin) continue;
@@ -282,17 +270,16 @@ export function buildFlow(
     }
     const subs = whatLines(it, r, langs, f, readings);
     let pieces: Piece[] = [];
-    if (it.kind === 'announcements' && separateAnn) {
-      ann.push(...announcementBlocks(it, null, langs, `a${it.id}-`));
-    } else {
+    // with an announcements section the item stays in the order (a timed item) but its words print there
+    if (!(it.kind === 'announcements' && f.separateAnn)) {
       const full = decide(it);
       const shown = full === 'first_stanza' && it.song ? { ...it, song: { ...it.song, stanzas: firstStanza(it.song.stanzas) } } : it;
       pieces = full ? itemPieces(shown, langs, layout) : [];
-      if (separateText && pieces.length) {
-        // 【尼西亚信经】 — the words gathered after the order, each under its own title
+      if (f.separateText && pieces.length) {
+        // 【尼西亚信经】 — the words gathered in the full-texts section, each under its own title
         const head = it.text_title && hasAny(it.text_title) ? it.text_title : it.song ? it.song.title : hasAny(it.subtitle) ? it.subtitle : it.title;
-        const bracketed = Object.fromEntries(langs.map((l) => [l, langInfo(l).cjk ? bracket(head[l] ?? '', l) : (head[l] ?? '')]));
-        fullText.push({ key: `fh${it.id}`, node: <div className="bl-fthead"><Bi v={bracketed} langs={langs} sep="  ·  " /></div>, keep: true });
+        const titled = Object.fromEntries(langs.map((l) => [l, f.sermon_brackets && langInfo(l).cjk ? bracket(head[l] ?? '', l) : (head[l] ?? '')]));
+        fullText.push({ key: `fh${it.id}`, node: <div className="bl-fthead"><Bi v={titled} langs={langs} sep="  ·  " /></div>, keep: true });
         for (const p of pieces) {
           if (p.glue) fullText[fullText.length - 1].keep = true;
           fullText.push(pieceBlock(p, `f${it.id}-`));
@@ -310,20 +297,10 @@ export function buildFlow(
       blocks.push(pieceBlock(p, `i${it.id}-`));
     }
   }
-  if (fullText.length) {
-    fullText[0].breakBefore = true;
-    blocks.push(...fullText);
-  }
-  if (separateAnn) ann.push(...announcementBlocks(null, f.serviceNotes ? r.notes : null, langs, 'sn-'));
-  if (ann.length) {
-    const heading = hasAny(f.announcements_heading) ? f.announcements_heading : LABEL.announcements;
-    blocks.push({ key: 'anh', breakBefore: true, keep: true, node: <div className="bl-anhead"><Bi v={heading} langs={langs} sep="  ·  " /></div> });
-    blocks.push(...ann);
-  }
-  return blocks;
+  return { order: blocks, fullText };
 }
 
-// ---------------------------------------------------------------- back page
+// ---------------------------------------------------------------- serving tables, blocks, notices
 
 /** Names per language joined the way the language lists them. */
 const joinPeople = (people: L10n[], langs: Lang[]): L10n =>
@@ -359,12 +336,12 @@ function Caption({ v, langs }: { v: L10n | undefined; langs: Lang[] }) {
   );
 }
 
-function blockBlocks(ids: number[], all: BulletinBlock[], langs: Lang[]): Block[] {
+function blockBlocks(ids: number[], all: BulletinBlock[], langs: Lang[], prefix: string): Block[] {
   const out: Block[] = [];
   let row: ReactNode[] = [];
   const flush = () => {
     if (!row.length) return;
-    out.push({ key: `bk${out.length}`, node: <div className="bl-blocks">{row}</div> });
+    out.push({ key: `${prefix}${out.length}`, node: <div className="bl-blocks">{row}</div> });
     row = [];
   };
   for (const id of ids) {
@@ -374,7 +351,7 @@ function blockBlocks(ids: number[], all: BulletinBlock[], langs: Lang[]): Block[
       flush();
       if (hasAny(b.data.text)) {
         out.push({
-          key: `bk${out.length}`,
+          key: `${prefix}${out.length}`,
           node: (
             <div className={`bl-bnote${b.data.bold !== false ? ' b' : ''}${b.data.align === 'left' ? ' left' : ''}`}>
               {biParts(b.data.text, langs).map((p) => <div key={p.lang} lang={LANG_ATTR[p.lang]} style={{ whiteSpace: 'pre-wrap' }}>{p.text}</div>)}
@@ -397,87 +374,6 @@ function blockBlocks(ids: number[], all: BulletinBlock[], langs: Lang[]): Block[
   flush();
   return out;
 }
-
-export interface BackOptions {
-  roster: boolean;
-  notes: boolean;
-  ccli: boolean;
-  contact: boolean;
-  page?: BulletinBackPage;
-  blocks?: BulletinBlock[];
-}
-
-export function buildBack(r: RenderedService, langs: Lang[], opts: BackOptions): Block[] {
-  const blocks: Block[] = [];
-  if (opts.notes && r.notes?.trim()) {
-    blocks.push({ key: 'nh', node: <div className="bl-backhead"><Bi v={LABEL.announcements} langs={langs} sep="  ·  " /></div>, keep: true });
-    r.notes
-      .replace(/\r/g, '')
-      .split(/\n\s*\n/)
-      .filter((p) => p.trim())
-      .forEach((p, i) => blocks.push({ key: `n${i}`, node: <p className="bl-note">{p.trim()}</p> }));
-  }
-  if (opts.roster && r.roster.length) {
-    blocks.push({ key: 'rh', node: <div className="bl-backhead"><Bi v={LABEL.servingToday} langs={langs} sep="  ·  " /></div>, keep: true });
-    r.roster.forEach((row, i) =>
-      blocks.push({
-        key: `r${i}`,
-        node: (
-          <div className="bl-roster">
-            <Bi className="bl-role" v={row.role} langs={langs} />
-            {row.people_l10n ? <Bi className="bl-names" v={joinPeople(row.people_l10n, langs)} langs={langs} sep=" / " /> : <span className="bl-names">{row.people.join(', ')}</span>}
-          </div>
-        ),
-      }),
-    );
-  }
-  const bp = opts.page;
-  if (bp?.this_week_roles.length) {
-    const rows = r.roster.map((x) => ({ role: x.role, people: x.people_l10n ?? x.people.map((p) => ({ [langs[0]]: p })) }));
-    const cols = roleColumns(bp.this_week_roles, rows, r, langs);
-    if (cols.length) blocks.push({ key: 'tw', node: <RoleTable cols={cols} langs={langs} /> });
-  }
-  if (bp?.next_week_roles.length && r.next_roster) {
-    const cols = roleColumns(bp.next_week_roles, r.next_roster.roles, r, langs);
-    if (cols.length) {
-      const head = Object.fromEntries(langs.map((l) => [l, servingOnLabel(r.next_roster!.date, l)]));
-      blocks.push({ key: 'nwh', keep: true, node: <div className="bl-rhead"><Bi v={head} langs={langs} sep="  ·  " /></div> });
-      blocks.push({ key: 'nw', node: <RoleTable cols={cols} langs={langs} /> });
-    }
-  }
-  if (bp && hasAny(bp.note)) {
-    blocks.push({ key: 'bnote', node: <div className="bl-bnote b">{biParts(bp.note, langs).map((p) => <div key={p.lang} lang={LANG_ATTR[p.lang]}>{p.text}</div>)}</div> });
-  }
-  if (bp?.blocks.length && opts.blocks) blocks.push(...blockBlocks(bp.blocks, opts.blocks, langs));
-  if (opts.ccli && (r.notices.length || r.church.ccli_license)) {
-    blocks.push({
-      key: 'ccli',
-      node: (
-        <div className="bl-notices">
-          {r.notices.map((n, i) => <div key={i}>{n}</div>)}
-          {r.church.ccli_license && <div className="b">CCLI Licence #{r.church.ccli_license}</div>}
-        </div>
-      ),
-    });
-  }
-  const contact = [r.church.address, r.church.contact].map((s) => s?.trim()).filter(Boolean) as string[];
-  if (opts.contact && contact.length) {
-    blocks.push({
-      key: 'contact',
-      node: (
-        <div className="bl-contact">
-          <div className="b"><Bi v={r.church.name} langs={langs} sep="  ·  " /></div>
-          {contact.flatMap((c) => c.split('\n')).map((l, i) => <div key={i}>{l}</div>)}
-        </div>
-      ),
-    });
-  }
-  return blocks;
-}
-
-/** Back-page content that belongs on the back cover itself (rather than flowing after the order). */
-export const hasBackPage = (bp: BulletinBackPage | undefined) =>
-  !!bp && (bp.this_week_roles.length > 0 || bp.next_week_roles.length > 0 || hasAny(bp.note) || bp.blocks.length > 0);
 
 type CoverStyle = RenderedService['cover']['style'];
 const COVER_STYLES: CoverStyle[] = ['plain', 'cross', 'logo', 'verse', 'banner'];
@@ -552,6 +448,178 @@ function NotesPage({ langs }: { langs: Lang[] }) {
   );
 }
 
+// ---------------------------------------------------------------- the page layout → blocks
+
+/** Everything the page layout needs to turn sections into blocks. */
+export interface BulletinBuild {
+  r: RenderedService;
+  langs: Lang[];
+  layout: Layout;
+  decide: (it: RenderedItem) => BulletinFull;
+  show: ItemShow;
+  options: BulletinOptions;
+  /** the cover style in effect ('banner' = the dark band on page 1, no cover page) */
+  cover: CoverStyle;
+  /** the Library's QR codes, pictures and notes (falls back to those the render carries) */
+  blocks: BulletinBlock[];
+  /** one-off toolbar switches: serving tables / roster, announcements and service notes */
+  include?: { serving: boolean; announcements: boolean };
+}
+
+/** The weekly texts of the bulletin (announcements, pastor's note …) per section key. */
+export const bulletinContent = (r: RenderedService): Record<string, L10n> => r.bulletin.content ?? {};
+
+/**
+ * Walk the page layout: each section becomes blocks; page breaks and "starts a new page" force a break before the
+ * next printed block (an empty section prints nothing and makes no blank page); "keep together" chains the
+ * section's blocks. Sections marked for the last page make up the back cover (`back`).
+ */
+export function buildBulletin(b: BulletinBuild): { main: Block[]; back: Block[]; spareNotes: boolean } {
+  const { r, langs, options: o } = b;
+  const L = o.page_layout ?? DEFAULT_BULLETIN_OPTIONS.page_layout;
+  const inc = b.include ?? { serving: true, announcements: true };
+  const banner = b.cover === 'banner';
+  const fmt: FlowFormat = {
+    order_style: o.order_style, hymn_number: o.hymn_number, sermon_brackets: o.sermon_brackets,
+    separateText: hasSection(L, 'full_texts'), separateAnn: hasSection(L, 'announcements'), bannerCover: banner && hasSection(L, 'cover'),
+  };
+  const ord = buildOrder(r, langs, b.layout, b.decide, b.show, fmt);
+  const content = bulletinContent(r);
+  const blockList = b.blocks.length ? b.blocks : r.bulletin.blocks ?? [];
+  const heading = (v: L10n | undefined, dflt: L10n | null, key: string): Block[] => {
+    const h = hasAny(v) ? v! : dflt;
+    return h ? [{ key, keep: true, node: <div className="bl-anhead"><Bi v={h} langs={langs} sep="  ·  " /></div> }] : [];
+  };
+  let spareNotes = false;
+
+  const sectionBlocks = (s: BulletinSection): Block[] => {
+    const p = `${s.id}:`;
+    switch (s.type) {
+      case 'cover': {
+        if (!banner) return [{ key: `${p}cover`, page: 'cover', node: <Cover r={r} langs={langs} style={b.cover} /> }];
+        const date = dateParts(r.date, langs);
+        return [
+          { key: `${p}banner`, nonum: true, node: <Banner r={r} langs={langs} colours={o.banner} /> },
+          { key: `${p}bdate`, keep: true, node: <div className="bl-banner-date">{[...new Set(langs.map((l) => date[l]))].map((d, i) => <Fragment key={i}>{i > 0 && '  ·  '}<span>{d}</span></Fragment>)}</div> },
+        ];
+      }
+      case 'order':
+        return ord.order;
+      case 'full_texts':
+        return ord.fullText;
+      case 'announcements': {
+        if (!inc.announcements) return [];
+        const body = [...textLines(content[ANNOUNCEMENTS_KEY], langs, `${p}a-`), ...(s.service_notes ? notesLines(r.notes, `${p}sn-`) : [])];
+        return body.length ? [...heading(s.heading, LABEL.announcements, `${p}h`), ...body] : [];
+      }
+      case 'weekly_text': {
+        const body = textLines(s.key ? content[s.key] : undefined, langs, `${p}t-`);
+        return body.length ? [...heading(s.heading, null, `${p}h`), ...body] : [];
+      }
+      case 'fixed_text': {
+        const body = textLines(s.text, langs, `${p}t-`);
+        return body.length ? [...heading(s.heading, null, `${p}h`), ...body] : [];
+      }
+      case 'service_notes': {
+        if (!inc.announcements || !r.notes?.trim()) return [];
+        const h = hasAny(s.heading) ? s.heading! : LABEL.announcements;
+        return [
+          { key: `${p}h`, keep: true, node: <div className="bl-backhead"><Bi v={h} langs={langs} sep="  ·  " /></div> },
+          ...r.notes.replace(/\r/g, '').split(/\n\s*\n/).filter((x) => x.trim()).map((x, i) => ({ key: `${p}n${i}`, node: <p className="bl-note">{x.trim()}</p> })),
+        ];
+      }
+      case 'serving_this_week': {
+        if (!inc.serving) return [];
+        if (!s.roles?.length) {
+          // the whole roster as a list ("Serving today")
+          if (!r.roster.length) return [];
+          return [
+            { key: `${p}h`, keep: true, node: <div className="bl-backhead"><Bi v={LABEL.servingToday} langs={langs} sep="  ·  " /></div> },
+            ...r.roster.map((row, i) => ({
+              key: `${p}r${i}`,
+              node: (
+                <div className="bl-roster">
+                  <Bi className="bl-role" v={row.role} langs={langs} />
+                  {row.people_l10n ? <Bi className="bl-names" v={joinPeople(row.people_l10n, langs)} langs={langs} sep=" / " /> : <span className="bl-names">{row.people.join(', ')}</span>}
+                </div>
+              ),
+            })),
+          ];
+        }
+        const rows = r.roster.map((x) => ({ role: x.role, people: x.people_l10n ?? x.people.map((n) => ({ [langs[0]]: n })) }));
+        const cols = roleColumns(s.roles, rows, r, langs);
+        return cols.length ? [{ key: `${p}t`, node: <RoleTable cols={cols} langs={langs} /> }] : [];
+      }
+      case 'serving_next_week': {
+        if (!inc.serving || !s.roles?.length || !r.next_roster) return [];
+        const cols = roleColumns(s.roles, r.next_roster.roles, r, langs);
+        if (!cols.length) return [];
+        const head = Object.fromEntries(langs.map((l) => [l, servingOnLabel(r.next_roster!.date, l)]));
+        return [
+          { key: `${p}h`, keep: true, node: <div className="bl-rhead"><Bi v={head} langs={langs} sep="  ·  " /></div> },
+          { key: `${p}t`, node: <RoleTable cols={cols} langs={langs} /> },
+        ];
+      }
+      case 'note':
+        return hasAny(s.text) ? [{ key: `${p}n`, node: <div className="bl-bnote b">{biParts(s.text, langs).map((x) => <div key={x.lang} lang={LANG_ATTR[x.lang]}>{x.text}</div>)}</div> }] : [];
+      case 'blocks':
+        return blockBlocks(s.blocks ?? [], blockList, langs, `${p}b`);
+      case 'sermon_notes':
+        if (s.spare_only) {
+          spareNotes = true;
+          return [];
+        }
+        return [{ key: `${p}notes`, page: 'notes', node: <NotesPage langs={langs} /> }];
+      case 'ccli_contact': {
+        const out: Block[] = [];
+        if (s.ccli !== false && (r.notices.length || r.church.ccli_license)) {
+          out.push({
+            key: `${p}ccli`,
+            node: (
+              <div className="bl-notices">
+                {r.notices.map((n, i) => <div key={i}>{n}</div>)}
+                {r.church.ccli_license && <div className="b">CCLI Licence #{r.church.ccli_license}</div>}
+              </div>
+            ),
+          });
+        }
+        const contact = [r.church.address, r.church.contact].map((x) => x?.trim()).filter(Boolean) as string[];
+        if (s.contact !== false && contact.length) {
+          out.push({
+            key: `${p}contact`,
+            node: (
+              <div className="bl-contact">
+                <div className="b"><Bi v={r.church.name} langs={langs} sep="  ·  " /></div>
+                {contact.flatMap((c) => c.split('\n')).map((l, i) => <div key={i}>{l}</div>)}
+              </div>
+            ),
+          });
+        }
+        return out;
+      }
+      default:
+        return [];
+    }
+  };
+
+  const main: Block[] = [];
+  const back: Block[] = [];
+  let pending = false;
+  for (const s of L) {
+    if (s.type === 'page_break') {
+      pending = true;
+      continue;
+    }
+    const bs = sectionBlocks(s).map((x) => ({ ...x }));
+    if (!bs.length) continue;
+    if (pending || s.new_page) bs[0].breakBefore = true;
+    pending = false;
+    if (s.keep_together) for (let i = 0; i < bs.length - 1; i++) bs[i].keep = true;
+    (s.last_page ? back : main).push(...bs);
+  }
+  return { main, back, spareNotes };
+}
+
 // ---------------------------------------------------------------- screen
 
 export default function Bulletin() {
@@ -582,8 +650,8 @@ export default function Bulletin() {
   const canParallel = langs.length > 1 && (langs.length < 3 || wide);
   const layout: Layout = canParallel ? ov.layout ?? (langs.length > 2 ? 'stacked' : o.layout) : 'stacked';
   const cover: CoverStyle = ov.cover ?? (picked && picked.options.cover !== 'default' ? picked.options.cover : r?.cover.style ?? 'plain');
-  const roster = ov.roster ?? o.sections.roster;
-  const notes = ov.notes ?? o.sections.notes;
+  const roster = ov.roster ?? true;
+  const notes = ov.notes ?? true;
   // Per item: the item's own choice beats the template's rule for its kind (computed by the server for the
   // service's template; recomputed here when another template is picked).
   const decide = useMemo(
@@ -591,6 +659,9 @@ export default function Bulletin() {
     [picked],
   );
   const show = useMemo<ItemShow>(() => ({ leaders: o.show_leaders, times: o.show_times, posture: o.show_posture }), [o.show_leaders, o.show_times, o.show_posture]);
+  const L = o.page_layout ?? [];
+  const hasServing = L.some((s) => s.type === 'serving_this_week' || s.type === 'serving_next_week');
+  const hasAnn = L.some((s) => s.type === 'announcements' || s.type === 'service_notes');
 
   if (error) return <div className="out-page"><ErrorBox error={error} /></div>;
   if (!r) return <Loading />;
@@ -631,8 +702,8 @@ export default function Bulletin() {
             {COVER_STYLES.map((c) => <option key={c} value={c}>{t(COVER_LABEL[c])}{c === r.cover.style ? ' ✓' : ''}</option>)}
           </select>
         </label>
-        <label className="check"><input type="checkbox" checked={roster} onChange={(e) => set({ roster: e.target.checked })} />{t('Roster')}</label>
-        <label className="check"><input type="checkbox" checked={notes} onChange={(e) => set({ notes: e.target.checked })} />{t('Announcements')}</label>
+        {hasServing && <label className="check"><input type="checkbox" checked={roster} onChange={(e) => set({ roster: e.target.checked })} />{t('Roster')}</label>}
+        {hasAnn && <label className="check"><input type="checkbox" checked={notes} onChange={(e) => set({ notes: e.target.checked })} />{t('Announcements')}</label>}
         {booklet && <label className="check"><input type="checkbox" checked={showSheets} onChange={(e) => setShowSheets(e.target.checked)} />{t('Show print sheets')}</label>}
         <button className="btn primary sm" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
@@ -647,7 +718,7 @@ export default function Bulletin() {
         show={show}
         options={o}
         blocks={blockList ?? []}
-        sections={{ roster, notes, ccli: o.sections.ccli, contact: o.sections.contact, sermonNotes: o.sections.sermon_notes }}
+        include={{ serving: roster, announcements: notes }}
         showSheets={booklet && showSheets}
       />
     </div>
@@ -665,20 +736,26 @@ interface Overrides {
   notes?: boolean;
 }
 
-interface Sections {
-  roster: boolean;
-  notes: boolean;
-  ccli: boolean;
-  contact: boolean;
-  /** use the first spare booklet page for sermon notes */
-  sermonNotes: boolean;
+/** "5 pages — 3 blank pages will be added to make a folded booklet (8 pages)." */
+export function paddingWarning(t: (s: string) => string, total: number, blanks: number): string {
+  return t(blanks === 1
+    ? '{content} pages — 1 blank page will be added to make a folded booklet ({total} pages).'
+    : '{content} pages — {n} blank pages will be added to make a folded booklet ({total} pages).')
+    .replace('{content}', String(total - blanks))
+    .replace('{n}', String(blanks))
+    .replace('{total}', String(total));
 }
 
-function BulletinPages({
-  r, spec, langs, layout, cover, pt, decide, show, options, blocks, sections, showSheets,
+/**
+ * The bulletin's pages. `variant` 'print' (the bulletin screen: page previews plus the print sheets) or 'sample'
+ * (the template editor: pages only, drawn at `scale`).
+ */
+export function BulletinPages({
+  r, spec, langs, layout, cover, pt, decide, show, options, blocks, include, showSheets = false, variant = 'print', scale = 1,
 }: {
   r: RenderedService; spec: PaperSpec; langs: Lang[]; layout: Layout; cover: CoverStyle; pt: number;
-  decide: (it: RenderedItem) => BulletinFull; show: ItemShow; options: BulletinOptions; blocks: BulletinBlock[]; sections: Sections; showSheets: boolean;
+  decide: (it: RenderedItem) => BulletinFull; show: ItemShow; options: BulletinOptions; blocks: BulletinBlock[];
+  include?: { serving: boolean; announcements: boolean }; showSheets?: boolean; variant?: 'print' | 'sample'; scale?: number;
 }) {
   const { t } = useI18n();
   const booklet = !!spec.sheet;
@@ -692,60 +769,46 @@ function BulletinPages({
     document.fonts?.ready.then(() => setFontTick((n) => n + 1)).catch(() => {});
   }, []);
 
-  const banner = cover === 'banner';
-  const annSeparate = options.announcements_section === 'separate';
-  // The back cover is kept as the last page when the template designs one (serving tables, note, blocks), and
-  // whenever page 1 is a banner (the booklet then reads front → inside → back).
-  const strictBack = banner || annSeparate || hasBackPage(options.back_page);
-  const { roster, notes, ccli, contact } = sections;
-  const fmt = useMemo(() => flowFormat(options, cover, notes), [options, cover, notes]);
-  const { flow, back } = useMemo(() => {
-    const expand = (bs: Block[]): Block[] => bs.flatMap((b) => (splitKeys.has(b.key) && b.split ? expand(b.split()) : [b]));
-    const backBlocks = buildBack(r, langs, { roster, notes: notes && !annSeparate, ccli, contact, page: options.back_page, blocks });
-    if (strictBack && backBlocks.length) backBlocks[0] = { ...backBlocks[0], breakBefore: true };
-    return { flow: expand(buildFlow(r, langs, layout, decide, show, fmt)), back: expand(backBlocks) };
-  }, [r, langs, layout, decide, show, fmt, roster, notes, annSeparate, ccli, contact, options.back_page, blocks, strictBack, splitKeys]);
-  const byKey = useMemo(() => new Map([...flow, ...back].map((b) => [b.key, b])), [flow, back]);
+  const { main, back, spareNotes } = useMemo(() => {
+    const expand = (bs: Block[]): Block[] => bs.flatMap((b) => (splitKeys.has(b.key) && b.split ? expand(b.split()).map((x, i) => (i === 0 ? { ...x, breakBefore: b.breakBefore } : x)) : [b]));
+    const built = buildBulletin({ r, langs, layout, decide, show, options, cover, blocks, include });
+    return { main: expand(built.main), back: expand(built.back), spareNotes: built.spareNotes };
+  }, [r, langs, layout, decide, show, options, cover, blocks, include?.serving, include?.announcements, splitKeys]); // eslint-disable-line react-hooks/exhaustive-deps
+  const all = useMemo(() => [...main, ...back], [main, back]);
+  const byKey = useMemo(() => new Map(all.map((b) => [b.key, b])), [all]);
 
   const measureRef = useRef<HTMLDivElement>(null);
-  const [plan, setPlan] = useState<{ pages: PageSpec[]; oversize: boolean } | null>(null);
-  const hasSermon = sections.sermonNotes && r.items.some((i) => i.kind === 'sermon');
+  const [plan, setPlan] = useState<{ pages: PageSpec[]; oversize: boolean; blanks: number } | null>(null);
+  const hasSermon = spareNotes && r.items.some((i) => i.kind === 'sermon');
 
   useLayoutEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const all = [...flow, ...back];
     const hs = Array.from(el.children).map((c) => (c as HTMLElement).getBoundingClientRect().height);
     const tooTall = all.filter((b, i) => hs[i] > capPx && b.split);
     if (tooTall.length) {
       setSplitKeys((s) => new Set([...s, ...tooTall.map((b) => b.key)]));
       return;
     }
-    const oversize = hs.some((h) => h > capPx);
-    const nf = flow.length;
-    const keyPages = (idx: number[][], offset: number) => idx.map((p) => ({ kind: 'flow' as const, keys: p.map((i) => all[i + offset].key) }));
+    const oversize = hs.some((h, i) => h > capPx && !all[i].page);
+    const keep = all.map((b) => !!b.keep);
     const brk = all.map((b) => !!b.breakBefore);
-    const combined = keyPages(paginate(hs, all.map((b) => !!b.keep), capPx, brk), 0);
-    const lead: PageSpec[] = banner ? [] : [{ kind: 'cover' }];
-    let pages: PageSpec[] = [...lead, ...combined];
+    const whole = all.map((b) => !!b.page);
+    const nm = main.length;
+    const toPages = (idx: number[][], offset: number): PageSpec[] => idx.map((p) => ({ kind: 'flow' as const, keys: p.map((i) => all[i + offset].key) }));
+    const combined = toPages(paginate(hs, keep, capPx, brk, whole), 0);
+    let pages = combined;
+    let blanks = 0;
     if (booklet) {
-      const target = Math.ceil(pages.length / 4) * 4;
-      const blanks = (n: number): PageSpec[] => Array.from({ length: n }, (_, i) => ({ kind: 'blank', notes: i === 0 && hasSermon }));
-      const flowPages = keyPages(paginate(hs.slice(0, nf), flow.map((b) => !!b.keep), capPx, brk.slice(0, nf)), 0);
-      const backPages = back.length ? keyPages(paginate(hs.slice(nf), back.map((b) => !!b.keep), capPx, brk.slice(nf)), nf) : [];
-      const n = lead.length + flowPages.length + backPages.length;
-      if (back.length && strictBack) {
-        // The back cover is the last page; spare pages (sermon notes) go before it.
-        pages = [...lead, ...flowPages, ...blanks(Math.ceil(n / 4) * 4 - n), ...backPages];
-      } else if (back.length && pages.length % 4 !== 0 && n <= target) {
-        // Keep the roster / notices on the back cover; put spare pages (sermon notes) before it.
-        pages = [...lead, ...flowPages, ...blanks(target - n), ...backPages];
-      } else {
-        pages = [...pages, ...blanks(target - pages.length)];
-      }
+      const mainPages = toPages(paginate(hs.slice(0, nm), keep.slice(0, nm), capPx, brk.slice(0, nm), whole.slice(0, nm)), 0);
+      const backPages = back.length ? toPages(paginate(hs.slice(nm), keep.slice(nm), capPx, brk.slice(nm), whole.slice(nm)), nm) : [];
+      // spare pages go before the back cover; the first one carries the sermon notes when the layout asks for it
+      const padded = padBooklet<PageSpec>(mainPages, backPages, (i) => ({ kind: 'blank', notes: i === 0 && hasSermon }), { strict: !!back[0]?.breakBefore || !!back[0]?.page, combined });
+      pages = padded.pages;
+      blanks = padded.added - (padded.added > 0 && hasSermon ? 1 : 0);
     }
-    setPlan({ pages, oversize });
-  }, [flow, back, capPx, booklet, banner, strictBack, hasSermon, fontTick, pt, bodyW]);
+    setPlan({ pages, oversize, blanks });
+  }, [all, main.length, back, capPx, booklet, hasSermon, fontTick, pt, bodyW]);
 
   // Season colour (when turned on) accents the cover rule and section headings; ink stays the text colour.
   const docStyle = {
@@ -754,17 +817,14 @@ function BulletinPages({
   } as CSSProperties;
   const renderPage = (n: number, key: string) => {
     const p = plan!.pages[n - 1];
-    const numbered = p.kind !== 'cover' && !(banner && n === 1);
+    const blocksOn = p.kind === 'flow' ? p.keys.map((k) => byKey.get(k)).filter((b): b is Block => !!b) : [];
+    const coverPage = blocksOn.length === 1 && blocksOn[0].page === 'cover';
+    const numbered = !coverPage && !blocksOn.some((b) => b.nonum);
     return (
-      <div key={key} className={`bl-page${p.kind === 'cover' ? ' cover' : ''}`} style={{ width: `${pw}mm`, height: `${ph}mm`, padding: `${spec.margin}mm ${spec.margin}mm 0` }}>
+      <div key={key} className={`bl-page${coverPage ? ' cover' : ''}`} style={{ width: `${pw}mm`, height: `${ph}mm`, padding: `${spec.margin}mm ${spec.margin}mm 0` }}>
         <div className="bl-body" style={{ height: `${ph - 2 * spec.margin - FOOT_MM}mm` }}>
-          {p.kind === 'cover' && <Cover r={r} langs={langs} style={cover} />}
           {p.kind === 'blank' && p.notes && <NotesPage langs={langs} />}
-          {p.kind === 'flow' &&
-            p.keys.map((k) => {
-              const b = byKey.get(k);
-              return b ? <div key={k} className="bb">{b.node}</div> : null;
-            })}
+          {blocksOn.map((b) => <div key={b.key} className={b.page ? 'bb bb-page' : 'bb'}>{b.node}</div>)}
         </div>
         <div className="bl-foot" style={{ height: `${FOOT_MM + spec.margin}mm` }}>{numbered && n}</div>
       </div>
@@ -781,26 +841,51 @@ function BulletinPages({
   .bl-print { display: block !important; }
   .bl-screen, .out-bar { display: none !important; }
 }`;
+  const info = plan && (
+    <div className="bl-info">
+      {booklet && plan.blanks > 0 ? (
+        <span className="badge warn bl-padwarn">{paddingWarning(t, plan.pages.length, plan.blanks)}</span>
+      ) : (
+        <>{plan.pages.length} {t('pages')}</>
+      )}
+      {booklet && variant === 'print' && <> · {plan.pages.length / 4} {t(plan.pages.length === 4 ? 'sheet' : 'sheets')} · {t('Print double-sided, flip on short edge, then fold.')}</>}
+      {plan.oversize && <span className="badge warn" style={{ marginLeft: 8 }}>{t('Some content is taller than a page — reduce the font size.')}</span>}
+    </div>
+  );
+
+  const measure = (
+    // hidden measuring column at the page body width (whole-page blocks are measured as nothing)
+    <div ref={measureRef} className="bl-doc bl-measure" style={{ ...docStyle, width: `${bodyW}mm` }} aria-hidden="true">
+      {all.map((b) => <div key={b.key} className="bb">{b.page ? null : b.node}</div>)}
+    </div>
+  );
+
+  if (variant === 'sample') {
+    return (
+      <div className="bl-sample">
+        {measure}
+        {!plan ? <Loading /> : (
+          <>
+            {info}
+            <div className="bl-doc bl-sample-pages" style={{ ...docStyle, zoom: scale } as CSSProperties}>
+              {plan.pages.map((_, i) => renderPage(i + 1, `p${i + 1}`))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
       <style>{printCss}</style>
-      {/* hidden measuring column at the page body width */}
-      <div ref={measureRef} className="bl-doc bl-measure" style={{ ...docStyle, width: `${bodyW}mm` }} aria-hidden="true">
-        {[...flow, ...back].map((b) => (
-          <div key={b.key} className="bb">{b.node}</div>
-        ))}
-      </div>
+      {measure}
       {!plan ? (
         <Loading />
       ) : (
         <>
           <div className="bl-screen no-print">
-            <div className="bl-info">
-              {plan.pages.length} {t('pages')}
-              {booklet && <> · {plan.pages.length / 4} {t(plan.pages.length === 4 ? 'sheet' : 'sheets')} · {t('Print double-sided, flip on short edge, then fold.')}</>}
-              {plan.oversize && <span className="badge warn" style={{ marginLeft: 8 }}>{t('Some content is taller than a page — reduce the font size.')}</span>}
-            </div>
+            {info}
             <div className="bl-doc bl-preview" style={docStyle}>
               {showSheets
                 ? sheets.map((s, i) => (

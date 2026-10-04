@@ -19,6 +19,15 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - `canon_search_library` finds songs by hymnal number (`"HP 123"`), and `type: "hymnals"` lists hymnbooks.
 - `canon_get_library_item` `parts`: `"index"` or a selection such as `"1-3"`, `"1,4,7-9"`, `"I.1-3"` (WCF chapter.section).
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
+
+## Precedent: past services first
+
+Look at precedent before proposing or writing any plan, and name the services you based it on.
+
+- `canon_find_services {"similar_to": <service id>}` or `{"like": {"date", "sermon_ref", "service_type", "template_id", "title", "song_ids", "text_ids"}}` → the most similar *earlier* services with `score`, `reasons` (e.g. "same Sunday last year", "same sermon book (James)"), `outline` (kind, title, hymn with number / reading / text with parts, minutes) and `roster_summary`. Easter-cycle dates match by distance from Easter.
+- `canon_get_service {"id", "include_similar": true}` → `similar_past`, the top 3 with one-line outlines.
+- `canon_search_library` songs carry `last_used` and `times_12m` (before `before`, default today); `"sort": "least_recent"` (sung before, longest ago first) or `"most_used"`. Avoid hymns sung in the last ~4 weeks unless the church clearly repeats them.
+- `canon_get_library_item` for a text in parts → `history` (parts used per service, planned ones marked) and `next_suggested_label` to continue a catechism / confession series.
 - Dates `YYYY-MM-DD`, times `HH:MM`. Results: `{"ok":true,"data"}` or `{"ok":false,"error","errors":[{index,op,error}]}`.
 
 ## Service items
@@ -29,6 +38,10 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - scripture: `scripture_ref` `"Romans 8:28-39"`; optional `bibles` `{"en":"ESV"}` for this reading.
 - text: `ref_id` (liturgical text id); catechism / confession parts in `stanzas` `["1","2","3"]`.
 - all: `title` (L10n), `duration_min`, `role_id` / `leader`, `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `notes`.
+
+## Weekly bulletin sections
+
+A service's `bulletin_content` is `{section_key: L10n}`: `announcements` (家讯) plus the weekly texts that the bulletin template's page layout defines (e.g. `pastor_note`). `canon_get_service` shows it; `canon_update_service {"id", "patch": {"bulletin_content": {"announcements": {"zh": "1. …\n2. …"}, "pastor_note": {"en": "…"}}}}` sets it — send every section, the object is replaced. Numbered lines print as a list. The Announcements item stays in the order as a timed item; its words print from this section. Fixed texts (welcome, giving details) belong to the template, not the service.
 
 `canon_edit_order` ops: `add {item, position?}`, `update {item_id, item}`, `move {item_id, position}`, `remove {item_id}` — positions 0-based, applied in order, up to 50 ops, all-or-nothing.
 

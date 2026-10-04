@@ -5,13 +5,14 @@ import { useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg, useLatest } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
-import type { L10n, Lang, Line, RenderedService } from '../types-client.ts';
+import type { L10n, Lang, RenderedService } from '../types-client.ts';
 import { blockImageUrl, blockQrUrl, type SlideTheme } from '../../shared/presentation.ts';
 import type { RenderedSlideBlock } from '../../shared/render-types.ts';
 import { Bi, LANG_ATTR, biParts, biText, dateParts, hasAny, langOptions, langsFor, modeFor, speaker, timeRange, type LangMode } from './content.tsx';
 import { logoUrl, useLogo } from '../components/brand.tsx';
 import { postureL10n } from '../../shared/labels.ts';
-import { buildSlides, slideText, type SlideDef } from './slideModel.ts';
+import { buildSlides, mapSlideIndex, slideText, type SlideDef, type SlideLine, type SlideType } from './slideModel.ts';
+import { LOW_FONT_WARN, MIN_FONT, deckFit, largestFitting, scaledCap } from './deckFit.ts';
 import './outputs.css';
 
 const W = 1920;
@@ -64,20 +65,32 @@ export function Stage({ children, className, onClick }: { children: ReactNode; c
 const MAX_FONT: Record<SlideDef['type'], number> = { title: 112, section: 112, sermon: 104, item: 100, lyrics: 80, scripture: 64, text: 68, blocks: 56 };
 const fitCache = new Map<string, number>();
 
-/** Largest font size (binary search) at which the content fits its box. The theme's --slide-scale scales the maximum. */
-function useAutoFit(key: string, maxBase: number) {
+/** Does the content fit its box at the font size it has now? */
+const fitsBox = (box: HTMLElement, fit: HTMLElement) => fit.scrollHeight <= box.clientHeight + 1 && fit.scrollWidth <= box.clientWidth + 1;
+
+/**
+ * Largest font size (binary search) at which the content fits its box. The theme's --slide-scale scales the maximum.
+ * With a deck size (`deck`) the slide uses it as is (it was measured to fit every slide of the deck); `skip` leaves
+ * the size alone (the deck is still being measured, or this face is the measuring copy).
+ */
+function useAutoFit(key: string, maxBase: number, deck: number | null = null, skip = false) {
   const boxRef = useRef<HTMLDivElement>(null);
   const fitRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const box = boxRef.current;
     const fit = fitRef.current;
-    if (!box || !fit) return;
+    if (!box || !fit || skip) return;
     const scale = parseFloat(getComputedStyle(box).getPropertyValue('--slide-scale'));
-    const max = Math.round(maxBase * (scale > 0.2 && scale < 3 ? scale : 1));
+    const max = scaledCap(maxBase, scale);
     const ok = (size: number) => {
       fit.style.fontSize = `${size}px`;
-      return fit.scrollHeight <= box.clientHeight + 1 && fit.scrollWidth <= box.clientWidth + 1;
+      return fitsBox(box, fit);
     };
+    if (deck != null) {
+      // the deck size fits every slide; shrinking is only a safety net (it never lets the words overflow)
+      if (!ok(deck)) fit.style.fontSize = `${largestFitting(ok, MIN_FONT, deck)}px`;
+      return;
+    }
     // A cached size is reused only while it still fits (styles or fonts may have changed).
     const cached = fitCache.get(key);
     if (cached && ok(cached) && (cached >= max || !ok(cached + 1))) {
@@ -97,19 +110,157 @@ function useAutoFit(key: string, maxBase: number) {
     }
     fit.style.fontSize = `${best}px`;
     fitCache.set(key, best);
-  }, [key, maxBase]);
+  }, [key, maxBase, deck, skip]);
   return { boxRef, fitRef };
 }
 
-function Lines({ lines, lang }: { lines: Line[]; lang: Lang }) {
-  let prev: Line['who'] | undefined;
+// ---------------------------------------------------------------- one text size for the whole deck
+
+/** Sizes shared by every slide of a deck: hymn / scripture / liturgy words, and service title / section titles. */
+export interface DeckSizes {
+  body: number | null;
+  title: number | null;
+}
+type FitGroup = keyof DeckSizes;
+/** Which deck size a slide uses (null = it fits on its own: sermon, item title and QR slides). */
+export const fitGroup = (t: SlideType): FitGroup | null =>
+  t === 'lyrics' || t === 'scripture' || t === 'text' ? 'body' : t === 'title' || t === 'section' ? 'title' : null;
+const GROUP_MAX: Record<FitGroup, number> = { body: 80, title: 112 };
+
+/** The deck sizes for the slides below; `pending` while they are measured. No provider = each slide fits on its own. */
+export const DeckSizeCtx = createContext<{ pending: boolean; sizes: DeckSizes } | null>(null);
+
+const deckCache = new Map<string, DeckSizes>();
+
+/** Measure the hidden copies: per group, the largest size at which every slide fits (capped by the theme's size). */
+function measureDeck(root: HTMLElement): DeckSizes {
+  const stage = root.querySelector<HTMLElement>('.slide-stage');
+  const scale = stage ? parseFloat(getComputedStyle(stage).getPropertyValue('--slide-scale')) : 1;
+  const out: DeckSizes = { body: null, title: null };
+  for (const g of ['body', 'title'] as FitGroup[]) {
+    const faces = [...root.querySelectorAll<HTMLElement>(`.sl-measure-face[data-group="${g}"]`)]
+      .map((f) => ({ key: f.dataset.key ?? '', box: f.querySelector<HTMLElement>('.sl-box'), fit: f.querySelector<HTMLElement>('.sl-fit') }))
+      .filter((f): f is { key: string; box: HTMLElement; fit: HTMLElement } => !!f.box && !!f.fit);
+    if (!faces.length) continue;
+    const { size, binding } = deckFit(faces, (f, n) => {
+      f.fit.style.fontSize = `${n}px`;
+      return fitsBox(f.box, f.fit);
+    }, scaledCap(GROUP_MAX[g], scale), MIN_FONT);
+    out[g] = size;
+    if (g === 'body' && size < LOW_FONT_WARN) {
+      console.warn(`[slides] One text size for every slide: ${size}px is small for a projector; the longest slide is ${faces[binding]?.key ?? '?'}. Lower "Lines per slide" in the slide template, or turn off "Same text size on every slide".`);
+    }
+  }
+  return out;
+}
+
+/** Hidden full-size copies of the deck's word and title slides, measured once (and again when fonts or pictures load). */
+function DeckMeasurer({ slides, langs, split, r, themeId, onSizes }: {
+  slides: SlideDef[];
+  langs: Lang[];
+  split: boolean;
+  r: RenderedService;
+  themeId: string;
+  onSizes: (sizes: DeckSizes, done: boolean) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    let live = true;
+    const waiting = [...root.querySelectorAll('img')].filter((i) => !i.complete);
+    let left = waiting.length;
+    let fontsReady = typeof document === 'undefined' || !document.fonts || document.fonts.status === 'loaded';
+    const run = () => {
+      if (live) onSizes(measureDeck(root), fontsReady && left === 0);
+    };
+    const imgDone = () => {
+      left--;
+      run();
+    };
+    waiting.forEach((i) => {
+      i.addEventListener('load', imgDone, { once: true });
+      i.addEventListener('error', imgDone, { once: true });
+    });
+    if (!fontsReady) {
+      document.fonts.ready.then(() => {
+        fontsReady = true;
+        run();
+      });
+    }
+    run();
+    return () => {
+      live = false;
+      waiting.forEach((i) => {
+        i.removeEventListener('load', imgDone);
+        i.removeEventListener('error', imgDone);
+      });
+    };
+  }, [onSizes]);
+  return (
+    <div ref={ref} className="sl-measure" aria-hidden="true">
+      <div className="sl-stage slide-stage" data-theme={themeId || undefined}>
+        {slides.map((s) => {
+          const g = fitGroup(s.type);
+          return g ? (
+            <div key={s.key} className="sl-stage-inner sl-measure-face" data-group={g} data-key={s.key}>
+              <SlideFace s={s} langs={langs} split={split} r={r} measuring />
+            </div>
+          ) : null;
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One text size for the deck (the theme's "Same text size on every slide"): returns the context value for
+ * <DeckSizeCtx.Provider> and the hidden measuring element to render inside the theme provider (null when done).
+ * Measured again when the theme CSS, the languages, the layout or the slides change; cached by that signature.
+ */
+export function useDeckSizes({ slides, langs, split, r, theme, enabled }: {
+  slides: SlideDef[];
+  langs: Lang[];
+  split: boolean;
+  r: RenderedService | null | undefined;
+  theme: { id: string; sig: string };
+  enabled: boolean;
+}) {
+  const logoVersion = useLogo();
+  const sig = useMemo(() => {
+    if (!enabled || !r) return '';
+    const content = slides.filter((s) => fitGroup(s.type)).map((s) => [s.type, s.lines, s.verses, s.big, s.sub, s.meta]);
+    return sigOf(JSON.stringify([theme.id, theme.sig, langs, split, r.date, r.start_time, r.end_time, r.has_logo ? logoVersion : 0, content]));
+  }, [enabled, r, slides, langs, split, theme.id, theme.sig, logoVersion]);
+  const [st, setSt] = useState<{ sig: string; sizes: DeckSizes; done: boolean } | null>(null);
+  const cached = sig ? deckCache.get(sig) : undefined;
+  const sizes = cached ?? (st && st.sig === sig ? st.sizes : null);
+  const done = !!cached || (!!st && st.sig === sig && st.done);
+  const onSizes = useCallback(
+    (sz: DeckSizes, d: boolean) => {
+      if (d) deckCache.set(sig, sz);
+      setSt((prev) => (prev && prev.sig === sig && prev.done === d && prev.sizes.body === sz.body && prev.sizes.title === sz.title ? prev : { sig, sizes: sz, done: d }));
+    },
+    [sig],
+  );
+  const ctx = useMemo(() => (enabled && r ? { pending: !sizes, sizes: sizes ?? { body: null, title: null } } : null), [enabled, r, sizes]);
+  const measurer = enabled && r && !done ? <DeckMeasurer key={sig} slides={slides} langs={langs} split={split} r={r} themeId={theme.id} onSizes={onSizes} /> : null;
+  return { ctx, measurer };
+}
+
+/**
+ * Lines of one language. Speaker labels (Leader / People) show when the item has more than one speaker: on the first
+ * line of each speaker, and again at the top of a slide that continues a line or a speaker from the slide before.
+ */
+function Lines({ lines, lang, speakers }: { lines: SlideLine[]; lang: Lang; speakers: boolean }) {
+  let prev: SlideLine['who'] | undefined;
   return (
     <>
       {lines.map((ln, i) => {
-        const show = ln.who && ln.who !== prev && lines.some((x) => x.who && x.who !== ln.who);
+        const show = speakers && ln.who && ln.who !== prev;
         prev = ln.who;
         return (
-          <div key={i} className={`sl-line${ln.who === 'C' || ln.who === 'A' ? ' strong' : ''}`}>
+          <div key={i} className={`sl-line${ln.who === 'C' || ln.who === 'A' ? ' strong' : ''}${ln.cont ? ' cont' : ''}`}>
             {show && <span className="sl-who slide-who">{speaker(ln.who!, lang)}</span>}
             {ln.text}
           </div>
@@ -126,12 +277,15 @@ function Lines({ lines, lang }: { lines: Line[]; lang: Lang }) {
  * .slide-church, .slide-number, .slide-blocks, .slide-block, .slide-qr, .slide-block-caption, .slide-block-text
  * (see SLIDE_CLASS_HOOKS in shared/presentation.ts).
  */
-export function SlideFace({ s, langs, split, r, num }: { s: SlideDef; langs: Lang[]; split: boolean; r: RenderedService; num?: number }) {
+export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef; langs: Lang[]; split: boolean; r: RenderedService; num?: number; measuring?: boolean }) {
   const logoVersion = useLogo();
   const theme = useContext(SlideThemeCtx);
+  const deck = useContext(DeckSizeCtx);
+  const group = fitGroup(s.type);
+  const deckPx = deck && group ? deck.sizes[group] : null;
   const logo = s.type === 'title' && r.has_logo && logoVersion ? logoUrl(logoVersion) : null;
   const key = `${JSON.stringify(s)}|${langs.join()}|${split}|${logo ?? ''}|${theme.id}:${theme.sig}`;
-  const { boxRef, fitRef } = useAutoFit(key, MAX_FONT[s.type]);
+  const { boxRef, fitRef } = useAutoFit(key, MAX_FONT[s.type], deckPx, !!measuring || (!!deck && !!group && deck.pending));
   const big = (v: L10n | undefined, cls: string) =>
     biParts(v, langs).map((p) => (
       <div key={p.lang} className={`${cls} lang-${p.lang}`} lang={LANG_ATTR[p.lang]}>{p.text}</div>
@@ -150,12 +304,12 @@ export function SlideFace({ s, langs, split, r, num }: { s: SlideDef; langs: Lan
           <Fragment key={l}>
             {i > 0 && !split && <div className="sl-divider" />}
             <div className={`sl-lang lang-${l}`} lang={LANG_ATTR[l]}>
-              {s.lines?.[l] && <Lines lines={s.lines[l]!} lang={l} />}
+              {s.lines?.[l] && <Lines lines={s.lines[l]!} lang={l} speakers={!!s.speakers} />}
               {s.verses?.[l] && (
                 <p className="sl-verses">
                   {s.verses[l]!.map((v, vi) => (
                     <Fragment key={vi}>
-                      <sup className="slide-verse-num">{v.n}</sup>
+                      {v.n && <sup className="slide-verse-num">{v.n}</sup>}
                       {v.text}{' '}
                     </Fragment>
                   ))}
@@ -208,6 +362,7 @@ export function SlideFace({ s, langs, split, r, num }: { s: SlideDef; langs: Lan
       <div className="sl-head slide-heading">
         {s.heading && <Bi v={s.heading} langs={langs} sep="  ·  " />}
         {s.label && <span className="sl-label slide-stanza-label">{biText(s.label, langs, ' ')}</span>}
+        {s.cont && s.type === 'lyrics' && <span className="sl-cont slide-cont" aria-label="continued">…</span>}
         {s.posture && <span className="sl-posture slide-posture">{biText(postureL10n(s.posture, langs), langs, ' · ')}</span>}
       </div>
       <div className="sl-box" ref={boxRef}>
@@ -270,7 +425,7 @@ export default function Slides() {
   const presenter = sp.get('presenter') === '1';
   const { t, lt } = useI18n();
   const { data: r, error } = useApi<RenderedService>(`/services/${id}/render`);
-  const { data: themes } = useApi<SlideTheme[]>('/slide-themes');
+  const { data: themes, error: themesError } = useApi<SlideTheme[]>('/slide-themes');
 
   const [state, setState] = useState<SyncState>({ idx: 0, blank: 'none', mode: 'both', split: false, theme: null });
   const [modeInit, setModeInit] = useState(false);
@@ -302,7 +457,10 @@ export default function Slides() {
   }, [r, modeInit]);
 
   const langs = useMemo(() => langsFor(state.mode, r?.languages ?? ['en']), [state.mode, r]);
-  const slides = useMemo(() => (r ? buildSlides(r, langs) : []), [r, langs]);
+  // lines per slide come from the theme; the limit depends on how many languages are shown
+  const vars = theme?.vars;
+  const slides = useMemo(() => (r ? buildSlides(r, langs, vars) : []), [r, langs, vars]);
+  const deck = useDeckSizes({ slides, langs, split: state.split, r, theme: themeCtx, enabled: vars?.uniform_size ?? true });
   const n = slides.length;
   const idx = Math.min(state.idx, Math.max(0, n - 1));
 
@@ -337,6 +495,11 @@ export default function Slides() {
     [stateRef],
   );
   const go = useCallback((i: number) => update({ idx: Math.max(0, Math.min(n - 1, i)), blank: 'none' }), [update, n]);
+  /** Another language mode re-chunks the slides (more lines fit with one language): stay on the same words. */
+  const setMode = (m: LangMode) => {
+    if (!r || m === state.mode) return;
+    update({ mode: m, idx: mapSlideIndex(slides, idx, buildSlides(r, langsFor(m, r.languages), vars)) });
+  };
 
   // ---- keyboard
   const [digits, setDigitsState] = useState('');
@@ -412,7 +575,7 @@ export default function Slides() {
   }, [r, presenter, t]);
 
   if (error) return <div className="out-page"><ErrorBox error={error} /></div>;
-  if (!r || (themeId != null && themeCss == null)) return <Loading />;
+  if (!r || (themeId != null && themeCss == null) || (!themes && !themesError)) return <Loading />;
 
   const cur = slides[idx];
   const next = slides[idx + 1];
@@ -434,7 +597,7 @@ export default function Slides() {
   );
   const options = (
     <>
-      {r.languages.length > 1 && <Seg<LangMode> value={state.mode} onChange={(m) => update({ mode: m })} options={langOptions(r.languages, t)} />}
+      {r.languages.length > 1 && <Seg<LangMode> value={state.mode} onChange={setMode} options={langOptions(r.languages, t)} />}
       {langs.length > 1 && (
         <Seg<'stacked' | 'side'> value={state.split ? 'side' : 'stacked'} onChange={(v) => update({ split: v === 'side' })} options={[{ value: 'stacked', label: t('Stacked') }, { value: 'side', label: t('Side by side') }]} />
       )}
@@ -466,7 +629,9 @@ export default function Slides() {
   if (presenter) {
     return (
       <SlideThemeCtx.Provider value={themeCtx}>
+      <DeckSizeCtx.Provider value={deck.ctx}>
       {themeStyle}
+      {deck.measurer}
       <PresenterView
         r={r}
         nextFace={next ? face(next) : null}
@@ -483,13 +648,16 @@ export default function Slides() {
         overview={overviewGrid}
         digits={digits}
       />
+      </DeckSizeCtx.Provider>
       </SlideThemeCtx.Provider>
     );
   }
 
   return (
     <SlideThemeCtx.Provider value={themeCtx}>
+    <DeckSizeCtx.Provider value={deck.ctx}>
     {themeStyle}
+    {deck.measurer}
     <div className={`sl-root${barOn ? '' : ' idle'}`} style={{ '--sl-root-bg': theme?.vars.bg ?? '#000' } as CSSProperties}>
       <div className="sl-main" onClick={() => !overview && go(idx + 1)}>
         <Stage className="sl-main-stage">
@@ -510,6 +678,7 @@ export default function Slides() {
       </div>
       {overviewGrid}
     </div>
+    </DeckSizeCtx.Provider>
     </SlideThemeCtx.Provider>
   );
 }
