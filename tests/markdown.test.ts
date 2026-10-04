@@ -42,3 +42,9 @@ test('slugs keep CJK text; sections split at h2 / h3 with searchable text', () =
   assert.equal(s[2].parent, 'Plan');
   assert.match(s[1].haystack, /use the planner/);
 });
+
+test('an explicit {#anchor} on a heading sets its id and is not shown', async () => {
+  const { parse } = await import('../src/guide/markdown.ts');
+  const [h] = parse('### 投影模板 {#slide-templates}');
+  assert.deepEqual(h, { type: 'heading', level: 3, text: '投影模板', id: 'slide-templates' });
+});

@@ -1,6 +1,6 @@
 ---
 name: canon-church-assistant
-description: Work in Canon, the church's service planner and registers, through the Canon MCP connector (tools named canon_*). Use whenever the user asks to plan or edit a worship service / order of worship / 崇拜程序, choose or suggest hymns, psalms or readings for a Sunday or a sermon text, proofread a service or bulletin (程序单) before printing, plan a catechism series (Westminster Shorter / Larger Catechism, 要理问答), check or fill the volunteer rota / roster / 事奉表 (gaps, double bookings, fairness, who is away), look up the hymn library, hymnal numbers or Bible passages, fill missing translations of liturgy, review groups, committees, fellowships (团契) and cell groups (小组), or follow up members' birthdays and visitors (会友关怀) — even if the user doesn't say "Canon".
+description: Work in Canon, the church's service planner and registers, through the Canon MCP connector (tools named canon_*). Use whenever the user asks to plan or edit a worship service / order of worship / 崇拜／聚会程序, choose or suggest hymns, psalms or readings for a Sunday or a sermon text, proofread a service or bulletin (次序单) before printing, plan a catechism series (Westminster Shorter / Larger Catechism, 要理问答), check or fill the volunteer rota / roster / 事奉表 (gaps, double bookings, fairness, who is away), look up the hymn library, hymnal numbers or Bible passages, fill missing translations of liturgy, review groups, committees, fellowships (团契) and cell groups (小组), or follow up members' birthdays and visitors (会友关怀) — even if the user doesn't say "Canon".
 ---
 
 # Canon church assistant
@@ -22,7 +22,8 @@ Canon is a local-first church system (services → bulletins and slides, library
 - **Copyright**: never invent or reconstruct hymn words or licensed Bible text; quote scripture via `canon_bible`. Translate only public-domain or church-owned texts, tagged `translation-draft` for review.
 - **Privacy (PDPA)**: contact details and birthdays appear only if the administrator exposes them; even then, use the minimum and don't copy personal data elsewhere. You cannot send e-mail — staff send reminders from the service's Team & roster tab.
 - Leave services as `draft` unless asked to mark them `final`.
-- **Weekly bulletin sections** (announcements 家讯, a pastor's note) are the service's `bulletin_content` `{section_key: L10n}`: read it with `canon_get_service`, set it with `canon_update_service` (send every section). See `references/tools.md`.
+- **Files to hand over**: `canon_get_service {"id", "format": "downloads"}` gives download links for the slides (PowerPoint), the bulletin (Word), FreeShow and the run sheet — offer them after planning or proofreading. The links expire and need no sign-in, so share them only with the user.
+- **Weekly bulletin sections** (announcements 家讯, a pastor's note) are the service's `bulletin_content` `{section_key: L10n}`: read it with `canon_get_service`, set it with `canon_update_service` (sections and languages merge — send only what changes). See `references/tools.md`.
 
 ## Workflows
 
@@ -35,11 +36,12 @@ Each has an MCP prompt of the same name when your access allows it — use the p
 | Check the rota | `roster_check` |
 | Proofread before printing | `proofread_service` |
 | Catechism series over coming weeks | `catechism_series` |
+| Bring in an existing bulletin or slide deck | `convert_existing` |
 | Fill missing translations | `translate_library` |
 | Birthdays and visitors to follow up | `member_care` |
 | Groups and committees overview | `group_overview` |
 
 ## References
 
-- `references/playbooks.md` — the eight playbooks step by step.
+- `references/playbooks.md` — the nine playbooks step by step.
 - `references/tools.md` — the tool catalogue by module, precedent lookups, item kinds, the Reformed order of worship and troubleshooting.

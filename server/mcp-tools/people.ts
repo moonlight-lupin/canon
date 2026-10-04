@@ -7,7 +7,7 @@ import type { Person } from '../../shared/types.ts';
 import { tx } from '../db.ts';
 import * as reg from '../repo/registers.ts';
 import * as grp from '../repo/groups.ts';
-import { COWORKER_PII, HOUSEHOLD_PII, Id, InputError, Limit, PERSON_PII, RO, WRITE, redact, type ToolDef } from './common.ts';
+import { COWORKER_PII, HOUSEHOLD_PII, Id, InputError, Limit, PERSON_PII, RO, WRITE, mergeL10nFields, redact, type ToolDef } from './common.ts';
 
 const MemberStatus = z.enum(['member', 'regular', 'visitor', 'inactive', 'transferred', 'deceased']);
 
@@ -98,7 +98,7 @@ export const PEOPLE_TOOLS: ToolDef[] = [
     description: 'Add a person (no id; fields.first_name required; native_name for a name in another script, e.g. Chinese; status defaults to regular) or update one (id; only the given fields change, e.g. status, household_id + household_role, membership / baptism dates). Search with canon_find_people first to avoid duplicates. Returns the person. Example: {"id":45,"fields":{"status":"member","membership_date":"2026-10-04"}}.',
     input: { id: Id.optional(), fields: S.PersonInput.partial().default({}) },
     handler: (a, ctx) => {
-      const p = a.id ? reg.people.update(a.id, a.fields) : reg.people.insert(S.PersonInput.parse(a.fields));
+      const p = a.id ? reg.people.update(a.id, mergeL10nFields(reg.people.get(a.id), a.fields, ['honorific'])) : reg.people.insert(S.PersonInput.parse(a.fields));
       return { ...personOut(p, ctx.pii), created: a.id ? undefined : true };
     },
   },

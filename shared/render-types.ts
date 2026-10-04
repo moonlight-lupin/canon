@@ -82,6 +82,8 @@ export interface RenderedItem {
   paras?: Partial<Record<Lang, Paras>>;
   /** QR codes / pictures / notes shown on one slide after the item's own (deleted blocks are left out) */
   slide_blocks: RenderedSlideBlock[];
+  /** this item's own slide background (a picture block), else the template's */
+  slide_bg?: { id: number; v: string } | null;
 }
 
 export interface RenderedService {

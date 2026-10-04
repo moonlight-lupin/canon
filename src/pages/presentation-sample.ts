@@ -98,8 +98,8 @@ export function sampleService(langs: Lang[], churchName: L10n, seasonColours: bo
     item(9, '10:52', 'announcements', T('Announcements', '报告', '報告'), {
       paras: parasBy(T(
         '1. Prayer meeting after the service in the hall.\n2. Bible study on Wednesday at 8pm.',
-        '1. 崇拜后在礼堂有祷告会。\n2. 周三晚上8点查经。',
-        '1. 崇拜後在禮堂有禱告會。\n2. 週三晚上8點查經。',
+        '1. 聚会后在礼堂有祷告会。\n2. 周三晚上8点查经。',
+        '1. 聚會後在禮堂有禱告會。\n2. 週三晚上8點查經。',
       ), langs),
     }),
   ];
@@ -131,11 +131,11 @@ export function sampleService(langs: Lang[], churchName: L10n, seasonColours: bo
       date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
       roles: [
         { role: T('Preacher', '讲员', '講員'), people: [T('Ps. Chen', '卢传道', '盧傳道')] },
-        { role: T('Worship Leader', '主席', '主席'), people: [T('Bro. Tan', '陈弟兄', '陳弟兄')] },
+        { role: T('Liturgist', '主席', '主席'), people: [T('Bro. Tan', '陈弟兄', '陳弟兄')] },
         { role: T('Musician', '司琴', '司琴'), people: [T('Sis. Ong', '王姐妹', '王姊妹')] },
       ],
     },
-    role_names: [T('Usher', '招待员', '招待員'), T('Welcome', '迎宾员', '迎賓員'), T('Preacher', '讲员', '講員'), T('Worship Leader', '主席', '主席'), T('Musician', '司琴', '司琴'), T('Scripture Reader', '读经员', '讀經員')],
+    role_names: [T('Usher', '招待员', '招待員'), T('Welcome', '迎宾员', '迎賓員'), T('Preacher', '讲员', '講員'), T('Liturgist', '主席', '主席'), T('Musician', '司琴', '司琴'), T('Scripture Reader', '读经员', '讀經員')],
     notices: [],
     notes: null,
     season: { key: season.key, name: season.name, color: seasonColours ? season.color : null },

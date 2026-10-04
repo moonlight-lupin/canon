@@ -211,18 +211,18 @@
 .sl-root { position: fixed; inset: 0; background: var(--sl-root-bg, #000); overflow: hidden; }
 .sl-root.idle, .sl-root.idle * { cursor: none; }
 .sl-main { position: absolute; inset: 0; display: grid; place-items: center; cursor: pointer; }
-.sl-main-stage { width: min(100vw, calc(100vh * 16 / 9)); }
+.sl-main-stage { width: min(100vw, calc(100vh * var(--stage-ratio, 1.7778))); }
 .sl-stage { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: var(--slide-bg); }
 .sl-stage-inner { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .sl-face {
   --s-bg: var(--slide-bg); --s-fg: var(--slide-fg); --s-accent: var(--slide-accent); --s-muted: var(--slide-muted);
-  width: 1920px; height: 1080px; box-sizing: border-box; padding: 56px 120px 52px;
+  width: 100%; height: 100%; box-sizing: border-box; padding: 56px 120px 52px;
   display: flex; flex-direction: column; color: var(--s-fg); font-family: var(--slide-font-latin, var(--serif));
   background-color: var(--s-bg);
   background-image: linear-gradient(var(--slide-bg-overlay), var(--slide-bg-overlay)), var(--slide-bg-image);
   background-size: auto, var(--slide-bg-size); background-repeat: no-repeat, var(--slide-bg-repeat); background-position: center, center;
 }
-.sl-black { width: 1920px; height: 1080px; background: #000; }
+.sl-black { width: 100%; height: 100%; background: #000; }
 .sl-head { height: 44px; flex: none; display: flex; justify-content: space-between; align-items: baseline; gap: 40px; font: 500 28px var(--sans); color: var(--s-accent); letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; }
 .sl-head .bi-cjk { letter-spacing: 0.08em; }
 .sl-label { font-style: italic; }
@@ -231,6 +231,8 @@
 .sl-measure { position: fixed; left: -40000px; top: 0; width: 1920px; height: 1080px; overflow: hidden; visibility: hidden; pointer-events: none; z-index: -1; }
 .sl-measure .sl-stage { width: 1920px; }
 .sl-measure-face { contain: strict; width: 1920px; height: 1080px; }
+/* 4:3 slides: a narrower stage, a little less side padding */
+.sl-stage[data-aspect="4:3"] .sl-face { padding-left: 90px; padding-right: 90px; }
 @media print { .sl-measure { display: none; } }
 .sl-posture { display: var(--slide-show-posture); margin-left: 0.8em; padding: 0.05em 0.6em; border: 2px solid var(--slide-accent); border-radius: 0.4em; color: var(--slide-accent); font-style: normal; }
 .sl-box { flex: 1; min-height: 0; margin: 20px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }

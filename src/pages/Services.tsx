@@ -28,7 +28,7 @@ export default function Services() {
       {error && <ErrorBox error={error} />}
       {!data ? <Loading /> : !data.length ? (
         <div className="card">
-          <Empty title={lang === 'zh' ? '尚无崇拜程序' : 'Plan your first service'}>
+          <Empty title={lang === 'zh' ? '尚无聚会程序' : 'Plan your first service'}>
             <p>{lang === 'zh' ? '选择一个模板，系统会自动放入宣召、信经、祝福等礼文。' : 'Pick a template and Canon drops in the call to worship, creed, benediction and the rest.'}</p>
             {canEdit && <button className="btn primary" onClick={() => setParams({ new: '' })}><Icon name="plus" />{t('New service')}</button>}
           </Empty>
@@ -72,7 +72,9 @@ export function NewServiceDialog({ onClose, initialTemplate }: { onClose: () => 
   const [preacher, setPreacher] = useState('');
   const [sermonTitle, setSermonTitle] = useState<L10n>({});
   const [sermonRef, setSermonRef] = useState('');
-  const tid = templateId ?? templates?.[0]?.id ?? null;
+  const { settings } = useSession();
+  const churchDefault = templates?.find((x) => x.id === settings?.default_service_template_id)?.id ?? templates?.[0]?.id ?? null;
+  const tid = templateId ?? churchDefault;
 
   const create = async () => {
     const r = await run(() => api.post<{ service: ServiceFull; missing: string[] }>('/services', {
@@ -103,7 +105,7 @@ export function NewServiceDialog({ onClose, initialTemplate }: { onClose: () => 
           {(templates ?? []).map((tp) => (
             <button key={tp.id} type="button" className="card" onClick={() => setTemplateId(tp.id)}
               style={{ textAlign: 'left', cursor: 'pointer', padding: '12px 14px', borderColor: tid === tp.id ? 'var(--reed)' : undefined, background: tid === tp.id ? 'var(--reed-wash)' : undefined, font: 'inherit', color: 'inherit' }}>
-              <div className="row between"><strong className="serif"><Bi v={tp.name} /></strong><span className="small muted">{tp.start_time}</span></div>
+              <div className="row between"><strong className="serif"><Bi v={tp.name} /></strong><span className="small muted">{tp.id === churchDefault && <span className="badge reed" style={{ marginRight: 6 }}>{t('Church default')}</span>}{tp.start_time}</span></div>
               <div className="small muted">{lt(tp.description)}</div>
               <div className="small muted" style={{ marginTop: 4 }}>{tp.items.length} {t('Items').toLowerCase()} · {tp.items.reduce((a, i) => a + i.duration_min, 0)} {t('min')}</div>
             </button>

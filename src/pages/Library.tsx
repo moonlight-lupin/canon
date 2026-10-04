@@ -223,7 +223,7 @@ function SongEditor({ song, hymnals, canEdit, onClose, onSaved }: { song: Partia
           </div>
         )}
         <h3>{t('Stanzas')}</h3>
-        <div className="field-hint">{lt({ en: "Use label R for a refrain. Paste the Chinese words beside the English so bulletins and slides show both.", zh: '副歌标签请用 R。中英文并排输入，程序单与投影即可双语显示。' })}</div>
+        <div className="field-hint">{lt({ en: "Use label R for a refrain. Paste the Chinese words beside the English so bulletins and slides show both.", zh: '副歌标签请用 R。中英文并排输入，次序单与投影即可双语显示。' })}</div>
         {stanzas.map((st, i) => (
           <div key={i} className="card" style={{ padding: 12 }}>
             <div className="row" style={{ marginBottom: 6 }}>

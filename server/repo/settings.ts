@@ -46,6 +46,8 @@ export interface Settings {
   /** church defaults for presentation; null = built-in */
   default_slide_theme_id: number | null;
   default_bulletin_template_id: number | null;
+  /** the service template New service starts from; null = the first one */
+  default_service_template_id: number | null;
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
   trust_proxy: boolean;
   smtp: SmtpSettings;
@@ -71,6 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
   public_url: '',
   default_slide_theme_id: null,
   default_bulletin_template_id: null,
+  default_service_template_id: null,
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {
@@ -108,6 +111,11 @@ export function getSettings(): Settings {
   if (!out.default_languages.length) out.default_languages = out.languages.slice(0, 2);
   cache = out;
   return out;
+}
+
+/** Forget the cached settings (after the database was replaced by a restored backup). */
+export function clearSettingsCache() {
+  cache = null;
 }
 
 export function updateSettings(patch: Partial<Settings>): Settings {

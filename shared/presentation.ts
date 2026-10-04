@@ -57,7 +57,13 @@ export interface SlideThemeVars {
   max_lines_single: number;
   /** one text size for all hymn, scripture and liturgy slides of a service (else each slide fits on its own) */
   uniform_size: boolean;
+  /** screen shape: widescreen 16:9 (1920 × 1080) or the older 4:3 (1440 × 1080) projectors */
+  aspect: SlideAspect;
 }
+
+export type SlideAspect = '16:9' | '4:3';
+/** Logical stage size of a slide per screen shape (the height is always 1080). */
+export const ASPECT_WIDTH: Record<SlideAspect, number> = { '16:9': 1920, '4:3': 1440 };
 
 export interface SlideTheme {
   id: number;
@@ -69,6 +75,8 @@ export interface SlideTheme {
   updated_at: string;
   /** stable key of a built-in theme ('ink', 'papyrus', 'contrast', 'season'); built-ins can't be changed or deleted */
   builtin?: string | null;
+  /** left out of the pickers (services that chose it keep it) */
+  hidden?: boolean;
 }
 
 /** Safe system font stacks (Canon works offline, so no web fonts). '' = the built-in default. */
@@ -123,6 +131,7 @@ export const DEFAULT_THEME_VARS: SlideThemeVars = {
   max_lines_multi: DEFAULT_LINE_LIMITS.max_lines_multi,
   max_lines_single: DEFAULT_LINE_LIMITS.max_lines_single,
   uniform_size: true,
+  aspect: '16:9',
 };
 
 /** "Papyrus" — the original light slides. */
@@ -182,6 +191,7 @@ export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAUL
     max_lines_multi: Math.round(clamp(v.max_lines_multi, 1, 6, base.max_lines_multi ?? DEFAULT_LINE_LIMITS.max_lines_multi)),
     max_lines_single: Math.round(clamp(v.max_lines_single, 1, 8, base.max_lines_single ?? DEFAULT_LINE_LIMITS.max_lines_single)),
     uniform_size: typeof v.uniform_size === 'boolean' ? v.uniform_size : (base.uniform_size ?? true),
+    aspect: v.aspect === '4:3' || v.aspect === '16:9' ? v.aspect : (base.aspect ?? '16:9'),
   };
 }
 
@@ -197,7 +207,7 @@ export const themeBgUrl = (id: number, version: string) => `/api/assets/${themeB
  */
 export const SLIDE_CLASS_HOOKS: { cls: string; what: L10n }[] = [
   { cls: '.slide', what: { en: 'every slide (the whole 1920×1080 face)', zh: '每张投影片（整个 1920×1080 画面）' } },
-  { cls: '.slide-title', what: { en: 'big titles: service, section, sermon and item titles', zh: '大标题：崇拜、段落、讲道、项目标题' } },
+  { cls: '.slide-title', what: { en: 'big titles: service, section, sermon and item titles', zh: '大标题：聚会、段落、讲道、项目标题' } },
   { cls: '.slide-section', what: { en: 'a section heading slide (on .slide)', zh: '段落标题投影片（在 .slide 上）' } },
   { cls: '.slide-heading', what: { en: 'the small heading at the top (hymn title, reading)', zh: '顶部小标题（诗歌名、读经）' } },
   { cls: '.slide-lyrics', what: { en: 'hymn words', zh: '诗歌歌词' } },
@@ -462,6 +472,8 @@ export function compileThemeCss(scope: string, vars: SlideThemeVars, css: string
     ['--slide-bg-size', v.bg_fit === 'tile' ? 'auto' : v.bg_fit],
     ['--slide-bg-repeat', v.bg_fit === 'tile' ? 'repeat' : 'no-repeat'],
     ['--slide-bg-overlay', bgUrl ? `color-mix(in srgb, ${v.bg} ${Math.round(v.bg_dim * 100)}%, transparent)` : 'transparent'],
+    // an item's own background picture fades like the template's (at least 30%, so words stay readable)
+    ['--slide-item-bg-overlay', `color-mix(in srgb, ${v.bg} ${Math.round(Math.max(v.bg_dim, 0.3) * 100)}%, transparent)`],
     ['--slide-show-ref', show(v.footer_reference)],
     ['--slide-show-church', show(v.footer_church)],
     ['--slide-show-number', show(v.footer_number)],
@@ -490,7 +502,7 @@ export type HymnNumberStyle = 'abbr' | 'number' | 'none';
 export interface BulletinBackPage {
   /** this service's serving table: role names (English, or as the role is called in any language), e.g. ["Usher", "Welcome"] */
   this_week_roles: string[];
-  /** next service's roster table ("Serving on 11 Oct" / "10月11日 服事人员"), e.g. ["Preacher", "Worship Leader"] */
+  /** next service's roster table ("Serving on 11 Oct" / "10月11日 服事人员"), e.g. ["Preacher", "Liturgist"] */
   next_week_roles: string[];
   /** a bold centred line, e.g. "敬请留下参加祷告会！" */
   note: L10n;
@@ -555,6 +567,8 @@ export interface BulletinTemplate {
   updated_at: string;
   /** stable key of a built-in template ('full', 'order', 'large') */
   builtin?: string | null;
+  /** left out of the pickers (services that chose it keep it) */
+  hidden?: boolean;
 }
 
 export const DEFAULT_BANNER = { bg: '#141414', fg: '#ffffff' };

@@ -32,6 +32,7 @@ import { songUsage } from './repo/history.ts';
 import { getSettings, updateSettings, type Settings } from './repo/settings.ts';
 import { serviceDocx } from './export/docx.ts';
 import { freeshowProject } from './export/freeshow.ts';
+import { fileForToken, buildFile, type DownloadFile } from './repo/downloads.ts';
 import { listGrants, revokeGrant, externalBase } from './oauth.ts';
 import { toolCatalog } from './mcp.ts';
 
@@ -107,6 +108,18 @@ api.get('/share/:token', h((req) => {
   const full = svc.serviceByShareToken(String(req.params.token));
   return renderService(full);
 }));
+
+/** Send a built file as a download. */
+function sendFile(res: Response, f: DownloadFile) {
+  res.setHeader('Content-Type', f.mime);
+  res.setHeader('Content-Disposition', `attachment; filename="${f.name}"`);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.send(f.body);
+}
+
+// Short-lived download links (made by AI agents: canon_get_service format "downloads"): one file each, no sign-in needed.
+api.get('/dl/:token', h(async (req, res) => sendFile(res, await fileForToken(String(req.params.token)))));
 
 // Public assets such as the church logo (used by the share page and login screen).
 api.use(publicDesignRoutes);
@@ -326,7 +339,17 @@ api.get('/templates', h(() => svc.templates.list('', [], 'id')));
 api.get('/templates/:id', h((req) => svc.templates.get(id(req))));
 api.post('/templates', h((req) => svc.templates.insert({ description: {}, items: [], ...S.TemplateInput.parse(req.body) })));
 api.patch('/templates/:id', h((req) => svc.templates.update(id(req), S.TemplateInput.partial().parse(req.body))));
-api.delete('/templates/:id', h((req) => svc.templates.remove(id(req))));
+api.delete('/templates/:id', h((req) => {
+  const tid = id(req);
+  svc.templates.remove(tid);
+  if (getSettings().default_service_template_id === tid) updateSettings({ default_service_template_id: null });
+}));
+/** The church's usual service template: New service starts from it (administrators). */
+api.put('/templates-default', requireAdmin, h((req) => {
+  const tid = z.object({ template_id: z.number().int().positive().nullable() }).parse(req.body).template_id;
+  if (tid != null) svc.templates.get(tid);
+  return { default_service_template_id: updateSettings({ default_service_template_id: tid }).default_service_template_id };
+}));
 
 // ---------------------------------------------------------------- services
 
@@ -352,6 +375,10 @@ api.get('/services/:id/export.docx', h(async (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', `attachment; filename="order-of-service-${r.date}.docx"`);
   res.send(buf);
+}));
+api.get('/services/:id/slides.pptx', h(async (req, res) => {
+  const langs = typeof req.query.langs === 'string' && req.query.langs ? (req.query.langs.split(',').slice(0, MAX_SERVICE_LANGS) as Lang[]) : null;
+  sendFile(res, await buildFile(id(req), 'slides_pptx', langs));
 }));
 api.get('/services/:id/freeshow.project', h(async (req, res) => {
   const r = renderService(id(req));

@@ -126,12 +126,19 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
   const notices = new Set<string>();
   const hymnalById = new Map(hymnals.list().map((h) => [h.id, h]));
   // QR codes / pictures / notes for the slides: loaded once, only when some item uses them
-  const blockById = svc.items.some((it) => it.slide_blocks?.length) ? new Map(listBlocks().map((b) => [b.id, b])) : new Map<number, BulletinBlock>();
+  const blockById = svc.items.some((it) => it.slide_blocks?.length || it.slide_bg) ? new Map(listBlocks().map((b) => [b.id, b])) : new Map<number, BulletinBlock>();
   const slideBlocks = (ids: number[] | undefined): RenderedSlideBlock[] =>
     [...new Set(ids ?? [])].flatMap((bid) => {
       const b = blockById.get(bid);
       return b ? [slideBlock(b, langs)] : [];
     });
+
+  const slideBackground = (bid: number | null | undefined): RenderedItem['slide_bg'] => {
+    const b = bid ? blockById.get(bid) : undefined;
+    if (!b || b.kind !== 'image') return null;
+    const r = slideBlock(b, langs);
+    return r.has_image ? { id: b.id, v: r.v } : null;
+  };
 
   const items: RenderedItem[] = svc.items.map((it, i) => {
     const role = it.role_id ? roles.find(it.role_id) : undefined;
@@ -156,6 +163,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
       bulletin_full: bulletinDecision(it.kind, it.bulletin_text, bulletin.options),
       on_slides: it.on_slides,
       slide_blocks: slideBlocks(it.slide_blocks),
+      slide_bg: slideBackground(it.slide_bg),
     };
 
     if (it.kind === 'song' && it.ref_id) {

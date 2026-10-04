@@ -51,12 +51,12 @@ const WORDS: Record<string, Words> = {
   zh: {
     subject: '服事提醒：{title}（{date}）',
     greeting: '{name} 平安！',
-    intro: '感谢您的摆上。提醒您已被安排在以下崇拜中服事：',
+    intro: '感谢您的摆上。提醒您已被安排在以下聚会中服事：',
     role: '您的岗位',
     roles: '您的岗位',
     items: '您负责的程序',
     note: '请提早 30 分钟到达。',
-    share: '崇拜程序',
+    share: '聚会程序',
     closing: '如果您无法服事，请尽早通知我们。',
     signoff: '主内平安，',
     test_subject: 'Canon 测试邮件',
@@ -92,7 +92,7 @@ export function defaultNotes(): L10n {
   return Object.fromEntries(getSettings().languages.map((l) => [l, words(l).note]));
 }
 
-const GENERIC_TITLE: L10n = { en: 'Worship service', zh: '主日崇拜', ms: 'Kebaktian' };
+const GENERIC_TITLE: L10n = { en: 'Worship service', zh: '聚会', ms: 'Kebaktian' };
 
 /** A value in `lang`, else English, else anything. */
 function pickAny(v: L10n | null | undefined, lang: Lang): string {

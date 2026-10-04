@@ -208,9 +208,9 @@ const MODULE_LABEL: Record<ModuleKey, [string, string]> = {
   coworkers: ['Co-workers register', '同工名册'],
   groups: ['Groups & committees', '小组与委员会'],
   volunteers: ['Volunteer rota', '义工轮值'],
-  services: ['Service planner', '崇拜程序'],
+  services: ['Service planner', '聚会程序'],
   library: ['Song & liturgy library', '诗歌与礼文库'],
-  templates: ['Service templates', '崇拜模板'],
+  templates: ['Service templates', '聚会模板'],
 };
 const ACCESS_LABEL: Record<ModuleAccess, [string, string]> = {
   off: ['Hidden', '隐藏'],

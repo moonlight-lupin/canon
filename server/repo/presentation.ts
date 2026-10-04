@@ -13,15 +13,17 @@ import { getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const slideThemes = table<SlideTheme>({
   name: 'slide_themes',
-  cols: ['name', 'base', 'vars', 'css', 'sort'],
+  cols: ['name', 'base', 'vars', 'css', 'sort', 'hidden'],
   json: ['name', 'vars'],
+  bool: ['hidden'],
   touch: true,
 });
 
 export const bulletinTemplates = table<BulletinTemplate>({
   name: 'bulletin_templates',
-  cols: ['name', 'description', 'options', 'sort'],
+  cols: ['name', 'description', 'options', 'sort', 'hidden'],
   json: ['name', 'description', 'options'],
+  bool: ['hidden'],
   touch: true,
 });
 
@@ -246,12 +248,32 @@ export function resolveBulletinTemplate(svc: Pick<Service, 'bulletin_template_id
 
 // ---------------------------------------------------------------- church defaults
 
+/**
+ * Hide a template from the pickers (or show it again). Services that already use it keep it. The church default
+ * can't be hidden: choose another default first.
+ */
+export function setThemeHidden(id: number, hidden: boolean): SlideTheme {
+  slideThemes.get(id);
+  if (hidden && resolveSlideThemeId(null) === id) throw new BadRequest("This is the church default, so it can't be hidden. Set another template as the church default first.");
+  slideThemes.update(id, { hidden });
+  return getTheme(id);
+}
+export function setTemplateHidden(id: number, hidden: boolean): BulletinTemplate {
+  bulletinTemplates.get(id);
+  if (hidden && resolveBulletinTemplate(null).template_id === id) throw new BadRequest("This is the church default, so it can't be hidden. Set another template as the church default first.");
+  bulletinTemplates.update(id, { hidden });
+  return getTemplate(id);
+}
+
 export function setDefaults(p: { slide_theme_id?: number | null; bulletin_template_id?: number | null }) {
   if (p.slide_theme_id != null && !slideThemes.find(p.slide_theme_id)) throw new NotFound(`slide theme ${p.slide_theme_id} not found`);
   if (p.bulletin_template_id != null && !bulletinTemplates.find(p.bulletin_template_id)) throw new NotFound(`bulletin template ${p.bulletin_template_id} not found`);
   const patch: { default_slide_theme_id?: number | null; default_bulletin_template_id?: number | null } = {};
   if (p.slide_theme_id !== undefined) patch.default_slide_theme_id = p.slide_theme_id;
   if (p.bulletin_template_id !== undefined) patch.default_bulletin_template_id = p.bulletin_template_id;
+  // a hidden template made the default comes back into the pickers
+  if (p.slide_theme_id) slideThemes.update(p.slide_theme_id, { hidden: false });
+  if (p.bulletin_template_id) bulletinTemplates.update(p.bulletin_template_id, { hidden: false });
   const s = updateSettings(patch);
   return {
     default_slide_theme_id: s.default_slide_theme_id,

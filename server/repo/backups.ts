@@ -2,12 +2,13 @@
 // A backup is a consistent copy made with SQLite's VACUUM INTO, safe while Canon is running.
 import fs from 'node:fs';
 import path from 'node:path';
-import { db } from '../db.ts';
+import { DatabaseSync, backup as sqliteBackup } from 'node:sqlite';
+import { db, migrate, schemaVersion } from '../db.ts';
 import { config } from '../config.ts';
-import { getMeta, getSettings, setMeta } from './settings.ts';
+import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
-const NAME_RE = /^canon-\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?\.db$/;
+const NAME_RE = /^canon-\d{4}-\d{2}-\d{2}-\d{4}(-\d+|-upload\d*)?\.db$/;
 
 export interface BackupFile {
   name: string;
@@ -82,6 +83,76 @@ export function prune(keep: number, dir = backupDir()): number {
 }
 
 export const lastBackupAt = () => getMeta('last_backup_at') ?? null;
+
+// ---------------------------------------------------------------- restore
+
+/** Tables every Canon database has; a file without them is not a Canon backup. */
+const CANON_TABLES = ['settings', 'users', 'services', 'service_items', 'songs', 'texts', 'people'];
+
+/** Check that a file is a readable Canon database this version can open. Returns a plain-language problem, or null. */
+export function checkBackupFile(file: string): string | null {
+  let src: DatabaseSync | null = null;
+  try {
+    src = new DatabaseSync(file, { readOnly: true });
+    const tables = new Set((src.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name));
+    if (CANON_TABLES.some((t) => !tables.has(t))) return 'This file is not a Canon backup.';
+    const v = (src.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+    if (v > schemaVersion()) return 'This backup was made by a newer version of Canon. Update Canon first, then restore it.';
+    const ok = (src.prepare('PRAGMA quick_check').get() as { quick_check: string }).quick_check;
+    if (ok !== 'ok') return 'This backup file is damaged and cannot be restored.';
+    return null;
+  } catch {
+    return 'This file is not a Canon backup (it could not be opened as a database).';
+  } finally {
+    src?.close();
+  }
+}
+
+/**
+ * Replace all of Canon's data with a backup, in place: a copy of the current data is saved first, the backup is
+ * copied into the live database with SQLite's backup API, then the schema is brought up to date. Everyone is
+ * signed out unless their sign-in also exists in the backup.
+ */
+export async function restoreBackup(file: string): Promise<{ safety: string; restored_schema: number }> {
+  const problem = checkBackupFile(file);
+  if (problem) throw Object.assign(new Error(problem), { status: 400 });
+  // settings that belong to this computer, not to the data: kept as they are
+  const here = getSettings();
+  const keep = { backup: here.backup, public_url: here.public_url, trust_proxy: here.trust_proxy };
+  const safety = createBackup();
+  const src = new DatabaseSync(file, { readOnly: true });
+  let restored = 0;
+  try {
+    restored = (src.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+    await sqliteBackup(src, config.dbPath);
+  } finally {
+    src.close();
+  }
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  migrate();
+  clearSettingsCache();
+  updateSettings(keep);
+  setMeta('last_backup_at', safety.created);
+  setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: path.basename(file), safety: safety.name }));
+  return { safety: safety.name, restored_schema: restored };
+}
+
+/** Save an uploaded backup file into the backup folder (under a backup-style name) and return its path. */
+export function saveUpload(data: Buffer, dir = backupDir()): string {
+  fs.mkdirSync(dir, { recursive: true });
+  let file = path.join(dir, `canon-${stamp()}-upload.db`);
+  for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-upload${i}.db`);
+  fs.writeFileSync(file, data);
+  return file;
+}
+
+export function lastRestore(): { at: string; from: string; safety: string } | null {
+  try {
+    return JSON.parse(getMeta('last_restore') ?? 'null');
+  } catch {
+    return null;
+  }
+}
 
 /** When the next automatic backup is due (ISO), or null when automatic backups are off. */
 export function nextDue(): string | null {

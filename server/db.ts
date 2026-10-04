@@ -6,6 +6,8 @@ import { config } from './config.ts';
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
 export const db = new DatabaseSync(config.dbPath);
+/** The newest schema version this Canon knows. */
+export const schemaVersion = () => MIGRATIONS.length;
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
 
 /** Ordered migrations. Append only; never edit a shipped migration. */
@@ -359,9 +361,34 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE services ADD COLUMN bulletin_content TEXT NOT NULL DEFAULT '{}';  -- JSON {section_key: L10n}
   `,
+  // v0.8 — short-lived download links (for AI agents and for sending a file to someone without a Canon login)
+  `
+  CREATE TABLE download_links (
+    token TEXT PRIMARY KEY,               -- random, unguessable; the link is /api/dl/<token>
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,                   -- slides_pptx | bulletin_docx | freeshow | run_sheet
+    langs TEXT,                           -- JSON [lang] or NULL = the service's languages
+    expires_at TEXT NOT NULL,             -- ISO time
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX download_links_expiry ON download_links(expires_at);
+  -- hidden templates stay usable by services that chose them, but leave the pickers (built-ins can't be deleted)
+  ALTER TABLE slide_themes ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE bulletin_templates ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
+  -- a background picture for one item's slides (a picture block from Library → QR codes & notes); NULL = the template's
+  ALTER TABLE service_items ADD COLUMN slide_bg INTEGER REFERENCES bulletin_blocks(id) ON DELETE SET NULL;
+  -- "Worship Leader" is called "Liturgist" from v0.8: the role, the service-template slots and bulletin rosters naming it
+  UPDATE roles SET name = json_set(name, '$.en', 'Liturgist') WHERE lower(json_extract(name, '$.en')) = 'worship leader';
+  UPDATE templates SET items = replace(replace(items, '"role":"Worship Leader"', '"role":"Liturgist"'), '"role":"Worship leader"', '"role":"Liturgist"')
+    WHERE items LIKE '%Worship Leader%' OR items LIKE '%Worship leader%';
+  UPDATE bulletin_templates SET options = replace(replace(options, '"Worship Leader"', '"Liturgist"'), '"Worship leader"', '"Liturgist"')
+    WHERE options LIKE '%Worship Leader%' OR options LIKE '%Worship leader%';
+  `,
 ];
 
-function migrate() {
+/** Bring the database up to the current schema (also after restoring an older backup). */
+export function migrate() {
   const current = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
   for (let v = current; v < MIGRATIONS.length; v++) {
     db.exec('BEGIN');

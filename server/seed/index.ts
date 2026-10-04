@@ -14,7 +14,7 @@ const DEFAULT_TEAMS: { name: L10n; color: string; roles: { name: L10n; needed: n
     color: '#7c3aed',
     roles: [
       { name: { en: 'Preacher', zh: '讲员' }, needed: 1 },
-      { name: { en: 'Worship Leader', zh: '主领' }, needed: 1 },
+      { name: { en: 'Liturgist', zh: '主领' }, needed: 1 },
       { name: { en: 'Scripture Reader', zh: '读经' }, needed: 1 },
       { name: { en: 'Prayer Leader', zh: '代祷' }, needed: 1 },
       { name: { en: 'Elder on Duty', zh: '当值长老' }, needed: 1 },

@@ -14,6 +14,8 @@ export interface Ctx {
   pii: boolean;
   /** effective access per module on this connection (absent = assume every module readable) */
   levels?: Record<ModuleKey, ModuleAccess>;
+  /** the address this client reached Canon at (for links in results), without a trailing slash */
+  base?: string;
 }
 
 /** May this request read `module`? Used where one tool adds data from another module (e.g. song usage from services). */
@@ -117,3 +119,48 @@ export function need<T>(v: T | null | undefined, field: string, op: string): T {
   if (v === undefined || v === null) throw new InputError(`${field} is required for "${op}"`);
   return v;
 }
+
+// ---------------------------------------------------------------- multilingual updates
+
+type L10nValue = Record<string, string>;
+
+/**
+ * Merge a multilingual value from an agent's update into the stored one: languages in the patch replace only
+ * those languages, other languages are kept, and an empty string removes a language. Agents usually add or fix
+ * one language at a time, so replacing the whole value would silently delete the others.
+ */
+export function mergeL10n(cur: L10nValue | null | undefined, patch: L10nValue): L10nValue {
+  const out: L10nValue = { ...(cur ?? {}) };
+  for (const [lang, text] of Object.entries(patch)) {
+    if (text === '') delete out[lang];
+    else out[lang] = text;
+  }
+  return out;
+}
+
+/**
+ * Merge labelled multilingual entries (song stanzas, text parts) by label: a patch entry with a known label
+ * merges into that entry (via `merge`), a new label is appended, entries not mentioned are kept in place.
+ * An entry left with no text in any language is dropped.
+ */
+export function mergeLabelled<T extends { label: string }>(cur: T[] | null | undefined, patch: T[], merge: (a: T, b: T) => T, isEmpty: (x: T) => boolean): T[] {
+  const out = [...(cur ?? [])];
+  for (const p of patch) {
+    const i = out.findIndex((x) => x.label === p.label);
+    if (i >= 0) out[i] = merge(out[i], p);
+    else out.push(p);
+  }
+  return out.filter((x) => !isEmpty(x));
+}
+
+/** Patch with each listed multilingual field merged into the stored row (fields absent from the patch untouched). */
+export function mergeL10nFields<T extends object>(cur: T, patch: Partial<T>, keys: (keyof T)[]): Partial<T> {
+  const out = { ...patch };
+  for (const k of keys) {
+    const p = patch[k];
+    if (p && typeof p === 'object' && !Array.isArray(p)) out[k] = mergeL10n(cur[k] as L10nValue | null, p as L10nValue) as T[keyof T];
+  }
+  return out;
+}
+
+export const L10N_MERGE_NOTE = 'Multilingual fields merge by language: send only the languages you are adding or changing — the others are kept; "" removes a language.';

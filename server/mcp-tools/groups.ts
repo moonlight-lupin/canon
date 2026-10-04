@@ -8,7 +8,7 @@ import type { GroupKind } from '../../shared/types.ts';
 import { get } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
 import * as grp from '../repo/groups.ts';
-import { DESTRUCTIVE, DateStr, Id, RO, WRITE, need, runBatch, type ToolDef } from './common.ts';
+import { DESTRUCTIVE, DateStr, Id, L10N_MERGE_NOTE, RO, WRITE, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
 const KIND_TEXT = 'kind: committee (Session 堂会, Board of Deacons 执事会, missions committee…) | fellowship 团契 | cell_group 小组 | ministry | other';
 const ROLE_TEXT = 'role is free text, e.g. Moderator, Chair 主席, Secretary 书记, Clerk, Treasurer 财务, Leader 组长, Member 组员';
@@ -99,9 +99,9 @@ export const GROUP_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_save_group', module: 'groups', access: 'write', title: 'Save a group', annotations: { ...WRITE, idempotentHint: true },
-    description: `Create a group (no id; fields.name and kind required) or update one (id; only the given fields change; active=false retires a group without deleting it). name is L10n {"en":"Session","zh":"堂会"}; ${KIND_TEXT}; meeting is free text such as "Fridays 8pm, church hall". Returns the group.`,
+    description: `Create a group (no id; fields.name and kind required) or update one (id; only the given fields change; active=false retires a group without deleting it). name is L10n {"en":"Session","zh":"堂会"} (${L10N_MERGE_NOTE}); ${KIND_TEXT}; meeting is free text such as "Fridays 8pm, church hall". Returns the group.`,
     input: { id: Id.optional(), fields: S.GroupInput.partial().default({}) },
-    handler: (a) => (a.id ? grp.updateGroup(a.id, a.fields) : grp.createGroup(S.GroupInput.parse(a.fields))),
+    handler: (a) => (a.id ? grp.updateGroup(a.id, mergeL10nFields(grp.groups.get(a.id), a.fields, ['name'])) : grp.createGroup(S.GroupInput.parse(a.fields))),
   },
   {
     name: 'canon_update_group_members', module: 'groups', access: 'write', title: 'Update group members', annotations: DESTRUCTIVE,

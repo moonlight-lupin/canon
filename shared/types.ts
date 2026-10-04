@@ -262,6 +262,8 @@ export interface ServiceItem {
   bibles: Record<Lang, string>;
   /** QR codes / notes (bulletin blocks) projected on a slide after this item, e.g. PayNow during the offering */
   slide_blocks: number[];
+  /** background picture for this item's slides: a picture block id (Library → QR codes & notes); null = the template's */
+  slide_bg?: number | null;
   /** custom / pasted body text, overrides library text when set */
   body: L10n;
   duration_min: number;
@@ -342,6 +344,8 @@ export interface TemplateItem {
   bulletin_text?: 'full' | 'title';
   /** block names (matched when the service is created), shown on a slide after this item */
   slide_blocks?: string[];
+  /** slide background picture, by block name */
+  slide_bg?: string;
 }
 
 export interface Template {

@@ -31,7 +31,7 @@ export default function AboutPage() {
               <Tagline />
               <p style={{ margin: 0 }}>
                 {zh
-                  ? 'Canon 是为教会设计的本地优先系统：崇拜程序与程序单、投影、会友与同工名册、小组、事奉表，以及供 AI 助手使用、权限可控的 MCP 服务器。支持多种语言；可安装在办公室电脑、自己的服务器或 Docker 上，资料始终由教会自己掌管。'
+                  ? 'Canon 是为教会设计的本地优先系统：聚会程序与次序单、投影、会友与同工名册、小组、事奉表，以及供 AI 助手使用、权限可控的 MCP 服务器。支持多种语言；可安装在办公室电脑、自己的服务器或 Docker 上，资料始终由教会自己掌管。'
                   : 'Canon is a local-first system for churches: service planning with bulletins and slides, member and co-worker registers, groups, a volunteer rota, and a permission-controlled MCP server for AI assistants. It is multilingual and self-hosted — on an office PC, the church’s own server or any Docker host — so the church’s data stays under the church’s control.'}
               </p>
               <p className="small muted" style={{ margin: 0 }}>

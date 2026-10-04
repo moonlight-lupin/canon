@@ -329,16 +329,16 @@ function sampleContent(layout: BulletinSection[]): Record<string, L10n> {
   const out: Record<string, L10n> = {
     [ANNOUNCEMENTS_KEY]: {
       en: '1. Prayer meeting after the service in the hall.\n2. Bible study on Wednesday at 8pm.\n3. Welcome to our visitors — please fill in a welcome card.',
-      zh: '1. 崇拜后在礼堂有祷告会。\n2. 周三晚上8点查经。\n3. 欢迎新朋友，请填写新朋友卡。',
-      'zh-Hant': '1. 崇拜後在禮堂有禱告會。\n2. 週三晚上8點查經。\n3. 歡迎新朋友，請填寫新朋友卡。',
+      zh: '1. 聚会后在礼堂有祷告会。\n2. 周三晚上8点查经。\n3. 欢迎新朋友，请填写新朋友卡。',
+      'zh-Hant': '1. 聚會後在禮堂有禱告會。\n2. 週三晚上8點查經。\n3. 歡迎新朋友，請填寫新朋友卡。',
     },
   };
   for (const s of layout) {
     if (s.type !== 'weekly_text' || !s.key || out[s.key]) continue;
     out[s.key] = {
       en: 'The words for this week are typed in each service’s Bulletin tab.\nThey print here, under the heading.',
-      zh: '本周的内容在每次崇拜的「程序单」分页输入。\n会印在这里的标题下面。',
-      'zh-Hant': '本週的內容在每次崇拜的「程序單」分頁輸入。\n會印在這裡的標題下面。',
+      zh: '本周的内容在每次聚会的「次序单」分页输入。\n会印在这里的标题下面。',
+      'zh-Hant': '本週的內容在每次聚會的「次序單」分頁輸入。\n會印在這裡的標題下面。',
     };
   }
   return out;

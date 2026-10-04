@@ -12,7 +12,7 @@ export const OUTPUT_LABEL = {
   sermon: { en: 'Sermon', zh: '讲道', 'zh-Hant': '講道', ms: 'Khutbah', id: 'Khotbah', es: 'Sermón', tl: 'Sermon', vi: 'Bài giảng' },
   preacher: { en: 'Preacher', zh: '讲员', 'zh-Hant': '講員', ms: 'Pengkhutbah', id: 'Pengkhotbah', es: 'Predicador', tl: 'Mangangaral', vi: 'Diễn giả' },
   theme: { en: 'Theme', zh: '主题', 'zh-Hant': '主題', ms: 'Tema', id: 'Tema', es: 'Tema', tl: 'Tema', vi: 'Chủ đề' },
-  orderOfService: { en: 'Order of Service', zh: '崇拜程序', 'zh-Hant': '崇拜程序', ms: 'Aturan Ibadah', id: 'Tata Ibadah', es: 'Orden del culto', tl: 'Palatuntunan', vi: 'Chương trình thờ phượng' },
+  orderOfService: { en: 'Order of Service', zh: '聚会程序', 'zh-Hant': '聚會程序', ms: 'Aturan Ibadah', id: 'Tata Ibadah', es: 'Orden del culto', tl: 'Palatuntunan', vi: 'Chương trình thờ phượng' },
   sermonNotes: { en: 'Sermon notes', zh: '讲道笔记', 'zh-Hant': '講道筆記', ms: 'Catatan khutbah', id: 'Catatan khotbah', es: 'Notas del sermón', tl: 'Mga tala sa sermon', vi: 'Ghi chú bài giảng' },
 } satisfies Record<string, L10n>;
 

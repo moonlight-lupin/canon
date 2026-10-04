@@ -11,7 +11,8 @@ import { renderService, serviceAsText } from '../repo/render.ts';
 import { getSettings } from '../repo/settings.ts';
 import { listBlocks } from '../repo/presentation.ts';
 import { similarServices } from '../repo/history.ts';
-import { DESTRUCTIVE, DateStr, Id, InputError, Limit, RO, WRITE, need, runBatch, type ToolDef } from './common.ts';
+import { DOWNLOAD_KINDS, MAX_LINK_HOURS, createLinks, type DownloadKind } from '../repo/downloads.ts';
+import { DESTRUCTIVE, DateStr, Id, InputError, L10N_MERGE_NOTE, Limit, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
 // ---------------------------------------------------------------- output shaping
 
@@ -54,7 +55,7 @@ const parasToText = (paras: { who: string | null; text: string }[][]) =>
 function serviceDetail(id: number, includeText: boolean) {
   const full = svc.getServiceFull(id);
   const r = renderService(full);
-  const blockName = full.items.some((it) => it.slide_blocks?.length) ? new Map(listBlocks().map((b) => [b.id, b.name])) : new Map<number, string>();
+  const blockName = full.items.some((it) => it.slide_blocks?.length || it.slide_bg) ? new Map(listBlocks().map((b) => [b.id, b.name])) : new Map<number, string>();
   return {
     ...serviceSummary(full),
     end_time: r.end_time,
@@ -84,6 +85,8 @@ function serviceDetail(id: number, includeText: boolean) {
         custom_body: hasAnyText(it.body) || undefined,
         // QR codes / notes projected after the item (deleted blocks are left out)
         slide_blocks: ri.slide_blocks.length ? ri.slide_blocks.map((b) => ({ id: b.id, name: blockName.get(b.id) ?? '', kind: b.kind })) : undefined,
+        // the item's own slide background picture (a picture block), when it has one
+        slide_bg: ri.slide_bg ? { id: ri.slide_bg.id, name: blockName.get(ri.slide_bg.id) ?? '' } : undefined,
       };
       if (ri.song) {
         out.song = {
@@ -126,6 +129,7 @@ function serviceDetail(id: number, includeText: boolean) {
 const templateSummary = (t: ReturnType<typeof svc.templates.get>) => ({
   id: t.id, key: t.key, name: t.name, description: l10n(t.description),
   service_type: t.service_type, start_time: t.start_time, item_count: t.items.length,
+  church_default: getSettings().default_service_template_id === t.id || undefined,
 });
 
 /** Text search over the fields people remember a service by. */
@@ -151,6 +155,35 @@ function shortSimilar(id: number) {
     ...s,
     outline: outline.map((o) => `${o.kind}: ${o.subtitle ? `${o.title} — ${o.subtitle}` : o.title}`),
   }));
+}
+
+/** An agent's service update merged into the stored service by language (bulletin sections per section). */
+function servicePatch(id: number, patch: Partial<Service>): Partial<Service> {
+  const cur = svc.services.get(id);
+  const out = mergeL10nFields(cur, patch, ['title', 'sermon_title', 'theme']);
+  if (patch.bulletin_content) {
+    const merged: Record<string, Record<string, string>> = { ...(cur.bulletin_content ?? {}) } as Record<string, Record<string, string>>;
+    for (const [key, text] of Object.entries(patch.bulletin_content as Record<string, Record<string, string>>)) {
+      const m = Object.keys(text).length ? mergeL10n(merged[key], text) : {};
+      if (Object.keys(m).length) merged[key] = m;
+      else delete merged[key];
+    }
+    out.bulletin_content = merged as Service['bulletin_content'];
+  }
+  return out;
+}
+
+/** Short-lived download links for a service's files, and its pages in Canon (format "downloads"). */
+function downloads(id: number, base: string, userId: number, files: DownloadKind[], hours: number, langs?: Lang[]) {
+  const s = svc.services.get(id);
+  const links = createLinks(id, files, hours, userId, langs);
+  return {
+    service: { id: s.id, date: s.date, status: s.status },
+    expires_at: links[0]?.expires_at,
+    files: links.map((l) => ({ kind: l.kind, label: l.label, url: `${base}/api/dl/${l.token}` })),
+    open_in_canon: { bulletin: `${base}/services/${id}/bulletin`, slides: `${base}/services/${id}/slides`, run_sheet: `${base}/services/${id}/runsheet` },
+    note: s.status !== 'final' ? 'This service is still a draft: check it before printing or sending.' : undefined,
+  };
 }
 
 // ---------------------------------------------------------------- order-of-service batch
@@ -179,7 +212,8 @@ function applyOrderOp(serviceId: number, o: OrderOp) {
     }
     case 'update': {
       itemOf(serviceId, need(o.item_id, 'item_id', 'update'));
-      const it = svc.updateItem(o.item_id!, need(o.item, 'item', 'update') as Partial<ServiceItem>);
+      const cur = svc.items.get(o.item_id!);
+      const it = svc.updateItem(o.item_id!, mergeL10nFields(cur, need(o.item, 'item', 'update') as Partial<ServiceItem>, ['title', 'body']));
       return { op: o.op, item_id: it.id };
     }
     case 'move': {
@@ -229,15 +263,19 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_get_service', module: 'services', access: 'read', title: 'Get a service', annotations: RO,
-    description: 'One service in full: items (id, position, kind, title, start time, duration, song / text / scripture refs, stanzas, leader, slide_blocks = QR codes / notes by id and name), bulletin_content (weekly bulletin sections such as announcements, by key), the roster (names only) and roster warnings (unavailable, double-booked, unfilled roles). Hymn words, Bible text and liturgy only with include_text=true. include_similar=true adds similar_past: the 3 most similar earlier services with reasons and short outlines (the church\'s precedent). format "text" returns a plain-text run sheet in lang instead. Example: {"id":12,"include_similar":true}.',
+    description: 'One service in full: items (id, position, kind, title, start time, duration, song / text / scripture refs, stanzas, leader, slide_blocks = QR codes / notes by id and name), bulletin_content (weekly bulletin sections such as announcements, by key), the roster (names only) and roster warnings (unavailable, double-booked, unfilled roles). Hymn words, Bible text and liturgy only with include_text=true. include_similar=true adds similar_past: the 3 most similar earlier services with reasons and short outlines (the church\'s precedent). format "text" returns a plain-text run sheet in lang instead. format "downloads" returns short-lived links to the service\'s files instead: files slides_pptx (projector slides as PowerPoint, styled by the slide template, 16:9 or 4:3), bulletin_docx (bulletin / order of service as Word), freeshow (FreeShow project), run_sheet (text); each link works for hours (default 24, max ' + MAX_LINK_HOURS + ') WITHOUT signing in, so give links only to the user who asked; open_in_canon has the pages for a signed-in user (print-ready bulletin → Print → PDF, slide show, run sheet); langs limits slides / run sheet to some of the service languages. Examples: {"id":12,"include_similar":true}; {"id":12,"format":"downloads","files":["slides_pptx","bulletin_docx"]}.',
     input: {
       id: Id,
-      format: z.enum(['structured', 'text']).default('structured'),
+      format: z.enum(['structured', 'text', 'downloads']).default('structured'),
       include_text: z.boolean().default(false),
       include_similar: z.boolean().default(false),
       lang: S.LangSchema.optional().describe('for format "text"; default the church\'s first language'),
+      files: z.array(z.enum(DOWNLOAD_KINDS)).min(1).max(4).optional().describe('format "downloads"; default slides_pptx + bulletin_docx'),
+      hours: z.number().int().min(1).max(MAX_LINK_HOURS).optional().describe('format "downloads": how long links work, default 24'),
+      langs: z.array(S.LangSchema).max(3).optional().describe('format "downloads": languages for slides / run sheet'),
     },
-    handler: (a) => {
+    handler: (a, ctx) => {
+      if (a.format === 'downloads') return downloads(a.id, ctx.base ?? '', ctx.auth.user.id, a.files ?? ['slides_pptx', 'bulletin_docx'], a.hours ?? 24, a.langs);
       const warnings = vol.rosterWarnings(a.id);
       const similar_past = a.include_similar ? shortSimilar(a.id) : undefined;
       if (a.format === 'text') {
@@ -273,14 +311,14 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_update_service', module: 'services', access: 'write', title: 'Update a service', annotations: { ...WRITE, idempotentHint: true },
-    description: 'Change service details: date, start_time, title, preacher, sermon_title, sermon_ref, theme, languages, season, notes, and status ("draft" or "final" = ready to print / project). Only fields in patch change. bibles {lang: code} picks the Bible version per language for every reading (codes from canon_bible with no ref; {} = church default). bulletin_content {section_key: {lang: text}} sets the weekly bulletin sections, e.g. {"announcements":{"zh":"1. …"},"pastor_note":{"en":"…"}} (keys from the page layout of the bulletin template; it replaces the whole object, so send every section). Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
+    description: 'Change service details: date, start_time, title, preacher, sermon_title, sermon_ref, theme, languages, season, notes, and status ("draft" or "final" = ready to print / project). Only fields in patch change. bibles {lang: code} picks the Bible version per language for every reading (codes from canon_bible with no ref; {} = church default). bulletin_content {section_key: {lang: text}} sets the weekly bulletin sections, e.g. {"announcements":{"zh":"1. …"},"pastor_note":{"en":"…"}} (keys from the page layout of the bulletin template). ' + L10N_MERGE_NOTE + ' bulletin_content merges per section and language; a section set to {} is cleared. Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
     input: { id: Id, patch: S.ServiceInput.partial() },
-    handler: (a) => serviceSummary(svc.services.update(a.id, a.patch)),
+    handler: (a) => serviceSummary(svc.services.update(a.id, servicePatch(a.id, a.patch))),
   },
   {
     name: 'canon_edit_order', module: 'services', access: 'write', title: 'Edit the order of service', annotations: DESTRUCTIVE,
-    description: 'Apply a batch of item operations to one service in a single transaction, in order: add {item, position?}, update {item_id, item: fields to change}, move {item_id, position}, remove {item_id}. All or nothing: if any op fails, nothing changes and per-op errors are returned. Returns the new order. ' +
-      'Item kinds: section|song|scripture|text|sermon|prayer|sacrament|offering|announcements|music|other. A song: ref_id = song id (canon_search_library), stanzas ["1","2","R"], hymnal_id picks which hymnal number shows. Liturgy: kind "text", ref_id = text id; for a catechism / confession in parts ALWAYS set stanzas to part labels, e.g. ["1","2","3"]. A reading: kind "scripture", scripture_ref "Psalm 23"; optional bibles {"en":"ESV"} overrides the service Bible version for that reading. posture "stand"|"sit"|"kneel" (null clears) prints 众立 / All stand etc. slide_blocks [block ids] projects QR codes / notes (Library → QR codes & notes, e.g. PayNow, Instagram) on one slide after the item, even when on_slides is false; canon_get_service lists the ids and names already in use; [] clears. Ask the user before removing items. ' +
+    description: 'Apply a batch of item operations to one service in a single transaction, in order: add {item, position?}, update {item_id, item: fields to change; title / body merge by language}, move {item_id, position}, remove {item_id}. All or nothing: if any op fails, nothing changes and per-op errors are returned. Returns the new order. ' +
+      'Item kinds: section|song|scripture|text|sermon|prayer|sacrament|offering|announcements|music|other. A song: ref_id = song id (canon_search_library), stanzas ["1","2","R"], hymnal_id picks which hymnal number shows. Liturgy: kind "text", ref_id = text id; for a catechism / confession in parts ALWAYS set stanzas to part labels, e.g. ["1","2","3"]. A reading: kind "scripture", scripture_ref "Psalm 23"; optional bibles {"en":"ESV"} overrides the service Bible version for that reading. posture "stand"|"sit"|"kneel" (null clears) prints 众立 / All stand etc. slide_blocks [block ids] projects QR codes / notes (Library → QR codes & notes, e.g. PayNow, Instagram) on one slide after the item, even when on_slides is false; canon_get_service lists the ids and names already in use; [] clears. slide_bg = the id of a picture block (kind image, from the same Library list) shown behind this item’s slides instead of the template’s background, e.g. bread and cup for the Lord’s Supper; null = the template’s. Ask the user before removing items. ' +
       'Example: {"service_id":12,"ops":[{"op":"add","item":{"kind":"song","ref_id":40,"stanzas":["1","3"]},"position":2},{"op":"move","item_id":88,"position":0},{"op":"remove","item_id":91}]}.',
     input: { service_id: Id, ops: z.array(OrderOp).min(1).max(50) },
     handler: (a) => {
@@ -293,7 +331,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   // ======================================================== templates
   {
     name: 'canon_get_templates', module: 'templates', access: 'read', title: 'Get service templates', annotations: RO,
-    description: 'Service templates (standard orders of worship, e.g. Lord\'s Day morning, Lord\'s Supper). Without id: summaries; with id: the template with its items (kind, title, song_key / text_key, scripture_ref, duration, role). Pass a template id to canon_create_service.',
+    description: 'Service templates (standard orders of worship, e.g. Lord\'s Day morning, Lord\'s Supper). Without id: summaries (church_default marks the one the church normally starts from); with id: the template with its items (kind, title, song_key / text_key, scripture_ref, duration, role). Pass a template id to canon_create_service.',
     input: { id: Id.optional() },
     handler: (a) => (a.id ? svc.templates.get(a.id) : svc.templates.list('', [], 'id').map(templateSummary)),
   },

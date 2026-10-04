@@ -16,8 +16,11 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 
 - `find_*` / `search_*` → summaries; `get_*` → detail. `canon_get_service` returns words and Bible text only with `include_text: true`; `format: "text"` returns a run sheet.
 - `save_*`: no `id` = create; `id` + fields = update only those fields.
+- Multilingual fields merge by language on update: send only the language you add or change (`""` removes one). Song stanzas and text parts merge by `label`; `replace_stanzas` / `replace_parts: true` replace the whole list.
 - `canon_search_library` finds songs by hymnal number (`"HP 123"`), and `type: "hymnals"` lists hymnbooks.
 - `canon_get_library_item` `parts`: `"index"` or a selection such as `"1-3"`, `"1,4,7-9"`, `"I.1-3"` (WCF chapter.section).
+- `canon_get_service` with `format: "downloads"`: short-lived links (24 h default, max 72) for `slides_pptx` (PowerPoint, styled by the slide template), `bulletin_docx` (Word), `freeshow`, `run_sheet`; `open_in_canon` links the print-ready bulletin (Print → PDF), slide show and run sheet for a signed-in user. Links work without signing in — give them only to the user who asked.
+- `canon_get_templates`: `church_default: true` marks the template the church normally starts from.
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
 
 ## Precedent: past services first
@@ -37,11 +40,11 @@ Look at precedent before proposing or writing any plan, and name the services yo
 - song: `ref_id` (song id), `stanzas` `["1","3","R"]`, `hymnal_id`.
 - scripture: `scripture_ref` `"Romans 8:28-39"`; optional `bibles` `{"en":"ESV"}` for this reading.
 - text: `ref_id` (liturgical text id); catechism / confession parts in `stanzas` `["1","2","3"]`.
-- all: `title` (L10n), `duration_min`, `role_id` / `leader`, `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `notes`.
+- all: `title` (L10n), `duration_min`, `role_id` / `leader`, `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `notes`, `slide_blocks` [block ids], `slide_bg` (picture block id behind this item's slides; `null` = template background).
 
 ## Weekly bulletin sections
 
-A service's `bulletin_content` is `{section_key: L10n}`: `announcements` (家讯) plus the weekly texts that the bulletin template's page layout defines (e.g. `pastor_note`). `canon_get_service` shows it; `canon_update_service {"id", "patch": {"bulletin_content": {"announcements": {"zh": "1. …\n2. …"}, "pastor_note": {"en": "…"}}}}` sets it — send every section, the object is replaced. Numbered lines print as a list. The Announcements item stays in the order as a timed item; its words print from this section. Fixed texts (welcome, giving details) belong to the template, not the service.
+A service's `bulletin_content` is `{section_key: L10n}`: `announcements` (家讯) plus the weekly texts that the bulletin template's page layout defines (e.g. `pastor_note`). `canon_get_service` shows it; `canon_update_service {"id", "patch": {"bulletin_content": {"announcements": {"zh": "1. …\n2. …"}, "pastor_note": {"en": "…"}}}}` sets it — sections and languages merge, so send only what changes (`{}` clears a section, `""` removes one language). Numbered lines print as a list. The Announcements item stays in the order as a timed item; its words print from this section. Fixed texts (welcome, giving details) belong to the template, not the service.
 
 `canon_edit_order` ops: `add {item, position?}`, `update {item_id, item}`, `move {item_id, position}`, `remove {item_id}` — positions 0-based, applied in order, up to 50 ops, all-or-nothing.
 

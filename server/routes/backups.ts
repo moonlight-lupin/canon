@@ -1,9 +1,11 @@
 // Settings → Backups (administrators only).
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { seed } from '../seed/index.ts';
 import { z } from 'zod';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import {
-  DEFAULT_BACKUP_DIR, backupDir, backupPath, checkFolder, createBackup, deleteBackup, lastBackupAt, listBackups, nextDue, prune,
+  DEFAULT_BACKUP_DIR, backupDir, backupPath, checkBackupFile, checkFolder, createBackup, deleteBackup, lastBackupAt, lastRestore, listBackups, nextDue, prune,
+  restoreBackup, saveUpload,
 } from '../repo/backups.ts';
 
 export const backupRoutes = express.Router();
@@ -21,6 +23,7 @@ const status = () => ({
   next: nextDue(),
   folder_problem: checkFolder(backupDir()),
   items: listBackups(),
+  last_restore: lastRestore(),
 });
 
 backupRoutes.get('/backups', adminOnly, (_req, res) => res.json(status()));
@@ -63,6 +66,40 @@ backupRoutes.get('/backups/:name/download', adminOnly, (req, res) => {
   // contains members' personal data — never cache
   res.setHeader('Cache-Control', 'no-store');
   res.download(p);
+});
+
+/** Replace all data with a saved backup (a copy of the current data is saved first). */
+backupRoutes.post('/backups/:name/restore', adminOnly, async (req, res, next) => {
+  try {
+    const p = backupPath(String(req.params.name));
+    if (!p) return res.status(404).json({ error: 'Backup not found' });
+    const r = await restoreBackup(p);
+    await seed();
+    res.json({ ...r, ...status() });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Restore from a backup file chosen on this computer (e.g. from a USB drive or another Canon). */
+backupRoutes.post('/backups/restore-upload', adminOnly, express.raw({ type: () => true, limit: '500mb' }), async (req, res, next) => {
+  try {
+    const data = req.body as Buffer;
+    if (!Buffer.isBuffer(data) || data.length < 512 || data.subarray(0, 15).toString() !== 'SQLite format 3') {
+      return res.status(400).json({ error: 'Choose a Canon backup file (.db).' });
+    }
+    const file = saveUpload(data);
+    const problem = checkBackupFile(file);
+    if (problem) {
+      deleteBackup(file.split(/[\\/]/).pop()!);
+      return res.status(400).json({ error: problem });
+    }
+    const r = await restoreBackup(file);
+    await seed();
+    res.json({ ...r, ...status() });
+  } catch (e) {
+    next(e);
+  }
 });
 
 backupRoutes.delete('/backups/:name', adminOnly, (req, res) => {

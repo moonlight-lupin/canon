@@ -51,3 +51,36 @@ test('backups: folder check explains problems in plain language', () => {
   assert.match(B.checkFolder('relative/folder') ?? '', /full folder path/);
   assert.equal(B.checkFolder(path.join(tmp, 'new', 'nested')), null, 'missing folders are created');
 });
+
+test('restore: a backup replaces the data in place, after saving a copy of the current data', async () => {
+  const { run, get } = await import('../server/db.ts');
+  const dir = path.join(tmp, 'restore');
+  S.updateSettings({ backup: { dir, auto: 'off', keep: 20 } });
+  run("INSERT INTO songs (title, stanzas) VALUES ('{\"en\":\"Before Restore Qx\"}', '[]')");
+  const b = B.createBackup();
+  run("UPDATE songs SET title = '{\"en\":\"Changed After Qx\"}' WHERE json_extract(title, '$.en') = 'Before Restore Qx'");
+  S.updateSettings({ church_name: { en: 'Changed Church Qx' } });
+  const r = await B.restoreBackup(b.path);
+  assert.ok(r.safety && r.safety !== b.name, 'the current data was saved first');
+  assert.ok(get("SELECT 1 FROM songs WHERE json_extract(title, '$.en') = 'Before Restore Qx'"), 'data is back as it was');
+  assert.notEqual(S.getSettings().church_name.en, 'Changed Church Qx', 'settings are re-read after a restore');
+  assert.ok(B.lastRestore()?.from === b.name);
+  assert.equal(B.backupDir(), path.resolve(dir), 'this computer’s backup folder is kept');
+  assert.equal(B.lastBackupAt(), B.listBackups().find((x) => x.name === r.safety)?.created, 'last backup = the safety copy');
+  // the safety copy holds the data from just before the restore
+  const back = await B.restoreBackup(path.join(dir, r.safety));
+  assert.ok(back.safety);
+  assert.ok(get("SELECT 1 FROM songs WHERE json_extract(title, '$.en') = 'Changed After Qx'"), 'undo by restoring the safety copy');
+});
+
+test('restore: only real Canon backups are accepted', () => {
+  const junk = path.join(tmp, 'junk.db');
+  fs.writeFileSync(junk, 'not a database at all');
+  assert.match(B.checkBackupFile(junk) ?? '', /not a Canon backup/);
+  const other = path.join(tmp, 'other.db');
+  const { DatabaseSync } = process.getBuiltinModule('node:sqlite') as typeof import('node:sqlite');
+  const d = new DatabaseSync(other);
+  d.exec('CREATE TABLE things (id INTEGER)');
+  d.close();
+  assert.match(B.checkBackupFile(other) ?? '', /not a Canon backup/);
+});

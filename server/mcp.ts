@@ -16,7 +16,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MODULES } from '../shared/types.ts';
 import type { McpConfig, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
-import { bearerAuth, type McpAuth } from './oauth.ts';
+import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
 import { run } from './db.ts';
 import { getSettings } from './repo/settings.ts';
 import { BatchError, errorMessage, type Args, type Ctx, type ToolDef } from './mcp-tools/common.ts';
@@ -231,11 +231,11 @@ function compactToolsList(server: McpServer) {
 
 // ---------------------------------------------------------------- per-request server
 
-export function buildServer(auth: McpAuth) {
+export function buildServer(auth: McpAuth, base = '') {
   const settings = getSettings();
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
-  const ctx: Ctx = { auth, pii: cfg.expose_member_pii, levels };
+  const ctx: Ctx = { auth, pii: cfg.expose_member_pii, levels, base };
   const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, cfg.expose_member_pii, settings.languages) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;
@@ -283,7 +283,7 @@ mcpRouter.use((req, res, next) => {
 
 // `/mcp` and `/mcp/` both land on '/' here (no redirect).
 mcpRouter.post('/', bearerAuth, express.json({ limit: '4mb' }), async (req: Request, res: Response) => {
-  const server = buildServer(req.mcpAuth!);
+  const server = buildServer(req.mcpAuth!, externalBase(req));
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on('close', () => {
     void transport.close();

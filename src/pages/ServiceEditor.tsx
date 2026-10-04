@@ -26,7 +26,8 @@ import type {
 } from '../types-client.ts';
 import type { Hymnal, TextPart } from '../types-client.ts';
 import { BulletinChoice, BulletinTemplateField, SlideThemeField } from './presentation-pickers.tsx';
-import { SlideBlocksPicker } from './Blocks.tsx';
+import { SlideBackgroundPicker, SlideBlocksPicker } from './Blocks.tsx';
+import { InfoTip } from './template-ui.tsx';
 import { ServiceBulletinTab } from './ServiceBulletinTab.tsx';
 import type { BulletinBlock } from '../../shared/presentation.ts';
 import { BibleSelect, useBibles, useChurchBible } from '../components/BibleTools.tsx';
@@ -287,6 +288,7 @@ export default function ServiceEditor() {
           <Link className="btn sm" to={`/services/${sid}/bulletin`}><Icon name="print" />{t('Bulletin')}</Link>
           <Link className="btn sm" to={`/services/${sid}/slides`} target="_blank"><Icon name="monitor" />{t('Slides')}</Link>
           <Link className="btn sm" to={`/services/${sid}/runsheet`}><Icon name="list" />{t('Run sheet')}</Link>
+          <a className="btn sm" href={`/api/services/${sid}/slides.pptx`} title={t('The slides as a PowerPoint file, styled by the slide template')}><Icon name="download" />{t('PowerPoint')}</a>
           <a className="btn sm" href={`/api/services/${sid}/export.docx`}><Icon name="file" />{t('Word document')}</a>
           <a className="btn sm" href={`/api/services/${sid}/freeshow.project`}><Icon name="download" />{t('FreeShow project')}</a>
           <button className="btn sm" onClick={emailTeam}><Icon name="mail" />{t('Email the team')}</button>
@@ -576,6 +578,12 @@ function ItemEditor({
             {!!item.slide_blocks?.length && (
               <span className="field-hint">{item.on_slides ? t('Shown together on one slide after this item.') : t('Shown on a slide of their own, even though this item has no slides.')}</span>
             )}
+          </div>
+        )}
+        {(item.on_slides || !!item.slide_blocks?.length) && (
+          <div className="field">
+            <span>{t('Slide background')} <InfoTip text={t('A picture behind this item’s slides only, e.g. bread and cup for the Lord’s Supper. It is faded with the slide template’s background colour so the words stay readable. Pictures live in Library → QR codes & notes.')} /></span>
+            <SlideBackgroundPicker value={item.slide_bg ?? null} blocks={blocks} onChange={(v) => onPatch({ slide_bg: v }, true)} />
           </div>
         )}
         <div className="row between">

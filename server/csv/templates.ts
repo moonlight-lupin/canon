@@ -47,17 +47,17 @@ function itemCells(it: TemplateItem, langs: string[]): Record<string, string> {
 
 export const templatesCsv: Entity = {
   key: 'templates',
-  label: M('Templates', '崇拜程序模板'),
+  label: M('Templates', '聚会程序模板'),
   module: 'templates',
   pii: false,
   l10n: ['name', 'title'],
   intro: M(
     'One row per item of the order of worship, in order. Rows with the same template_key make one template; the template\'s name, start time and type may be written on the first row only. Importing replaces that template\'s whole order; a new key adds a template.',
-    '每行是崇拜程序中的一个项目，依次排列。template_key 相同的行组成一个模板；模板名称、开始时间和类型只需写在第一行。导入会取代该模板的整个程序；新的 key 会新增模板。',
+    '每行是聚会程序中的一个项目，依次排列。template_key 相同的行组成一个模板；模板名称、开始时间和类型只需写在第一行。导入会取代该模板的整个程序；新的 key 会新增模板。',
   ),
   columns: (ctx) => [
     col('template_key', M('Template key', '模板代码'), M('A short code that groups the rows of one template, e.g. lords-day.', '把同一模板的各行归在一起的简短代码，如 lords-day。'), { required: true, example: 'lords-day', aliases: ['key', 'template', 'template_code'] }),
-    ...l10nCols('name', ctx, M('Template name', '模板名称'), M('Name of the template (first row is enough). A new template needs a name.', '模板名称（写在第一行即可）。新增模板时必填。'), { examples: { en: "Lord's Day Worship", zh: '主日崇拜' }, aliases: ['template_name'] }),
+    ...l10nCols('name', ctx, M('Template name', '模板名称'), M('Name of the template (first row is enough). A new template needs a name.', '模板名称（写在第一行即可）。新增模板时必填。'), { examples: { en: "Lord's Day Worship", zh: '主日聚会' }, aliases: ['template_name'] }),
     col('start_time', M('Start time', '开始时间'), M('e.g. 10:00 (first row is enough).', '如 10:00（写在第一行即可）。'), { example: '10:00', aliases: ['time', 'start'] }),
     col('service_type', M('Service type', '聚会类型'), M('A short code, e.g. lords_day (default), evening, prayer_meeting.', '简短代码，如 lords_day（默认）、evening、prayer_meeting。'), { example: 'lords_day', aliases: ['type'] }),
     col('kind', M('Item kind', '项目类别'), M('What the item is. Needed on every item row.', '项目的类别。每个项目行都必须填写。'), { values: [...KINDS], example: 'song', aliases: ['item_kind', 'item_type'] }),
@@ -66,21 +66,21 @@ export const templatesCsv: Entity = {
     col('text_key', M('Text key', '礼文代码'), M('For a fixed liturgical text: its key (e.g. apostles-creed).', '固定的礼文：礼文的 key（如 apostles-creed）。'), {}),
     col('scripture_ref', M('Scripture', '经文'), M('A fixed reading, e.g. Psalm 100. Usually empty.', '固定的经文，如 Psalm 100。通常留空。'), { aliases: ['scripture', 'reference', 'passage'] }),
     col('duration_min', M('Minutes', '分钟'), M('Planned length in minutes.', '预计时长（分钟）。'), { example: '4', aliases: ['duration', 'minutes', 'mins'] }),
-    col('role', M('Role', '负责岗位'), M('Who leads it: an English role name from Volunteers, e.g. Worship Leader, Scripture Reader.', '负责的岗位：义工事奉中的英文岗位名称，如 Worship Leader、Scripture Reader。'), { example: 'Worship Leader' }),
+    col('role', M('Role', '负责岗位'), M('Who leads it: an English role name from Volunteers, e.g. Liturgist, Scripture Reader.', '负责的岗位：义工事奉中的英文岗位名称，如 Liturgist、Scripture Reader。'), { example: 'Liturgist' }),
     col('leader', M('Leader', '负责人'), M('A fixed leader by name, when not tied to a role.', '不按岗位时的固定负责人姓名。'), {}),
-    col('in_bulletin', M('In bulletin', '印在程序单'), M('no to leave it out of the printed bulletin (default yes).', '填 no 则不印在程序单上（默认 yes）。'), { values: ['yes', 'no'] }),
+    col('in_bulletin', M('In bulletin', '印在次序单'), M('no to leave it out of the printed bulletin (default yes).', '填 no 则不印在次序单上（默认 yes）。'), { values: ['yes', 'no'] }),
     col('on_slides', M('On slides', '显示在投影'), M('no to leave it out of the slides.', '填 no 则不显示在投影片上。'), { values: ['yes', 'no'] }),
     col('posture', M('Posture', '姿势'), M('What the congregation does: stand, sit or kneel (众立 / 众坐 also work). Empty = not printed.', '会众的姿势：stand、sit 或 kneel（也可写 众立 / 众坐）。留空则不印。'), { values: [...POSTURES], aliases: ['stand_sit'] }),
-    col('bulletin_text', M('Bulletin text', '程序单内容'), M('full = print the words, title = title / reference only. Empty = follow the bulletin template.', 'full = 印全文，title = 只印标题／经文出处。留空则按程序单模板。'), { values: [...PRINT], aliases: ['print', 'bulletin_print'] }),
+    col('bulletin_text', M('Bulletin text', '次序单内容'), M('full = print the words, title = title / reference only. Empty = follow the bulletin template.', 'full = 印全文，title = 只印标题／经文出处。留空则按次序单模板。'), { values: [...PRINT], aliases: ['print', 'bulletin_print'] }),
     col('slide_blocks', M('QR codes on slides', '投影二维码'), M('Names of QR codes / notes from Library → QR codes & notes, separated by ";" — shown on a slide after this item.', '资料库「二维码与备注」中的名称，用「;」分隔 —— 在此项目之后的投影片显示。'), { example: 'PayNow giving; Instagram', aliases: ['qr', 'qr_codes', 'blocks'] }),
     col('notes', M('Notes', '备注'), M('Notes for the planner, e.g. Choose a hymn on the sermon theme.', '给策划者的备注，如「按讲道主题选诗」。'), {}),
   ],
   example: () => [
     { template_key: 'evening-prayer', name_en: 'Evening Prayer', name_zh: '晚间祷告会', start_time: '20:00', service_type: 'prayer_meeting', kind: 'section', title_en: 'Gathering', title_zh: '聚集', duration_min: '0', on_slides: 'no' },
-    { template_key: 'evening-prayer', kind: 'song', title_en: 'Opening Hymn', title_zh: '开会诗', duration_min: '4', role: 'Worship Leader', notes: 'Choose each week' },
+    { template_key: 'evening-prayer', kind: 'song', title_en: 'Opening Hymn', title_zh: '开会诗', duration_min: '4', role: 'Liturgist', notes: 'Choose each week' },
     { template_key: 'evening-prayer', kind: 'scripture', title_en: 'Scripture Reading', title_zh: '读经', duration_min: '3', role: 'Scripture Reader' },
     { template_key: 'evening-prayer', kind: 'prayer', title_en: 'Prayers of the Church', title_zh: '代祷', duration_min: '25', role: 'Prayer Leader' },
-    { template_key: 'evening-prayer', kind: 'song', title_en: 'Doxology', title_zh: '三一颂', song_key: 'doxology', duration_min: '1', role: 'Worship Leader' },
+    { template_key: 'evening-prayer', kind: 'song', title_en: 'Doxology', title_zh: '三一颂', song_key: 'doxology', duration_min: '1', role: 'Liturgist' },
   ],
   export(ctx) {
     const out: Record<string, unknown>[] = [];

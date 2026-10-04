@@ -603,3 +603,38 @@ test('FreeShow: QR codes and pictures are embedded as media items (data: URIs); 
   assert.equal(res.status, 200);
   assert.match(JSON.stringify(res.json), /data:image\/png;base64,iVBORw0KGgo/);
 });
+
+test('template files: export and import a slide template (with picture) and a bulletin template (with its QR code)', async () => {
+  const F = await import('../server/repo/template-files.ts');
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a6b30000000049454e44ae426082', 'hex');
+  const th = P.createTheme({ name: { en: 'Export Me Zx' }, base: 'light', vars: { aspect: '4:3', scale: 1.2 } });
+  P.setThemeBackground(th.id, 'image/png', png);
+  const sf = F.exportSlideTemplate(th.id);
+  assert.equal(sf.canon, 'slide-template');
+  assert.ok(sf.background?.data, 'the picture travels in the file');
+  const back = F.importTemplateFile(JSON.parse(JSON.stringify(sf)));
+  assert.equal(back.kind, 'slide');
+  assert.notEqual(back.id, th.id, 'importing makes a new template');
+  const copy = P.getTheme(back.id);
+  assert.equal(copy.vars.aspect, '4:3');
+  assert.equal(copy.vars.scale, 1.2);
+  assert.ok(copy.vars.bg_image, 'background restored');
+
+  const qr = P.createBlock({ kind: 'qr', name: 'Giving Zx', data: { value: 'https://example.org/give' } });
+  const bt = P.createTemplate({ name: { en: 'Bulletin Zx' }, options: { page_layout: [{ id: 'b', type: 'blocks', blocks: [qr.id] }] } });
+  const bf = F.exportBulletinTemplate(bt.id);
+  assert.deepEqual(bf.blocks.map((b) => b.name), ['Giving Zx']);
+  // on another Canon the block does not exist yet: it is added
+  P.deleteBlock(qr.id);
+  const r1 = F.importTemplateFile(JSON.parse(JSON.stringify(bf)));
+  assert.deepEqual(r1.added_blocks, ['Giving Zx']);
+  const added = P.listBlocks().find((b) => b.name === 'Giving Zx')!;
+  assert.deepEqual(P.getTemplate(r1.id).options.page_layout.find((s) => s.type === 'blocks')?.blocks, [added.id]);
+  // importing again reuses the Library's block of the same name
+  const r2 = F.importTemplateFile(JSON.parse(JSON.stringify(bf)));
+  assert.deepEqual(r2.added_blocks, []);
+  assert.equal(P.listBlocks().filter((b) => b.name === 'Giving Zx').length, 1);
+
+  assert.throws(() => F.importTemplateFile({ hello: 1 }), /not a Canon template file/);
+  assert.throws(() => F.importTemplateFile({ ...sf, version: 99 }), /newer version/);
+});

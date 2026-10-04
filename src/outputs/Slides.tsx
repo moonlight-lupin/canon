@@ -6,7 +6,7 @@ import { useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg, useLatest } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { L10n, Lang, RenderedService } from '../types-client.ts';
-import { blockImageUrl, blockQrUrl, type SlideTheme } from '../../shared/presentation.ts';
+import { ASPECT_WIDTH, blockImageUrl, blockQrUrl, type SlideAspect, type SlideTheme } from '../../shared/presentation.ts';
 import type { RenderedSlideBlock } from '../../shared/render-types.ts';
 import { Bi, LANG_ATTR, biParts, biText, dateParts, hasAny, langOptions, langsFor, modeFor, speaker, timeRange, type LangMode } from './content.tsx';
 import { logoUrl, useLogo } from '../components/brand.tsx';
@@ -15,8 +15,9 @@ import { buildSlides, mapSlideIndex, slideText, type SlideDef, type SlideLine, t
 import { LOW_FONT_WARN, MIN_FONT, deckFit, largestFitting, scaledCap } from './deckFit.ts';
 import './outputs.css';
 
-const W = 1920;
 const H = 1080;
+/** Logical stage width for a screen shape (16:9 = 1920, 4:3 = 1440); the height is always 1080. */
+export const stageWidth = (aspect?: SlideAspect) => ASPECT_WIDTH[aspect ?? '16:9'] ?? 1920;
 type Blank = 'none' | 'black' | 'white';
 interface SyncState {
   idx: number;
@@ -31,7 +32,7 @@ interface SyncState {
  * The slide theme every <Stage> below uses: `id` becomes data-theme on the stage (the theme's CSS is scoped to
  * `.slide-stage[data-theme="<id>"]`), `sig` changes whenever that CSS changes so auto-fit measures again.
  */
-export const SlideThemeCtx = createContext<{ id: string; sig: string }>({ id: '', sig: '' });
+export const SlideThemeCtx = createContext<{ id: string; sig: string; aspect?: SlideAspect }>({ id: '', sig: '' });
 
 /** Short hash of a string (theme CSS → auto-fit cache key). */
 export function sigOf(s: string) {
@@ -42,11 +43,12 @@ export function sigOf(s: string) {
 
 // ---------------------------------------------------------------- stage & auto-fit
 
-/** A 1920×1080 logical stage scaled to the width of its container, carrying the slide theme. */
+/** A 1920×1080 (16:9) or 1440×1080 (4:3) logical stage scaled to the width of its container, carrying the slide theme. */
 export function Stage({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) {
   const theme = useContext(SlideThemeCtx);
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
+  const W = stageWidth(theme.aspect);
   useLayoutEffect(() => {
     const el = ref.current!;
     const fit = () => setScale(el.clientWidth / W);
@@ -54,9 +56,10 @@ export function Stage({ children, className, onClick }: { children: ReactNode; c
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [W]);
   return (
-    <div ref={ref} className={`sl-stage slide-stage ${className ?? ''}`} data-theme={theme.id || undefined} onClick={onClick}>
+    <div ref={ref} className={`sl-stage slide-stage ${className ?? ''}`} data-theme={theme.id || undefined} data-aspect={theme.aspect ?? '16:9'} onClick={onClick}
+      style={{ aspectRatio: `${W} / ${H}`, ['--stage-ratio' as string]: W / H } as CSSProperties}>
       <div className="sl-stage-inner" style={{ width: W, height: H, transform: `scale(${scale})` }}>{children}</div>
     </div>
   );
@@ -155,12 +158,13 @@ function measureDeck(root: HTMLElement): DeckSizes {
 }
 
 /** Hidden full-size copies of the deck's word and title slides, measured once (and again when fonts or pictures load). */
-function DeckMeasurer({ slides, langs, split, r, themeId, onSizes }: {
+function DeckMeasurer({ slides, langs, split, r, themeId, aspect, onSizes }: {
   slides: SlideDef[];
   langs: Lang[];
   split: boolean;
   r: RenderedService;
   themeId: string;
+  aspect?: SlideAspect;
   onSizes: (sizes: DeckSizes, done: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -203,7 +207,7 @@ function DeckMeasurer({ slides, langs, split, r, themeId, onSizes }: {
         {slides.map((s) => {
           const g = fitGroup(s.type);
           return g ? (
-            <div key={s.key} className="sl-stage-inner sl-measure-face" data-group={g} data-key={s.key}>
+            <div key={s.key} className="sl-stage-inner sl-measure-face" data-group={g} data-key={s.key} style={{ width: stageWidth(aspect) }}>
               <SlideFace s={s} langs={langs} split={split} r={r} measuring />
             </div>
           ) : null;
@@ -223,15 +227,15 @@ export function useDeckSizes({ slides, langs, split, r, theme, enabled }: {
   langs: Lang[];
   split: boolean;
   r: RenderedService | null | undefined;
-  theme: { id: string; sig: string };
+  theme: { id: string; sig: string; aspect?: SlideAspect };
   enabled: boolean;
 }) {
   const logoVersion = useLogo();
   const sig = useMemo(() => {
     if (!enabled || !r) return '';
     const content = slides.filter((s) => fitGroup(s.type)).map((s) => [s.type, s.lines, s.verses, s.big, s.sub, s.meta]);
-    return sigOf(JSON.stringify([theme.id, theme.sig, langs, split, r.date, r.start_time, r.end_time, r.has_logo ? logoVersion : 0, content]));
-  }, [enabled, r, slides, langs, split, theme.id, theme.sig, logoVersion]);
+    return sigOf(JSON.stringify([theme.id, theme.sig, theme.aspect, langs, split, r.date, r.start_time, r.end_time, r.has_logo ? logoVersion : 0, content]));
+  }, [enabled, r, slides, langs, split, theme.id, theme.sig, theme.aspect, logoVersion]);
   const [st, setSt] = useState<{ sig: string; sizes: DeckSizes; done: boolean } | null>(null);
   const cached = sig ? deckCache.get(sig) : undefined;
   const sizes = cached ?? (st && st.sig === sig ? st.sizes : null);
@@ -244,7 +248,7 @@ export function useDeckSizes({ slides, langs, split, r, theme, enabled }: {
     [sig],
   );
   const ctx = useMemo(() => (enabled && r ? { pending: !sizes, sizes: sizes ?? { body: null, title: null } } : null), [enabled, r, sizes]);
-  const measurer = enabled && r && !done ? <DeckMeasurer key={sig} slides={slides} langs={langs} split={split} r={r} themeId={theme.id} onSizes={onSizes} /> : null;
+  const measurer = enabled && r && !done ? <DeckMeasurer key={sig} slides={slides} langs={langs} split={split} r={r} themeId={theme.id} aspect={theme.aspect} onSizes={onSizes} /> : null;
   return { ctx, measurer };
 }
 
@@ -356,9 +360,18 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
     );
   }
 
-  const cls = `sl-face slide t-${s.type}${s.kind ? ` kind-${s.kind}` : ''}${s.type === 'section' ? ' slide-section' : ''}${r.season.color ? ' seasonal' : ''}`;
+  const cls = `sl-face slide t-${s.type}${s.kind ? ` kind-${s.kind}` : ''}${s.type === 'section' ? ' slide-section' : ''}${r.season.color ? ' seasonal' : ''}${s.bg ? ' item-bg' : ''}`;
+  // an item's own background picture replaces the template's (faded with the template's background colour)
+  const style: Record<string, string> = {};
+  if (r.season.color) style['--s-season'] = r.season.color;
+  if (s.bg) {
+    style['--slide-bg-image'] = `url("${blockImageUrl(s.bg.id, s.bg.v)}")`;
+    style['--slide-bg-size'] = 'cover';
+    style['--slide-bg-repeat'] = 'no-repeat';
+    style['--slide-bg-overlay'] = 'var(--slide-item-bg-overlay)';
+  }
   return (
-    <div className={cls} style={r.season.color ? ({ '--s-season': r.season.color } as CSSProperties) : undefined}>
+    <div className={cls} style={Object.keys(style).length ? (style as CSSProperties) : undefined}>
       <div className="sl-head slide-heading">
         {s.heading && <Bi v={s.heading} langs={langs} sep="  ·  " />}
         {s.label && <span className="sl-label slide-stanza-label">{biText(s.label, langs, ' ')}</span>}
@@ -447,7 +460,7 @@ export default function Slides() {
     };
   }, [themeId, theme?.updated_at]);
   const themeCss = css && css.id === themeId ? css.css : null;
-  const themeCtx = useMemo(() => ({ id: themeId ? String(themeId) : '', sig: sigOf(themeCss ?? '') }), [themeId, themeCss]);
+  const themeCtx = useMemo(() => ({ id: themeId ? String(themeId) : '', sig: sigOf(themeCss ?? ''), aspect: theme?.vars.aspect }), [themeId, themeCss, theme?.vars.aspect]);
 
   useEffect(() => {
     if (r && !modeInit) {
@@ -605,7 +618,7 @@ export default function Slides() {
         <label className="out-ctl sl-theme-pick" title={t('Slide theme for this session only')}>
           <span>{t('Theme')}</span>
           <select value={themeId ?? ''} onChange={(e) => update({ theme: Number(e.target.value) || null })}>
-            {themes.map((x) => <option key={x.id} value={x.id}>{lt(x.name)}{x.id === r.slide_theme_id ? ' ✓' : ''}</option>)}
+            {themes.filter((x) => !x.hidden || x.id === themeId || x.id === r.slide_theme_id).map((x) => <option key={x.id} value={x.id}>{lt(x.name)}{x.id === r.slide_theme_id ? ' ✓' : ''}</option>)}
           </select>
         </label>
       )}

@@ -16,7 +16,7 @@ Inputs: date (default next Sunday), template, sermon_ref, sermon_title, preacher
 6. Liturgy: call to worship, confession, assurance, creed, benediction filled as in the past services; catechism items carry part labels in `stanzas`, continuing from `next_suggested_label`.
 7. Roster: `canon_get_rota {"from": date, "to": date}` — list unfilled roles and warnings, compared with who served in similar weeks (don't change them here).
 8. Summarise as a table, name the past services you followed, and ask "Shall I apply this?".
-9. After yes: `canon_create_service {"date","template_id",…}` (or `copy_from` the closest past service) if needed, else `canon_update_service {"id","patch"}` (announcements or a pastor's note the user gives go in `"bulletin_content"`); then ONE `canon_edit_order` batch (`update` existing slots, `add` only missing items). Confirm with `canon_get_service` and report warnings. Leave it `draft`.
+9. After yes: `canon_create_service {"date","template_id",…}` (or `copy_from` the closest past service) if needed, else `canon_update_service {"id","patch"}` (announcements or a pastor's note the user gives go in `"bulletin_content"`); then ONE `canon_edit_order` batch (`update` existing slots, `add` only missing items). Confirm with `canon_get_service` and report warnings. Leave it `draft`. Offer `canon_get_service {"id","format":"downloads"}` (slides as PowerPoint, bulletin as Word) — links need no sign-in, so give them only to the user.
 
 ## suggest_hymns — hymns for a theme or passage
 
@@ -54,13 +54,23 @@ Inputs: date (default next Sunday), template, sermon_ref, sermon_title, preacher
 5. Show date → questions → topic → position in the order (as in past services); ask.
 6. After yes: one `canon_edit_order` per service — `update` the catechism item's `stanzas`, or `add` `{"kind":"text","ref_id":<id>,"stanzas":["4","5","6"]}`.
 
+## convert_existing — bring in an existing bulletin or slides
+
+1. Read the files the user shares (PDF, Word, photos, PowerPoint); list in order: items (kind, titles per language, leader), hymns (title, hymnal + number), readings, liturgy, sermon, announcements, QR / giving details, languages.
+2. Match first: closest past services / templates (`canon_find_services`, `canon_get_templates`); hymns by number or title and texts by first words (`canon_search_library`); references via `canon_bible`.
+3. Show printed item → Canon item (existing / new / plain title) and anything unreadable; ask.
+4. After yes: missing library items with `canon_save_song` (title + `hymnal_numbers`; words only if public domain or the church confirms a licence) and `canon_save_text`; tag `imported`.
+5. `canon_create_service` (closest template or `copy_from`) + ONE `canon_edit_order`; announcements → `bulletin_content` (`canon_update_service`); leave `draft`; `canon_save_service_as_template` if asked.
+6. No tool edits bulletin / slide templates: write a settings sheet following the editor steps (bulletin: paper & languages, what to print, cover & order, page layout; slides: colours & background as hex, fonts & size, lines per slide, 16:9 or 4:3, footer). Per-item pictures: user uploads to Library → QR codes & notes, then `slide_bg` via `canon_edit_order`.
+7. Report what was created, what needs a person, and the sheet. Roster names only match existing people — never create people from a bulletin.
+
 ## translate_library — fill missing languages
 
 1. Eligible: public-domain texts, or texts the church wrote (confirm). Never copyrighted hymns; never fabricate a translation of a hymn that has an established one — point to the hymnal. Quote scripture from the church's Bible via `canon_bible`. Prefer official wordings of creeds and catechisms.
 2. If the other Chinese script has text, nothing to do.
 3. Candidates: `canon_search_library {"type"}` then `canon_get_library_item` for missing languages.
 4. At most 5 at a time, drafts side by side with the source; keep `L:` / `C:` / `A:` markers and part labels.
-5. After yes: `canon_save_song` (stanzas replace the whole list — include every existing language) or `canon_save_text` (body replaces the stored object — include every language); add the tag `translation-draft`. Tell the user which items need review.
+5. After yes: `canon_save_song` (send only the new language for each stanza label — updates merge by language and the other languages stay) or `canon_save_text` (likewise for title, body and parts); `tags` is a plain list, so send the existing tags plus `translation-draft`. Tell the user which items need review.
 
 ## member_care — birthdays and visitors
 

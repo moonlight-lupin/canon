@@ -65,7 +65,7 @@ export const BUILTIN_TEMPLATES: { key: string; name: L10n; description: L10n; op
   },
   {
     key: 'order',
-    name: { en: 'Order of service only', zh: '仅崇拜程序' },
+    name: { en: 'Order of service only', zh: '仅聚会程序' },
     description: {
       en: 'Hymn titles and Bible references only, for churches that project the words. Creeds and liturgy stay in full.',
       zh: '只印诗歌名称和经文出处，适合用投影显示歌词的教会。信经与礼文仍完整印出。',

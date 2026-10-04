@@ -37,10 +37,10 @@ const announcements = (min = 5): TemplateItem =>
   });
 
 const hymnSlot = (en: string, zh: string, min = 4, notes?: string): TemplateItem =>
-  item('song', { en, zh }, min, { role: 'Worship Leader', ...(notes ? { notes } : {}) });
+  item('song', { en, zh }, min, { role: 'Liturgist', ...(notes ? { notes } : {}) });
 
 const song = (song_key: string, en: string, zh: string, min = 4): TemplateItem =>
-  item('song', { en, zh }, min, { song_key, role: 'Worship Leader' });
+  item('song', { en, zh }, min, { song_key, role: 'Liturgist' });
 
 const reading = (en: string, zh: string, min = 3, scripture_ref?: string): TemplateItem =>
   item('scripture', { en, zh }, min, {
@@ -69,16 +69,16 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     items: [
       prelude(),
       GATHER(),
-      item('text', { en: 'Call to Worship', zh: '宣召' }, 2, { text_key: 'call-psalm-95', role: 'Worship Leader' }),
-      item('text', { en: 'Prayer of Invocation', zh: '祈祷' }, 2, { text_key: 'invocation-prayer', role: 'Worship Leader' }),
+      item('text', { en: 'Call to Worship', zh: '宣召' }, 2, { text_key: 'call-psalm-95', role: 'Liturgist' }),
+      item('text', { en: 'Prayer of Invocation', zh: '祈祷' }, 2, { text_key: 'invocation-prayer', role: 'Liturgist' }),
       hymnSlot('Hymn of Praise', '赞美诗'),
 
       RENEW(),
-      item('text', { en: 'Reading of the Law', zh: '宣读律法' }, 2, { text_key: 'summary-of-the-law', role: 'Worship Leader' }),
-      item('text', { en: 'Prayer of Confession', zh: '认罪祷告' }, 2, { text_key: 'confession-psalm-51', role: 'Worship Leader' }),
-      item('text', { en: 'Assurance of Pardon', zh: '赦罪的确据' }, 1, { text_key: 'assurance-1-john-1', role: 'Worship Leader' }),
+      item('text', { en: 'Reading of the Law', zh: '宣读律法' }, 2, { text_key: 'summary-of-the-law', role: 'Liturgist' }),
+      item('text', { en: 'Prayer of Confession', zh: '认罪祷告' }, 2, { text_key: 'confession-psalm-51', role: 'Liturgist' }),
+      item('text', { en: 'Assurance of Pardon', zh: '赦罪的确据' }, 1, { text_key: 'assurance-1-john-1', role: 'Liturgist' }),
       hymnSlot('Psalm or Hymn of Thanksgiving', '感恩诗篇／诗歌'),
-      item('text', { en: 'Confession of Faith', zh: '信仰告白' }, 2, { text_key: 'apostles-creed', role: 'Worship Leader' }),
+      item('text', { en: 'Confession of Faith', zh: '信仰告白' }, 2, { text_key: 'apostles-creed', role: 'Liturgist' }),
 
       SPEAK(),
       reading('Old Testament Reading', '旧约读经'),
@@ -110,16 +110,16 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     items: [
       prelude(),
       GATHER(),
-      item('text', { en: 'Call to Worship', zh: '宣召' }, 2, { text_key: 'call-psalm-100', role: 'Worship Leader' }),
-      item('text', { en: 'Prayer of Invocation', zh: '祈祷' }, 2, { text_key: 'invocation-prayer', role: 'Worship Leader' }),
+      item('text', { en: 'Call to Worship', zh: '宣召' }, 2, { text_key: 'call-psalm-100', role: 'Liturgist' }),
+      item('text', { en: 'Prayer of Invocation', zh: '祈祷' }, 2, { text_key: 'invocation-prayer', role: 'Liturgist' }),
       hymnSlot('Hymn of Praise', '赞美诗'),
 
       RENEW(),
-      item('text', { en: 'Reading of the Law', zh: '宣读律法' }, 3, { text_key: 'ten-commandments', role: 'Worship Leader' }),
-      item('text', { en: 'Prayer of Confession', zh: '认罪祷告' }, 2, { text_key: 'confession-psalm-51', role: 'Worship Leader' }),
-      item('text', { en: 'Assurance of Pardon', zh: '赦罪的确据' }, 1, { text_key: 'assurance-isaiah-1', role: 'Worship Leader' }),
+      item('text', { en: 'Reading of the Law', zh: '宣读律法' }, 3, { text_key: 'ten-commandments', role: 'Liturgist' }),
+      item('text', { en: 'Prayer of Confession', zh: '认罪祷告' }, 2, { text_key: 'confession-psalm-51', role: 'Liturgist' }),
+      item('text', { en: 'Assurance of Pardon', zh: '赦罪的确据' }, 1, { text_key: 'assurance-isaiah-1', role: 'Liturgist' }),
       hymnSlot('Psalm or Hymn of Thanksgiving', '感恩诗篇／诗歌'),
-      item('text', { en: 'Confession of Faith', zh: '信仰告白' }, 3, { text_key: 'nicene-creed', role: 'Worship Leader' }),
+      item('text', { en: 'Confession of Faith', zh: '信仰告白' }, 3, { text_key: 'nicene-creed', role: 'Liturgist' }),
 
       SPEAK(),
       reading('Old Testament Reading', '旧约读经'),
@@ -147,7 +147,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       song('when-i-survey', 'Communion Hymn', '圣餐诗歌', 4),
       item('text', { en: 'Thanksgiving after Communion', zh: '圣餐后的感恩' }, 2, {
         text_key: 'communion-thanksgiving-psalm-103',
-        role: 'Worship Leader',
+        role: 'Liturgist',
       }),
 
       SEND(),
@@ -171,13 +171,13 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     items: [
       prelude(3),
       GATHER(),
-      item('text', { en: 'Call to Worship', zh: '宣召' }, 1, { text_key: 'call-isaiah-6', role: 'Worship Leader' }),
-      item('text', { en: 'Votum and Salutation', zh: '宣召与问安' }, 1, { text_key: 'votum-salutation', role: 'Worship Leader' }),
+      item('text', { en: 'Call to Worship', zh: '宣召' }, 1, { text_key: 'call-isaiah-6', role: 'Liturgist' }),
+      item('text', { en: 'Votum and Salutation', zh: '宣召与问安' }, 1, { text_key: 'votum-salutation', role: 'Liturgist' }),
       song('psalm-100-old-hundredth', 'Psalm of Praise', '诗篇颂赞'),
-      item('prayer', { en: 'Opening Prayer', zh: '祈祷' }, 2, { role: 'Worship Leader' }),
+      item('prayer', { en: 'Opening Prayer', zh: '祈祷' }, 2, { role: 'Liturgist' }),
       item('text', { en: 'Catechism', zh: '要理问答' }, 3, {
         text_key: 'westminster-shorter-catechism-1-4',
-        role: 'Worship Leader',
+        role: 'Liturgist',
         notes: 'Replace with the catechism questions for this week.',
       }),
       hymnSlot('Hymn', '诗歌'),
@@ -207,14 +207,14 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
     items: [
       prelude(),
       GATHER(),
-      item('text', { en: 'Call to Worship', zh: '宣召' }, 2, { text_key: 'call-psalm-24', role: 'Worship Leader' }),
-      item('text', { en: 'Prayer of Invocation', zh: '祈祷' }, 2, { text_key: 'invocation-prayer', role: 'Worship Leader' }),
+      item('text', { en: 'Call to Worship', zh: '宣召' }, 2, { text_key: 'call-psalm-24', role: 'Liturgist' }),
+      item('text', { en: 'Prayer of Invocation', zh: '祈祷' }, 2, { text_key: 'invocation-prayer', role: 'Liturgist' }),
       hymnSlot('Hymn of Praise', '赞美诗'),
 
       RENEW(),
-      item('text', { en: 'Reading of the Law', zh: '宣读律法' }, 2, { text_key: 'summary-of-the-law', role: 'Worship Leader' }),
-      item('text', { en: 'Prayer of Confession', zh: '认罪祷告' }, 2, { text_key: 'confession-psalm-51', role: 'Worship Leader' }),
-      item('text', { en: 'Assurance of Pardon', zh: '赦罪的确据' }, 1, { text_key: 'assurance-psalm-103', role: 'Worship Leader' }),
+      item('text', { en: 'Reading of the Law', zh: '宣读律法' }, 2, { text_key: 'summary-of-the-law', role: 'Liturgist' }),
+      item('text', { en: 'Prayer of Confession', zh: '认罪祷告' }, 2, { text_key: 'confession-psalm-51', role: 'Liturgist' }),
+      item('text', { en: 'Assurance of Pardon', zh: '赦罪的确据' }, 1, { text_key: 'assurance-psalm-103', role: 'Liturgist' }),
       hymnSlot('Psalm or Hymn of Thanksgiving', '感恩诗篇／诗歌'),
 
       SPEAK(),
@@ -230,7 +230,7 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       item('text', { en: 'Institution of Baptism', zh: '洗礼的设立与应许' }, 2, { text_key: 'baptism-institution', role: 'Preacher' }),
       item('text', { en: 'Confession of Faith', zh: '信仰告白' }, 2, {
         text_key: 'apostles-creed',
-        role: 'Worship Leader',
+        role: 'Liturgist',
         notes: 'The congregation confesses the faith into which the child is baptized.',
       }),
       item('text', { en: 'Baptismal Vows', zh: '洗礼誓约' }, 4, { text_key: 'baptism-vows', role: 'Preacher' }),
@@ -263,9 +263,9 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       prelude(),
       GATHER(),
       song('once-in-royal-davids-city', 'Processional Carol', '进堂诗歌'),
-      item('text', { en: 'Votum and Salutation', zh: '宣召与问安' }, 1, { text_key: 'votum-salutation', role: 'Worship Leader' }),
-      item('prayer', { en: 'Bidding Prayer', zh: '开会祷告' }, 3, { role: 'Worship Leader' }),
-      item('text', { en: "The Lord's Prayer", zh: '主祷文' }, 1, { text_key: 'lords-prayer', role: 'Worship Leader' }),
+      item('text', { en: 'Votum and Salutation', zh: '宣召与问安' }, 1, { text_key: 'votum-salutation', role: 'Liturgist' }),
+      item('prayer', { en: 'Bidding Prayer', zh: '开会祷告' }, 3, { role: 'Liturgist' }),
+      item('text', { en: "The Lord's Prayer", zh: '主祷文' }, 1, { text_key: 'lords-prayer', role: 'Liturgist' }),
 
       section('The Promise of a Saviour', '救主的应许'),
       reading('First Lesson: The Fall', '第一课：人的堕落', 3, 'Genesis 3:8-19'),

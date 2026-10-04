@@ -91,7 +91,10 @@ function parseLines(lines: string[], uniqueId: (t: string) => string): Block[] {
     }
     const hm = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
     if (hm) {
-      out.push({ type: 'heading', level: hm[1].length, text: hm[2], id: uniqueId(hm[2]) });
+      // an explicit anchor "## Slide templates {#slide-templates}" keeps in-app help links working in every language
+      const anchor = /^(.*?)\s*\{#([a-z0-9-]+)\}$/.exec(hm[2]);
+      const text = anchor ? anchor[1] : hm[2];
+      out.push({ type: 'heading', level: hm[1].length, text, id: anchor ? uniqueId(anchor[2]) : uniqueId(text) });
       i++;
       continue;
     }

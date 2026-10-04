@@ -8,7 +8,7 @@ Canon helps the church office plan the Sunday service, print the bulletin, proje
 
 ### First sign-in
 
-1. Open Canon in your browser (on the office PC: `http://localhost:3000`; other computers use the office PC's name instead of localhost).
+1. Open Canon in your browser (on the office PC: `http://localhost:3000`; other computers use the office PC's name instead of localhost). The number after the colon is the port: to use another one, your IT helper puts a line such as `set CANON_PORT=5018` in a file `canon.local.bat` next to `start-canon.bat`.
 2. The first time, Canon shows **Welcome to Canon**. Choose the **Worship languages** (primary first), type the **Church name**, then your **Display name**, **Username** and **Password** (8 characters or more).
 3. Press **Create administrator**. You can switch the interface between **EN**, **简体中文** and **繁體中文** at the top.
 
@@ -61,6 +61,7 @@ The [Dashboard](/) is the home page: the next service and its status, open roste
 - **In bulletin**: **Template default**, **Full text**, **Title only** or **Hidden**. **On slides** includes or leaves out the item.
 - **Role** fills the leader from the roster; **Leader** is free text.
 - **QR codes & notes on slides** adds a QR code or a short note to the item's slides.
+- **Slide background** puts a picture behind this item's slides only (for example bread and cup for the Lord's Supper), instead of the slide template's background. Choose from the pictures in **Library → QR codes & notes** (add one there with **New picture**). The picture is faded with the template's background colour so the words stay readable, and it is used in the PowerPoint download too.
 
 **Service details** — press **Edit…** above the order to change the date, time, languages (up to 3), **Bible versions**, **Liturgical season**, **Bulletin cover**, **Bulletin template** and **Slide theme**. Press **Save** in that card.
 
@@ -104,11 +105,14 @@ Open the **Team & roster** tab.
 | **O** | Overview of all slides |
 | number + Enter | Jump to that slide |
 
+**PowerPoint** in the **Outputs** bar downloads the slides as a PowerPoint file, for a computer without Canon or to send to the AV team. It uses the service's slide template (colours, background picture, fonts, text size, lines per slide, footer and screen shape); **Custom CSS** is not carried over. Open it in PowerPoint and press **F5**.
+
 ### 5. Share with the team
 
 - **Run sheet**: a printable timed list with leaders and AV cues for the team.
 - **Share with team**: press **Enable link**, then **Copy** and send the link. It is read-only and shows no contact details. **Disable link** stops it; turning it on again makes a new link.
-- **Word document** and **FreeShow project** download files for other programs.
+- **PowerPoint**, **Word document** and **FreeShow project** download files for other programs.
+- An AI assistant connected to Canon can also make **download links** for these files (they stop working after a day or so). Anyone with such a link can download that file without signing in, so send it only to the people who need it.
 - **Email the team** opens your own e-mail program with the team in BCC.
 
 ## Library
@@ -140,12 +144,40 @@ Open [Library](/library).
 
 ## Templates
 
-- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**.
-- [Bulletin templates](/bulletin-templates): **What to print** for each kind of item (all the words, first verse, title only), paper, cover, fonts and the **Page layout**, with a **Live preview** that shows every page of a sample service. Built-in templates can't be changed: press **Duplicate** first. **Set as church default** chooses the usual one.
-  - **Page layout** is the list of sections in print order: **Cover page or banner**, **Order of service**, **Full words** (creeds, catechism and hymns gathered after the order), **Announcements**, **Weekly text**, **Fixed text**, **Serving today**, **Serving next week**, a bold **Note**, **QR codes, pictures and notes**, a **Sermon notes page** and **Copyright notices and church contact**. Drag a section (or use ↑ ↓) to reorder it; **Add section ▾** and **Add page break** add more.
-  - Each section can **Start a new page**, be **Kept together** on one page, or go **On the back cover**, which always prints on the last page (a folded booklet puts its blank pages before it).
-  - A **Fixed text** (a welcome, the church's vision, giving details) is the same every week and is typed in the template. A **Weekly text** (a pastor's note, prayer requests) and the **Announcements** are typed per service in the planner's **Bulletin** tab.
-- [Slide templates](/slide-templates): colours, background picture, fonts, text size and footer, with a live preview. **Lines per slide** sets how much text a slide holds (default: 2 lines per language when two or more languages show, 3 for one language; in readings, creeds and prayers a line is one sentence; a sentence can span several lines of a creed or prayer, and keeps its line breaks on the slide). **Same text size on every slide** keeps the size steady through the whole service. **Custom CSS (advanced)** is optional.
+- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**. **Set as church default** (administrators) picks the template **New service** starts from; it shows a **Church default** badge.
+
+Bulletin templates and slide templates both open on a gallery. Each card has a main button (**Edit** for your own templates, **Preview** for built-in ones) and a **⋯** menu:
+
+- **Set as church default** (administrators): services use this template unless they choose another.
+- **Make a copy to customise** / **Duplicate**: built-in templates come with Canon and can't be changed or deleted, so copy one and change the copy.
+- **Hide** leaves a template out of the lists in the service planner (services already using it keep it). Hidden templates are under **Hidden templates** at the bottom of the gallery; **Show again** brings one back. The church default can't be hidden.
+- **Export to a file** saves the template as one file (with its background picture, or the QR codes and pictures its pages print), to copy to another computer or share with another church. **Import a template file…** at the top of the page adds it as a new template; QR codes and notes it needs are added to the Library unless one of the same name is already there.
+- **Delete** (your own templates only).
+
+The editor shows the settings in numbered steps that fold open, with a large live preview beside them. Changes appear in the preview straight away; **Save changes** in the bar at the bottom keeps them, **Discard** drops them. Point at a **?** for a short explanation, or press **How this works** to come back here.
+
+### Bulletin templates {#bulletin-templates}
+
+[Bulletin templates](/bulletin-templates) decide what the printed bulletin includes. The **Live preview** shows every page of a sample service.
+
+1. **Paper and languages**: paper (usually A4 landscape, folded into an A5 booklet), font size, all languages or the main one only, side by side or one after the other.
+2. **What to print** for each kind of item: all the words, the first verse only, or the title / reference only.
+3. **Cover and order of service**: cover style, banner colours, list or table, hymn numbers, posture, leaders and times.
+4. **Page layout**: the list of sections in print order: **Cover page or banner**, **Order of service**, **Full words** (creeds, catechism and hymns gathered after the order), **Announcements**, **Weekly text**, **Fixed text**, **Serving today**, **Serving next week**, a bold **Note**, **QR codes, pictures and notes**, a **Sermon notes page** and **Copyright notices and church contact**. Drag a section (or use ↑ ↓) to reorder it; **Add section ▾** and **Add page break** add more.
+   - Each section can **Start a new page**, be **Kept together** on one page, or go **On the back cover**, which always prints on the last page (a folded booklet puts its blank pages before it).
+   - A **Fixed text** (a welcome, the church's vision, giving details) is the same every week and is typed in the template. A **Weekly text** (a pastor's note, prayer requests) and the **Announcements** are typed per service in the planner's **Bulletin** tab.
+
+### Slide templates {#slide-templates}
+
+[Slide templates](/slide-templates) decide how the slides look on the projector and in the **PowerPoint** download. The preview shows a title slide, hymn words, a reading and responsive liturgy; click one to see it large.
+
+1. **Colours and background**: dark or light starting point, the four colours, a background picture and how much to fade it.
+2. **Fonts and text size**: a font for each script your church uses (only fonts installed on the projector computer work), text size, line spacing, alignment.
+3. **How much on each slide**: **Lines per slide** (default: 2 lines per language when two or more languages show, 3 for one language; in readings, creeds and prayers a line is one sentence; a sentence can span several lines of a creed or prayer, and keeps its line breaks on the slide). **Same text size on every slide** keeps the size steady through the whole service.
+4. **Screen shape and footer**: **Widescreen 16:9** (most projectors and TVs) or **Standard 4:3** (older, squarer projectors); scripture reference, church name and slide number in the footer; the posture cue.
+5. **Custom CSS (advanced)** is optional and does not carry over to the PowerPoint download.
+
+> **Tip:** FreeShow sets its screen shape in its own output settings, so the FreeShow project ignores the template's screen shape.
 
 ## People
 
@@ -188,7 +220,7 @@ Canon can connect to Claude (claude.ai) so you can ask, for example, "plan next 
 3. Set each module under **Module access** to **Off**, **Read only** or **Read & write**, and press **Save AI access**.
 4. In claude.ai: **Settings → Connectors → Add custom connector**, paste the **Connector URL**, leave the client ID blank, sign in to Canon and approve.
 
-Claude also gets ready-made playbooks (plan a service, suggest hymns, check the rota, proofread a service, plan a catechism series…).
+Claude also gets ready-made playbooks (plan a service, suggest hymns, check the rota, proofread a service, plan a catechism series, bring in an existing bulletin or slide deck…). For the last one, share your current bulletin (PDF, Word or a photo) or PowerPoint with Claude: it matches the hymns and liturgy with the Library, builds the service for you to check, and lists the settings to choose in the template editors.
 
 Claude looks at your past services first: the same Sunday last year, the same season, earlier sermons on the same book, when each hymn was last sung and which catechism question you reached. It follows your church's usual order, hymns and rota, avoids hymns sung in the last few weeks, and tells you which past services it based a plan on.
 
@@ -202,8 +234,8 @@ Claude looks at your past services first: the same Sunday last year, the same se
 ## Backups and moving to Docker
 
 - **Back up**: [Settings → Backups](/settings?tab=backups). Press **Back up now**, or turn on **Automatic backups** (daily or weekly; older ones are removed). Set the **Backup folder** to a USB drive or a synced folder (OneDrive, Google Drive) and press **Check**. Backups contain personal data — keep downloaded copies safe.
-- **Restore**: the steps are on the same page. Stop Canon, copy the backup over `data/canon.db`, delete `canon.db-wal` and `canon.db-shm`, start Canon.
-- **Moving to Docker** (a server or NAS): make a backup on the office PC, start Canon on the new machine with `docker compose up -d`, then restore the backup there as described under "Restoring a backup" in `docs/DOCKER.md`. Your IT helper can do this in a few minutes.
+- **Restore**: press **Restore** next to a saved backup, or **Restore from a file…** to use a backup file from this computer (a USB drive, another Canon). Canon first saves a copy of the current data, so a restore can be undone by restoring that copy; changes made since the backup are lost, and you may need to sign in again. If Canon will not start at all, the page also lists the steps to restore by hand.
+- **Moving to Docker** (a server or NAS): make a backup on the office PC, start Canon on the new machine with `docker compose up -d`, then restore the backup there with **Restore from a file…** (or as described under "Restoring a backup" in `docs/DOCKER.md`). Your IT helper can do this in a few minutes.
 
 ## FAQ and troubleshooting
 

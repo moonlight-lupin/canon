@@ -529,6 +529,112 @@ test('library: search, get with parts, save song with hymnal numbers', async () 
   assert.equal(lib.songs.get(s.json!.data.id).author ?? null, null, 'song update rolled back with the bad numbers');
 });
 
+test('updates merge languages: adding Chinese keeps the English (songs, texts, services, items)', async () => {
+  const at = tokens.access_token;
+  const svcRepo = await import('../server/repo/services.ts');
+  const song = await call(at, 'canon_save_song', {
+    fields: { title: { en: 'Merge Hymn Wqz' }, stanzas: [{ label: '1', text: { en: 'Verse one' } }, { label: '2', text: { en: 'Verse two' } }] },
+  });
+  const id = song.json!.data.id;
+  const add = await call(at, 'canon_save_song', { id, fields: { title: { zh: '合并诗歌' }, stanzas: [{ label: '1', text: { zh: '第一节' } }, { label: 'R', text: { zh: '副歌' } }] } });
+  assert.equal(add.isError, false, add.text);
+  let s = lib.songs.get(id);
+  assert.deepEqual(s.title, { en: 'Merge Hymn Wqz', zh: '合并诗歌' });
+  assert.deepEqual(s.stanzas.map((x) => [x.label, x.text]), [['1', { en: 'Verse one', zh: '第一节' }], ['2', { en: 'Verse two' }], ['R', { zh: '副歌' }]]);
+  await call(at, 'canon_save_song', { id, fields: { stanzas: [{ label: 'R', text: { zh: '' } }] } });
+  assert.deepEqual(lib.songs.get(id).stanzas.map((x) => x.label), ['1', '2'], '"" removes a language; an empty stanza is dropped');
+  await call(at, 'canon_save_song', { id, fields: { stanzas: [{ label: '1', text: { en: 'Only' } }] }, replace_stanzas: true });
+  s = lib.songs.get(id);
+  assert.deepEqual(s.stanzas, [{ label: '1', text: { en: 'Only' } }], 'replace_stanzas replaces the list');
+
+  const text = await call(at, 'canon_save_text', {
+    fields: { category: 'creed', title: { en: 'Merge Creed Wqz' }, body: { en: 'I believe' }, parts: [{ label: '1', body: { en: 'Q1' } }] },
+  });
+  const tid = text.json!.data.id;
+  await call(at, 'canon_save_text', { id: tid, fields: { body: { zh: '我信' }, parts: [{ label: '1', body: { zh: '问一' } }] } });
+  const tx = lib.texts.get(tid);
+  assert.deepEqual(tx.body, { en: 'I believe', zh: '我信' });
+  assert.deepEqual(tx.parts?.[0].body, { en: 'Q1', zh: '问一' });
+
+  const sv = svcRepo.createService({ date: '2031-03-02', title: { en: 'Morning Wqz' }, bulletin_content: { announcements: { en: 'Tea after' } } }).service;
+  const up = await call(at, 'canon_update_service', { id: sv.id, patch: { title: { zh: '早堂' }, bulletin_content: { announcements: { zh: '茶点' } } } });
+  assert.equal(up.isError, false, up.text);
+  const after = svcRepo.services.get(sv.id);
+  assert.deepEqual(after.title, { en: 'Morning Wqz', zh: '早堂' });
+  assert.deepEqual(after.bulletin_content?.announcements, { en: 'Tea after', zh: '茶点' });
+  const item = svcRepo.addItem(sv.id, { kind: 'prayer', title: { en: 'Prayer' }, body: { en: 'Lord, hear us' } });
+  const ed = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { body: { zh: '主啊，求你垂听' } } }] });
+  assert.equal(ed.isError, false, ed.text);
+  assert.deepEqual(svcRepo.items.get(item.id).body, { en: 'Lord, hear us', zh: '主啊，求你垂听' });
+});
+
+test('downloads: short-lived links for PowerPoint, Word, FreeShow and run sheet', async () => {
+  const at = tokens.access_token;
+  const svcRepo = await import('../server/repo/services.ts');
+  const sv = svcRepo.createService({ date: '2031-04-06', title: { en: 'Download Wqz', zh: '下载' } }).service;
+  svcRepo.addItem(sv.id, { kind: 'prayer', title: { en: 'Prayer', zh: '祷告' }, body: { en: 'Lord, hear us.', zh: '主啊，求你垂听。' } });
+  const r = await call(at, 'canon_get_service', { id: sv.id, format: 'downloads', files: ['slides_pptx', 'bulletin_docx', 'freeshow', 'run_sheet'], hours: 2 });
+  assert.equal(r.isError, false, r.text);
+  const d = r.json!.data;
+  assert.equal(d.files.length, 4);
+  assert.ok(d.files.every((f: Json) => f.url.startsWith(`${PUBLIC}/api/dl/`)), 'links use the public address');
+  assert.equal(d.open_in_canon.slides, `${PUBLIC}/services/${sv.id}/slides`);
+  assert.ok(d.note, 'a draft is flagged');
+  const local = (u: string) => base + new URL(u).pathname;
+  const pptx = await fetch(local(d.files[0].url));
+  assert.equal(pptx.status, 200);
+  assert.match(pptx.headers.get('content-type')!, /presentationml/);
+  const bytes = Buffer.from(await pptx.arrayBuffer());
+  assert.equal(bytes.subarray(0, 2).toString(), 'PK', 'a zip (pptx)');
+  const sheet = await (await fetch(local(d.files[3].url))).text();
+  assert.match(sheet, /Download Wqz/);
+  assert.match(sheet, /下载/);
+  // expired and unknown links are refused
+  db.prepare('UPDATE download_links SET expires_at = ? WHERE service_id = ?').run('2000-01-01T00:00:00.000Z', sv.id);
+  assert.equal((await fetch(local(d.files[0].url))).status, 404);
+  assert.equal((await fetch(`${base}/api/dl/not-a-token`)).status, 404);
+  const tooLong = await call(at, 'canon_get_service', { id: sv.id, format: 'downloads', hours: 500 });
+  assert.equal(tooLong.isError, true);
+});
+
+test('an item can have its own slide background picture (a picture block)', async () => {
+  const at = tokens.access_token;
+  const svcRepo = await import('../server/repo/services.ts');
+  const { run, get } = await import('../server/db.ts');
+  const sv = svcRepo.createService({ date: '2031-05-04', title: { en: 'Background Wqz' } }).service;
+  const item = svcRepo.addItem(sv.id, { kind: 'prayer', title: { en: 'Prayer' }, body: { en: 'Lord, hear us.' } });
+  run("INSERT INTO bulletin_blocks (kind, name, data) VALUES ('text', 'A note Wqz', '{}')");
+  const note = get<{ id: number }>("SELECT id FROM bulletin_blocks WHERE name = 'A note Wqz'")!.id;
+  run("INSERT INTO bulletin_blocks (kind, name, data) VALUES ('image', 'Bread Wqz', '{\"image\":\"v1\"}')");
+  const pic = get<{ id: number }>("SELECT id FROM bulletin_blocks WHERE name = 'Bread Wqz'")!.id;
+  run("INSERT INTO assets (key, mime, data) VALUES (?, 'image/png', ?)", `bulletin-block-${pic}`, Buffer.from('89504e47', 'hex'));
+  const bad = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_bg: note } }] });
+  assert.equal(bad.isError, true, 'a note is not a picture');
+  const ok = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_bg: pic } }] });
+  assert.equal(ok.isError, false, ok.text);
+  const got = await call(at, 'canon_get_service', { id: sv.id });
+  assert.deepEqual(got.json!.data.items.find((x: Json) => x.id === item.id).slide_bg, { id: pic, name: 'Bread Wqz' });
+  const { renderService } = await import('../server/repo/render.ts');
+  const { buildSlides } = await import('../shared/slide-model.ts');
+  const slides = buildSlides(renderService(sv.id), ['en']);
+  assert.ok(slides.filter((s) => s.itemId === item.id).every((s) => s.bg?.id === pic), 'every slide of the item carries it');
+  assert.ok(!slides.find((s) => s.type === 'title')?.bg, 'other slides keep the template background');
+  run('DELETE FROM bulletin_blocks WHERE id = ?', pic);
+  assert.equal(svcRepo.items.get(item.id).slide_bg ?? null, null, 'deleting the picture clears the choice');
+});
+
+test('service templates: the church default is marked for agents', async () => {
+  const at = tokens.access_token;
+  const svcRepo = await import('../server/repo/services.ts');
+  const tpl = svcRepo.templates.insert({ name: { en: 'Default Wqz' }, description: {}, service_type: 'lords_day', start_time: '10:00', items: [] });
+  updateSettings({ default_service_template_id: tpl.id });
+  const r = await call(at, 'canon_get_templates', {});
+  const mine = r.json!.data.find((x: Json) => x.id === tpl.id);
+  assert.equal(mine.church_default, true);
+  assert.equal(r.json!.data.filter((x: Json) => x.church_default).length, 1);
+  updateSettings({ default_service_template_id: null });
+});
+
 test('401 carries WWW-Authenticate with resource_metadata', async () => {
   const none = await mcp(null, 'tools/list');
   assert.equal(none.status, 401);

@@ -270,8 +270,8 @@ test('templates: rows grouped by template_key upsert whole templates', async () 
   const text = csv.writeCsv([
     ['template_key', 'name_en', 'name_zh', 'start_time', 'service_type', 'kind', 'title_en', 'title_zh', 'song_key', 'duration_min', 'role', 'in_bulletin', 'notes'],
     ['evening', 'Evening Prayer', '晚祷会', '8:00 pm', 'prayer_meeting', 'section', 'Gathering', '聚集', '', '0', '', '', ''],
-    ['evening', '', '', '', '', 'hymn', 'Opening Hymn', '开会诗', '', '4', 'Worship Leader', '', 'Choose weekly'],
-    ['evening', '', '', '', '', 'song', 'Doxology', '三一颂', 'doxology', '1', 'Worship Leader', 'no', ''],
+    ['evening', '', '', '', '', 'hymn', 'Opening Hymn', '开会诗', '', '4', 'Liturgist', '', 'Choose weekly'],
+    ['evening', '', '', '', '', 'song', 'Doxology', '三一颂', 'doxology', '1', 'Liturgist', 'no', ''],
     ['other', 'Other', '', '10:00', '', 'prayer', '', '', '', '5', 'Nobody Role', '', ''],
   ]);
   const dry = await importCsv('templates', text);

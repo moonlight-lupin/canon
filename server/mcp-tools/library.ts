@@ -11,13 +11,42 @@ import * as lib from '../repo/library.ts';
 import * as bible from '../repo/bible.ts';
 import { getSettings } from '../repo/settings.ts';
 import { songUsage, textPartsHistory } from '../repo/history.ts';
-import { DateStr, Id, Limit, RO, WRITE, canRead, type Ctx, type ToolDef } from './common.ts';
+import { DateStr, Id, L10N_MERGE_NOTE, Limit, RO, WRITE, canRead, mergeL10n, mergeL10nFields, mergeLabelled, type Ctx, type ToolDef } from './common.ts';
 
 const SONG_CATEGORIES = ['hymn', 'psalm', 'song', 'doxology', 'response'] as const;
 const TEXT_CATEGORIES = S.TextCategorySchema.options;
 const CJK = /[㐀-鿿]/;
 const MAX_VERSES = 200;
 const MAX_PARTS = 60;
+
+type SongPatch = Partial<z.infer<typeof S.SongInput>>;
+type TextPatch = Partial<z.infer<typeof S.TextInput>>;
+const noText = (l: Record<string, string> | undefined) => !l || !Object.values(l).some((v) => v.trim());
+
+/** An agent's song update merged into the stored song by language (stanzas by label), unless told to replace. */
+function songPatch(id: number, fields: SongPatch, replaceStanzas: boolean): SongPatch {
+  const cur = lib.songs.get(id) as unknown as Required<SongPatch>;
+  const out = mergeL10nFields(cur, fields, ['title']);
+  if (fields.stanzas && !replaceStanzas) {
+    out.stanzas = mergeLabelled(cur.stanzas, fields.stanzas, (x, y) => ({ ...x, text: mergeL10n(x.text, y.text) }), (x) => noText(x.text));
+  }
+  return out;
+}
+
+/** An agent's text update merged into the stored text by language (parts by label), unless told to replace. */
+function textPatch(id: number, fields: TextPatch, replaceParts: boolean): TextPatch {
+  const cur = lib.texts.get(id) as unknown as Required<TextPatch>;
+  const out = mergeL10nFields(cur, fields, ['title', 'body']);
+  if (fields.parts && !replaceParts) {
+    out.parts = mergeLabelled(
+      cur.parts,
+      fields.parts,
+      (x, y) => ({ ...x, body: mergeL10n(x.body, y.body), ...(y.title ? { title: mergeL10n(x.title, y.title) } : {}) }),
+      (x) => noText(x.body),
+    );
+  }
+  return out;
+}
 
 const songSummary = (s: ReturnType<typeof lib.songs.get>) => ({
   id: s.id,
@@ -180,20 +209,29 @@ export const LIBRARY_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_save_song', module: 'library', access: 'write', title: 'Save a song', annotations: { ...WRITE, idempotentHint: true },
-    description: 'Create a song (no id; fields.title required) or update one (id; only the given fields change, stanzas replaces the whole list). title and stanza texts are L10n {lang: text}; stanza labels "1","2"… and "R" for a refrain (refrain_after_each repeats it). Copyrighted songs: public_domain=false with copyright and ccli — never invent copyrighted lyrics. hymnal_numbers replaces all the song\'s hymnal numbers [{hymnal_id, number}] ([] removes them). Returns the song summary. Example: {"fields":{"title":{"en":"Doxology"},"category":"doxology"},"hymnal_numbers":[{"hymnal_id":1,"number":"512"}]}.',
-    input: { id: Id.optional(), fields: S.SongInput.partial().default({}), hymnal_numbers: S.SongHymnalsInput.optional() },
+    description: 'Create a song (no id; fields.title required) or update one (id; only the given fields change). title and stanza texts are L10n {lang: text}. On update, ' + L10N_MERGE_NOTE + ' stanzas merge by label: to add Chinese words to an English hymn send [{"label":"1","text":{"zh":"…"}},…] and the English stays; replace_stanzas=true replaces the whole list instead (to remove or reorder stanzas). Stanza labels "1","2"… and "R" for a refrain (refrain_after_each repeats it). Copyrighted songs: public_domain=false with copyright and ccli — never invent copyrighted lyrics. hymnal_numbers replaces all the song\'s hymnal numbers [{hymnal_id, number}] ([] removes them). Returns the song summary. Example: {"fields":{"title":{"en":"Doxology"},"category":"doxology"},"hymnal_numbers":[{"hymnal_id":1,"number":"512"}]}.',
+    input: {
+      id: Id.optional(),
+      fields: S.SongInput.partial().default({}),
+      hymnal_numbers: S.SongHymnalsInput.optional(),
+      replace_stanzas: z.boolean().optional().describe('update: true = fields.stanzas replaces the whole list (default: merge by label and language)'),
+    },
     handler: (a) => tx(() => {
-      const id = a.id ? lib.songs.update(a.id, a.fields).id : lib.songs.insert(S.SongInput.parse(a.fields)).id;
+      const id = a.id ? lib.songs.update(a.id, songPatch(a.id, a.fields, !!a.replace_stanzas)).id : lib.songs.insert(S.SongInput.parse(a.fields)).id;
       if (a.hymnal_numbers) lib.setSongHymnals(id, a.hymnal_numbers);
       return { ...songSummary(lib.songs.get(id)), created: a.id ? undefined : true };
     }),
   },
   {
     name: 'canon_save_text', module: 'library', access: 'write', title: 'Save a liturgical text', annotations: { ...WRITE, idempotentHint: true },
-    description: 'Create a liturgical text (no id; fields.category, title, body required) or update one (id; only the given fields change). body is L10n; use "L: ", "C: ", "A: " line prefixes for responsive readings, blank lines between paragraphs. Long documents may carry parts [{label, title?, body}]. category: call_to_worship|invocation|confession|assurance|creed|catechism|prayer|sacrament|benediction|liturgy|other. Returns the summary.',
-    input: { id: Id.optional(), fields: S.TextInput.partial().default({}) },
+    description: 'Create a liturgical text (no id; fields.category, title, body required) or update one (id; only the given fields change; ' + L10N_MERGE_NOTE + ' parts merge by label the same way, replace_parts=true replaces the whole list, parts=null removes them). body is L10n; use "L: ", "C: ", "A: " line prefixes for responsive readings, blank lines between paragraphs. Long documents may carry parts [{label, title?, body}]. category: call_to_worship|invocation|confession|assurance|creed|catechism|prayer|sacrament|benediction|liturgy|other. Returns the summary.',
+    input: {
+      id: Id.optional(),
+      fields: S.TextInput.partial().default({}),
+      replace_parts: z.boolean().optional().describe('update: true = fields.parts replaces the whole list (default: merge by label and language)'),
+    },
     handler: (a) => {
-      const t = a.id ? lib.texts.update(a.id, a.fields) : lib.texts.insert(S.TextInput.parse(a.fields));
+      const t = a.id ? lib.texts.update(a.id, textPatch(a.id, a.fields, !!a.replace_parts)) : lib.texts.insert(S.TextInput.parse(a.fields));
       return { ...textSummary(t), created: a.id ? undefined : true };
     },
   },

@@ -131,9 +131,9 @@ export const PROMPTS: PromptDef[] = [
               '9. After a clear yes:',
               `   - if the service does not exist: canon_create_service {"date":"${date}","template_id":…,"preacher":…,"sermon_title":{…},"sermon_ref":…} (or {"date":"${date}","copy_from":<the closest past service>} when it is a better starting point);`,
               '   - otherwise canon_update_service {"id":…,"patch":{…}} for the details;',
-              '   - announcements (家讯) or a pastor’s note the user gives go in the weekly bulletin sections: canon_update_service {"id":…,"patch":{"bulletin_content":{"announcements":{…},"pastor_note":{…}}}} — keys come from the page layout of the bulletin template; send every section, the object is replaced;',
+              '   - announcements (家讯) or a pastor’s note the user gives go in the weekly bulletin sections: canon_update_service {"id":…,"patch":{"bulletin_content":{"announcements":{…},"pastor_note":{…}}}} — keys come from the page layout of the bulletin template; sections and languages merge, so send only what changes;',
               '   - then ONE canon_edit_order batch: "update" ops for existing slots (ref_id, stanzas, hymnal_id, scripture_ref) and "add" ops only for missing items. If the batch fails nothing was applied — fix the listed ops and resend the whole batch.',
-              '10. Confirm with canon_get_service and report any notices or roster warnings. Leave the status as "draft" unless the user asks to mark it final.',
+              '10. Confirm with canon_get_service and report any notices or roster warnings. Leave the status as "draft" unless the user asks to mark it final. Offer the files (canon_get_service with format "downloads": slides as PowerPoint, bulletin as Word) — the links need no sign-in, so give them only to the user.',
             )
           : `9. ${readOnlyNote('services')}`,
         ...ETIQUETTE,
@@ -244,7 +244,7 @@ export const PROMPTS: PromptDef[] = [
         '   - Posture: stand / sit set where the church expects it (typically stand for hymns, creed and benediction).',
         '   - Leaders and roster: items with a role but nobody assigned; the roster warnings returned by canon_get_service.',
         '   - Status: still "draft"?',
-        '4. Report a punch list grouped as Must fix / Should check / For information, and name the past service you compared with.',
+        '4. Report a punch list grouped as Must fix / Should check / For information, and name the past service you compared with. Once it is clean, offer canon_get_service with format "downloads" for the slides (PowerPoint) and bulletin (Word).',
         write
           ? '5. Offer to fix the straightforward items. After a clear yes, apply them in ONE canon_edit_order batch (and canon_update_service for service details). Do not mark the service final unless asked.'
           : `5. ${readOnlyNote('services')}`,
@@ -328,9 +328,62 @@ export const PROMPTS: PromptDef[] = [
           ? '3. A singable hymn translation must fit the meter and tune — say plainly that drafts need checking by a musician before singing.'
           : '3. Keep responsive markers: lines start "L: " (leader), "C: " (congregation) or "A: " (all); blank lines separate paragraphs / slides. Keep part labels unchanged for texts in parts.',
         type === 'songs'
-          ? '4. After a clear yes, save with canon_save_song {"id":…,"fields":{"stanzas":[…],"tags":[…existing,"translation-draft"]}}. stanzas REPLACES the whole list: include every existing language of every stanza, adding only the new language.'
-          : '4. After a clear yes, save with canon_save_text {"id":…,"fields":{"body":{…all existing languages, "<lang>":"draft"},"tags":[…existing,"translation-draft"]}}. body and tags replace the stored values: always include what is already there.',
+          ? '4. After a clear yes, save with canon_save_song {"id":…,"fields":{"stanzas":[…],"tags":[…existing,"translation-draft"]}}. Updates merge by language: send only the new language for each stanza label; the existing languages stay. tags is a plain list: send the existing tags plus translation-draft.'
+          : '4. After a clear yes, save with canon_save_text {"id":…,"fields":{"body":{"<lang>":"draft"},"tags":[…existing,"translation-draft"]}}. title, body and parts merge by language (send only the new language); tags is a plain list: send the existing tags plus translation-draft.',
         '5. Tell the user which items now carry the "translation-draft" tag so a pastor or translator can review them in the Library and remove the tag when approved.',
+        ...ETIQUETTE,
+      );
+    },
+  },
+
+  {
+    name: 'convert_existing',
+    title: 'Bring in an existing bulletin or slides',
+    description: 'Turn a bulletin (PDF, Word, photo) or a slide deck (PowerPoint, PDF, photos) the church already uses into Canon: the order of service, missing library items, and the settings for a matching bulletin / slide template.',
+    needs: { services: 'read', library: 'read' },
+    args: {
+      source: 'What the user is sharing: "bulletin", "slides" or "both" (default both)',
+      date: 'Service date to create in Canon, YYYY-MM-DD (default: the date printed on the bulletin)',
+      as_template: '"yes" to also save the order as a reusable service template',
+    },
+    build: (a, c) => {
+      const source = ['bulletin', 'slides'].includes((a.source ?? '').trim().toLowerCase()) ? (a.source ?? '').trim().toLowerCase() : 'both';
+      const date = isDate(a.date) ? a.date!.trim() : null;
+      const writeServices = can(c, 'services', 'write');
+      const writeLibrary = can(c, 'library', 'write');
+      const asTemplate = /^(y|yes|true|1)$/i.test((a.as_template ?? '').trim());
+      return lines(
+        ...header('bring an existing bulletin or slide deck into Canon', c),
+        '',
+        `Source: ${source === 'both' ? 'a bulletin and / or slides' : source}. ${date ? `Create the service on ${date}.` : 'Use the date printed on the bulletin (ask if there is none).'}`,
+        '',
+        '## Privacy and copyright first',
+        '- The files stay in this conversation. Do not send their contents anywhere else.',
+        '- Names on a roster are personal data: use them only to match people already in Canon, never to create people records.',
+        '- Hymn words: bring in titles and hymnal numbers. Copy the words only for public-domain hymns, or when the user confirms the church holds a licence (e.g. CCLI) — then set public_domain=false with the copyright line and CCLI number. Never type words from a scan of a copyrighted hymn otherwise.',
+        '',
+        '## Steps',
+        '1. Read the files the user shares (PDF, Word, photos, PowerPoint). List what you found in order: each item of the service (kind, title in each language, who leads it), hymns (title, hymnal and number), Bible readings (references), liturgy (call to worship, confession, creed, catechism questions, prayers), sermon (title, text, preacher), announcements and other weekly texts, QR codes / giving details, and which languages are used.',
+        '2. Match against Canon before adding anything:',
+        '   - the closest past services and templates: canon_find_services {"like":{"date":…}} or {"similar_to":…}, canon_get_templates — follow the church\'s usual order and item names;',
+        '   - hymns by number or title: canon_search_library {"q":"HP 123"} / {"q":"title","type":"songs"};',
+        '   - liturgy and catechisms by first words: canon_search_library {"q":…,"type":"texts"}; Westminster questions by part label (canon_get_library_item {"parts":"index"});',
+        '   - readings: check each reference with canon_bible {"ref":…}.',
+        '3. Show the user a table: printed item → what it becomes in Canon (existing library item, new item, or plain item with a title), plus anything you could not read. Ask before writing.',
+        writeLibrary
+          ? '4. After a clear yes, add what is missing to the Library: canon_save_song (title, hymnal_numbers; words only as allowed above) and canon_save_text for liturgy the church wrote (responsive lines "L: ", "C: ", "A: "; blank lines between paragraphs). Tag them "imported" so they can be reviewed.'
+          : `4. ${readOnlyNote('the library')} List the songs and texts to add.`,
+        writeServices
+          ? `5. Build the service: canon_create_service {"date":…} (from the closest template, or copy_from a similar past service), then ONE canon_edit_order batch for the items in order (songs with ref_id and stanzas, readings with scripture_ref, liturgy with ref_id, posture where printed, leaders). Weekly texts and announcements go in bulletin_content with canon_update_service. Leave the status as "draft".${asTemplate ? ' Then save the order as a reusable template: canon_save_service_as_template.' : ''}`
+          : `5. ${readOnlyNote('services')}`,
+        '6. The look: no tool changes bulletin or slide templates, so write a short settings sheet the user can follow in Service Planner → Bulletin templates / Slide templates (make a copy of the closest built-in template, then):',
+        source !== 'slides'
+          ? '   - Bulletin: 1 Paper and languages (paper size and fold, languages side by side or one after the other); 2 What to print (hymn words, readings, liturgy: all the words / first verse / title only); 3 Cover and order of service (cover or banner and its colours, list or table, hymn numbers, posture, leaders, times); 4 Page layout (the sections in printed order, where new pages start, what is on the back cover).'
+          : null,
+        source !== 'bulletin'
+          ? '   - Slides: 1 Colours and background (background, words, titles and accent colours as hex codes; whether there is a background picture); 2 Fonts and text size; 3 How much on each slide (lines per language you see on a typical slide); 4 Screen shape (16:9 or 4:3, from the deck\'s page size) and footer. Items that have their own background picture in the deck: the user adds the pictures in Library → QR codes & notes, then you can set slide_bg on those items with canon_edit_order.'
+          : null,
+        '7. Finish with: what was created (with links from canon_get_service {"id":…,"format":"downloads"} if the user wants files), what still needs a person (copyrighted words, unreadable parts, pictures to upload), and the settings sheet.',
         ...ETIQUETTE,
       );
     },

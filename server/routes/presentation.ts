@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { L10nSchema } from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as P from '../repo/presentation.ts';
+import { exportBulletinTemplate, exportSlideTemplate, importTemplateFile, templateFileName } from '../repo/template-files.ts';
 import { magicOk as rasterOk } from './design.ts';
 
 export const presentationRoutes = express.Router();
@@ -46,6 +47,7 @@ presentationRoutes.post('/slide-themes', h((req) => P.createTheme(ThemeInput.par
 presentationRoutes.patch('/slide-themes/:id', h((req) => P.updateTheme(id(req), ThemeInput.parse(req.body) as P.ThemeInput)));
 presentationRoutes.delete('/slide-themes/:id', h((req) => P.deleteTheme(id(req))));
 presentationRoutes.post('/slide-themes/:id/duplicate', h((req) => P.duplicateTheme(id(req))));
+presentationRoutes.put('/slide-themes/:id/hidden', h((req) => P.setThemeHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden)));
 
 /** Compiled, scoped CSS for one theme (custom properties + the admin's CSS). */
 presentationRoutes.get('/slide-themes/:id/css', h((req, res) => {
@@ -107,6 +109,7 @@ presentationRoutes.post('/bulletin-templates', h((req) => P.createTemplate(Templ
 presentationRoutes.patch('/bulletin-templates/:id', h((req) => P.updateTemplate(id(req), TemplateInput.parse(req.body))));
 presentationRoutes.delete('/bulletin-templates/:id', h((req) => P.deleteTemplate(id(req))));
 presentationRoutes.post('/bulletin-templates/:id/duplicate', h((req) => P.duplicateTemplate(id(req))));
+presentationRoutes.put('/bulletin-templates/:id/hidden', h((req) => P.setTemplateHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden)));
 
 // ---------------------------------------------------------------- bulletin blocks (QR codes, pictures, notes)
 // Reading needs a session; writing needs an editor or admin (viewers are read-only in requireUser).
@@ -179,6 +182,32 @@ presentationRoutes.put('/bulletin-blocks/:id/image', readBlockImage, h((req) => 
 presentationRoutes.delete('/bulletin-blocks/:id/image', h((req) => P.removeBlockImage(id(req))));
 
 // ---------------------------------------------------------------- church defaults
+
+// ---------------------------------------------------------------- templates as files (copy to another computer or church)
+
+const sendTemplateFile = (res: Response, name: string, body: unknown) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.send(JSON.stringify(body, null, 1));
+};
+presentationRoutes.get('/slide-themes/:id/export', h((req, res) => {
+  const f = exportSlideTemplate(id(req));
+  sendTemplateFile(res, templateFileName('slide', f.template.name), f);
+}));
+presentationRoutes.get('/bulletin-templates/:id/export', h((req, res) => {
+  const f = exportBulletinTemplate(id(req));
+  sendTemplateFile(res, templateFileName('bulletin', f.template.name), f);
+}));
+/** Import a template file (sent as a plain file body: it can hold pictures larger than the JSON limit). */
+presentationRoutes.post('/template-files/import', express.raw({ type: () => true, limit: '30mb' }), h((req) => {
+  let json: unknown;
+  try {
+    json = JSON.parse((req.body as Buffer).toString('utf8'));
+  } catch {
+    throw Object.assign(new Error('This is not a Canon template file.'), { status: 400 });
+  }
+  return importTemplateFile(json);
+}));
 
 presentationRoutes.put('/presentation/defaults', requireAdmin, h((req) => {
   const b = z.object({

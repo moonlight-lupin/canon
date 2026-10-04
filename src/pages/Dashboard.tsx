@@ -35,7 +35,7 @@ export default function Dashboard() {
       <div className="grid cols-2">
         <div className="card">
           <div className="card-head">
-            <h2><Icon name="calendar" width={18} height={18} />{lang === 'zh' ? '下一堂崇拜' : 'Next service'}</h2>
+            <h2><Icon name="calendar" width={18} height={18} />{lang === 'zh' ? '下一堂聚会' : 'Next service'}</h2>
             {next && <span className={`badge ${next.status === 'final' ? 'ok' : ''}`}>{t(next.status === 'final' ? 'Final' : 'Draft')}</span>}
           </div>
           {next ? (
@@ -58,7 +58,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="muted">{lang === 'zh' ? '未来八周没有安排崇拜。' : 'No services planned in the next eight weeks.'} <Link to="/services?new">{t('New service')} →</Link></div>
+            <div className="muted">{lang === 'zh' ? '未来八周没有安排聚会。' : 'No services planned in the next eight weeks.'} <Link to="/services?new">{t('New service')} →</Link></div>
           )}
         </div>
 

@@ -107,7 +107,7 @@ Everything a church office needs is in **Settings**. Environment variables are o
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CANON_PORT` | `3000` | HTTP port |
+| `CANON_PORT` | `3000` | HTTP port. On Windows, put `set CANON_PORT=5018` (for example) in a file `canon.local.bat` next to `start-canon.bat`; it is read at start-up and is not part of the repository. |
 | `CANON_HOST` | `0.0.0.0` | Interface to listen on. The default lets the office LAN reach Canon. |
 | `CANON_DB` | `data/canon.db` | SQLite database file |
 | `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
@@ -122,7 +122,7 @@ npm run backup                      # → backups/canon-YYYY-MM-DD-HHMM.db (safe
 npm run backup -- D:\CanonBackups   # to a USB drive or synced folder
 ```
 
-To restore, stop Canon and copy a backup over `data/canon.db`, deleting any `canon.db-wal` / `canon.db-shm` next to it. Docker users: see [docs/DOCKER.md](docs/DOCKER.md).
+To restore, press **Restore** next to a backup in Settings → Backups (or **Restore from a file…**); Canon saves a copy of the current data first. If Canon will not start, stop it and copy a backup over `data/canon.db`, deleting any `canon.db-wal` / `canon.db-shm` next to it. Docker users: see [docs/DOCKER.md](docs/DOCKER.md).
 
 ## Development
 

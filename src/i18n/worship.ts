@@ -17,7 +17,7 @@ const zh: Record<string, string> = {
   'Hymnal numbers': '诗本编号',
   'Add number': '添加编号',
   'Add your hymnals in Library → Hymnals to record hymn numbers.': '请先在「资料库 → 诗本」添加诗本，才能记录诗歌编号。',
-  'Printed hymnbooks your church sings from. A song can have a number in several hymnals.': '教会崇拜所用的印刷诗本。同一首诗歌可在多本诗本中有不同编号。',
+  'Printed hymnbooks your church sings from. A song can have a number in several hymnals.': '教会聚会所用的印刷诗本。同一首诗歌可在多本诗本中有不同编号。',
   'New hymnal': '新增诗本',
   'No hymnals yet': '尚无诗本',
   'e.g. Hymns of Praise 赞美诗 (HP), Trinity Hymnal (TH)': '例如：赞美诗 Hymns of Praise（HP）、Trinity Hymnal（TH）',
@@ -42,12 +42,12 @@ const zh: Record<string, string> = {
   Imported: '已导入',
   'Westminster Standards': '威斯敏斯德信仰准则',
   'the Shorter Catechism (107 questions), Larger Catechism (196) and Confession of Faith (33 chapters), public domain, English. Use any questions or sections in a service.':
-    '小要理问答（107问）、大要理问答（196问）及信条（33章），公共领域，英文。崇拜中可选用任何问答或条文。',
+    '小要理问答（107问）、大要理问答（196问）及信条（33章），公共领域，英文。聚会中可选用任何问答或条文。',
   'Import Westminster Standards': '导入威斯敏斯德信仰准则',
   parts: '部分',
   'Introduction (optional)': '引言（可选）',
   'Use numbered parts': '分为编号部分',
-  'For catechisms and confessions: each question or section is a part that services can pick.': '适用于要理问答与信条：每一问或每一条为一部分，崇拜程序可自行选用。',
+  'For catechisms and confessions: each question or section is a part that services can pick.': '适用于要理问答与信条：每一问或每一条为一部分，聚会程序可自行选用。',
   Parts: '部分',
   'Number or words': '编号或文字',
   'Add part': '添加部分',
@@ -56,9 +56,9 @@ const zh: Record<string, string> = {
   'Each part is one section; a part title (e.g. the chapter) is printed when it changes.': '每部分为一条；部分标题（如章名）在变更时印出。',
   'Part title (optional)': '部分标题（可选）',
   Text: '内容',
-  'Which hymnal number is printed and projected': '程序单与投影显示哪一本诗本的编号',
+  'Which hymnal number is printed and projected': '次序单与投影显示哪一本诗本的编号',
   'This song has no words yet (it came from a hymnal index). Add the words you are licensed to use in the Library, or the bulletin shows the number and title only.':
-    '此诗歌尚无歌词（来自诗本目录）。请在资料库加入获授权的歌词，否则程序单只显示编号与标题。',
+    '此诗歌尚无歌词（来自诗本目录）。请在资料库加入获授权的歌词，否则次序单只显示编号与标题。',
   'The full Westminster Shorter Catechism (all 107 questions) is in the library: use it to pick any questions.': '资料库已有完整的威斯敏斯德小要理问答（107问），可从中选用任何问答。',
   'Import the Westminster Standards in Library → Liturgical texts to use any of the 107 questions.': '请在「资料库 → 礼文」导入威斯敏斯德信仰准则，即可选用全部107问。',
   'Use the full catechism': '改用完整要理问答',
@@ -72,7 +72,7 @@ const zh: Record<string, string> = {
   'No text in this language yet — add it in the Library.': '此语言尚无内容——请在资料库添加。',
   // ---- Bible versions & uploads (bible worker)
   'Uploaded Bibles are only shown inside your church’s Canon and its bulletins and slides. Some publishers (e.g. ESV, NIV) limit how many verses may be printed or projected; your church is responsible for following the licence.':
-    '上传的圣经译本只在本教会的 Canon 及其程序单和投影片中显示。部分出版社（如 ESV、NIV）限制可印刷或投影的经文节数；教会须自行遵守授权条款。',
+    '上传的圣经译本只在本教会的 Canon 及其次序单和投影片中显示。部分出版社（如 ESV、NIV）限制可印刷或投影的经文节数；教会须自行遵守授权条款。',
   'Code: 2–12 capital letters, digits or hyphens (e.g. ESV, CUNP, TB2).': '代号：2–12 个大写字母、数字或连字符（例如 ESV、CUNP、TB2）。',
   'This code belongs to a public-domain Bible in another language; choose another code.': '此代号属于另一种语言的公版圣经，请换一个代号。',
   'Replace {code} ({name}, {n} verses) with this file?': '用此文件替换 {code}（{name}，{n} 节）？',
@@ -111,7 +111,7 @@ const zh: Record<string, string> = {
   'Books found': '找到的书卷',
   'Delete {code} ({name}, {n} verses)?': '删除 {code}（{name}，{n} 节）？',
   'It is the default Bible for: {langs}. Readings will use another installed version until you choose a new default.': '它是以下语言的默认圣经：{langs}。在您选择新的默认译本之前，读经会使用其他已安装的译本。',
-  '{n} service(s) chose this version; they will fall back to the church default.': '有 {n} 堂崇拜选用了此译本；删除后将改用教会默认译本。',
+  '{n} service(s) chose this version; they will fall back to the church default.': '有 {n} 堂聚会选用了此译本；删除后将改用教会默认译本。',
   'You would need the file to upload it again.': '如要再次使用，需要重新上传文件。',
   'It can be downloaded again at any time.': '随时可以重新下载。',
   'Public-domain Bibles can be downloaded and imported here. To use a licensed translation your church has permission for (e.g. ESV, NIV, 和合本修订版, Alkitab), choose Add a Bible and upload it as a CSV file.':
@@ -124,12 +124,12 @@ const zh: Record<string, string> = {
   Versions: '译本',
   Compare: '对照',
   'Bible versions': '圣经译本',
-  'For every reading in this service; a reading can choose its own.': '用于本堂崇拜的所有读经；个别读经可另选译本。',
+  'For every reading in this service; a reading can choose its own.': '用于本堂聚会的所有读经；个别读经可另选译本。',
   'Bible version': '圣经译本',
   'Service default': '本堂默认',
   // ---- song usage in the planner (precedent worker)
   'last sung': '上次',
   'never sung': '未唱过',
-  'in the 12 months before this service': '次（本堂崇拜之前 12 个月内）',
+  'in the 12 months before this service': '次（本堂聚会之前 12 个月内）',
 };
 export default zh;

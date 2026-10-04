@@ -15,12 +15,18 @@ const KINDS = Object.keys(KIND_LABEL) as ItemKind[];
 
 export default function Templates() {
   const { t, lt } = useI18n();
-  const { canEdit } = useSession();
+  const { canEdit, isAdmin, settings, reloadSettings } = useSession();
   const { data, reload } = useApi<Template[]>('/templates');
+  const { run } = useAction();
+  const defaultId = data?.find((x) => x.id === settings?.default_service_template_id)?.id ?? data?.[0]?.id ?? null;
+  const makeDefault = (tid: number) => run(async () => {
+    await api.put('/templates-default', { template_id: tid });
+    reloadSettings();
+  }, t('This is now the church default.'));
   const [edit, setEdit] = useState<Partial<Template> | null>(null);
   return (
     <div className="page">
-      <PageHead eyebrow={t('Service Planner')} title={t('Service templates')} sub={lt({ en: 'Reusable orders of worship. Hymn slots are left empty to fill each week.', zh: '可重复使用的崇拜程序。诗歌位置留空，每周填写。' })}>
+      <PageHead eyebrow={t('Service Planner')} title={t('Service templates')} sub={lt({ en: 'Reusable orders of worship. Hymn slots are left empty to fill each week.', zh: '可重复使用的聚会程序。诗歌位置留空，每周填写。' })}>
         <CsvTools entity="templates" label={t('Templates')} onImported={reload} />
         {canEdit && <button className="btn primary" onClick={() => setEdit({ name: {}, description: {}, service_type: 'lords_day', start_time: '10:00', items: [] })}><Icon name="plus" />{t('New template')}</button>}
       </PageHead>
@@ -30,7 +36,10 @@ export default function Templates() {
             <div key={tp.id} className="card">
               <div className="card-head">
                 <h2><Bi v={tp.name} /></h2>
-                <span className="badge reed">{tp.start_time}</span>
+                <span className="row" style={{ gap: 6 }}>
+                  {tp.id === defaultId && <span className="badge reed" title={t('New service starts from this template.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
+                  <span className="badge">{tp.start_time}</span>
+                </span>
               </div>
               <p className="muted small">{lt(tp.description)}</p>
               <div className="small" style={{ columns: 2, columnGap: 16, margin: '10px 0' }}>
@@ -43,6 +52,7 @@ export default function Templates() {
               <div className="row">
                 <span className="small muted">{tp.items.length} · {tp.items.reduce((a, i) => a + i.duration_min, 0)} {t('min')}</span>
                 <div className="grow" />
+                {isAdmin && tp.id !== defaultId && <button className="btn sm ghost" onClick={() => makeDefault(tp.id)} title={t('New service starts from this template.')}><Icon name="check" />{t('Set as church default')}</button>}
                 {canEdit && <button className="btn sm" onClick={() => setEdit(tp)}><Icon name="edit" />{t('Edit')}</button>}
                 {canEdit && <Link className="btn sm primary" to={`/services?new&template=${tp.id}`}>{t('Use template')}</Link>}
               </div>

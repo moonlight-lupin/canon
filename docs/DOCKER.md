@@ -23,6 +23,10 @@ The container runs as an unprivileged user. On Linux, if backups fail with "perm
 
 ## Restoring a backup
 
+The easy way: **Settings → Backups → Restore** (or **Restore from a file…**) while Canon is running. Canon saves a copy of the current data first.
+
+If Canon will not start, restore by hand:
+
 ```bash
 docker compose down
 docker run --rm -v canon_canon-data:/data -v "$PWD/backups:/b" alpine sh -c "rm -f /data/canon.db-wal /data/canon.db-shm && cp /b/canon-YYYY-MM-DD-HHMM.db /data/canon.db && chown 1000:1000 /data/canon.db"

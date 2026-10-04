@@ -155,6 +155,7 @@ export const ServiceItemInput = z.object({
   posture: z.enum(['stand', 'sit', 'kneel']).nullable().optional(),
   bibles: z.record(LangSchema, z.string().max(20)).optional(),
   slide_blocks: z.array(z.number().int()).max(6).optional(),
+  slide_bg: z.number().int().nullable().optional(),
   body: L10nSchema.optional(),
   duration_min: z.number().min(0).max(240).optional(),
   role_id: z.number().int().nullable().optional(),
@@ -200,6 +201,7 @@ export const TemplateItemSchema = z.object({
   posture: z.enum(['stand', 'sit', 'kneel']).optional(),
   bulletin_text: z.enum(['full', 'title']).optional(),
   slide_blocks: z.array(z.string().max(100)).max(6).optional(),
+  slide_bg: z.string().max(100).optional(),
 });
 export const TemplateInput = z.object({
   key: z.string().max(100).nullable().optional(),

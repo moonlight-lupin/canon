@@ -52,7 +52,7 @@ before(async () => {
   updateSettings({ languages: ['en', 'zh'], church_name: { en: 'Grace Church', zh: '恩典堂' }, church_contact: '03-1234 5678' });
 
   const team = vol.teams.insert({ name: { en: 'Music', zh: '音乐' }, color: '#123456', sort: 0 } as never);
-  const lead = vol.roles.insert({ team_id: team.id, name: { en: 'Worship leader', zh: '领会' }, needed: 1, sort: 0 } as never);
+  const lead = vol.roles.insert({ team_id: team.id, name: { en: 'Liturgist', zh: '领会' }, needed: 1, sort: 0 } as never);
   const piano = vol.roles.insert({ team_id: team.id, name: { en: 'Pianist', zh: '司琴' }, needed: 1, sort: 1 } as never);
   const p = (first: string, extra: Json) => reg.people.insert({ first_name: first, last_name: 'Tan', status: 'member', ...extra } as never).id;
   ids.grace = p('Grace', { email: 'grace@example.org', native_name: '陈恩惠' }); // no preference → bilingual

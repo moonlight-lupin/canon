@@ -18,7 +18,7 @@ export function SlideThemeField({ value, onChange }: { value: number | null; onC
     <Field label={t('Slide theme')}>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
         <option value="">{t('Church default')}{def ? ` — ${lt(def.name)}` : ''}</option>
-        {themes?.map((x) => <option key={x.id} value={x.id}>{lt(x.name)}</option>)}
+        {themes?.filter((x) => !x.hidden || x.id === value).map((x) => <option key={x.id} value={x.id}>{lt(x.name)}</option>)}
       </select>
     </Field>
   );
@@ -34,7 +34,7 @@ export function BulletinTemplateField({ value, onChange }: { value: number | nul
     <Field label={t('Bulletin template')} hint={t('Decides which items print their full words.')}>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
         <option value="">{t('Church default')}{def ? ` — ${lt(def.name)}` : ''}</option>
-        {list?.map((x) => <option key={x.id} value={x.id}>{lt(x.name)}</option>)}
+        {list?.filter((x) => !x.hidden || x.id === value).map((x) => <option key={x.id} value={x.id}>{lt(x.name)}</option>)}
       </select>
     </Field>
   );

@@ -2,7 +2,7 @@
 const zh: Record<string, string> = {
   // Settings → E-mail
   'Canon sends volunteer reminder e-mails through the church’s own e-mail account. Nothing is sent automatically: an editor presses “Send reminders” on a service’s Team tab.':
-    'Canon 通过教会自己的电邮账户发送同工服事提醒。系统不会自动发送：须由编辑者在崇拜的“同工”分页按“发送提醒”。',
+    'Canon 通过教会自己的电邮账户发送同工服事提醒。系统不会自动发送：须由编辑者在聚会的“同工”分页按“发送提醒”。',
   'SMTP server': 'SMTP 服务器',
   'Set up': '已设定',
   'Not set up': '未设定',
@@ -56,7 +56,7 @@ const zh: Record<string, string> = {
   Failed: '失败',
 
   // Service → Team → Send reminders
-  'E-mail each volunteer their role, items and times for this service.': '以电邮通知每位同工本次崇拜的岗位、负责程序和时间。',
+  'E-mail each volunteer their role, items and times for this service.': '以电邮通知每位同工本次聚会的岗位、负责程序和时间。',
   'Send reminders': '发送提醒',
   Done: '完成',
   'Send now': '立即发送',
@@ -70,13 +70,13 @@ const zh: Record<string, string> = {
   'Send reminder e-mails now to': '现在发送提醒电邮给',
   person: '人',
   'E-mails cannot be recalled once sent.': '电邮一经发出便无法撤回。',
-  'No one is scheduled for this service yet.': '本次崇拜尚未安排同工。',
+  'No one is scheduled for this service yet.': '本次聚会尚未安排同工。',
   Recipients: '收件人',
   'Last sent': '上次发送',
   'Not sent yet': '尚未发送',
   Note: '附注',
   'Replaces the standard arrival note. Leave empty to keep it.': '会取代标准的到达提示；留空则保留标准提示。',
-  'Tip: turn on the share link to include the order of service in the e-mail.': '提示：启用分享链接，电邮中便会附上崇拜程序。',
+  'Tip: turn on the share link to include the order of service in the e-mail.': '提示：启用分享链接，电邮中便会附上聚会程序。',
   Preview: '预览',
   Formatted: '格式化',
   'Plain text': '纯文本',

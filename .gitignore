@@ -28,3 +28,6 @@ Thumbs.db
 
 # Claude Code project memory & local settings stay on this machine
 .claude/
+
+# machine-specific launcher settings (port etc.)
+canon.local.bat

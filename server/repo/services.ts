@@ -21,7 +21,7 @@ export const items = table<ServiceItem>({
   name: 'service_items',
   cols: [
     'service_id', 'position', 'kind', 'title', 'ref_id', 'scripture_ref', 'stanzas', 'hymnal_id', 'bulletin_text', 'posture', 'bibles', 'slide_blocks', 'body', 'duration_min', 'role_id',
-    'leader', 'notes', 'in_bulletin', 'on_slides',
+    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_bg',
   ],
   json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks'],
   bool: ['in_bulletin', 'on_slides'],
@@ -119,9 +119,17 @@ function validateRefs(input: Partial<ServiceItem>) {
   if (input.role_id != null && !roles.find(input.role_id)) throw new BadRequest(`role ${input.role_id} not found`);
 }
 
+/** A slide background must be a picture from Library → QR codes & notes that has an image uploaded. */
+function validateBackground(input: Partial<ServiceItem>) {
+  if (input.slide_bg == null) return;
+  const ok = get<{ n: number }>("SELECT COUNT(*) AS n FROM bulletin_blocks b JOIN assets a ON a.key = 'bulletin-block-' || b.id WHERE b.id = ? AND b.kind = 'image'", input.slide_bg);
+  if (!ok?.n) throw new BadRequest(`slide_bg ${input.slide_bg} is not a picture in Library → QR codes & notes (upload one there first)`);
+}
+
 export function addItem(serviceId: number, input: Partial<ServiceItem>, position?: number): ServiceItem {
   services.get(serviceId);
   validateRefs(input);
+  validateBackground(input);
   return tx(() => {
     const pos = position ?? nextPosition(serviceId);
     run('UPDATE service_items SET position = position + 1 WHERE service_id = ? AND position >= ?', serviceId, pos);
@@ -135,6 +143,7 @@ export function addItem(serviceId: number, input: Partial<ServiceItem>, position
 export function updateItem(itemId: number, patch: Partial<ServiceItem>): ServiceItem {
   const cur = items.get(itemId);
   validateRefs({ ...cur, ...patch });
+  if (patch.slide_bg !== undefined) validateBackground(patch);
   const { service_id: _s, position: _p, id: _i, ...rest } = patch as ServiceItem;
   const out = items.update(itemId, rest);
   touch(cur.service_id);
@@ -166,7 +175,7 @@ export function reorderItems(serviceId: number, itemIds: number[]) {
 export function materialise(tItems: TemplateItem[]) {
   const missing: string[] = [];
   // QR codes / notes on slides are stored by block name in a template; a name that no longer exists is skipped
-  const blockIds = tItems.some((t) => t.slide_blocks?.length) ? blockIdsByName() : new Map<string, number>();
+  const blockIds = tItems.some((t) => t.slide_blocks?.length || t.slide_bg) ? blockIdsByName() : new Map<string, number>();
   const out = tItems.map((t) => {
     let ref_id: number | null = null;
     if (t.song_key) {
@@ -193,6 +202,7 @@ export function materialise(tItems: TemplateItem[]) {
       ...(t.posture ? { posture: t.posture } : {}),
       ...(t.bulletin_text ? { bulletin_text: t.bulletin_text } : {}),
       ...(t.slide_blocks?.length ? { slide_blocks: [...new Set(t.slide_blocks.map((n) => blockIds.get(n.trim().toLowerCase())).filter((x): x is number => !!x))] } : {}),
+      ...(t.slide_bg && blockIds.get(t.slide_bg.trim().toLowerCase()) ? { slide_bg: blockIds.get(t.slide_bg.trim().toLowerCase())! } : {}),
     });
   });
   return { items: out, missing };
@@ -280,6 +290,7 @@ export function saveAsTemplate(serviceId: number, name: L10n) {
     if (it.bulletin_text) t.bulletin_text = it.bulletin_text;
     const blocks = (it.slide_blocks ?? []).map((id) => blockNames.get(id)).filter((n): n is string => !!n);
     if (blocks.length) t.slide_blocks = blocks;
+    if (it.slide_bg && blockNames.get(it.slide_bg)) t.slide_bg = blockNames.get(it.slide_bg);
     return t;
   });
   return templates.insert({
