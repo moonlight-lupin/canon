@@ -652,6 +652,23 @@ export const MIGRATIONS: (string | Migration)[] = [
 
     ALTER TABLE group_members ADD COLUMN leads INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN person_id INTEGER REFERENCES people(id) ON DELETE SET NULL;
+
+    -- the church calendar's own events (services and meetings come from services)
+    CREATE TABLE events (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL DEFAULT '{}',
+      date TEXT NOT NULL,
+      end_date TEXT,
+      start_time TEXT,
+      end_time TEXT,
+      place TEXT,
+      description TEXT,
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL,
+      group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX events_date ON events(date);
     `,
     run: (d) => {
       const rows = d.prepare('SELECT id, role FROM group_members').all() as { id: number; role: string | null }[];

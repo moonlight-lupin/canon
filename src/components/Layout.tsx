@@ -10,7 +10,7 @@ import { Seg, useSession } from './ui.tsx';
 import type { Settings } from '../types-client.ts';
 
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean }[] }[] = [
-  { group: '', items: [{ to: '/', label: 'Dashboard', icon: 'home' }] },
+  { group: '', items: [{ to: '/', label: 'Dashboard', icon: 'home' }, { to: '/calendar', label: 'Calendar', icon: 'calendar' }] },
   {
     group: 'Service Planner',
     items: [

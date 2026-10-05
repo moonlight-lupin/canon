@@ -36,6 +36,7 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   backups: { en: 'Backup', zh: '备份' },
   congregations: { en: 'Congregation', zh: '会众' },
   service_records: { en: 'Service record', zh: '聚会记录' },
+  events: { en: 'Calendar event', zh: '日历活动' },
   backgrounds: { en: 'Slide background', zh: '投影背景' },
 };
 

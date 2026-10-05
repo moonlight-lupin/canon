@@ -71,6 +71,8 @@ An AI assistant always works as the person who connected it and never gets more 
 
 The [Dashboard](/) is the home page: the next service and its status, open roster roles and clashes for the coming weeks, upcoming birthdays, and quick links to the bulletin and slides.
 
+The [Calendar](/calendar) shows services, meetings and the church's other events together: **Month**, **Week** or **List** (the next eight weeks; phones show a list), for a congregation (with the whole church's items) and a group. Click a service or meeting to open it. **New event** (editors) adds anything else on the church's calendar — a camp, a wedding, a working bee — with its dates (**Until** for several days), times, place, congregation and group; click an event to change or delete it.
+
 ### 1. Plan Sunday's service
 
 1. Go to [Services](/services) and press **＋ New service**.

@@ -15,6 +15,7 @@ import { designRoutes, publicDesignRoutes } from './routes/design.ts';
 import { presentationRoutes } from './routes/presentation.ts';
 import { csvRoutes } from './routes/csv.ts';
 import { bibleRoutes } from './routes/bible.ts';
+import { calendarRoutes } from './routes/calendar.ts';
 import { h, id, sendFile, str } from './routes/helpers.ts';
 import { peopleRoutes } from './routes/people.ts';
 import { recordRoutes } from './routes/records.ts';
@@ -334,6 +335,7 @@ api.use(serviceRoutes);
 // ---------------------------------------------------------------- MCP administration
 
 api.use(adminRoutes);
+api.use(calendarRoutes);
 
 // ---------------------------------------------------------------- feature modules (v0.2)
 

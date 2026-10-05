@@ -233,3 +233,22 @@ test('a group with a meeting pattern gets its meetings created ahead, once, with
   assert.equal((await call(as.viewer, 'POST', `/groups/${g.body.id}/meetings-ahead`, {})).status, 403);
   assert.equal((await call(as.editor, 'POST', `/groups/${ids.group}/meetings-ahead`, {})).body.created, 0);
 });
+
+test('the church calendar: services, meetings and events together; events over several days; editors add events', async () => {
+  assert.equal((await call(as.viewer, 'POST', '/events', { title: { en: 'Test Camp' }, date: '2035-03-08' })).status, 403);
+  assert.equal((await call(as.editor, 'POST', '/events', { title: { en: 'Test Camp' }, date: '2035-03-08', end_date: '2035-03-06' })).status, 400, 'ends before it starts');
+  assert.equal((await call(as.editor, 'POST', '/events', { title: {}, date: '2035-03-08' })).status, 400, 'a title is needed');
+  const camp = await call(as.editor, 'POST', '/events', { title: { en: 'Test Camp' }, date: '2035-03-02', end_date: '2035-03-05', place: 'Test Hills' });
+  assert.equal(camp.status, 200, JSON.stringify(camp.body));
+  const items = (await call(as.viewer, 'GET', '/calendar?from=2035-03-04&to=2035-03-10')).body as Json[];
+  const kinds = items.map((i) => `${i.type}:${i.id}`);
+  assert.ok(kinds.includes(`service:${ids.service}`), 'the service');
+  assert.ok(kinds.includes(`meeting:${ids.m1}`), 'a meeting');
+  assert.ok(kinds.includes(`event:${camp.body.id}`), 'the camp, which started before the period');
+  assert.deepEqual(items.map((i) => i.date), [...items.map((i) => i.date)].sort(), 'in date order');
+  const groupOnly = (await call(as.viewer, 'GET', `/calendar?from=2035-03-01&to=2035-03-31&group=${ids.group}`)).body as Json[];
+  assert.ok(groupOnly.every((i) => i.group_id === ids.group) && groupOnly.length >= 3);
+  assert.equal((await call(as.editor, 'PATCH', `/events/${camp.body.id}`, { end_date: '2035-03-01' })).status, 400);
+  assert.equal((await call(as.editor, 'DELETE', `/events/${camp.body.id}`)).status, 200);
+  assert.equal((await call(as.viewer, 'GET', '/calendar?from=bad&to=2035-03-01')).status, 400);
+});

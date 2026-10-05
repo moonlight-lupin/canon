@@ -822,5 +822,17 @@ const zh: Record<string, string> = {
   "Thursday": "星期四",
   "Friday": "星期五",
   "Saturday": "星期六",
+  "Calendar": "日历",
+  "Week": "周",
+  "New event": "新增活动",
+  "Earlier": "往前",
+  "Later": "往后",
+  "Events": "活动",
+  "Nothing on the calendar in these weeks.": "这几周的日历上没有安排。",
+  "Delete this event?": "删除这个活动？",
+  "Event": "活动",
+  "Until": "结束日期",
+  "for an event over several days": "适用于持续几天的活动",
+  "End time": "结束时间",
 };
 export default zh;
