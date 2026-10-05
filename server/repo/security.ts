@@ -1,0 +1,211 @@
+// Settings → Security & privacy and the Storage panel:
+//  - who viewed member records (a member's page, an AI agent reading a person, the members CSV export), kept as long
+//    as the change log;
+//  - a security checklist in plain words (disk encryption, backups, public address, accounts, AI access, keep
+//    periods), each item with what to do;
+//  - how much space Canon uses, what uses it, how fast it grows, and the free space on the drive.
+import fs from 'node:fs';
+import path from 'node:path';
+import { all, get, run, type SqlValue } from '../db.ts';
+import { config } from '../config.ts';
+import { getMeta, getSettings, setMeta } from './settings.ts';
+import { backupDir, lastBackupAt, listBackups } from './backups.ts';
+import { dateRange, paging } from './changelog.ts';
+import { likeTerm } from '../lib/table.ts';
+import { formSettings } from './visitor-form.ts';
+
+// ---------------------------------------------------------------- member record views
+
+export type ViewVia = 'web' | 'mcp' | 'export';
+
+/** Note that someone looked at member records. The same person opening the same record within 10 minutes counts once. */
+export function logMemberView(v: { user_id: number | null; user_name: string | null; person_id: number | null; via: ViewVia; detail?: string }) {
+  const recent = get<{ id: number }>(
+    `SELECT id FROM member_views WHERE IFNULL(user_id, 0) = ? AND IFNULL(person_id, 0) = ? AND via = ? AND at > datetime('now', '-10 minutes')`,
+    v.user_id ?? 0, v.person_id ?? 0, v.via,
+  );
+  if (recent) return;
+  run('INSERT INTO member_views (user_id, user_name, person_id, via, detail) VALUES (?,?,?,?,?)', v.user_id, v.user_name, v.person_id, v.via, v.detail ?? null);
+}
+
+export interface ViewQuery { person_id?: number; user_id?: number; via?: string; from?: string; to?: string; q?: string; page?: number; size?: number; all?: boolean }
+
+export function listMemberViews(q: ViewQuery) {
+  const where: string[] = [];
+  const params: SqlValue[] = [];
+  if (q.person_id) {
+    where.push('v.person_id = ?');
+    params.push(q.person_id);
+  }
+  if (q.user_id) {
+    where.push('v.user_id = ?');
+    params.push(q.user_id);
+  }
+  if (q.via && ['web', 'mcp', 'export'].includes(q.via)) {
+    where.push('v.via = ?');
+    params.push(q.via);
+  }
+  const dr = dateRange('v.at', q.from, q.to);
+  where.push(...dr.where);
+  params.push(...dr.params);
+  if (q.q) {
+    where.push(`(IFNULL(p.first_name,'') || ' ' || IFNULL(p.last_name,'') || ' ' || IFNULL(p.native_name,'') || ' ' || IFNULL(v.detail,'')) LIKE ? ESCAPE '\\'`);
+    params.push(likeTerm(q.q));
+  }
+  const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const { size, page, offset } = paging(q);
+  const total = get<{ n: number }>(`SELECT COUNT(*) AS n FROM member_views v LEFT JOIN people p ON p.id = v.person_id ${w}`, ...params)?.n ?? 0;
+  const rows = all<{ id: number; at: string; user_id: number | null; user_name: string | null; person_id: number | null; person_name: string | null; via: ViewVia; detail: string | null }>(
+    `SELECT v.id, v.at, v.user_id, v.user_name, v.person_id, v.via, v.detail,
+            TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || IFNULL(p.last_name, '') || ' ' || IFNULL(p.native_name, '')) AS person_name
+     FROM member_views v LEFT JOIN people p ON p.id = v.person_id ${w} ORDER BY v.id DESC LIMIT ? OFFSET ?`,
+    ...params, size, offset,
+  );
+  const users = all<{ id: number; name: string }>('SELECT DISTINCT user_id AS id, user_name AS name FROM member_views WHERE user_id IS NOT NULL ORDER BY user_name');
+  return { rows, total, page, size, users };
+}
+
+export function pruneMemberViews(months: number): number {
+  if (!months) return 0;
+  return Number(run(`DELETE FROM member_views WHERE at < datetime('now', ?)`, `-${months} months`).changes);
+}
+
+// ---------------------------------------------------------------- storage
+
+const fileSize = (p: string) => {
+  try {
+    return fs.statSync(p).size;
+  } catch {
+    return 0;
+  }
+};
+
+/** What uses the space inside the database, in plain words. */
+const TABLE_LABEL: Record<string, string> = {
+  bible_verses: 'Bible texts', assets: 'Pictures (logo, QR codes and notes, backgrounds)', slide_backgrounds: 'Slide backgrounds',
+  songs: 'Songs', texts: 'Liturgy and catechisms', services: 'Services', service_items: 'Orders of service',
+  service_records: 'Service records', change_log: 'Change log', mcp_audit: 'AI activity log', member_views: 'Member record views',
+  people: 'Members', email_log: 'E-mail log', visitor_cards: 'Visitor cards',
+  templates: 'Service templates', song_hymnals: 'Hymn numbers', hymnals: 'Hymnals', sqlite_schema: 'Database structure', sqlite_master: 'Database structure',
+  bulletin_templates: 'Bulletin templates', slide_themes: 'Slide templates', bulletin_blocks: 'QR codes and notes', groups: 'Groups', group_members: 'Group members',
+  households: 'Households', assignments: 'Rota', settings: 'Settings', bible_translations: 'Bible versions', oauth_tokens: 'AI connections', oauth_grants: 'AI connections',
+  sessions: 'Sign-ins', users: 'User accounts', coworkers: 'Co-workers', roles: 'Roles', teams: 'Teams', congregations: 'Congregations', unavailability: 'Away dates',
+};
+
+/** Keep one size reading a day (for the growth estimate); the last 400 days. */
+export function recordSizeSnapshot(today = new Date().toISOString().slice(0, 10)) {
+  const hist = sizeHistory();
+  if (hist.at(-1)?.date === today) return;
+  hist.push({ date: today, bytes: fileSize(config.dbPath) + fileSize(`${config.dbPath}-wal`) });
+  setMeta('_size_history', JSON.stringify(hist.slice(-400)));
+}
+function sizeHistory(): { date: string; bytes: number }[] {
+  try {
+    return JSON.parse(getMeta('_size_history') ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function storageReport() {
+  const db = fileSize(config.dbPath);
+  const wal = fileSize(`${config.dbPath}-wal`);
+  let tables: { name: string; label: string; bytes: number }[] = [];
+  try {
+    tables = all<{ name: string; bytes: number }>(
+      `SELECT CASE WHEN m.type = 'index' THEN m.tbl_name ELSE s.name END AS name, SUM(s.pgsize) AS bytes
+       FROM dbstat s LEFT JOIN sqlite_master m ON m.name = s.name GROUP BY 1 ORDER BY bytes DESC`,
+    ).map((t) => ({ ...t, label: TABLE_LABEL[t.name] ?? t.name }));
+  } catch { /* dbstat not available in this SQLite build */ }
+  const top = tables.slice(0, 8);
+  const rest = tables.slice(8).reduce((s, t) => s + t.bytes, 0);
+  const backups = listBackups();
+  const backupBytes = backups.reduce((s, b) => s + b.size, 0);
+  let free: number | null = null;
+  try {
+    const st = fs.statfsSync(path.dirname(config.dbPath));
+    free = Number(st.bavail) * Number(st.bsize);
+  } catch { /* not available */ }
+  const hist = sizeHistory();
+  const monthAgo = hist.find((h) => Date.parse(h.date) >= Date.now() - 31 * 86400_000);
+  const growth = monthAgo && hist.length > 1 ? Math.max(0, db + wal - monthAgo.bytes) : null;
+  const warnings: string[] = [];
+  if (free !== null && free < 2e9) warnings.push('Less than 2 GB free on the drive Canon uses. Free some space before backups fail.');
+  if (db + wal > 1e9) warnings.push('The database is over 1 GB: consider archiving older records (coming in this release).');
+  if (free !== null && growth && free / growth < 12) warnings.push('At this growth the drive fills within a year.');
+  return {
+    database: { bytes: db + wal, file: db, wal, path: config.dbPath },
+    tables: [...top, ...(rest ? [{ name: 'other', label: 'Everything else', bytes: rest }] : [])],
+    backups: { dir: backupDir(), count: backups.length, bytes: backupBytes, last: lastBackupAt() },
+    free_bytes: free,
+    growth_per_month: growth,
+    history: hist.slice(-90),
+    warnings,
+  };
+}
+
+// ---------------------------------------------------------------- security checklist
+
+export type CheckStatus = 'ok' | 'warn' | 'todo' | 'info';
+export interface CheckItem { key: string; status: CheckStatus; title: string; detail: string; link?: string }
+
+const SYNCED = /(onedrive|dropbox|google ?drive|icloud|box sync)/i;
+
+export function securityChecklist(): CheckItem[] {
+  const s = getSettings();
+  const items: CheckItem[] = [];
+  items.push(s.security?.disk_encryption
+    ? { key: 'disk', status: 'ok', title: 'Disk encryption', detail: 'You confirmed the drive Canon runs on is encrypted (BitLocker on Windows, FileVault on a Mac, or the VM provider’s disk encryption).' }
+    : { key: 'disk', status: 'todo', title: 'Disk encryption', detail: 'Turn on BitLocker (Windows 11 Pro: Settings → Privacy & security → Device encryption / BitLocker) so a lost or stolen computer does not give away members’ details. Then tick “Done” here.' });
+
+  const last = lastBackupAt();
+  const ageDays = last ? (Date.now() - Date.parse(last)) / 86400_000 : Infinity;
+  const auto = s.backup.auto;
+  items.push(auto === 'off'
+    ? { key: 'backups', status: 'warn', title: 'Automatic backups', detail: 'Automatic backups are off. Turn them on (daily or weekly).', link: '/settings?tab=backups' }
+    : ageDays > (auto === 'daily' ? 2 : 9)
+      ? { key: 'backups', status: 'warn', title: 'Automatic backups', detail: `The last backup is ${Number.isFinite(ageDays) ? `${Math.round(ageDays)} days` : 'not yet made'} old. Check Settings → Backups.`, link: '/settings?tab=backups' }
+      : { key: 'backups', status: 'ok', title: 'Automatic backups', detail: `${auto === 'daily' ? 'Daily' : 'Weekly'}; the last one was ${Math.max(0, Math.round(ageDays))} day(s) ago.` });
+
+  const dir = backupDir();
+  const inside = path.resolve(dir).toLowerCase().startsWith(path.resolve(config.root).toLowerCase());
+  items.push(SYNCED.test(dir)
+    ? { key: 'backup_place', status: 'info', title: 'Where backups are kept', detail: `Backups go to a folder synced to a cloud account (${dir}): a good copy away from this computer, as long as the account is the church’s and only the people who need it can open it — the files are full, unencrypted copies of the database.`, link: '/settings?tab=backups' }
+    : inside
+      ? { key: 'backup_place', status: 'warn', title: 'Where backups are kept', detail: `Backups are in Canon’s own folder (${dir}), on the same drive as the database. If that drive fails, both are lost: copy them regularly to a USB drive or another computer the office controls.`, link: '/settings?tab=backups' }
+      : { key: 'backup_place', status: 'ok', title: 'Where backups are kept', detail: `Backups go to ${dir}.` });
+  items.push({ key: 'backup_encryption', status: 'info', title: 'Backup encryption', detail: 'Backups are not encrypted yet. Anyone who gets a backup file can read it: keep the files where only the office can reach them.' });
+
+  const pub = s.public_url;
+  items.push(!pub
+    ? { key: 'public', status: 'info', title: 'Public address', detail: 'No public address: Canon is reached on the church’s network only (AI assistants and the visitor form from outside need one).', link: '/settings?tab=mcp' }
+    : /^https:\/\//i.test(pub)
+      ? { key: 'public', status: 'ok', title: 'Public address', detail: `${pub} (https).` }
+      : { key: 'public', status: 'warn', title: 'Public address', detail: `${pub} is not https: sign-ins and members’ details would cross the internet unencrypted.`, link: '/settings?tab=mcp' });
+
+  const users = all<{ id: number; display_name: string; role: string; created_at: string; last_login_at: string | null }>('SELECT id, display_name, role, created_at, last_login_at FROM users');
+  const admins = users.filter((u) => u.role === 'admin').length;
+  items.push(admins < 2
+    ? { key: 'admins', status: 'warn', title: 'Administrators', detail: 'Only one administrator: if that person is away or forgets the password, nobody can manage Canon. Add a second.', link: '/settings?tab=users' }
+    : admins > 4
+      ? { key: 'admins', status: 'warn', title: 'Administrators', detail: `${admins} administrators: each can change everything. Keep it to the few who need it.`, link: '/settings?tab=users' }
+      : { key: 'admins', status: 'ok', title: 'Administrators', detail: `${admins} administrators.` });
+  const cutoff = Date.now() - 180 * 86400_000;
+  const stale = users.filter((u) => (u.last_login_at ? Date.parse(u.last_login_at.replace(' ', 'T') + 'Z') : Date.parse(u.created_at.replace(' ', 'T') + 'Z')) < cutoff);
+  items.push(stale.length
+    ? { key: 'stale', status: 'warn', title: 'Accounts not used for 6 months', detail: `${stale.map((u) => u.display_name).join(', ')}. Remove accounts people no longer need.`, link: '/settings?tab=users' }
+    : { key: 'stale', status: 'ok', title: 'Accounts not used for 6 months', detail: 'None.' });
+
+  const mcp = s.mcp;
+  items.push(!mcp.enabled
+    ? { key: 'ai', status: 'ok', title: 'AI assistants', detail: 'Off.' }
+    : mcp.expose_member_pii
+      ? { key: 'ai', status: 'warn', title: 'AI assistants', detail: 'On, and members’ personal data is shared with them. Keep it on only with the church’s consent to share it with the AI provider.', link: '/settings?tab=mcp' }
+      : { key: 'ai', status: 'ok', title: 'AI assistants', detail: 'On; members’ personal data is not shared.', link: '/settings?tab=mcp' });
+
+  const vf = formSettings();
+  items.push({ key: 'visitor_form', status: 'info', title: 'Visitor form', detail: vf.enabled ? 'On: services with a form have a public page visitors can fill in.' : 'Off.', link: '/settings?tab=visitor-form' });
+  items.push({ key: 'retention', status: 'info', title: 'How long logs are kept', detail: `Change log and member record views: ${s.retention.change_log_months || 'all'} months; AI activity: ${s.retention.mcp_audit_months || 'all'} months.`, link: '/settings?tab=changelog' });
+  items.push({ key: 'readonly', status: 'ok', title: 'Read-only accounts', detail: 'Never see members’ contact details, notes, ages or sensitive fields.' });
+  return items;
+}

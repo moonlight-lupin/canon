@@ -6,6 +6,7 @@ import * as S from '../../shared/schemas.ts';
 import type { Person } from '../../shared/types.ts';
 import { tx } from '../db.ts';
 import * as reg from '../repo/registers.ts';
+import { logMemberView } from '../repo/security.ts';
 import { getSettings } from '../repo/settings.ts';
 import * as grp from '../repo/groups.ts';
 import { findCongregation } from '../repo/congregations.ts';
@@ -93,6 +94,7 @@ export const PEOPLE_TOOLS: ToolDef[] = [
     input: { id: Id },
     handler: (a, ctx) => {
       const p = reg.people.get(a.id);
+      logMemberView({ user_id: ctx.auth.user.id, user_name: ctx.auth.user.display_name, person_id: p.id, via: 'mcp' });
       const hh = p.household_id ? reg.households.find(p.household_id) : undefined;
       return {
         ...personOut(p, ctx.pii),

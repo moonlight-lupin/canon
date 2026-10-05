@@ -6,6 +6,7 @@ import { DatabaseSync, backup as sqliteBackup } from 'node:sqlite';
 import { db, migrate, schemaVersion } from '../db.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
+import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
@@ -187,7 +188,9 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       const { change_log_months, mcp_audit_months } = getSettings().retention;
       const a = pruneChanges(change_log_months);
       const b = pruneAudit(mcp_audit_months);
-      if (a || b) log(`logs: removed ${a} change-log and ${b} AI-activity entries past the keep period`);
+      const c = pruneMemberViews(change_log_months);
+      if (a || b || c) log(`logs: removed ${a} change-log, ${b} AI-activity and ${c} member-view entries past the keep period`);
+      recordSizeSnapshot();
     } catch (e) {
       log(`logs: tidy failed — ${(e as Error).message}`);
     }

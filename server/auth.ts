@@ -60,6 +60,7 @@ export function authenticate(username: string, password: string): User | null {
 export function startSession(req: Request, res: Response, user: User) {
   const token = crypto.randomBytes(32).toString('base64url');
   const csrf = crypto.randomBytes(18).toString('base64url');
+  run("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", user.id);
   run('INSERT INTO sessions (token_hash, user_id, csrf, expires_at) VALUES (?,?,?,?)',
     sha256(token), user.id, csrf, Date.now() + SESSION_DAYS * 86400_000);
   res.cookie(COOKIE, token, {

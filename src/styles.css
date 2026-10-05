@@ -452,3 +452,10 @@ table.t tr.click:hover td { background: var(--sunk); }
 
 /* References people choose for services and templates (EN-001, CN-10pmService) */
 .ref-badge { font-family: var(--mono); letter-spacing: 0; text-transform: none; }
+
+/* Settings → Security & privacy: the checklist */
+.sec-list { display: flex; flex-direction: column; gap: 2px; }
+.sec-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 4px; border-top: 1px solid var(--rule); }
+.sec-item:first-child { border-top: 0; }
+.sec-mark { min-width: 22px; justify-content: center; font-weight: 700; }
+.sec-item.todo .sec-mark, .sec-item.warn .sec-mark { background: var(--warn-wash); color: var(--warn); }

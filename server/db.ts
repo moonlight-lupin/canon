@@ -564,6 +564,21 @@ const MIGRATIONS: (string | Migration)[] = [
   `ALTER TABLE visitor_cards ADD COLUMN about TEXT;`,
   // v0.11.0 — custom member fields (definitions in settings.member_fields; values per person, JSON {key: text})
   `ALTER TABLE people ADD COLUMN custom TEXT NOT NULL DEFAULT '{}';`,
+  // v0.11.0 — who looked at member records (kept as long as the change log); when each account last signed in
+  `
+  CREATE TABLE member_views (
+    id INTEGER PRIMARY KEY,
+    at TEXT NOT NULL DEFAULT (datetime('now')),
+    user_id INTEGER,
+    user_name TEXT,
+    person_id INTEGER,
+    via TEXT NOT NULL CHECK (via IN ('web', 'mcp', 'export')),
+    detail TEXT
+  );
+  CREATE INDEX member_views_at ON member_views(at);
+  CREATE INDEX member_views_person ON member_views(person_id);
+  ALTER TABLE users ADD COLUMN last_login_at TEXT;
+  `,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

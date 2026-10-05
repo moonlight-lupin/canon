@@ -57,6 +57,8 @@ export interface Settings {
   visitor_form: VisitorFormSettings;
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
   member_fields: MemberField[];
+  /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
+  security: { disk_encryption: boolean };
   /** how many months the change log and the AI activity log keep (0 = everything) */
   retention: { change_log_months: number; mcp_audit_months: number };
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
@@ -89,6 +91,7 @@ export const DEFAULT_SETTINGS: Settings = {
   offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   visitor_form: DEFAULT_VISITOR_FORM,
   member_fields: [],
+  security: { disk_encryption: false },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {

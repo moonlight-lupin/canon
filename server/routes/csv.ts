@@ -1,6 +1,7 @@
 // REST routes for CSV templates, exports and imports of every entity (members, co-workers, groups, team
 // members, unavailability, songs, texts, templates, hymnal index). Mounted inside /api after authentication.
 // Not exposed over MCP: bulk imports are for staff in the web app only.
+import { logMemberView } from '../repo/security.ts';
 import { asActor } from '../lib/actor.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type { Lang } from '../../shared/types.ts';
@@ -72,6 +73,7 @@ csvRoutes.get('/csv/:entity/template.csv', h((req, res) => {
 csvRoutes.get('/csv/:entity/export.csv', h((req, res) => {
   const e = entity(req);
   mayExport(req, e);
+  if (e.pii) logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: null, via: 'export', detail: `${e.key} CSV` });
   sendCsv(res, `${stem(e, req)}-${new Date().toISOString().slice(0, 10)}.csv`, exportCsv(e, makeCtx(uiLang(req), query(req))));
 }));
 

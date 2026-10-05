@@ -38,6 +38,7 @@ import { cleanRef } from './repo/refs.ts';
 import { cleanFieldDefs, type MemberField } from '../shared/member-fields.ts';
 import { toCsv } from '../shared/reports.ts';
 import * as vf from './repo/visitor-form.ts';
+import * as sec from './repo/security.ts';
 import * as bg from './repo/backgrounds.ts';
 import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
@@ -274,6 +275,7 @@ api.get('/people/export.csv', h((req, res) => legacyExport('members', req, res))
 api.post('/people/import', rawBody, h((req) => legacyImport('members', req)));
 api.get('/people/:id', h((req) => {
   const p = reg.people.get(id(req));
+  sec.logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: p.id, via: 'web' });
   return {
     ...p,
     coworker: reg.coworkers.list('person_id = ?', [p.id]),
@@ -292,6 +294,23 @@ api.patch('/people/:id', h((req) => {
   const custom = reg.customFor(reg.people.get(pid).custom, b.custom);
   return reg.people.update(pid, { ...b, ...(custom ? { custom } : {}) });
 }));
+// Settings → Security & privacy (administrators): the checklist, what was confirmed, who viewed member records; storage
+api.get('/security', requireAdmin, h(() => ({ checklist: sec.securityChecklist(), security: getSettings().security })));
+api.put('/security', requireAdmin, h((req) => updateSettings({ security: z.object({ disk_encryption: z.boolean() }).parse(req.body) }).security));
+const viewQuery = (q: Record<string, string | undefined>) => ({
+  person_id: Number(q.person) || undefined, user_id: Number(q.user) || undefined, via: q.via || undefined,
+  from: q.from, to: q.to, q: q.q, page: Number(q.page) || 1, size: Number(q.size) || 50,
+});
+api.get('/member-views', requireAdmin, h((req) => sec.listMemberViews(viewQuery(req.query as Record<string, string | undefined>))));
+api.get('/member-views.csv', requireAdmin, h((req, res) => {
+  const r = sec.listMemberViews({ ...viewQuery(req.query as Record<string, string | undefined>), all: true });
+  const HOW: Record<string, string> = { web: 'Member page', mcp: 'AI agent', export: 'CSV export' };
+  sendCsv(res, `canon-member-views-${new Date().toISOString().slice(0, 10)}.csv`, [
+    ['Time (UTC)', 'Who', 'How', 'Member', 'Detail'],
+    ...r.rows.map((v) => [v.at, v.user_name, HOW[v.via] ?? v.via, v.person_name, v.detail]),
+  ]);
+}));
+api.get('/storage', requireAdmin, h(() => sec.storageReport()));
 /** Settings → Member fields (administrators): the church's own fields on the member register. */
 api.put('/member-fields', requireAdmin, h((req) => {
   const b = z.array(z.object({

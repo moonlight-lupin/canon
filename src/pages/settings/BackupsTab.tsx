@@ -1,4 +1,6 @@
 // Settings → Backups: back up now, automatic schedule, backup folder, list / download / restore / delete.
+import { StorageCard } from './SecurityTab.tsx';
+import '../reports.css';
 import { useEffect, useRef, useState } from 'react';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -79,6 +81,7 @@ export default function BackupsTab() {
 
   return (
     <div className="stack">
+      <StorageCard />
       <section className="card stack">
         <div className="row between">
           <div>
