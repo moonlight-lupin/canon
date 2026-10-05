@@ -54,7 +54,11 @@ Differences from the plan, carried forward to the second hardening round (0.13):
 ## 0.12.0 — Meetings, Sunday school and the church calendar
 
 - **Meetings**: fellowship meetings, cell groups, prayer meetings and Sunday school classes become a lighter kind of service, linked to their group: date, time, place, the person chairing, topic or passage. An order of service, bulletin and slides stay optional. The planner shows services and meetings apart.
-- **Records like service records**: a headcount, new visitors with their follow-up, notes for the leaders (the chair notes any absence worth following up), and offerings with the same cash count, declaration and signing.
+- **Records like service records**: a headcount, new visitors with their follow-up, and notes for the leaders (the chair notes any absence worth following up).
+- **Offerings are optional**:
+  - A group sets whether its meetings take an offering, so recurring meetings follow it; a single meeting can still turn it on or off.
+  - With an offering, the record has the same cash count, declaration and signing as a service.
+  - Without one, the record shows no offering section, and the meeting stays out of the offerings reports and the cash counts waiting to be verified.
 - **Group leaders record their own meetings**: a group's leaders can open and record that group's meetings without being editors. They don't see other groups' records or the rest of the register. This is the first piece of the 0.13 permission model.
 - **On a phone**: the meeting record and its cash count work on a phone, so the chair can fill them in on the night.
 - **Sunday school**: classes are groups (teachers lead, pupils are members, with an age range); each session is a meeting with its record.
