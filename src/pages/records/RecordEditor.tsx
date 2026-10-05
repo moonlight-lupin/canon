@@ -189,12 +189,12 @@ export function RecordEditor() {
                     return (
                       <Fragment key={i}>
                       <tr>
-                        <td><input value={v.name} onChange={(e) => upd({ name: e.target.value })} placeholder={t('Name')} /></td>
-                        {!restricted && <td><input value={v.contact ?? ''} onChange={(e) => upd({ contact: e.target.value })} placeholder={t('Phone or e-mail')} /></td>}
-                        <td><input value={v.source ?? ''} list="rec-sources" onChange={(e) => upd({ source: e.target.value })} placeholder={t('e.g. invited by a friend')} disabled={restricted} /></td>
-                        {!restricted && <td><input value={v.follow_up_by ?? ''} onChange={(e) => upd({ follow_up_by: e.target.value })} /></td>}
-                        <td><select value={v.status ?? 'new'} disabled={restricted} onChange={(e) => upd({ status: e.target.value === 'new' ? undefined : (e.target.value as VisitorStatus) })}>{VISITOR_STATUSES.map((s) => <option key={s} value={s}>{t(VISITOR_STATUS_LABEL[s])}</option>)}</select></td>
-                        {!restricted && <td><input value={v.notes ?? ''} onChange={(e) => upd({ notes: e.target.value })} /></td>}
+                        <td data-label={t('Name')}><input value={v.name} onChange={(e) => upd({ name: e.target.value })} placeholder={t('Name')} /></td>
+                        {!restricted && <td data-label={t('Contact')}><input value={v.contact ?? ''} onChange={(e) => upd({ contact: e.target.value })} placeholder={t('Phone or e-mail')} /></td>}
+                        <td data-label={t('How they came')}><input value={v.source ?? ''} list="rec-sources" onChange={(e) => upd({ source: e.target.value })} placeholder={t('e.g. invited by a friend')} disabled={restricted} /></td>
+                        {!restricted && <td data-label={t('Follow-up by')}><input value={v.follow_up_by ?? ''} onChange={(e) => upd({ follow_up_by: e.target.value })} /></td>}
+                        <td data-label={t('Follow-up')}><select value={v.status ?? 'new'} disabled={restricted} onChange={(e) => upd({ status: e.target.value === 'new' ? undefined : (e.target.value as VisitorStatus) })}>{VISITOR_STATUSES.map((s) => <option key={s} value={s}>{t(VISITOR_STATUS_LABEL[s])}</option>)}</select></td>
+                        {!restricted && <td data-label={t('Notes')}><input value={v.notes ?? ''} onChange={(e) => upd({ notes: e.target.value })} /></td>}
                         {!restricted && <td><button className="btn sm ghost icon danger" onClick={() => set({ visitors: d.visitors.filter((_, j) => j !== i) })} aria-label={t('Remove')}><Icon name="trash" /></button></td>}
                       </tr>
                       {!restricted && (v.prayer || v.about) && (
@@ -376,27 +376,27 @@ export function OfferingRow({ line, funds, currency: main, cashLocked, onChange,
   };
   return (
     <tr>
-      <td>
+      <td data-label={t('Fund')}>
         <select value={line.fund} disabled={frozen} onChange={(e) => onChange({ fund: e.target.value })}>
           {[...new Set([...funds, line.fund])].map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
       </td>
-      <td>
+      <td data-label={t('Method')}>
         <select value={line.method} disabled={frozen} onChange={(e) => onChange({ method: e.target.value as OfferingMethod })}>
           {OFFERING_METHODS.filter((m) => !cashLocked || frozen || m !== 'cash').map((m) => <option key={m} value={m}>{t(METHOD_LABEL[m])}</option>)}
         </select>
       </td>
-      <td>
+      <td data-label={t('Currency')}>
         <select className="rec-cur" value={currency} disabled={frozen} onChange={(e) => pickCurrency(e.target.value)}>
           {[...new Set([main, ...CURRENCIES, currency])].map((c) => <option key={c} value={c}>{c}</option>)}
           <option value="…">{t('Other…')}</option>
         </select>
       </td>
-      <td className="right">
+      <td className="right" data-label={t('Amount')}>
         <input inputMode="decimal" disabled={frozen} className={bad ? 'invalid' : ''} style={{ width: 130, textAlign: 'right' }} value={text}
           onChange={(e) => { setText(e.target.value); const v = parseMoney(e.target.value, currency); if (v !== null) onChange({ amount: v }); }} />
       </td>
-      <td><input value={line.note ?? ''} onChange={(e) => onChange({ note: e.target.value || undefined })} /></td>
+      <td data-label={t('Note')}><input value={line.note ?? ''} onChange={(e) => onChange({ note: e.target.value || undefined })} /></td>
       <td>{!frozen && <button className="btn sm ghost icon danger" onClick={onRemove} aria-label={t('Remove')}><Icon name="trash" /></button>}</td>
     </tr>
   );

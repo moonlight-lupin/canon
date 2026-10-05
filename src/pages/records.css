@@ -80,3 +80,14 @@ input.invalid { border-color: var(--danger, #a33); }
 .vf-church { font-weight: 700; font-size: 11pt; }
 .vf-hello { font-size: 10pt; line-height: 1.3; }
 .vf-svc { font-size: 8.5pt; color: #555; }
+
+/* phones: offering lines and visitors stack into small cards, each field with its label (no sideways scrolling) */
+@media (max-width: 640px) {
+  .rec-lines thead, .rec-visitors thead { display: none; }
+  .rec-lines, .rec-visitors, .rec-lines tbody, .rec-visitors tbody { display: block; width: 100%; }
+  .rec-lines tr, .rec-visitors tr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .rec-lines td, .rec-visitors td { display: block; padding: 0; border: 0; text-align: left; min-width: 0; }
+  .rec-lines td[data-label]::before, .rec-visitors td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: var(--ink-3); margin-bottom: 2px; }
+  .rec-lines td input, .rec-lines td select, .rec-visitors td input, .rec-visitors td select { width: 100% !important; min-width: 0; }
+  .rec-lines td:last-child, .rec-visitors td:last-child { grid-column: 1 / -1; justify-self: end; }
+}

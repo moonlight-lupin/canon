@@ -39,7 +39,7 @@ export default function Meetings() {
     <div className="page">
       <PageHead eyebrow={t('Congregation')} title={t('Meetings')} sub={t('Fellowship meetings, cell groups, Sunday school classes, one-off gatherings and other meetings, with their records.')}>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
-        <select value={group ?? ''} onChange={(e) => setGroup(e.target.value)} aria-label={t('Group')}>
+        <select value={group ?? ''} onChange={(e) => setGroup(e.target.value)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
           <option value="">{t('All meetings')}</option>
           <option value="none">{t('One-off meetings')}</option>
           {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}

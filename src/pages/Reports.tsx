@@ -74,7 +74,7 @@ export default function Reports() {
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
         {byKind && <Seg value={of} onChange={setOf} options={[{ value: 'service', label: t('Services') }, { value: 'meeting', label: t('Meetings') }]} />}
         {byKind && of === 'meeting' && (
-          <select value={group ?? ''} onChange={(e) => setGroup(Number(e.target.value) || null)} aria-label={t('Group')}>
+          <select value={group ?? ''} onChange={(e) => setGroup(Number(e.target.value) || null)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
             <option value="">{t('All groups')}</option>
             {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
           </select>
