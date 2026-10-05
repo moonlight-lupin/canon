@@ -41,6 +41,7 @@ Roles and permissions come before the finance modules, because book-keeping and 
 - **Release discipline**: tests, type checking and the production build in CI on every push; versioned releases with upgrade notes; a supported-runtime list.
 - **Safe updates**: a version-aware update on Windows that always rebuilds the web app with the server (no old screens with a new server); upgrade tests from older database versions; restore tested against older backups.
 - **Editing conflicts**: two people saving the same service or record at once get a clear "changed by someone else" message instead of silently overwriting each other.
+- **Refactoring long files** (no change in behaviour; tests first, then split by workflow): the service editor (about 1,500 lines: order of service, team & roster, slides), the presentation screens and the bulletin and slide outputs (900+ each), the Word export, the members page, the settings page (each tab in its own file), the records and reports pages (list, editor, declaration and signature pad; one file per report and shared charts), the sign-in / AI connection code, the API routes (records, reports, services and AI administration into their own route files, as the others already are) and the database migrations (one file per version).
 - **Content rights**: Bible versions and hymn texts list their source, edition and where they may be used, instead of a blanket "public domain".
 
 ## 0.12.0 — Meetings, Sunday school and the church calendar
