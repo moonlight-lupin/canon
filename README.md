@@ -23,8 +23,13 @@ It was designed with a bilingual (English / 中文) Reformed and Presbyterian co
   - congregations;
   - members and households;
   - co-workers;
-  - groups and committees, with custom member fields;
+  - groups and committees, Sunday school classes, with custom member fields;
   - a volunteer rota with e-mail reminders.
+- **Meetings and the calendar:**
+  - fellowship meetings, cell groups, Sunday school and one-off meetings, each with its own leader and a record (an offering only when one is taken);
+  - leaders can record their own meetings with their own accounts;
+  - recurring meetings created ahead;
+  - a church calendar of services, meetings and events.
 - **Records:**
   - attendance and new visitors, with a visitor form on their phones;
   - offerings, with a cash count signed on paper or on screen;

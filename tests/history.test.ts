@@ -206,8 +206,8 @@ async function call(at: string, name: string, args: Json = {}) {
   return { isError: !!res.isError, text, json };
 }
 
-test('the tool count stays at 35', () => {
-  assert.equal(TOOLS.length, 35);
+test('the tool count stays at 36', () => {
+  assert.equal(TOOLS.length, 36);
 });
 
 test('MCP: a read-only viewer token gets precedent through the existing tools', async () => {

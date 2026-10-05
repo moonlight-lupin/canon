@@ -4,6 +4,34 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.12.0 — meetings, Sunday school and the church calendar
+
+- **Meetings** (Congregation → Meetings): fellowship meetings, cell groups, prayer meetings, Sunday school classes, committee meetings and one-off gatherings.
+  - Each is a lighter kind of service: date, time, place, its own leader (a member, or a name), passage and topic. An order of service, bulletin and slides are optional.
+  - A group's new meeting copies its previous one. A one-off meeting belongs to no group and has a title of its own. **Next meeting** copies a meeting to another date.
+  - **Offering on or off per meeting**, carried forward to the next. Without an offering, the record has no money sections and the meeting stays out of the offerings reports.
+- **Records** for meetings, like a service's: headcount, new visitors with follow-up, notes, and the cash count with declaration and signing when an offering is taken.
+- **Services and meetings stay apart:**
+  - the Services list, the rota, precedent and the next service are services only;
+  - Service records switches between **Services** and **Meetings**;
+  - reports are about services unless **Meetings** (and a group) is chosen, so a cell group's headcount never lowers a Sunday's average.
+- **Group leaders record their own meetings**, with any account linked to them:
+  - an administrator links an account to its member (Settings → Users);
+  - a member marked **Leads** in a group, or chosen as a meeting's leader, can record those meetings — headcount, visitors with their contact details, notes, the offering with its count and signing, the details and the next meeting — even with a read-only account;
+  - everything else stays read-only for them.
+- **Sunday school**: classes are groups of their own kind, with the pupils' ages. Teachers lead them; pupils are members.
+- **Recurring meetings**:
+  - a group's meeting pattern: every week, every two weeks, or the first … fourth / last weekday of the month, with a time and place;
+  - its meetings for the coming weeks are created daily, or with **Create meetings ahead**.
+- **The church calendar** (sidebar, under Dashboard): services, meetings and the church's other events, by month, week or list, filtered by congregation and group. Editors add events, such as a camp over several days.
+- **On a phone**: the record page's offering lines and visitors stack into labelled cards, and the calendar shows as a list.
+- **AI agents:**
+  - `canon_get_calendar`;
+  - `kind` and `group_id` on the records list and the report tools;
+  - `leads` on group members;
+  - the `sunday_school` group kind.
+- Database: 22 → 23.
+
 ## 0.11.2 — fixes from the v0.11.1 review
 
 - **Archiving never drops a different record.** A restored record that is also in an archive is treated as the same record only if every stored field matches: money, visitors, signatures and its last save. Before, a matching id and save time were enough, so a record changed within the same second could be removed. Now archiving stops, and the live record and its money stay as they are.

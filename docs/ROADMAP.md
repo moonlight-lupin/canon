@@ -1,12 +1,12 @@
 # Roadmap
 
-What is planned for Canon after v0.11.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
+What is planned for Canon after v0.12.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
 
 | Version | Theme |
 |---|---|
 | 0.10.0 | Reporting — done |
 | 0.11.0 | Hardening: archiving, storage, privacy; custom member fields — done |
-| 0.12.0 | Meetings, Sunday school and the church calendar |
+| 0.12.0 | Meetings, Sunday school and the church calendar — done |
 | 0.13.0 | Roles and permissions, optional modules, second hardening round |
 | 0.14.0 | Lending library and asset register (two optional modules, one release) |
 | 0.15.0 | Book-keeping: double-entry accounts (optional module) |
@@ -51,21 +51,22 @@ Differences from the plan, carried forward to the second hardening round (0.13):
 - **Content rights per item:** 0.11 states that public-domain status depends on the country (the KJV's Crown rights in the UK, hymns under life + 70). Recording each Bible version's edition and where it may be used is still to do.
 - **Migrations:** they moved into one file of their own (`server/migrations.ts`) rather than one file per version.
 
-## 0.12.0 — Meetings, Sunday school and the church calendar
+## 0.12.0 — Meetings, Sunday school and the church calendar (done)
 
-- **Meetings**: fellowship meetings, cell groups, prayer meetings and Sunday school classes become a lighter kind of service, linked to their group: date, time, place, the person chairing, topic or passage. An order of service, bulletin and slides stay optional. The planner shows services and meetings apart.
-- **Records like service records**: a headcount, new visitors with their follow-up, and notes for the leaders (the chair notes any absence worth following up).
-- **Offerings are optional**, set on each meeting:
-  - A new meeting copies the setting from the group's previous meeting (as duplicating does), so it is usually set once and then carried forward.
-  - With an offering, the record has the same cash count, declaration and signing as a service.
-  - Without one, the record shows no offering section, and the meeting stays out of the offerings reports and the cash counts waiting to be verified.
-- **Group leaders record their own meetings**: a group's leaders can open and record that group's meetings without being editors. They don't see other groups' records or the rest of the register. This is the first piece of the 0.13 permission model.
-- **On a phone**: the meeting record and its cash count work on a phone, so the chair can fill them in on the night.
-- **Sunday school**: classes are groups (teachers lead, pupils are members, with an age range); each session is a meeting with its record.
-- **Recurring meetings**: created ahead from the group's meeting pattern (for example every Friday at 8 pm), each copying the previous meeting's details (place, chair, offering or not), so the chair just opens tonight's meeting.
-- **Reports** per group and kind of meeting: attendance trends, visitors, offerings.
-- **Church calendar**: services, meetings and other church events in one month / week / list view, by congregation and group.
-- AI agents see meetings and their records under the same Service records and Offerings permissions.
+Shipped (see [CHANGELOG.md](../CHANGELOG.md)):
+- meetings of groups and one-off meetings, each with its own leader, and records like a service's;
+- an offering on or off for each meeting, carried forward;
+- group leaders recording their own meetings with any account linked to them;
+- Sunday school classes;
+- recurring meetings from a group's pattern, created ahead;
+- the church calendar with events;
+- reports by services or meetings;
+- record screens that work on a phone.
+
+Changed from the plan, at the church's request:
+- a meeting need not belong to a group (one-off meetings);
+- each meeting has its own leader;
+- the offering is chosen per meeting, not per group.
 
 ## 0.13.0 — Roles and permissions, optional modules, second hardening round
 

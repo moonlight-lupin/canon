@@ -9,13 +9,16 @@ import type { Visitor } from '../../shared/records.ts';
 import * as rec from '../repo/records.ts';
 import * as reports from '../repo/reports.ts';
 import { DateStr, Id, RO, WRITE, addDays, canRead, today, type Ctx, type ToolDef } from './common.ts';
+import { get as dbGet } from '../db.ts';
 
 const PeriodInput = {
   from: DateStr.optional().describe('default: 12 months before `to`'),
   to: DateStr.optional().describe('default: today'),
   congregation_id: Id.optional().describe('one congregation (ids from canon_whoami); default: all'),
+  kind: z.enum(['service', 'meeting', 'all']).optional().describe('services (default), meetings of groups (fellowships, cell groups, Sunday school …), or both'),
+  group_id: Id.optional().describe('with kind "meeting": one group\'s meetings (ids from canon_find_groups)'),
 };
-const periodOf = (a: { from?: string; to?: string; congregation_id?: number }) => reports.period(a);
+const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }) => reports.period(a);
 const money = (ctx: Ctx) => canRead(ctx, 'contributions') && ctx.auth.user.role !== 'viewer';
 
 const visitorOut = (v: Visitor, i: number, ctx: Ctx) => ({
@@ -29,6 +32,9 @@ function recordOut(serviceId: number, ctx: Ctx) {
     service_id: serviceId, saved: r.saved, attendance: r.attendance, children: r.children, online: r.online, notes: r.notes,
     visitors: r.visitors.map((v, i) => visitorOut(v, i, ctx)),
   };
+  // a meeting says so (and whether it takes an offering at all)
+  const s = dbGet<{ kind: string; group_id: number | null; offering: number }>('SELECT kind, group_id, offering FROM services WHERE id = ?', serviceId);
+  if (s?.kind === 'meeting') Object.assign(out, { kind: 'meeting', group_id: s.group_id, offering_taken: !!s.offering });
   // moved to an archive file: read-only, and not in the reports (an administrator can bring it back in Canon)
   if (r.archived_year) Object.assign(out, { archived_year: r.archived_year, read_only: `in the ${r.archived_year} archive` });
   if (money(ctx)) {
@@ -52,16 +58,17 @@ const VisitorIn = z.object({
 export const RECORD_TOOLS: ToolDef[] = [
   {
     name: 'canon_list_service_records', module: 'records', access: 'read', title: 'List service records', annotations: RO,
-    description: 'Services between two dates (default: the last 8 weeks) with what was recorded: attendance, children, online, number of new visitors, whether there are notes for the team — and, when offerings are shared on this connection, the offering total in the church currency, other currencies and whether the cash count is verified. Example: {"from":"2026-09-01","to":"2026-09-30"}.',
-    input: { from: DateStr.optional(), to: DateStr.optional(), congregation_id: Id.optional() },
+    description: 'Services (or, with kind "meeting", the meetings of groups) between two dates (default: the last 8 weeks) with what was recorded: attendance, children, online, number of new visitors, whether there are notes for the team — and, when offerings are shared on this connection, the offering total in the church currency, other currencies and whether the cash count is verified. A meeting may take no offering (`offering: false`): then it has no money. Example: {"from":"2026-09-01","to":"2026-09-30","kind":"meeting"}.',
+    input: { from: DateStr.optional(), to: DateStr.optional(), congregation_id: Id.optional(), kind: z.enum(['service', 'meeting']).optional().describe('default: both'), group_id: Id.optional() },
     handler: (a, ctx) => {
       const to = a.to ?? today();
       const from = a.from ?? addDays(to, -56);
       const showMoney = money(ctx);
       return {
         from, to,
-        services: rec.listRecords({ from, to, congregation_id: a.congregation_id }).map((r) => ({
-          service_id: r.service_id, date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
+        services: rec.listRecords({ from, to, congregation_id: a.congregation_id, kind: a.kind, group_id: a.group_id }).map((r) => ({
+          service_id: r.service_id, kind: r.kind, group_id: r.group_id, group_name: r.group_name, offering: r.offering,
+          date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
           recorded: r.recorded, attendance: r.attendance, children: r.children, online: r.online, new_visitors: r.visitors, has_notes: r.has_notes,
           ...(showMoney ? { currency: r.currency, offering_total: r.offering_total, other_currencies: r.other_currencies, cash_count_verified: r.verified } : {}),
         })),
@@ -110,7 +117,7 @@ export const RECORD_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_attendance_report', module: 'records', access: 'read', title: 'Attendance and visitors report', annotations: RO,
-    description: 'Attendance over a period (default: the last 12 months): average, median, highest and lowest, children and online averages, the same period a year earlier, averages per month and per congregation, and each service\'s numbers; plus new visitors: how many reached each follow-up step (new → contacted → came back → joined), how they came, and per month. Visitor names only. Example: {"from":"2026-01-01","to":"2026-06-30"}.',
+    description: 'Attendance over a period (default: the last 12 months): average, median, highest and lowest, children and online averages, the same period a year earlier, averages per month and per congregation, and each service\'s numbers (services unless kind is "meeting" or "all": a cell group\'s headcount would distort Sunday\'s); plus new visitors: how many reached each follow-up step (new → contacted → came back → joined), how they came, and per month. Visitor names only. Example: {"from":"2026-01-01","to":"2026-06-30"}.',
     input: PeriodInput,
     handler: (a) => {
       const p = periodOf(a);
@@ -125,7 +132,7 @@ export const RECORD_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_offerings_report', module: 'contributions', access: 'read', title: 'Offerings report', annotations: RO,
-    description: 'Offerings over a period (default: the last 12 months), amounts in cents of the church currency: by fund and month, by fund, by payment method, total; other currencies kept apart (never converted; `converted` is the exchanged value entered on the records); each service\'s total, cash and whether its cash count is verified or signed; and cash counts still waiting to be verified, oldest first, with days waiting. Read only. Example: {"from":"2026-09-01","to":"2026-09-30"}.',
+    description: 'Offerings over a period (default: the last 12 months), amounts in cents of the church currency: by fund and month, by fund, by payment method, total; other currencies kept apart (never converted; `converted` is the exchanged value entered on the records); each service\'s total, cash and whether its cash count is verified or signed (with kind "meeting": the meetings that take an offering); and cash counts still waiting to be verified, oldest first, with days waiting. Read only. Example: {"from":"2026-09-01","to":"2026-09-30"}.',
     input: PeriodInput,
     handler: (a, ctx) => {
       if (!money(ctx)) throw new Error('Offerings are not shared on this connection.');
@@ -134,7 +141,7 @@ export const RECORD_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_serving_report', module: 'volunteers', access: 'read', title: 'Serving report', annotations: RO,
-    description: 'The rota over a past period (default: the last 12 months): how often each person served (confirmed, declined, last served, teams), serving-team members who were not rostered (and when they last served), and per role how many services used it, at how many it was short of people, declines and how many people are qualified — to spot overload and roles that are hard to fill. Names only. Example: {"from":"2026-04-01","to":"2026-09-30"}.',
+    description: 'The rota over a past period (default: the last 12 months), services only: how often each person served (confirmed, declined, last served, teams), serving-team members who were not rostered (and when they last served), and per role how many services used it, at how many it was short of people, declines and how many people are qualified — to spot overload and roles that are hard to fill. Names only. Example: {"from":"2026-04-01","to":"2026-09-30"}.',
     input: { from: DateStr.optional(), to: DateStr.optional() },
     handler: (a) => reports.servingReport(periodOf(a)),
   },

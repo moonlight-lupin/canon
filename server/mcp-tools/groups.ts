@@ -11,7 +11,7 @@ import * as grp from '../repo/groups.ts';
 import { findCongregation } from '../repo/congregations.ts';
 import { DESTRUCTIVE, DateStr, Id, L10N_MERGE_NOTE, RO, WRITE, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
-const KIND_TEXT = 'kind: committee (Session 堂会, Board of Deacons 执事会, missions committee…) | fellowship 团契 | cell_group 小组 | ministry | serving_team (a volunteer team: its members are the team roster; teams themselves are made in Volunteers) | other';
+const KIND_TEXT = 'kind: committee (Session 堂会, Board of Deacons 执事会, missions committee…) | fellowship 团契 | cell_group 小组 | sunday_school 主日学 (a class: teachers lead, pupils are members) | ministry | serving_team (a volunteer team: its members are the team roster; teams themselves are made in Volunteers) | other';
 const ROLE_TEXT = 'role is free text, e.g. Moderator, Chair 主席, Secretary 书记, Clerk, Treasurer 财务, Leader 组长, Member 组员';
 
 const groupSummary = (g: ReturnType<typeof grp.listGroups>[number]) => ({
@@ -29,6 +29,7 @@ const memberLine = (m: grp.MemberRow, pii: boolean) => ({
   person_id: m.person_id,
   name: m.name,
   role: m.role,
+  leads: !!m.leads,
   start_date: m.start_date,
   end_date: m.end_date,
   current: m.current,
@@ -40,6 +41,7 @@ const MemberOp = z.object({
   person_id: Id.optional().describe('add; or identifies the membership for update / remove'),
   member_id: Id.optional().describe('update / remove'),
   role: z.string().max(100).nullable().optional(),
+  leads: z.boolean().optional().describe('leads the group (can record its meetings with a linked account); add defaults to true for a leader role (Leader, Chair, Teacher, 组长 …)'),
   start_date: DateStr.nullable().optional(),
   end_date: DateStr.nullable().optional(),
 });
@@ -59,18 +61,18 @@ function membershipId(groupId: number, o: MemberOp) {
 
 /** Only the fields actually given (undefined = keep, null = clear). */
 const termPatch = (o: MemberOp) =>
-  Object.fromEntries((['role', 'start_date', 'end_date'] as const).filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
+  Object.fromEntries((['role', 'leads', 'start_date', 'end_date'] as const).filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
 
 function applyMemberOp(groupId: number, o: MemberOp) {
   switch (o.op) {
     case 'add': {
-      const m = grp.addGroupMember(groupId, { person_id: need(o.person_id, 'person_id', 'add'), role: o.role, start_date: o.start_date, end_date: o.end_date });
+      const m = grp.addGroupMember(groupId, { person_id: need(o.person_id, 'person_id', 'add'), role: o.role, leads: o.leads, start_date: o.start_date, end_date: o.end_date });
       return { op: o.op, member_id: m.id, person_id: m.person_id };
     }
     case 'update': {
       const id = membershipId(groupId, o);
       const m = grp.updateGroupMember(id, termPatch(o));
-      return { op: o.op, member_id: id, person_id: m.person_id, role: m.role, start_date: m.start_date, end_date: m.end_date };
+      return { op: o.op, member_id: id, person_id: m.person_id, role: m.role, leads: !!m.leads, start_date: m.start_date, end_date: m.end_date };
     }
     case 'remove': {
       const id = membershipId(groupId, o);

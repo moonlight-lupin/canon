@@ -15,6 +15,7 @@ import { listBlocks } from '../repo/presentation.ts';
 import { similarServices } from '../repo/history.ts';
 import { findCongregation, listCongregations } from '../repo/congregations.ts';
 import { get as dbGet } from '../db.ts';
+import { calendarItems } from '../repo/calendar.ts';
 
 const bgName = (id: number) => dbGet<{ name: string }>('SELECT name FROM slide_backgrounds WHERE id = ?', id)?.name ?? '';
 
@@ -398,5 +399,15 @@ export const SERVICE_TOOLS: ToolDef[] = [
     description: 'Save the current order of an existing service as a new reusable template. name is L10n {lang: text}. Returns the template summary.',
     input: { service_id: Id, name: S.L10nSchema },
     handler: (a) => templateSummary(svc.saveAsTemplate(a.service_id, a.name)),
+  },
+  {
+    name: 'canon_get_calendar', module: 'services', access: 'read', title: 'The church calendar', annotations: RO,
+    description: 'Everything on the church calendar between two dates (default: the next 4 weeks): services, meetings of groups (fellowships, cell groups, Sunday school classes, one-off meetings) and the church\'s other events (camps, weddings …, possibly over several days), in date order, with type, time, title, place, congregation and group. A congregation\'s calendar includes the whole church\'s items. Read only. Example: {"from":"2026-10-01","to":"2026-10-31"}.',
+    input: { from: DateStr.optional(), to: DateStr.optional(), congregation_id: Id.optional(), group_id: Id.optional().describe('one group (ids from canon_find_groups)') },
+    handler: (a) => {
+      const from = a.from ?? new Date().toISOString().slice(0, 10);
+      const to = a.to ?? new Date(Date.parse(`${from}T12:00:00Z`) + 27 * 86_400_000).toISOString().slice(0, 10);
+      return { from, to, items: calendarItems({ from, to, congregation_id: a.congregation_id, group_id: a.group_id }) };
+    },
   },
 ];

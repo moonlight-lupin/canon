@@ -252,3 +252,16 @@ test('the church calendar: services, meetings and events together; events over s
   assert.equal((await call(as.editor, 'DELETE', `/events/${camp.body.id}`)).status, 200);
   assert.equal((await call(as.viewer, 'GET', '/calendar?from=bad&to=2035-03-01')).status, 400);
 });
+
+test('agents: canon_get_calendar lists services, meetings and events; reports take kind and group', async () => {
+  const { TOOLS } = await import('../server/mcp.ts');
+  const tool = TOOLS.find((x) => x.name === 'canon_get_calendar')!;
+  assert.equal(tool.module, 'services');
+  assert.equal(tool.access, 'read');
+  const out = await tool.handler({ from: '2035-03-01', to: '2035-03-31' }, {} as never) as { items: Json[] };
+  assert.ok(out.items.some((i) => i.type === 'service') && out.items.some((i) => i.type === 'meeting'));
+  const rep = TOOLS.find((x) => x.name === 'canon_attendance_report')!;
+  const r = await rep.handler({ from: '2035-01-01', to: '2035-12-31', kind: 'meeting', group_id: ids.group }, {} as never) as Json;
+  assert.equal(r.period.kind, 'meeting');
+  assert.equal(r.period.group_id, ids.group);
+});

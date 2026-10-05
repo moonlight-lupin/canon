@@ -8,13 +8,13 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 
 | Module | Read | Write |
 |---|---|---|
-| services | `canon_find_services`, `canon_get_service` | `canon_create_service`, `canon_update_service`, `canon_edit_order` (batch) |
+| services | `canon_find_services`, `canon_get_service`, `canon_get_calendar` (services, meetings and events by date) | `canon_create_service`, `canon_update_service`, `canon_edit_order` (batch) |
 | templates | `canon_get_templates` | `canon_save_service_as_template` |
 | library | `canon_search_library`, `canon_get_library_item`, `canon_bible` | `canon_save_song`, `canon_save_text` |
 | volunteers | `canon_get_rota` | `canon_update_rota` (batch), `canon_update_team_members` (batch), `canon_set_unavailability` |
 | members | `canon_find_people`, `canon_get_person` (+ the church's own fields in `custom`) | `canon_save_person` (`fields.custom` for own fields), `canon_save_household` |
 | coworkers | `canon_list_coworkers` | `canon_save_coworker` |
-| groups | `canon_find_groups` | `canon_save_group`, `canon_update_group_members` (batch) |
+| groups | `canon_find_groups` (kinds include `sunday_school`) | `canon_save_group`, `canon_update_group_members` (batch; `leads` = leads the group) |
 | records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |
 | contributions (inside records, read only) | `canon_offerings_report` (+ offerings in the record tools) | — |
 | reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
@@ -26,7 +26,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - `canon_get_library_item` `parts`: `"index"` or a selection such as `"1-3"`, `"1,4,7-9"`, `"I.1-3"` (WCF chapter.section).
 - `canon_get_service` with `format: "downloads"`: short-lived links (24 h default, max 72) for `slides_pptx` (PowerPoint, styled by the slide template), `bulletin_docx` (Word), `freeshow`, `run_sheet`; `open_in_canon` links the print-ready bulletin (Print → PDF), slide show and run sheet for a signed-in user. Links work without signing in — give them only to the user who asked.
 - Congregations: `congregation` (id / short label / name) filters `canon_find_services`, `canon_find_people`, `canon_find_groups`; `congregation_id` on create / update service (its languages are the default).
-- Service records: `records` and `contributions` are off by default; `contributions` needs `records` and is always read only (never change money, sign or verify; viewers never get it). Amounts in cents of the church currency; other currencies apart, never converted. Visitor follow-up status `new` / `contacted` / `returning` / `joined`; contact details only with personal data exposed. `canon_save_service_record` replaces notes — read first. Reports take `from`, `to` (default the last 12 months), `congregation_id`. An archived record comes back with `archived_year` / `read_only`: it can't be saved and reports leave its year out (say so; only an administrator can bring it back, in Canon).
+- Service records: `records` and `contributions` are off by default; `contributions` needs `records` and is always read only (never change money, sign or verify; viewers never get it). Amounts in cents of the church currency; other currencies apart, never converted. Visitor follow-up status `new` / `contacted` / `returning` / `joined`; contact details only with personal data exposed. `canon_save_service_record` replaces notes — read first. Reports take `from`, `to` (default the last 12 months), `congregation_id`. Meetings of groups have records too: `canon_list_service_records` takes `kind` (`service` / `meeting`) and `group_id`, reports take `kind` (`service` default, `meeting`, `all`) and `group_id`; a meeting may take no offering (`offering: false`) and then has no money. An archived record comes back with `archived_year` / `read_only`: it can't be saved and reports leave its year out (say so; only an administrator can bring it back, in Canon).
 - References (`ref`, e.g. `EN-001`, `CN-10pmService`): pass one wherever an id goes — `canon_get_service {"id":"EN-2026-12-25"}`, `canon_create_service {"template":"CN-10pmService"}`, `canon_update_service` with `slide_template` / `bulletin_template`; `canon_find_services` `q` matches them. A service template's slide / bulletin templates come with its new services.
 - `canon_get_templates` (`kind`: service | slide | bulletin) lists active templates (archived ones are left out); `church_default: true` marks the template the church normally starts from.
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
