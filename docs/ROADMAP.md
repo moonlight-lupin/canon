@@ -32,6 +32,7 @@ Roles and permissions come before the finance modules, because book-keeping and 
 - Administrators can **open an archive** in Canon, read-only. Archive files are included in backups.
 - The archive age is **set per kind of data**. Visitors' contact details have their own, shorter setting and are erased rather than archived (personal data is kept only as long as it is needed).
 - A **Storage** panel in Settings: database size, what uses the space, how fast it grows, and an early warning.
+- **Read-only accounts no longer see members' contact details or pastoral notes** (phone, e-mail, address, notes) — in screens, searches and exports. Birthdays show the day and month only, without the year.
 - A **log of who viewed member records**, and a **security checklist** in Settings: disk encryption, backup encryption, where backups are kept, and the retention settings.
 - **Release discipline**: tests, type checking and the production build in CI on every push; versioned releases with upgrade notes; a supported-runtime list.
 - **Safe updates**: a version-aware update on Windows that always rebuilds the web app with the server (no old screens with a new server); upgrade tests from older database versions; restore tested against older backups.
@@ -49,7 +50,7 @@ The church's equipment and property: what it is, where it is, who looks after it
 ## 0.14.0 — Roles and permissions, second hardening round
 
 Roles reorganised around what churches actually do (for example treasurer, librarian, claims approver), with permissions per module and per field, before the finance modules arrive — one permission model shared by the web app and AI agents. This includes:
-- hiding members' contact details and pastoral notes from accounts that don't need them (today every signed-in user can read the register);
+- finer control over who sees which member details, beyond the read-only rule added in 0.11;
 - deciding whether congregations should also limit what people can see (today they are filters, not walls);
 - for signatures and approvals, telling apart "two people signed on one device" from "two people each approved from their own account" before claims rely on it;
 - approved, dated versions of a service's bulletin and slides.
