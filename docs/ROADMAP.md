@@ -7,16 +7,17 @@ What is planned for Canon after v0.11.0. Plans change: each release is scoped in
 | 0.10.0 | Reporting — done |
 | 0.11.0 | Hardening: archiving, storage, privacy; custom member fields — done |
 | 0.12.0 | Meetings, Sunday school and the church calendar |
-| 0.13.0 | Lending library |
-| 0.14.0 | Asset register |
-| 0.15.0 | Roles and permissions, second hardening round |
-| 0.16.0 | Book-keeping |
-| 0.16.1 | Claim forms |
-| 0.17.0 | UI/UX audit |
+| 0.13.0 | Roles and permissions, optional modules, second hardening round |
+| 0.14.0 | Lending library and asset register (two optional modules, one release) |
+| 0.15.0 | Book-keeping (optional module) |
+| 0.15.1 | Claim forms |
+| 0.16.0 | UI/UX audit |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
-Roles and permissions come before the finance modules, because book-keeping and claims need roles such as treasurer and claims approver. Until then, each new module gets its own on/off permission within the current administrator / editor / read-only roles.
+**Optional modules:** the lending library, the asset register and book-keeping (with claim forms) are optional. A church turns each on or off during onboarding or later in Settings. A module that is off is hidden from the sidebar, refused by the server and absent from AI agents' tools. Turning it off keeps its data, so turning it on again brings everything back.
+
+**Order:** roles and permissions come before the new modules, so that each module (librarian, equipment keeper, treasurer, claims approver) plugs into one permission model instead of adding its own on/off switch to be reworked later.
 
 ## 0.10.0 — Reporting (done)
 
@@ -44,7 +45,7 @@ Shipped as planned (see [CHANGELOG.md](../CHANGELOG.md)):
 - edit-conflict protection;
 - long files split into smaller modules.
 
-Differences from the plan, carried forward to the second hardening round (0.15):
+Differences from the plan, carried forward to the second hardening round (0.13):
 - **Archive age per kind of data:** 0.11 has one age for service records and logs, plus a separate setting for visitors' contact details.
 - **Backup encryption:** the checklist says plainly that backups are not encrypted yet.
 - **Content rights per item:** 0.11 states that public-domain status depends on the country (the KJV's Crown rights in the UK, hymns under life + 70). Recording each Bible version's edition and where it may be used is still to do.
@@ -54,39 +55,56 @@ Differences from the plan, carried forward to the second hardening round (0.15):
 
 - **Meetings**: fellowship meetings, cell groups, prayer meetings and Sunday school classes become a lighter kind of service, linked to their group: date, time, place, the person chairing, topic or passage. An order of service, bulletin and slides stay optional. The planner shows services and meetings apart.
 - **Records like service records**: a headcount, new visitors with their follow-up, notes for the leaders (the chair notes any absence worth following up), and offerings with the same cash count, declaration and signing.
+- **Group leaders record their own meetings**: a group's leaders can open and record that group's meetings without being editors. They don't see other groups' records or the rest of the register. This is the first piece of the 0.13 permission model.
+- **On a phone**: the meeting record and its cash count work on a phone, so the chair can fill them in on the night.
 - **Sunday school**: classes are groups (teachers lead, pupils are members, with an age range); each session is a meeting with its record.
 - **Recurring meetings**: created ahead from the group's meeting pattern (for example every Friday at 8 pm), so the chair just opens tonight's meeting.
 - **Reports** per group and kind of meeting: attendance trends, visitors, offerings.
 - **Church calendar**: services, meetings and other church events in one month / week / list view, by congregation and group.
 - AI agents see meetings and their records under the same Service records and Offerings permissions.
 
-## 0.13.0 — Lending library
+## 0.13.0 — Roles and permissions, optional modules, second hardening round
 
-A library for the church's books, DVDs and curricula, lent to members. It will be called **Lending library**, separate from the existing **Library** of songs, liturgy and Bibles. Catalogue (title, author, ISBN, category, language, shelf), numbered copies with QR labels, loans with due dates, renewals and returns, an overdue list, CSV import, and a librarian permission.
-
-## 0.14.0 — Asset register
-
-The church's equipment and property: what it is, where it is, who looks after it, when it was bought and for how much, its condition, and maintenance due. Shares item numbers and QR labels with the lending library.
-
-## 0.15.0 — Roles and permissions, second hardening round
-
-Roles reorganised around what churches actually do (for example treasurer, librarian, claims approver), with permissions per module and per field, before the finance modules arrive — one permission model shared by the web app and AI agents. This includes:
+Roles reorganised around what churches actually do (for example treasurer, librarian, equipment keeper, claims approver, group leader), with permissions per module and per field — one permission model shared by the web app and AI agents. This includes:
 - finer control over who sees which member details, beyond the read-only rule added in 0.11;
 - deciding whether congregations should also limit what people can see (today they are filters, not walls);
 - for signatures and approvals, telling apart "two people signed on one device" from "two people each approved from their own account" before claims rely on it;
-- approved, dated versions of a service's bulletin and slides.
+- approved, dated versions of a service's bulletin and slides;
+- **optional modules**: turning modules on and off in onboarding and Settings, ready for 0.14 and 0.15.
 
-Plus a second round of hardening, including what was carried forward from 0.11: archive ages per kind of data, encrypted backups and per-item content rights.
+The second round of hardening includes:
+- **encrypted backups**;
+- what was carried forward from 0.11: archive ages per kind of data, and per-item content rights.
 
-## 0.16.0 — Book-keeping
+Candidates to decide when the round is scoped:
+- running Canon as a Windows service instead of a console window;
+- two-factor sign-in for administrators;
+- limits on repeated sign-in attempts;
+- letting a member's own data be exported or erased on request (PDPA).
 
-Simple accounts for the church, plus **project accounts** for special events (a camp, a building fund, a conference). Verified offerings from service records can flow in as income, so nothing is typed twice.
+## 0.14.0 — Lending library and asset register
 
-## 0.16.1 — Claim forms
+Two separate optional modules, released together because they share item numbers and QR labels.
 
-Expense claims with receipts, approval and on-screen signatures; approved claims become expenses in the main or a project account.
+- **Lending library**: a library for the church's books, DVDs and curricula, lent to members. It is called *Lending library*, separate from the existing **Library** of songs, liturgy and Bibles.
+  - A catalogue: title, author, ISBN, category, language and shelf.
+  - Numbered copies with QR labels.
+  - Loans with due dates, renewals and returns, and an overdue list.
+  - CSV import, and a librarian role.
+- **Asset register**: the church's equipment and property.
+  - What each item is, where it is and who looks after it.
+  - When it was bought and for how much.
+  - Its condition, and maintenance due.
 
-## 0.17.0 — UI/UX audit
+## 0.15.0 — Book-keeping
+
+An optional module: simple accounts for the church, plus **project accounts** for special events (a camp, a building fund, a conference). Verified offerings from service records can flow in as income, so nothing is typed twice. Decide first, when the release is scoped: simple income and expense lists, or double-entry accounts (what charity accounts and auditors usually expect).
+
+## 0.15.1 — Claim forms
+
+Part of the book-keeping module: expense claims with receipts, approval and on-screen signatures; approved claims become expenses in the main or a project account.
+
+## 0.16.0 — UI/UX audit
 
 A review of the whole app for clarity, consistency, accessibility and use on phones and tablets.
 
