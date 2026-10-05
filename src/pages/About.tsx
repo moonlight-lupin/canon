@@ -71,6 +71,11 @@ export default function AboutPage() {
               ? '教会自行加入的诗歌、圣经译本与图片，其版权归原作者所有；请依照您的授权（如 CCLI）使用。'
               : 'Hymns, Bible versions and images that your church adds remain under their owners’ copyright — use them under your own licences (e.g. CCLI).'}
           </p>
+          <p className="small muted" style={{ margin: 0 }}>
+            {zh
+              ? '“公共领域”视乎国家而定：在英国，钦定本仍属王室永久权利；1929 年前出版的诗歌在美国属公共领域，但在版权延续至作者去世后 70 年的国家，部分歌词、译文或编曲可能仍受版权保护。'
+              : 'Public domain depends on the country: in the United Kingdom the King James Version remains under the Crown’s perpetual rights, and hymns first published before 1929 are public domain in the United States, but where copyright lasts 70 years after the author’s death some words, translations or arrangements may still be in copyright.'}
+          </p>
         </section>
 
         <section className="card stack">

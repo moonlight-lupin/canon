@@ -51,7 +51,7 @@ The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3;
 
 ### Windows office PC
 1. Install **Node.js 22.18 or newer** (LTS) from <https://nodejs.org>.
-2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs dependencies and builds the app.
+2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs dependencies and builds the app. To update later, replace the files and start it again: see [docs/UPGRADING.md](docs/UPGRADING.md).
 3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Then onboarding offers the public-domain Bibles for those languages.
 4. Other computers on the office network open `http://<office-pc-name>:3000`.
 
@@ -75,6 +75,7 @@ npm run dev          # API on :3000, web app on :5173 (proxied)
 - **Agent handbook** for Claude and other MCP agents: [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md). The MCP server serves it as the resource `canon://guide/agents`, and offers its playbooks as prompts (`plan_service`, `suggest_hymns`, `roster_check`, `proofread_service`, `catechism_series`, `translate_library`, `member_care`, `group_overview`, `monthly_report`).
 - **Claude skill**: [skills/](skills/README.md) — upload `skills/canon` to claude.ai or copy it into Claude Code.
 - **Docker**: [docs/DOCKER.md](docs/DOCKER.md) · **Content to review before first use**: [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md).
+- **Updating and going back**: [docs/UPGRADING.md](docs/UPGRADING.md) · **What changed**: [CHANGELOG.md](CHANGELOG.md).
 - **Roadmap**: [docs/ROADMAP.md](docs/ROADMAP.md) — what is planned after the current release.
 
 ## Using Canon
@@ -168,11 +169,12 @@ Contributions are welcome. Every change that users or AI agents can see must als
 
 ## Content and copyright
 
-- **Bundled texts are all public domain:**
-  - the KJV (1769) and the Chinese Union Version 和合本 (1919), from [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases);
+- **Bundled texts are public domain in most countries:**
+  - the KJV (the 1769 Oxford edition) and the Chinese Union Version 和合本 (1919), from [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases). In the United Kingdom, the KJV remains under the Crown's perpetual rights; printing it there is administered by Cambridge University Press;
   - the Westminster Confession and Catechisms (1647), from [NonlinearFruit/Creeds.json](https://github.com/NonlinearFruit/Creeds.json);
   - historic creeds;
-  - hymns written before 1929.
+  - hymns first published before 1929, which is the United States rule. Where copyright lasts 70 years after the author's death, a hymn's words, a translation or an arrangement can still be in copyright. Check each hymn against your own country's rules.
+- **Each item records its own source:** songs have a copyright line, a CCLI number and a public-domain mark; an uploaded Bible keeps the licence note it was uploaded with. The *Songs sung* report lists what was used, for licence returns.
 - **Material your church adds** stays under its owners' copyright: hymns from licensed hymnals, Bible versions such as ESV or 和合本修订版, logos and images. Use it under your own licences, e.g. CCLI. Some Bible publishers limit how much may be printed or projected.
 - **Review before use:** [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md) lists wordings a church should check against its own practice.
 
@@ -180,8 +182,14 @@ Contributions are welcome. Every change that users or AI agents can see must als
 
 - Member data stays in your own database (`data/`, git-ignored). Never commit it.
 - Share links show names and the order of service, never contact details.
-- AI agents see member contact details and birthdays only if an administrator explicitly allows it. The audit log stores argument names, not the personal data itself.
-- Read-only accounts can't export personal data.
+- Read-only accounts see members' names, never their contact details or notes, and see birthdays as day and month only. They can't export personal data. Custom fields marked sensitive are for administrators only.
+- AI agents see member contact details and birthdays only if an administrator explicitly allows it, and never when acting for a read-only user. The audit log stores argument names, not the personal data itself.
+- **Settings → Security & privacy** has:
+  - a checklist;
+  - a log of who opened which member;
+  - how long visitors' contact details are kept;
+  - archiving of old records into one file per year.
+- The database is an ordinary file, so protect the computer it is on. Use disk encryption (BitLocker, FileVault), a signed-in account for each person, and backups kept somewhere safe.
 
 ## License
 
