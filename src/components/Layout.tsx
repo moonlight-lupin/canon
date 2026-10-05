@@ -8,6 +8,7 @@ import { ChurchMark, Tagline } from './brand.tsx';
 import { UI_LANGS, langInfo } from '../../shared/languages.ts';
 import { Seg, useSession } from './ui.tsx';
 import type { Settings } from '../types-client.ts';
+import { allows, pageModule } from '../../shared/permissions.ts';
 
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean }[] }[] = [
   { group: '', items: [{ to: '/', label: 'Dashboard', icon: 'home' }, { to: '/calendar', label: 'Calendar', icon: 'calendar' }] },
@@ -37,6 +38,14 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
 
 
 export function Layout() {
+  const { user: me, isAdmin: admin } = useSession();
+  // pages the account's role can't read are left out of the sidebar (the server refuses them anyway)
+  const visible = (it: { to: string; admin?: boolean }) => {
+    if (it.admin) return admin;
+    const m = pageModule(it.to);
+    // Settings is everyone's (their own profile); its tabs are for administrators
+    return m === null || m === 'admin' || allows(me.role_def, m, 'read');
+  };
   const { t, lt, lang, setLang } = useI18n();
   const { user, logout } = useSession();
   const [open, setOpen] = useState(false);
@@ -62,10 +71,10 @@ export function Layout() {
         </div>
         <Tagline className="brand-tagline" />
         <nav className="nav">
-          {NAV.map((g) => (
+          {NAV.filter((g) => g.items.some(visible)).map((g) => (
             <div key={g.group} className="nav" style={{ gap: 1 }}>
               {g.group && <div className="nav-group">{t(g.group)}</div>}
-              {g.items.map((it) => (
+              {g.items.filter(visible).map((it) => (
                 <NavLink key={it.to} to={it.to} end={it.to === '/'} className={({ isActive }) => (isActive || (it.to !== '/' && loc.pathname.startsWith(it.to)) ? 'active' : '')}>
                   <Icon name={it.icon} />
                   {t(it.label)}

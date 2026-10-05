@@ -49,9 +49,9 @@ function presetRange(p: Preset): [string, string] {
 
 export default function Reports() {
   const { t, lang } = useI18n();
-  const { canEdit } = useSession();
+  const { canEdit, can } = useSession();
   const [params, setParams] = useSearchParams();
-  const tabs = TABS.filter((x) => !x.money || canEdit);
+  const tabs = TABS.filter((x) => !x.money || can('contributions', 'read'));
   const kind = (tabs.find((x) => x.kind === params.get('tab'))?.kind ?? 'attendance') as ReportKind;
   const [preset, setPreset] = useState<Preset>('12m');
   const [custom, setCustom] = useState<[string, string]>(() => presetRange('12m'));

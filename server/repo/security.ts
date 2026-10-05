@@ -14,6 +14,7 @@ import { dateRange, paging } from './changelog.ts';
 import { likeTerm } from '../lib/table.ts';
 import { formSettings } from './visitor-form.ts';
 import { archivableYears } from './archive.ts';
+import { isAdmin } from '../lib/permissions.ts';
 
 // ---------------------------------------------------------------- member record views
 
@@ -185,7 +186,7 @@ export function securityChecklist(): CheckItem[] {
       : { key: 'public', status: 'warn', title: 'Public address', detail: `${pub} is not https: sign-ins and members’ details would cross the internet unencrypted.`, link: '/settings?tab=mcp' });
 
   const users = all<{ id: number; display_name: string; role: string; created_at: string; last_login_at: string | null }>('SELECT id, display_name, role, created_at, last_login_at FROM users');
-  const admins = users.filter((u) => u.role === 'admin').length;
+  const admins = users.filter((u) => isAdmin(u)).length;
   items.push(admins < 2
     ? { key: 'admins', status: 'warn', title: 'Administrators', detail: 'Only one administrator: if that person is away or forgets the password, nobody can manage Canon. Add a second.', link: '/settings?tab=users' }
     : admins > 4

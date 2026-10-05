@@ -19,7 +19,8 @@ const PeriodInput = {
   group_id: Id.optional().describe('with kind "meeting": one group\'s meetings (ids from canon_find_groups)'),
 };
 const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }) => reports.period(a);
-const money = (ctx: Ctx) => canRead(ctx, 'contributions') && ctx.auth.user.role !== 'viewer';
+// the connection's access already follows the person's role (no offerings for roles without them)
+const money = (ctx: Ctx) => canRead(ctx, 'contributions');
 
 const visitorOut = (v: Visitor, i: number, ctx: Ctx) => ({
   index: i, name: v.name, source: v.source ?? null, follow_up_by: v.follow_up_by ?? null, status: v.status ?? 'new',

@@ -7,11 +7,12 @@ import {
   DEFAULT_BACKUP_DIR, backupDir, backupPath, checkBackupFile, checkFolder, createBackup, deleteBackup, lastBackupAt, lastRestore, listBackups, nextDue, prune,
   restoreBackup, saveUpload,
 } from '../repo/backups.ts';
+import { isAdmin } from '../lib/permissions.ts';
 
 export const backupRoutes = express.Router();
 
 const adminOnly = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Administrators only' });
+  if (!isAdmin(req.user)) return res.status(403).json({ error: 'Administrators only' });
   next();
 };
 

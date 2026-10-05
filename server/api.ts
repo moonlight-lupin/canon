@@ -44,6 +44,7 @@ import { renderService } from './repo/render.ts';
 import { songUsage } from './repo/history.ts';
 import { getSettings, updateSettings, type Settings } from './repo/settings.ts';
 import { fileForToken } from './repo/downloads.ts';
+import { isAdmin, listRoles, roleDef } from './lib/permissions.ts';
 
 export const api = express.Router();
 
@@ -52,7 +53,8 @@ export const api = express.Router();
 api.get('/me', (req, res) => {
   const u = sessionUser(req);
   // leads: the groups this account's member leads (the screens offer recording their meetings)
-  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id) } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
+  // role_def: what the account's role allows (the screens use it to show what may be changed)
+  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id), role_def: roleDef(u.role) } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
 });
 
 api.post('/setup', h((req, res) => {
@@ -147,18 +149,20 @@ api.patch('/me', h((req) => {
 
 api.get('/users', requireAdmin, h(() => listUsers()));
 api.post('/users', requireAdmin, h((req) => {
-  const b = z.object({ username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8), role: z.enum(['admin', 'editor', 'viewer']) }).parse(req.body);
+  const b = z.object({ username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8), role: z.string().min(1).max(40) }).parse(req.body);
+  if (!listRoles().some((r) => r.key === b.role)) throw Object.assign(new Error('That role does not exist.'), { status: 400 });
   const u = createUser(b);
   logChange({ entity: 'users', entity_id: u.id, action: 'create', after: { username: u.username, display_name: u.display_name, role: u.role } });
   return u;
 }));
 api.patch('/users/:id', requireAdmin, h((req) => {
   const b = z.object({
-    role: z.enum(['admin', 'editor', 'viewer']).optional(), password: z.string().min(8).optional(), display_name: z.string().optional(),
+    role: z.string().min(1).max(40).optional(), password: z.string().min(8).optional(), display_name: z.string().optional(),
     person_id: z.number().int().nullable().optional(),
   }).parse(req.body);
   const uid = id(req);
-  if (b.role && b.role !== 'admin' && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
+  if (b.role && !roleDef(b.role).admin && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
+  if (b.role && !listRoles().some((r) => r.key === b.role)) throw Object.assign(new Error('That role does not exist.'), { status: 400 });
   const before = getUser(uid);
   if (b.role) run('UPDATE users SET role = ? WHERE id = ?', b.role, uid);
   if (b.password) {
@@ -188,7 +192,7 @@ api.delete('/users/:id', requireAdmin, h((req) => {
 api.get('/settings', h((req) => {
   const s = getSettings();
   // SMTP account details are for administrators only.
-  return req.user?.role === 'admin' ? s : { ...s, smtp: { ...s.smtp, host: '', user: '', reply_to: '' } };
+  return isAdmin(req.user) ? s : { ...s, smtp: { ...s.smtp, host: '', user: '', reply_to: '' } };
 }));
 api.patch('/settings', requireAdmin, h((req) => {
   const b = z.object({

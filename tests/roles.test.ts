@@ -1,0 +1,160 @@
+// Roles and permissions (0.13): every route belongs to a part of Canon; each ready-made role gets what it says; a
+// church can add and change roles; members' details, sensitive fields and money follow the role; AI connections
+// follow the same role. Fictional data.
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import type { AddressInfo } from 'node:net';
+import type { Server } from 'node:http';
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-roles-'));
+process.env.CANON_DB = path.join(tmp, 'canon.db');
+
+const { createApp } = await import('../server/app.ts');
+const { createUser } = await import('../server/auth.ts');
+const { api } = await import('../server/api.ts');
+const svc = await import('../server/repo/services.ts');
+const reg = await import('../server/repo/registers.ts');
+const S = await import('../server/repo/settings.ts');
+const P = await import('../shared/permissions.ts');
+const { effectiveAccess, piiFor } = await import('../server/mcp.ts');
+const { db } = await import('../server/db.ts');
+
+type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+type Session = { cookie: string; csrf: string };
+let server: Server;
+let base = '';
+const as: Record<string, Session> = {};
+const ids: Record<string, number> = {};
+const ROLES = ['admin', 'editor', 'viewer', 'planner', 'treasurer', 'secretary', 'pastor'];
+
+async function login(username: string): Promise<Session> {
+  const r = await fetch(`${base}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: 'correct-horse-5' }) });
+  assert.equal(r.status, 200, username);
+  return { cookie: r.headers.getSetCookie().map((c) => c.split(';')[0]).join('; '), csrf: ((await r.json()) as Json).csrf };
+}
+async function call(who: Session, method: string, url: string, body?: unknown) {
+  const r = await fetch(`${base}/api${url}`, {
+    method, headers: { 'Content-Type': 'application/json', Cookie: who.cookie, 'X-CSRF-Token': who.csrf }, body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return { status: r.status, body: (await r.json().catch(() => null)) as Json };
+}
+
+before(async () => {
+  for (const role of ROLES) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-5', role });
+  server = createApp().listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  for (const role of ROLES) as[role] = await login(role);
+  ids.service = svc.createService({ date: '2036-02-03' }).service.id;
+  ids.person = reg.people.insert({ first_name: 'Philippa', last_name: 'Grange', phone: '9000 0400', notes: 'pastoral note' }).id;
+  S.updateSettings({ member_fields: [{ key: 'health', label: { en: 'Health' }, type: 'text', sensitive: true }] });
+  reg.people.update(ids.person, { custom: { health: 'test sensitive value' } });
+  const g = await call(as.admin, 'POST', '/groups', { name: { en: 'Test Roles Cell' }, kind: 'cell_group' });
+  ids.meeting = (await call(as.admin, 'POST', '/meetings', { group_id: g.body.id, date: '2036-02-06' })).body.id;
+});
+
+after(async () => {
+  await new Promise((r) => server.close(r));
+  try {
+    db.close();
+  } catch { /* ignore */ }
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('every API route belongs to a part of Canon (or is knowingly for administrators only)', () => {
+  const paths = new Set<string>();
+  const walk = (stack: Json[]) => {
+    for (const l of stack) {
+      if (l.route) paths.add(String(l.route.path).replace(/:[a-z_]+/g, '12'));
+      else if (l.handle?.stack) walk(l.handle.stack);
+    }
+  };
+  walk(api.stack as unknown as Json[]);
+  // before sign-in, or administrators only by the default (fail closed)
+  const PUBLIC = /^\/(login|logout|setup|share|dl|assets)(\/|$)/;
+  const unruled = [...paths].filter((p) => !PUBLIC.test(p) && !P.hasRule(p));
+  assert.deepEqual(unruled, [], `routes without a rule (administrators only by default): ${unruled.join(', ')}`);
+});
+
+test('the ready-made roles: who may change what', async () => {
+  const patchSvc = (r: string) => call(as[r], 'PATCH', `/services/${ids.service}`, { notes: `by ${r}` });
+  const patchPerson = (r: string) => call(as[r], 'PATCH', `/people/${ids.person}`, { preferred_name: `P ${r}` });
+  const patchMeeting = (r: string) => call(as[r], 'PATCH', `/services/${ids.meeting}`, { place: `by ${r}` });
+  const expect: Record<string, [number, number, number]> = {
+    // [service, person, meeting]
+    admin: [200, 200, 200], editor: [200, 200, 200], pastor: [200, 200, 200], planner: [200, 403, 403],
+    treasurer: [403, 403, 403], secretary: [403, 200, 200], viewer: [403, 403, 403],
+  };
+  for (const [r, [s, p, m]] of Object.entries(expect)) {
+    assert.equal((await patchSvc(r)).status, s, `${r} service`);
+    assert.equal((await patchPerson(r)).status, p, `${r} person`);
+    assert.equal((await patchMeeting(r)).status, m, `${r} meeting (a meeting is under Meetings, not Services)`);
+  }
+  // everyone signed in reads their own profile and the settings
+  for (const r of ROLES) assert.equal((await call(as[r], 'GET', '/me')).body.user.role_def.key, r);
+  // settings and accounts: administrators only
+  assert.equal((await call(as.editor, 'GET', '/users')).status, 403);
+  assert.equal((await call(as.pastor, 'GET', '/access-roles')).status, 403);
+});
+
+test('members\' details and sensitive fields follow the role', async () => {
+  const seen = async (r: string) => (await call(as[r], 'GET', `/people/${ids.person}`)).body;
+  const pastor = await seen('pastor');
+  assert.equal(pastor.phone, '9000 0400');
+  assert.equal(pastor.custom.health, 'test sensitive value');
+  const secretary = await seen('secretary');
+  assert.equal(secretary.phone, '9000 0400', 'the secretary sees contact details');
+  assert.equal(secretary.notes, 'pastoral note');
+  assert.equal(secretary.custom.health, undefined, '… but not fields marked sensitive');
+  const planner = await seen('planner');
+  assert.equal(planner.phone, undefined, 'the planner sees names');
+  assert.equal(planner.notes, undefined);
+  const list = (await call(as.treasurer, 'GET', '/people?q=Grange')).body;
+  assert.equal((list.rows ?? list)[0].phone, undefined);
+});
+
+test('money follows the Offerings permission; reopening a count follows its own power', async () => {
+  const MONEY = { offerings: [{ fund: 'General', method: 'cash', amount: 5000 }], cash: { '5000': 1 }, counters: ['Ann', 'Ben'] };
+  assert.equal((await call(as.secretary, 'PUT', `/services/${ids.service}/record`, { attendance: 80, ...MONEY })).status, 403, 'records yes, money no');
+  assert.equal((await call(as.secretary, 'PUT', `/services/${ids.service}/record`, { attendance: 80 })).status, 200);
+  assert.equal((await call(as.treasurer, 'PUT', `/services/${ids.service}/record`, MONEY)).status, 200);
+  assert.equal((await call(as.secretary, 'GET', `/services/${ids.service}/record`)).body.offerings.length, 0, 'no money shown without Offerings');
+  assert.equal((await call(as.planner, 'GET', '/reports/offerings')).status, 403);
+  assert.equal((await call(as.treasurer, 'POST', `/services/${ids.service}/record/verify`, { verified: true })).status, 200);
+  assert.equal((await call(as.editor, 'POST', `/services/${ids.service}/record/verify`, { verified: false })).status, 403, 'editors don\'t reopen');
+  assert.equal((await call(as.treasurer, 'POST', `/services/${ids.service}/record/verify`, { verified: false })).status, 200, 'the treasurer reopens');
+});
+
+test('a church adds, changes and removes its own roles (administrators)', async () => {
+  const made = await call(as.admin, 'POST', '/access-roles', { name: { en: 'Worship leader' }, access: { services: 'edit', library: 'edit' }, member_details: false });
+  assert.equal(made.status, 200, JSON.stringify(made.body));
+  const key = made.body.key;
+  assert.equal(key, 'worship-leader');
+  assert.equal(made.body.access.members, 'none', 'anything not given: no access');
+  createUser({ username: 'wl', display_name: 'Test wl', password: 'correct-horse-5', role: key });
+  const wl = await login('wl');
+  assert.equal((await call(wl, 'PATCH', `/services/${ids.service}`, { notes: 'wl' })).status, 200);
+  assert.equal((await call(wl, 'GET', '/people')).status, 403, 'no access to members');
+  // a change applies straight away
+  assert.equal((await call(as.admin, 'PATCH', `/access-roles/${key}`, { access: { members: 'read' } })).status, 200);
+  assert.equal((await call(wl, 'GET', '/people')).status, 200);
+  assert.equal((await call(as.admin, 'POST', '/access-roles', { name: { en: 'Bad' }, access: { contributions: 'read' } })).status, 400, 'offerings need records');
+  assert.equal((await call(as.admin, 'PATCH', '/access-roles/admin', { access: { members: 'none' } })).status, 400, 'the Administrator keeps everything');
+  assert.equal((await call(as.admin, 'DELETE', '/access-roles/viewer')).status, 400, 'ready-made roles stay');
+  assert.equal((await call(as.admin, 'DELETE', `/access-roles/${key}`)).status, 409, 'in use');
+  assert.equal((await call(as.admin, 'POST', '/users', { username: 'x1', display_name: 'X', password: 'correct-horse-5', role: 'no-such-role' })).status, 400);
+});
+
+test('AI connections follow the same role', () => {
+  const cfg = { ...S.getSettings().mcp, enabled: true, expose_member_pii: true, modules: { ...S.getSettings().mcp.modules, members: 'write', records: 'write', contributions: 'read', services: 'write' } };
+  const scopes = new Set(['canon:read', 'canon:write']);
+  assert.equal(effectiveAccess('services', cfg as never, scopes, 'planner'), 'write');
+  assert.equal(effectiveAccess('members', cfg as never, scopes, 'planner'), 'read');
+  assert.equal(effectiveAccess('contributions', cfg as never, scopes, 'planner'), 'off', 'no offerings for the planner');
+  assert.equal(effectiveAccess('contributions', cfg as never, scopes, 'treasurer'), 'read');
+  assert.equal(piiFor(cfg as never, 'secretary'), true);
+  assert.equal(piiFor(cfg as never, 'planner'), false);
+});

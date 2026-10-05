@@ -14,6 +14,7 @@ import { getUser, sessionUser, sha256, type User } from './auth.ts';
 import { all, get, run, tx } from './db.ts';
 import { getSettings } from './repo/settings.ts';
 import { consentPage, disabledPage, errorPage } from './oauth-pages.ts';
+import { editsAnything } from './lib/permissions.ts';
 
 export const SCOPES = ['canon:read', 'canon:write'] as const;
 
@@ -76,7 +77,7 @@ function grantScopes(requested: string | undefined, role: Role): string[] | null
   const req = (requested ?? '').split(/\s+/).filter(Boolean);
   let out = req.length ? SCOPES.filter((s) => req.includes(s)) : DEFAULT_SCOPE.split(' ');
   if (!out.length) return null;
-  if (role === 'viewer') out = out.filter((s) => s !== 'canon:write');
+  if (!editsAnything({ role })) out = out.filter((s) => s !== 'canon:write');
   return out.length ? out : null;
 }
 
@@ -490,7 +491,7 @@ function tokenFromRefresh(b: Params, client: ClientRow) {
     if (!want.every((s) => scopes.includes(s))) throw new OAuthError('invalid_scope', 'Requested scope exceeds the original grant');
     scopes = want;
   }
-  if (user.role === 'viewer') scopes = scopes.filter((s) => s !== 'canon:write');
+  if (!editsAnything(user)) scopes = scopes.filter((s) => s !== 'canon:write');
   if (!scopes.length) throw new OAuthError('invalid_scope', 'No scope left for this user');
   return tx(() => {
     const changed = run('UPDATE oauth_tokens SET revoked = 1 WHERE token_hash = ? AND revoked = 0', row.token_hash).changes;
@@ -587,7 +588,7 @@ export function bearerAuth(req: Request, res: Response, next: NextFunction) {
   const user = getUser(row.user_id);
   if (!user) return unauthorized(req, res, true, 'User no longer exists');
   const scopes = new Set(row.scope.split(' ').filter((s) => (SCOPES as readonly string[]).includes(s)));
-  if (user.role === 'viewer') scopes.delete('canon:write'); // re-cap by the user's current role
+  if (!editsAnything(user)) scopes.delete('canon:write'); // re-cap by the user's current role
   run('UPDATE oauth_tokens SET last_used_at = ? WHERE token_hash = ?', Date.now(), row.token_hash);
   req.mcpAuth = { user, clientId: row.client_id, scopes, grantId: row.grant_id };
   next();

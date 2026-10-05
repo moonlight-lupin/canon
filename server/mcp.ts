@@ -33,16 +33,13 @@ import { PEOPLE_TOOLS } from './mcp-tools/people.ts';
 import { GROUP_TOOLS } from './mcp-tools/groups.ts';
 import { RECORD_TOOLS } from './mcp-tools/records.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
+import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
+import type { PermModule } from '../shared/permissions.ts';
 export type { ToolDef } from './mcp-tools/common.ts';
 
 const VERSION = '0.1.0';
 
 /** The full tool table: core tools plus feature modules. */
-const ROLE_TEXT: Record<Role, string> = {
-  admin: 'administrator — may change everything the modules allow, including settings in Canon itself',
-  editor: 'editor — may plan services and edit the registers, library and rota where the modules allow',
-  viewer: 'read-only — can look things up but never change anything',
-};
 const MODULE_TEXT: Record<ModuleKey, string> = {
   services: 'services, the order of service and downloads', templates: 'service templates', library: 'songs, liturgy, hymnals and Bibles',
   volunteers: 'teams, roles, rota and away dates', members: 'the member register', coworkers: 'co-workers', groups: 'groups, committees and serving teams',
@@ -56,12 +53,12 @@ function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, ro
   const parent = MODULE_PARENT[module];
   if (parent && configuredAccess(parent, cfg.modules) === 'off') return `it is part of ${parent}, which is not shared with AI agents`;
   if (setting === 'off') return 'the administrator has not shared this module with AI agents';
-  if (module === 'contributions' && role === 'viewer') return 'read-only accounts do not see offerings';
+  if (roleAccess(module, role) === 'none') return `your role (${roleDef(role).name.en}) does not include this module`;
   if (READ_ONLY_MODULES.includes(module)) return 'read only: AI agents never change offerings or cash counts';
   const lvl = effectiveAccess(module, cfg, scopes, role);
   if (lvl === 'write') return 'the administrator allows read & write, this connection may write, and your role may write';
   if (setting === 'read') return 'the administrator shares it read-only';
-  if (role === 'viewer') return 'the administrator allows read & write, but your account is read-only';
+  if (roleAccess(module, role) !== 'edit') return 'the administrator allows read & write, but your role only reads this module';
   if (!scopes.has('canon:write')) return 'the administrator allows read & write, but this connection was approved for reading only';
   return 'read only';
 }
@@ -77,12 +74,12 @@ const WHOAMI: ToolDef = {
     const { auth } = ctx;
     const levels = ctx.levels ?? (Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>);
     return {
-      user: { name: auth.user.display_name, role: auth.user.role, meaning: ROLE_TEXT[auth.user.role] },
-      connection: { scopes: [...auth.scopes], write_allowed: auth.scopes.has('canon:write') && auth.user.role !== 'viewer' },
+      user: { name: auth.user.display_name, role: auth.user.role, role_name: roleDef(auth.user.role).name.en, meaning: roleDef(auth.user.role).description.en },
+      connection: { scopes: [...auth.scopes], write_allowed: auth.scopes.has('canon:write') && editsAnything(auth.user) },
       church: { name: settings.church_name, languages: settings.languages.map((l) => ({ code: l, name: langInfo(l).name })) },
       congregations: listCongregations().filter((c) => c.active).map((c) => ({ id: c.id, code: c.code, name: c.name, languages: c.languages })),
       modules: Object.fromEntries(MODULES.map((m) => [m, { access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role) }])),
-      member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : auth.user.role === 'viewer' && cfg.expose_member_pii ? 'withheld: read-only accounts never receive members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
+      member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : !seesMemberDetails(auth.user) && cfg.expose_member_pii ? 'withheld: your role does not see members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
       tools: allowedTools(cfg, auth.scopes, auth.user.role).map((t) => t.name),
       playbooks: allowedPrompts(levels, piiFor(cfg, auth.user.role)).map((p) => p.name),
       never: [
@@ -117,16 +114,19 @@ export function toolCatalog() {
 // ---------------------------------------------------------------- exposure control
 
 /** Effective access to a module for this request = min(admin setting, token scope, user role). */
-/** Members' personal data on this connection: the administrator shares it, and the person is not a read-only account. */
-export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && role !== 'viewer';
+/** Members' personal data on this connection: the administrator shares it, and the person's role sees members' details. */
+export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && roleDef(role).member_details;
+/** What the person's role allows in a module (administrators: everything). */
+const roleAccess = (module: ModuleKey, role: Role) => (roleDef(role).admin ? 'edit' : roleDef(role).access[module as PermModule] ?? 'none');
 
 export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): ModuleAccess {
   const setting = configuredAccess(module, cfg.modules);
   if (!cfg.enabled || setting === 'off') return 'off';
-  // as in the web app: read-only users never see offerings
-  if (module === 'contributions' && role === 'viewer') return 'off';
+  // as in the web app: the role decides (e.g. read-only accounts never see offerings)
+  const ra = roleAccess(module, role);
+  if (ra === 'none') return 'off';
   if (!scopes.has('canon:read') && !scopes.has('canon:write')) return 'off';
-  if (setting === 'write' && scopes.has('canon:write') && role !== 'viewer') return 'write';
+  if (setting === 'write' && scopes.has('canon:write') && ra === 'edit') return 'write';
   return 'read';
 }
 

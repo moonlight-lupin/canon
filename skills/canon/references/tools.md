@@ -4,7 +4,7 @@
 
 ## Tools by module
 
-Whether a tool appears depends on the administrator's module settings (off / read / read & write), the connection's scope and the user's role.
+Whether a tool appears depends on the administrator's module settings (off / read / read & write), the connection's scope and what the user's role allows in that module (none / read / edit).
 
 | Module | Read | Write |
 |---|---|---|
@@ -26,7 +26,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - `canon_get_library_item` `parts`: `"index"` or a selection such as `"1-3"`, `"1,4,7-9"`, `"I.1-3"` (WCF chapter.section).
 - `canon_get_service` with `format: "downloads"`: short-lived links (24 h default, max 72) for `slides_pptx` (PowerPoint, styled by the slide template), `bulletin_docx` (Word), `freeshow`, `run_sheet`; `open_in_canon` links the print-ready bulletin (Print → PDF), slide show and run sheet for a signed-in user. Links work without signing in — give them only to the user who asked.
 - Congregations: `congregation` (id / short label / name) filters `canon_find_services`, `canon_find_people`, `canon_find_groups`; `congregation_id` on create / update service (its languages are the default).
-- Service records: `records` and `contributions` are off by default; `contributions` needs `records` and is always read only (never change money, sign or verify; viewers never get it). Amounts in cents of the church currency; other currencies apart, never converted. Visitor follow-up status `new` / `contacted` / `returning` / `joined`; contact details only with personal data exposed. `canon_save_service_record` replaces notes — read first. Reports take `from`, `to` (default the last 12 months), `congregation_id`. Meetings of groups have records too: `canon_list_service_records` takes `kind` (`service` / `meeting`) and `group_id`, reports take `kind` (`service` default, `meeting`, `all`) and `group_id`; a meeting may take no offering (`offering: false`) and then has no money. An archived record comes back with `archived_year` / `read_only`: it can't be saved and reports leave its year out (say so; only an administrator can bring it back, in Canon).
+- Service records: `records` and `contributions` are off by default; `contributions` needs `records` and is always read only (never change money, sign or verify; roles without offerings never get it). Amounts in cents of the church currency; other currencies apart, never converted. Visitor follow-up status `new` / `contacted` / `returning` / `joined`; contact details only with personal data exposed. `canon_save_service_record` replaces notes — read first. Reports take `from`, `to` (default the last 12 months), `congregation_id`. Meetings of groups have records too: `canon_list_service_records` takes `kind` (`service` / `meeting`) and `group_id`, reports take `kind` (`service` default, `meeting`, `all`) and `group_id`; a meeting may take no offering (`offering: false`) and then has no money. An archived record comes back with `archived_year` / `read_only`: it can't be saved and reports leave its year out (say so; only an administrator can bring it back, in Canon).
 - References (`ref`, e.g. `EN-001`, `CN-10pmService`): pass one wherever an id goes — `canon_get_service {"id":"EN-2026-12-25"}`, `canon_create_service {"template":"CN-10pmService"}`, `canon_update_service` with `slide_template` / `bulletin_template`; `canon_find_services` `q` matches them. A service template's slide / bulletin templates come with its new services.
 - `canon_get_templates` (`kind`: service | slide | bulletin) lists active templates (archived ones are left out); `church_default: true` marks the template the church normally starts from.
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
@@ -62,7 +62,7 @@ Call to Worship → Invocation → Hymn of praise (stand) → Reading of the Law
 
 ## Troubleshooting
 
-- Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, or a viewer account.
+- Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, or the user's role doesn't allow it.
 - `member_care` missing → members off, or member details not exposed (the default).
 - "N of M operations failed — nothing was applied" → fix the per-op errors, resend the whole batch.
 - "No Bible is set up for language …" → an administrator adds one in Settings → Languages.

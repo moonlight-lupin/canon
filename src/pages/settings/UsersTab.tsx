@@ -6,25 +6,18 @@ import { ErrorBox, Field, Loading, Modal, confirmAction, useAction, useSession }
 import { Icon } from '../../components/icons.tsx';
 import type { Lang, Role } from '../../types-client.ts';
 import { fmtStamp } from './common.tsx';
+import { RolesCard, useRoles } from './RolesCard.tsx';
+import type { RoleDef } from '../../../shared/permissions.ts';
 import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import '../people.css';
 
 export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null };
 
-export const ROLES: Role[] = ['admin', 'editor', 'viewer'];
-
-export const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', editor: 'Editor', viewer: 'Viewer' };
-
-export const ROLE_HELP: Record<Role, string> = {
-  admin: 'Everything, including users, church settings and AI access.',
-  editor: 'Plans services and edits the registers, library and rota.',
-  viewer: 'Read only — can view and print, and change their own password. Linked to a member who leads a group or a meeting, they can also record those meetings.',
-};
-
 export function UsersTab() {
-  const { t, lang } = useI18n();
+  const { t, lang, lt } = useI18n();
   const { user: me } = useSession();
+  const roles = useRoles();
   const { data, error, loading, reload } = useApi<UserRow[]>('/users');
   const { run, busy } = useAction();
   const [adding, setAdding] = useState(false);
@@ -48,11 +41,6 @@ export function UsersTab() {
 
   return (
     <div className="stack">
-      <div className="card">
-        <ul className="plain small">
-          {ROLES.map((r) => <li key={r}><strong>{t(ROLE_LABEL[r])}</strong> — {t(ROLE_HELP[r])}</li>)}
-        </ul>
-      </div>
       <div className="row end"><button className="btn primary" onClick={() => setAdding(true)}><Icon name="plus" />{t('Add user')}</button></div>
       {error && <ErrorBox error={error} />}
       {loading && !data ? <Loading /> : (
@@ -66,7 +54,8 @@ export function UsersTab() {
                   <td className="nowrap"><span className="code">{u.username}</span></td>
                   <td>
                     <select className="mini" value={u.role} disabled={u.id === me.id || busy} onChange={(e) => setRole(u, e.target.value as Role)} aria-label={t('Role')}>
-                      {ROLES.map((r) => <option key={r} value={r}>{t(ROLE_LABEL[r])}</option>)}
+                      {(roles.data?.roles ?? []).map((r) => <option key={r.key} value={r.key}>{lt(r.name)}</option>)}
+                      {!roles.data?.roles.some((r) => r.key === u.role) && <option value={u.role}>{u.role}</option>}
                     </select>
                   </td>
                   <td style={{ minWidth: 200 }}>
@@ -84,14 +73,15 @@ export function UsersTab() {
           </table>
         </div>
       )}
-      {adding && <AddUserModal onClose={() => setAdding(false)} onSaved={reload} />}
+      <RolesCard data={roles.data} reload={() => { roles.reload(); reload(); }} />
+      {adding && <AddUserModal roles={roles.data?.roles ?? []} onClose={() => setAdding(false)} onSaved={() => { reload(); roles.reload(); }} />}
       {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />}
     </div>
   );
 }
 
-export function AddUserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const { t } = useI18n();
+export function AddUserModal({ roles, onClose, onSaved }: { roles: RoleDef[]; onClose: () => void; onSaved: () => void }) {
+  const { t, lt } = useI18n();
   const { run, busy } = useAction();
   const [d, setD] = useState({ username: '', display_name: '', password: '', role: 'editor' as Role });
   const save = async () => {
@@ -113,9 +103,9 @@ export function AddUserModal({ onClose, onSaved }: { onClose: () => void; onSave
         <Field label={t('Password')} hint={t('At least 8 characters. Ask them to change it after signing in.')}>
           <input type="password" autoComplete="new-password" value={d.password} onChange={(e) => setD({ ...d, password: e.target.value })} />
         </Field>
-        <Field label={t('Role')} hint={t(ROLE_HELP[d.role])}>
+        <Field label={t('Role')} hint={lt(roles.find((r) => r.key === d.role)?.description ?? {})}>
           <select value={d.role} onChange={(e) => setD({ ...d, role: e.target.value as Role })}>
-            {ROLES.map((r) => <option key={r} value={r}>{t(ROLE_LABEL[r])}</option>)}
+            {roles.map((r) => <option key={r.key} value={r.key}>{lt(r.name)}</option>)}
           </select>
         </Field>
       </div>

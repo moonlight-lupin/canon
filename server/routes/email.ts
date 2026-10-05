@@ -7,15 +7,16 @@ import { getSettings, updateSettings, setMeta, deleteMeta } from '../repo/settin
 import { externalBase } from '../oauth.ts';
 import { emailLog, reminderPreview, sendReminders, sendTestEmail, serviceExists } from '../repo/email.ts';
 import { h } from './helpers.ts';
+import { can, isAdmin } from '../lib/permissions.ts';
 
 export const emailRoutes = express.Router();
 
 const forbid = (msg: string) => Object.assign(new Error(msg), { status: 403 });
 const adminOnly = (req: Request) => {
-  if (req.user?.role !== 'admin') throw forbid('Administrators only');
+  if (!isAdmin(req.user)) throw forbid('Administrators only');
 };
 const editorOnly = (req: Request) => {
-  if (req.user?.role !== 'admin' && req.user?.role !== 'editor') throw forbid('Editors and administrators only');
+  if (!can(req.user, 'volunteers', 'edit')) throw forbid('Your role can’t send reminders');
 };
 const serviceId = (req: Request) => {
   const n = Number(req.params.id);

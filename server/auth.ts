@@ -5,6 +5,7 @@ import type { Role } from '../shared/types.ts';
 import { all, get, run } from './db.ts';
 import { config } from './config.ts';
 import { leaderMayWrite } from './lib/leaders.ts';
+import { gateRequest, isAdmin } from './lib/permissions.ts';
 
 export interface User {
   id: number;
@@ -116,21 +117,23 @@ declare module 'express-serve-static-core' {
 
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-/** Require a logged-in user; mutating requests also need the session's CSRF token and a non-viewer role. */
+/**
+ * Require a signed-in user. Changes need the session's CSRF token. Every request is then checked against what the
+ * account's role allows for that part of Canon (lib/permissions.ts); a read-only account may still record the
+ * meetings its member leads (lib/leaders.ts).
+ */
 export function requireUser(req: Request, res: Response, next: NextFunction) {
   const u = sessionUser(req);
   if (!u) return res.status(401).json({ error: 'Not signed in' });
-  if (!SAFE.has(req.method)) {
-    if (req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Bad CSRF token' });
-    // viewers may still update their own profile (language, password), and record the meetings they lead
-    if (u.role === 'viewer' && req.path !== '/me' && !leaderMayWrite(u.person_id, req)) return res.status(403).json({ error: 'Read-only account' });
-  }
+  if (!SAFE.has(req.method) && req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Bad CSRF token' });
+  const why = gateRequest(u, req.method, req.path);
+  if (why && !(!SAFE.has(req.method) && leaderMayWrite(u.person_id, req))) return res.status(403).json({ error: why });
   req.user = u;
   next();
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Administrators only' });
+  if (!isAdmin(req.user)) return res.status(403).json({ error: 'Administrators only' });
   next();
 }
 

@@ -834,5 +834,21 @@ const zh: Record<string, string> = {
   "Until": "结束日期",
   "for an event over several days": "适用于持续几天的活动",
   "End time": "结束时间",
+  // v0.13.0 — roles
+  "What each role may see and change. Canon’s ready-made roles can be adjusted to your church; add a role for anything else. AI assistants acting for a person follow the same role.": "每个角色可以查看和更改的内容。Canon 预设的角色可以按教会需要调整；其他情况可新增角色。代表某人工作的 AI 助手也遵循同一个角色。",
+  "New role": "新增角色",
+  "Members’ details": "会友资料",
+  "Accounts": "帐户",
+  "No access": "无权限",
+  "Delete this role?": "删除这个角色？",
+  "Edit role": "编辑角色",
+  "Part of Canon": "Canon 的部分",
+  "Sees members’ contact details and notes": "可查看会友的联络资料和备注",
+  "Phone, e-mail, address, pastoral notes, reasons for absence and the year of birth. Without it, members show by name with their birthday (day and month).": "电话、电邮、地址、牧养备注、请假原因和出生年份。没有这项权限时，会友只显示姓名和生日（月日）。",
+  "Sees member fields marked sensitive": "可查看标为敏感的会友栏位",
+  "Reopens verified cash counts and deletes service records": "可重开已核实的现金点算并删除聚会记录",
+  "Volunteers and rota": "同工与事奉表",
+  "Meetings and calendar": "聚会活动与日历",
+  "Service records and reports": "聚会记录与报表",
 };
 export default zh;

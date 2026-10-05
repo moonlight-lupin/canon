@@ -9,6 +9,7 @@ import { LANG_CODE_RE } from '../../shared/languages.ts';
 import {
   CSV_ENTITIES, ImportBlocked, RowError, exportCsv, guide, makeCtx, runImport, say, templateCsv, type Entity,
 } from '../csv/index.ts';
+import { editsAnything, seesMemberDetails } from '../lib/permissions.ts';
 
 export const csvRoutes = express.Router();
 
@@ -46,7 +47,7 @@ function entity(req: Request): Entity {
 
 /** PDPA: viewers may not export personal data (members, co-workers, groups, team rosters, away dates). */
 function mayExport(req: Request, e: Entity) {
-  if (e.pii && req.user?.role === 'viewer') {
+  if (e.pii && !seesMemberDetails(req.user)) {
     throw Object.assign(new Error('Read-only accounts cannot export personal data. Ask an editor or administrator.'), { status: 403 });
   }
 }
@@ -91,7 +92,7 @@ export function bodyBytes(req: Request): Uint8Array {
 /** Import (or preview with ?dry_run=1). All-or-nothing unless ?skip_errors=1. Editors and administrators only. */
 csvRoutes.post('/csv/:entity/import', rawBody, h((req) => {
   const e = entity(req);
-  if (req.user?.role === 'viewer') throw Object.assign(new Error('Read-only account'), { status: 403 });
+  if (!editsAnything(req.user)) throw Object.assign(new Error('Read-only account'), { status: 403 });
   const flag = (v: unknown) => v === '1' || v === 'true';
   // logged as a CSV import by this person
   return asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () =>

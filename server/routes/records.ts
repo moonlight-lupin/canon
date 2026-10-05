@@ -13,12 +13,14 @@ import * as vf from '../repo/visitor-form.ts';
 import type { ServiceRecord } from '../../shared/records.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { h, id, str } from './helpers.ts';
+import { can, mayReopenCounts } from '../lib/permissions.ts';
 
 export const recordRoutes = express.Router();
 
 // ---------------------------------------------------------------- service records (attendance, visitors, offerings)
 
-const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: req.user?.role === 'admin' });
+// admin = may reopen verified counts and delete records (Administrator, Treasurer …); money = may change offerings
+const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: mayReopenCounts(req.user), money: can(req.user, 'contributions', 'edit') || leadsMeeting(req.user?.person_id, Number(req.params.id)) });
 const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional(), prayer: z.string().max(1500).optional(), about: z.string().max(200).optional() });
 const RecordInput = z.object({
   attendance: z.number().int().min(0).max(100000).nullable().optional(),
@@ -40,7 +42,7 @@ const reportPeriod = (req: Request) => reports.period({
   from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined,
   kind: str(req.query.kind), group_id: Number(req.query.group) || undefined,
 });
-const canSeeMoney = (req: Request) => req.user?.role === 'admin' || req.user?.role === 'editor';
+const canSeeMoney = (req: Request) => can(req.user, 'contributions', 'read');
 // which years are in archive files (reports cover the live database only, and say so)
 recordRoutes.get('/reports/archived-years', h(() => ({ years: arc.archiveYears() })));
 recordRoutes.get('/reports/attendance', h((req) => reports.attendanceReport(reportPeriod(req))));

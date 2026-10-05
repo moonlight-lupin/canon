@@ -14,6 +14,7 @@ import * as sec from '../repo/security.ts';
 import * as grp from '../repo/groups.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
+import { seesMemberDetails } from '../lib/permissions.ts';
 
 export const peopleRoutes = express.Router();
 
@@ -22,7 +23,7 @@ export const peopleRoutes = express.Router();
 peopleRoutes.get('/people', h((req) => reg.listPeople({
   q: str(req.query.q), status: str(req.query.status),
   // read-only accounts search names only (searching by phone or e-mail would reveal them)
-  names_only: req.user?.role === 'viewer',
+  names_only: !seesMemberDetails(req.user),
   household_id: Number(req.query.household_id) || undefined,
   congregation_id: Number(req.query.congregation) || undefined,
   limit: Number(req.query.limit) || undefined, offset: Number(req.query.offset) || undefined,

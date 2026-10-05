@@ -40,9 +40,15 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 ### Adding colleagues
 
 **Settings → Users & access → Add user**. Choose a role:
-- **Admin**: everything, including settings.
-- **Editor**: plans services and edits the registers, library and rota.
-- **Viewer**: can view and print only.
+- **Administrator**: everything, including settings, accounts and roles.
+- **Pastor / Elder**: members with their details and notes, groups, meetings and services; sees the records and offerings.
+- **Editor**: plans services and edits the registers, library, rota and records (as before 0.13).
+- **Service planner**: services, templates, the library and the rota; members by name only.
+- **Treasurer**: service records and offerings — enters, verifies and reopens cash counts; reads the rest.
+- **Secretary**: the registers — members, co-workers, groups, meetings and service records (not offerings).
+- **Read-only**: can view and print; no money, no members' contact details or notes.
+
+**Roles** (below the accounts) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. **Edit** a ready-made role to fit your church (the Administrator always keeps everything), or **New role** for anything else, e.g. a worship leader who edits services and the library. A role in use can't be deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role.
 - **Meeting leaders**: link an account to the member it belongs to (the **Member** column). A member ticked **Leads** in a group, or chosen as a meeting's **Leader**, can then record those meetings with that account, even a read-only one: the headcount, new visitors with their contact details (for the follow-up), notes and the offering with its cash count and signing, the meeting's details and its next meeting. Nothing else changes for them: services, other meetings and the registers stay read-only, and deleting a meeting or reopening a verified count stays with editors and administrators.
 
 | What | Admin | Editor | Viewer |

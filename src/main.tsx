@@ -5,6 +5,7 @@ import './styles.css';
 import { api, onUnauthorised, setCsrf, useApi } from './api.ts';
 import { ChurchLanguages, I18nProvider, useI18n } from './i18n.tsx';
 import type { Settings } from './types-client.ts';
+import { allows, pageModule, type Access, type PermModule } from '../shared/permissions.ts';
 import { Loading, SessionCtx, ToastProvider, type SessionUser } from './components/ui.tsx';
 import { Layout } from './components/Layout.tsx';
 import Login from './pages/Login.tsx';
@@ -86,9 +87,16 @@ function App() {
 
 function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => void; refresh: () => Promise<void> }) {
   const { data: settings, reload: reloadSettings } = useApi<Settings>('/settings');
+  // the role decides what each page may change: the page's module (shared/permissions.ts), as on the server
+  const loc = useLocation();
+  const role = user.role_def;
+  const isAdmin = !!role?.admin;
+  const can = (m: PermModule, a: Access) => allows(role, m, a);
+  const page = pageModule(loc.pathname);
+  const canEdit = isAdmin || (page !== null && page !== 'admin' && can(page, 'edit'));
   if (!settings) return <Loading />;
   // First run: an administrator chooses the church's languages and imports Bibles.
-  if (!settings.onboarded && user.role === 'admin') {
+  if (!settings.onboarded && user.role_def?.admin) {
     return (
       <Suspense fallback={<Loading />}>
         <Onboarding settings={settings} onDone={reloadSettings} />
@@ -96,7 +104,7 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
     );
   }
   return (
-    <SessionCtx.Provider value={{ user, canEdit: user.role !== 'viewer', isAdmin: user.role === 'admin', logout, refresh, settings, reloadSettings }}>
+    <SessionCtx.Provider value={{ user, canEdit, isAdmin, can, logout, refresh, settings, reloadSettings }}>
      <ChurchLanguages langs={settings.languages}>
       <Suspense fallback={<Loading />}>
         <Routes>

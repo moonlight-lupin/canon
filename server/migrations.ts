@@ -2,6 +2,7 @@
 // Never edit a migration that has shipped: add a new one (and a line in CHANGELOG.md).
 import type { DatabaseSync } from 'node:sqlite';
 import { isLeaderRole } from '../shared/group-roles.ts';
+import { BUILTIN_ROLES } from '../shared/permissions.ts';
 
 /**
  * A migration is SQL, or SQL plus a step in code. `noForeignKeys` runs it with foreign-key checks off (needed to
@@ -674,6 +675,48 @@ export const MIGRATIONS: (string | Migration)[] = [
       const rows = d.prepare('SELECT id, role FROM group_members').all() as { id: number; role: string | null }[];
       const mark = d.prepare('UPDATE group_members SET leads = 1 WHERE id = ?');
       for (const r of rows) if (isLeaderRole(r.role)) mark.run(r.id);
+    },
+  },
+  // 24 (0.13): roles a church can shape (access per module, member details, sensitive fields, reopening counts);
+  // accounts keep their role key (admin / editor / viewer stay as they were) — the users table loses its fixed list
+  // of three roles (rebuilt: a CHECK can't be dropped otherwise).
+  {
+    noForeignKeys: true,
+    sql: `
+    CREATE TABLE access_roles (
+      key TEXT PRIMARY KEY,
+      name TEXT NOT NULL DEFAULT '{}',
+      description TEXT NOT NULL DEFAULT '{}',
+      builtin INTEGER NOT NULL DEFAULT 0,
+      admin INTEGER NOT NULL DEFAULT 0,
+      access TEXT NOT NULL DEFAULT '{}',
+      member_details INTEGER NOT NULL DEFAULT 0,
+      sensitive_fields INTEGER NOT NULL DEFAULT 0,
+      reopen_counts INTEGER NOT NULL DEFAULT 0,
+      sort INTEGER NOT NULL DEFAULT 100
+    );
+    CREATE TABLE users_v13 (
+      id INTEGER PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      display_name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'viewer',
+      lang TEXT NOT NULL DEFAULT 'en',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_login_at TEXT,
+      person_id INTEGER REFERENCES people(id) ON DELETE SET NULL
+    );
+    INSERT INTO users_v13 (id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id)
+      SELECT id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id FROM users;
+    DROP TABLE users;
+    ALTER TABLE users_v13 RENAME TO users;
+    `,
+    run: (d) => {
+      const put = d.prepare(`INSERT OR IGNORE INTO access_roles (key, name, description, builtin, admin, access, member_details, sensitive_fields, reopen_counts, sort)
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`);
+      for (const r of BUILTIN_ROLES) {
+        put.run(r.key, JSON.stringify(r.name), JSON.stringify(r.description), r.admin ? 1 : 0, JSON.stringify(r.access), r.member_details ? 1 : 0, r.sensitive_fields ? 1 : 0, r.reopen_counts ? 1 : 0, r.sort);
+      }
     },
   },
 ];

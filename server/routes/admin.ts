@@ -11,6 +11,9 @@ import { getSettings, updateSettings } from '../repo/settings.ts';
 import { listGrants, revokeGrant, externalBase } from '../oauth.ts';
 import { toolCatalog } from '../mcp.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
+import * as ar from '../repo/access-roles.ts';
+import { listRoles } from '../lib/permissions.ts';
+import { PERM_MODULES } from '../../shared/permissions.ts';
 
 export const adminRoutes = express.Router();
 
@@ -120,3 +123,18 @@ adminRoutes.post('/mcp/check-public-url', requireAdmin, h(async (req) => {
 }));
 adminRoutes.get('/mcp/grants', requireAdmin, h(() => listGrants()));
 adminRoutes.delete('/mcp/grants/:grant', requireAdmin, h((req) => revokeGrant(String(req.params.grant))));
+
+// ---------------------------------------------------------------- roles for accounts (not rota roles)
+
+const RoleInput = z.object({
+  name: S.L10nSchema,
+  description: S.L10nSchema.optional(),
+  access: z.partialRecord(z.enum(PERM_MODULES), z.enum(['none', 'read', 'edit'])),
+  member_details: z.boolean().optional(),
+  sensitive_fields: z.boolean().optional(),
+  reopen_counts: z.boolean().optional(),
+});
+adminRoutes.get('/access-roles', requireAdmin, h(() => ({ roles: listRoles(), use: ar.roleUse() })));
+adminRoutes.post('/access-roles', requireAdmin, h((req) => ar.createRole(RoleInput.parse(req.body))));
+adminRoutes.patch('/access-roles/:key', requireAdmin, h((req) => ar.updateRole(String(req.params.key), RoleInput.partial().parse(req.body))));
+adminRoutes.delete('/access-roles/:key', requireAdmin, h((req) => ar.deleteRole(String(req.params.key))));

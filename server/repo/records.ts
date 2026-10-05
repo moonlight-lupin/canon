@@ -47,6 +47,12 @@ export function recordFor(serviceId: number): ServiceRecord & { saved: boolean; 
   return r ? { ...r, saved: true, archived_year: null } : { id: 0, updated_at: '', revision: 0, ...blank(serviceId), saved: false, archived_year: archivedYear(serviceId) };
 }
 
+/** Who is saving: admin = may reopen verified counts and delete records; money = may change offerings (default yes). */
+export type Who = { name: string; admin: boolean; money?: boolean };
+const assertMoney = (who: Who) => {
+  if (who.money === false) throw new Forbidden('Your role can’t change offerings or cash counts.');
+};
+
 /** Fields locked once the count is verified (what the declaration attests). */
 const MONEY_FIELDS = ['offerings', 'cash', 'counters', 'currency', 'foreign_cash', 'counted_on'] as const;
 const hashOf = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) => crypto.createHash('sha256').update(cashKey(r)).digest('base64url').slice(0, 16);
@@ -56,7 +62,7 @@ export const minCounters = () => Math.min(6, Math.max(2, Math.floor(getSettings(
 export const signingMode = () => (getSettings().offering.signing === 'screen' ? 'screen' : 'paper');
 
 /** Save part of a service's record. Money is locked once verified, except for administrators. */
-export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who: { name: string; admin: boolean }): ServiceRecord {
+export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who: Who): ServiceRecord {
   assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   // compare what is sent with what is stored: an unchanged copy of the money (the editor sends the whole record) is fine
@@ -87,13 +93,16 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
   const { id: _i, service_id: _s, saved: _v, updated_at: _u, verified_at: _va, verified_by: _vb, signatures: _sg, revision: _r, archived_year: _ay, ...rest } = patch as ServiceRecord & { saved?: boolean; archived_year?: unknown };
   // drop fields sent unchanged (an editor's screen sends the whole record)
   for (const k of MONEY_FIELDS) if (k in rest && JSON.stringify((rest as Record<string, unknown>)[k]) === JSON.stringify(cur[k] ?? null)) delete (rest as Record<string, unknown>)[k];
+  // offerings and the cash count need the Offerings permission (lib/permissions.ts)
+  if (MONEY_FIELDS.some((k) => k in rest)) assertMoney(who);
   // signatures belong to one exact count: when the cash changes they no longer apply (a verified count cannot change, above)
   if (cur.saved && cashChanged && (cur.signatures?.length ?? 0) > 0) Object.assign(rest, { signatures: [] });
   return cur.saved ? records.update(cur.id, rest) : records.insert({ ...blank(serviceId), ...rest });
 }
 
 /** Mark the cash count as counted and verified (or undo that, administrators only). */
-export function setVerified(serviceId: number, verified: boolean, who: { name: string; admin: boolean }): ServiceRecord {
+export function setVerified(serviceId: number, verified: boolean, who: Who): ServiceRecord {
+  assertMoney(who);
   assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (!cur.saved) throw new BadRequest('Enter the offerings first.');
@@ -121,7 +130,8 @@ function checkCount(r: ServiceRecord) {
  * A counter signs on screen (churches that sign on screen). The count must add up; the signature is tied to this
  * count. Signing does not verify: any number of counters may sign, then Finish signing (finishSigning) verifies.
  */
-export function sign(serviceId: number, input: { name: string; image: string }, who: { name: string; admin: boolean }): ServiceRecord {
+export function sign(serviceId: number, input: { name: string; image: string }, who: Who): ServiceRecord {
+  assertMoney(who);
   if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper (Currency and funds → Signing).');
   assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
@@ -138,7 +148,8 @@ export function sign(serviceId: number, input: { name: string; image: string }, 
 }
 
 /** Everyone has signed: verify the count (at least the church's minimum number of signatures, for this exact count). */
-export function finishSigning(serviceId: number, who: { name: string; admin: boolean }): ServiceRecord {
+export function finishSigning(serviceId: number, who: Who): ServiceRecord {
+  assertMoney(who);
   if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper.');
   assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
@@ -154,7 +165,8 @@ export function finishSigning(serviceId: number, who: { name: string; admin: boo
 }
 
 /** Remove a signature (before the count is verified, or by an administrator — which reopens the count). */
-export function unsign(serviceId: number, name: string, who: { name: string; admin: boolean }): ServiceRecord {
+export function unsign(serviceId: number, name: string, who: Who): ServiceRecord {
+  assertMoney(who);
   assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (cur.verified_at && !who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can remove a signature.');

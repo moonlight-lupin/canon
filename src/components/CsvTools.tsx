@@ -53,7 +53,7 @@ export function CsvTools({
   const { user, canEdit } = useSession();
   const [open, setOpen] = useState(false);
   const pii = PII.has(entity);
-  if (user.role === 'viewer' && pii) return null;
+  if (!user.role_def?.member_details && pii) return null;
   const q = qs({ ...params, lang });
   const cls = `btn${size === 'sm' ? ' sm' : ''}`;
   return (

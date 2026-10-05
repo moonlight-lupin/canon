@@ -44,7 +44,7 @@ interface Row {
 export default function Records() {
   const { t, lang } = useI18n();
   const nav = useNavigate();
-  const { canEdit, isAdmin } = useSession();
+  const { canEdit, isAdmin, can } = useSession();
   const [range, setRange] = useState<'8' | '26' | '52'>('8');
   const [cong, setCong, congs] = useCongregationFilter('records');
   // services and meetings apart: a cell group's headcount would distort a Sunday's average
@@ -61,7 +61,7 @@ export default function Records() {
   for (const r of rows) for (const o of r.other_currencies ?? []) others.set(o.currency, (others.get(o.currency) ?? 0) + o.total);
   const unverified = rows.filter((r) => r.recorded && (r.offering_total ?? 0) > 0 && !r.verified).length;
   // read-only users get no money from the server; editors always see the columns
-  const seeMoney = canEdit || rows.some((r) => r.offering_total !== null);
+  const seeMoney = can('contributions', 'read');
 
   return (
     <div className="page">

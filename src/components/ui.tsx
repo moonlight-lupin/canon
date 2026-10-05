@@ -5,6 +5,7 @@ import type { Settings } from '../types-client.ts';
 import { pickL10n, useContentLangs, useI18n } from '../i18n.tsx';
 import { isChinese, langInfo } from '../../shared/languages.ts';
 import { Icon } from './icons.tsx';
+import type { Access, PermModule, RoleDef } from '../../shared/permissions.ts';
 
 // ---------------------------------------------------------------- session
 
@@ -18,11 +19,16 @@ export interface SessionUser {
   person_id?: number | null;
   /** the groups that member leads (their meetings can be recorded with any account) */
   leads?: number[];
+  /** what the account's role allows (shared/permissions.ts) */
+  role_def?: RoleDef;
 }
 interface Session {
   user: SessionUser;
+  /** may the page being shown be edited (its module's access in the account's role) */
   canEdit: boolean;
   isAdmin: boolean;
+  /** at least this access to a module */
+  can: (module: PermModule, access: Access) => boolean;
   logout: () => void;
   /** church settings (languages, name, …); reloadSettings() after changing them */
   settings: Settings | undefined;
