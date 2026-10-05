@@ -13,6 +13,7 @@ import { all, get, type SqlValue } from '../db.ts';
 import { BadRequest, Conflict, Forbidden, table } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
 import { services } from './services.ts';
+import { wallSql } from '../lib/walls.ts';
 
 export const records = table<ServiceRecord>({
   name: 'service_records',
@@ -227,6 +228,11 @@ export function listRecords(q: RecordsQuery) {
   if (q.group_id) {
     where.push('s.group_id = ?');
     params.push(q.group_id);
+  }
+  const wall = wallSql('s.congregation_id');
+  if (wall.sql) {
+    where.push(wall.sql.replace(/^ AND /, ''));
+    params.push(...wall.params);
   }
   const rows = all<{ id: number; date: string; start_time: string; title: string; congregation_id: number | null; record_id: number | null; archived_year: number | null; kind: string; group_id: number | null; offering: number; group_name: string | null }>(
     `SELECT s.id, s.date, s.start_time, s.title, s.congregation_id, r.id AS record_id, a.year AS archived_year,

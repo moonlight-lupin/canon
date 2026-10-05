@@ -4,6 +4,7 @@
 import type { L10n } from '../../shared/types.ts';
 import { all, type SqlValue } from '../db.ts';
 import { BadRequest, table } from '../lib/table.ts';
+import { currentWall } from '../lib/walls.ts';
 
 export interface ChurchEvent {
   id: number;
@@ -59,6 +60,8 @@ export interface CalendarQuery {
 
 /** Everything on the calendar from `from` to `to` (an event over several days shows if it touches the period). */
 export function calendarItems(q: CalendarQuery): CalendarItem[] {
+  // behind a congregation wall: that congregation (and the whole church) only
+  if (currentWall()) q = { ...q, congregation_id: currentWall()! };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(q.from) || !/^\d{4}-\d{2}-\d{2}$/.test(q.to)) throw new BadRequest('Choose a period.');
   const filter = (alias: string) => {
     const w: string[] = [];

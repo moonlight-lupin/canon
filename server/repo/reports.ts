@@ -10,6 +10,7 @@ import type { L10n } from '../../shared/types.ts';
 import { all, type SqlValue } from '../db.ts';
 import { BadRequest } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
+import { currentWall } from '../lib/walls.ts';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -22,8 +23,10 @@ export function period(q: { from?: string; to?: string; congregation_id?: number
   if (Number(to.slice(0, 4)) - Number(from.slice(0, 4)) > 20) throw new BadRequest('Choose a period of at most 20 years.');
   // services unless meetings are asked for: a cell group's headcount is not a Sunday's attendance
   const kind = q.kind === 'meeting' || q.kind === 'all' ? q.kind : 'service';
+  // an account limited to one congregation reports on it
+  const congregation = currentWall() ?? q.congregation_id;
   return {
-    from, to, ...(q.congregation_id ? { congregation_id: q.congregation_id } : {}),
+    from, to, ...(congregation ? { congregation_id: congregation } : {}),
     ...(kind !== 'service' ? { kind } : {}), ...(q.group_id && kind !== 'service' ? { group_id: q.group_id } : {}),
   };
 }
@@ -35,7 +38,8 @@ function servicesIn(p: Period, withOffering = false): SvcRow[] {
   const where = ['date >= ?', 'date <= ?'];
   const params: SqlValue[] = [p.from, p.to];
   if (p.congregation_id) {
-    where.push('congregation_id = ?');
+    // behind a congregation wall the whole church's services count too (as everywhere else)
+    where.push(currentWall() ? '(congregation_id = ? OR congregation_id IS NULL)' : 'congregation_id = ?');
     params.push(p.congregation_id);
   }
   if (p.kind !== 'all') {
@@ -429,7 +433,7 @@ export function scriptureReport(q: { from?: string; to?: string; congregation_id
 
 export function membershipReport(q: Period): MembershipReport {
   const p = period(q);
-  const where = p.congregation_id ? 'WHERE congregation_id = ?' : '';
+  const where = p.congregation_id ? (currentWall() ? 'WHERE (congregation_id = ? OR congregation_id IS NULL)' : 'WHERE congregation_id = ?') : '';
   const params: SqlValue[] = p.congregation_id ? [p.congregation_id] : [];
   const rows = all<PersonRow & { status: string; gender: string | null; birth_date: string | null; congregation_id: number | null; membership_date: string | null; baptism_date: string | null; created_at: string }>(
     `SELECT id, first_name, last_name, preferred_name, native_name, status, gender, birth_date, congregation_id, membership_date, baptism_date, created_at FROM people ${where}`, ...params,

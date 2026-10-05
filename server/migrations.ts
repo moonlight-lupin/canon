@@ -704,7 +704,9 @@ export const MIGRATIONS: (string | Migration)[] = [
       lang TEXT NOT NULL DEFAULT 'en',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       last_login_at TEXT,
-      person_id INTEGER REFERENCES people(id) ON DELETE SET NULL
+      person_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+      -- limited to one congregation (null = the whole church)
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL
     );
     INSERT INTO users_v13 (id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id)
       SELECT id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id FROM users;

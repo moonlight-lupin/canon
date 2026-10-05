@@ -3,6 +3,7 @@ import type { Assignment, AssignmentStatus, ServiceRole, Team, Unavailability } 
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { ensureOnRoleTeam, isLeaderRole, teamGroupId } from './groups.ts';
+import { wallSql } from '../lib/walls.ts';
 
 export const teams = table<Team>({ name: 'teams', cols: ['name', 'description', 'color', 'sort'], json: ['name'] });
 export const roles = table<ServiceRole>({ name: 'roles', cols: ['team_id', 'name', 'needed', 'sort'], json: ['name'] });
@@ -123,9 +124,9 @@ export function rosterWarnings(serviceId: number) {
 /** Rota grid for services between two dates. */
 export function rota(from: string, to: string, congregationId?: number) {
   const services = all<{ id: number; date: string; start_time: string; title: string; status: string; congregation_id: number | null }>(
-    "SELECT id, date, start_time, title, status, congregation_id FROM services WHERE kind = 'service' AND date BETWEEN ? AND ? AND (? IS NULL OR congregation_id = ?) ORDER BY date, start_time",
+    `SELECT id, date, start_time, title, status, congregation_id FROM services WHERE kind = 'service' AND date BETWEEN ? AND ? AND (? IS NULL OR congregation_id = ?)${wallSql('congregation_id').sql} ORDER BY date, start_time`,
     from, to, congregationId ?? null, congregationId ?? null,
-  ).map((s) => ({ ...s, title: JSON.parse(s.title) }));
+  ).map((s) => ({ ...s, title: JSON.parse(s.title) }), ...wallSql('congregation_id').params);
   const ids = services.map((s) => s.id);
   const cells = ids.length
     ? all<{ id: number; service_id: number; role_id: number; person_id: number; status: string; person_name: string }>(

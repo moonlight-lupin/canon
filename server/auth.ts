@@ -6,6 +6,7 @@ import { all, get, run } from './db.ts';
 import { config } from './config.ts';
 import { leaderMayWrite } from './lib/leaders.ts';
 import { gateRequest, isAdmin } from './lib/permissions.ts';
+import { outsideWall } from './lib/walls.ts';
 
 export interface User {
   id: number;
@@ -15,6 +16,8 @@ export interface User {
   lang: string;
   /** the member this account belongs to (meeting leaders record the meetings they lead) */
   person_id?: number | null;
+  /** the congregation this account is limited to (null = the whole church) */
+  congregation_id?: number | null;
 }
 
 // Cookies are scoped by host, not port: include the port so several Canon instances on one machine don't sign each other out.
@@ -49,9 +52,9 @@ export function createUser(u: { username: string; display_name: string; password
 }
 
 export const getUser = (id: number) =>
-  get<User>('SELECT id, username, display_name, role, lang, person_id FROM users WHERE id = ?', id);
+  get<User>('SELECT id, username, display_name, role, lang, person_id, congregation_id FROM users WHERE id = ?', id);
 export const listUsers = () => all<User & { created_at: string; person_name: string | null }>(
-  `SELECT u.id, u.username, u.display_name, u.role, u.lang, u.created_at, u.person_id,
+  `SELECT u.id, u.username, u.display_name, u.role, u.lang, u.created_at, u.person_id, u.congregation_id,
           CASE WHEN p.id IS NOT NULL THEN TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) END AS person_name
    FROM users u LEFT JOIN people p ON p.id = u.person_id ORDER BY u.id`,
 );
@@ -128,9 +131,14 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   if (!SAFE.has(req.method) && req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Bad CSRF token' });
   const why = gateRequest(u, req.method, req.path);
   if (why && !(!SAFE.has(req.method) && leaderMayWrite(u.person_id, req))) return res.status(403).json({ error: why });
+  // an account limited to one congregation can't reach another congregation's items (lib/walls.ts)
+  if (outsideWall(wallOf(u), req.path)) return res.status(404).json({ error: 'Not found' });
   req.user = u;
   next();
 }
+
+/** The congregation an account is limited to (administrators never are). */
+export const wallOf = (u: { role: string; congregation_id?: number | null } | null | undefined) => (!u || isAdmin(u) ? null : u.congregation_id ?? null);
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!isAdmin(req.user)) return res.status(403).json({ error: 'Administrators only' });

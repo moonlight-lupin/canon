@@ -850,5 +850,7 @@ const zh: Record<string, string> = {
   "Volunteers and rota": "同工与事奉表",
   "Meetings and calendar": "聚会活动与日历",
   "Service records and reports": "聚会记录与报表",
+  "Limited to": "限定于",
+  "An account limited to one congregation sees its services, meetings, records, members and groups, and the whole church’s — not those of other congregations. Administrators always see everything.": "限定于某个堂的帐户，只看到该堂以及全教会的聚会、聚会活动、记录、会友和群组——看不到其他堂的资料。管理员始终可以看到全部。",
 };
 export default zh;

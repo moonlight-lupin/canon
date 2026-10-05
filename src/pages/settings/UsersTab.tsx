@@ -7,12 +7,13 @@ import { Icon } from '../../components/icons.tsx';
 import type { Lang, Role } from '../../types-client.ts';
 import { fmtStamp } from './common.tsx';
 import { RolesCard, useRoles } from './RolesCard.tsx';
+import { useCongregations } from '../../components/Congregations.tsx';
 import type { RoleDef } from '../../../shared/permissions.ts';
 import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import '../people.css';
 
-export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null };
+export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null };
 
 export function UsersTab() {
   const { t, lang, lt } = useI18n();
@@ -28,6 +29,11 @@ export function UsersTab() {
   const personOptions: ComboOption[] = (people.data?.rows ?? []).map((p) => ({
     value: String(p.id), label: `${p.preferred_name || p.first_name} ${p.last_name}`.trim() + (p.native_name ? ` ${p.native_name}` : ''),
   })).sort((a, b) => a.label.localeCompare(b.label));
+  // churches with several congregations: an account can be limited to one (administrators never are)
+  const congs = useCongregations();
+  const setCongregation = async (u: UserRow, c: number | null) => {
+    if (await run(() => api.patch(`/users/${u.id}`, { congregation_id: c }), t('Saved.'))) reload();
+  };
   const setPerson = async (u: UserRow, personId: number | null) => {
     if (await run(() => api.patch(`/users/${u.id}`, { person_id: personId }), t('Saved.'))) reload();
   };
@@ -46,7 +52,7 @@ export function UsersTab() {
       {loading && !data ? <Loading /> : (
         <div className="card flush table-wrap">
           <table className="t">
-            <thead><tr><th>{t('Display name')}</th><th>{t('Username')}</th><th>{t('Role')}</th><th>{t('Member')} <InfoTip text={t('The member this account belongs to. A member who leads a group or a meeting can then record those meetings, even with a read-only account.')} /></th><th>{t('Created')}</th><th /></tr></thead>
+            <thead><tr><th>{t('Display name')}</th><th>{t('Username')}</th><th>{t('Role')}</th>{congs.length > 0 && <th>{t('Limited to')} <InfoTip text={t('An account limited to one congregation sees its services, meetings, records, members and groups, and the whole church’s — not those of other congregations. Administrators always see everything.')} /></th>}<th>{t('Member')} <InfoTip text={t('The member this account belongs to. A member who leads a group or a meeting can then record those meetings, even with a read-only account.')} /></th><th>{t('Created')}</th><th /></tr></thead>
             <tbody>
               {data?.map((u) => (
                 <tr key={u.id}>
@@ -58,6 +64,14 @@ export function UsersTab() {
                       {!roles.data?.roles.some((r) => r.key === u.role) && <option value={u.role}>{u.role}</option>}
                     </select>
                   </td>
+                  {congs.length > 0 && (
+                    <td>
+                      <select className="mini" value={u.congregation_id ?? ''} disabled={busy} onChange={(e) => setCongregation(u, Number(e.target.value) || null)} aria-label={t('Limited to')}>
+                        <option value="">{t('Whole church')}</option>
+                        {congs.map((c) => <option key={c.id} value={c.id}>{lt(c.name)}</option>)}
+                      </select>
+                    </td>
+                  )}
                   <td style={{ minWidth: 200 }}>
                     <Combo value={u.person_id ? String(u.person_id) : ''} options={personOptions} noneLabel="—" ariaLabel={t('Member')} disabled={busy}
                       onChange={(v) => setPerson(u, v ? Number(v) : null)} />

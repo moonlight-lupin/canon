@@ -10,6 +10,7 @@ import {
   CSV_ENTITIES, ImportBlocked, RowError, exportCsv, guide, makeCtx, runImport, say, templateCsv, type Entity,
 } from '../csv/index.ts';
 import { editsAnything, seesMemberDetails } from '../lib/permissions.ts';
+import { wallOf } from '../auth.ts';
 
 export const csvRoutes = express.Router();
 
@@ -95,7 +96,7 @@ csvRoutes.post('/csv/:entity/import', rawBody, h((req) => {
   if (!editsAnything(req.user)) throw Object.assign(new Error('Read-only account'), { status: 403 });
   const flag = (v: unknown) => v === '1' || v === 'true';
   // logged as a CSV import by this person
-  return asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () =>
+  return asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import', congregation_id: wallOf(req.user) }, () =>
     runImport(e, bodyBytes(req), { dryRun: flag(req.query.dry_run), skipErrors: flag(req.query.skip_errors), lang: uiLang(req), query: query(req) }));
 }));
 
@@ -106,7 +107,7 @@ csvRoutes.post('/csv/:entity/import', rawBody, h((req) => {
 export function legacyImport(entityKey: string, req: Request, extraQuery: Record<string, string> = {}) {
   const e = CSV_ENTITIES[entityKey];
   const lang = uiLang(req);
-  const p = asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () =>
+  const p = asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import', congregation_id: wallOf(req.user) }, () =>
     runImport(e, bodyBytes(req), { dryRun: false, skipErrors: true, lang, query: { ...query(req), ...extraQuery } }));
   const errors = [
     ...(p.fatal ? [p.fatal] : []),

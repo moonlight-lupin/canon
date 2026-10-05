@@ -23,7 +23,7 @@ import { serviceRoutes } from './routes/services.ts';
 import { adminRoutes } from './routes/admin.ts';
 import {
   authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginThrottle,
-  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword,
+  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf,
 } from './auth.ts';
 import { all, get, run } from './db.ts';
 import { config } from './config.ts';
@@ -126,7 +126,7 @@ api.get('/about', (_req, res) => {
 
 api.use(requireUser);
 // the change log records who is making each change
-api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web' }, next));
+api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web', congregation_id: wallOf(req.user) }, next));
 // read-only accounts: no members' contact details, notes or birth years (server/lib/viewer-scrub.ts)
 api.use(viewerScrub);
 
@@ -159,6 +159,7 @@ api.patch('/users/:id', requireAdmin, h((req) => {
   const b = z.object({
     role: z.string().min(1).max(40).optional(), password: z.string().min(8).optional(), display_name: z.string().optional(),
     person_id: z.number().int().nullable().optional(),
+    congregation_id: z.number().int().nullable().optional(),
   }).parse(req.body);
   const uid = id(req);
   if (b.role && !roleDef(b.role).admin && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
@@ -170,12 +171,13 @@ api.patch('/users/:id', requireAdmin, h((req) => {
     run('DELETE FROM sessions WHERE user_id = ?', uid);
   }
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
+  if (b.congregation_id !== undefined) run('UPDATE users SET congregation_id = ? WHERE id = ?', b.congregation_id, uid);
   if (b.person_id !== undefined) {
     if (b.person_id !== null && !get('SELECT 1 FROM people WHERE id = ?', b.person_id)) throw Object.assign(new Error('That member does not exist.'), { status: 400 });
     run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);
   }
   const after = getUser(uid);
-  const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null } : null);
+  const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null, congregation_id: u.congregation_id ?? null } : null);
   logChange({ entity: 'users', entity_id: uid, action: 'update', before: pick(before), after: pick(after), summary: b.password ? 'Password changed' : undefined });
   return after;
 }));

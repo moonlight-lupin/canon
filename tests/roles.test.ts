@@ -158,3 +158,41 @@ test('AI connections follow the same role', () => {
   assert.equal(piiFor(cfg as never, 'secretary'), true);
   assert.equal(piiFor(cfg as never, 'planner'), false);
 });
+
+test('an account limited to one congregation sees it and the whole church — not the others', async () => {
+  const en = (await call(as.admin, 'POST', '/congregations', { name: { en: 'Test English' }, code: 'EN', languages: ['en'] })).body.id;
+  const zh = (await call(as.admin, 'POST', '/congregations', { name: { en: 'Test Chinese' }, code: 'ZH', languages: ['zh'] })).body.id;
+  const sEn = svc.createService({ date: '2036-03-02', congregation_id: en }).service.id;
+  const sZh = svc.createService({ date: '2036-03-02', congregation_id: zh }).service.id;
+  const sAll = svc.createService({ date: '2036-03-03' }).service.id;
+  const pEn = reg.people.insert({ first_name: 'Ellery', last_name: 'Holt', congregation_id: en }).id;
+  const pZh = reg.people.insert({ first_name: 'Zhou', last_name: 'Wen', congregation_id: zh }).id;
+  const gZh = (await call(as.admin, 'POST', '/groups', { name: { en: 'Test ZH Cell' }, kind: 'cell_group', congregation_id: zh })).body.id;
+  createUser({ username: 'walled', display_name: 'Test walled', password: 'correct-horse-5', role: 'editor' });
+  const walledId = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'walled').id;
+  assert.equal((await call(as.admin, 'PATCH', `/users/${walledId}`, { congregation_id: en })).status, 200);
+  const w = await login('walled');
+
+  const listed = ((await call(w, 'GET', '/services?from=2036-03-01&to=2036-03-31')).body as Json[]).map((s) => s.id);
+  assert.ok(listed.includes(sEn) && listed.includes(sAll) && !listed.includes(sZh), JSON.stringify(listed));
+  assert.equal((await call(w, 'GET', `/services/${sZh}`)).status, 404);
+  assert.equal((await call(w, 'PATCH', `/services/${sZh}`, { notes: 'x' })).status, 404);
+  assert.equal((await call(w, 'PUT', `/services/${sZh}/record`, { attendance: 1 })).status, 404);
+  assert.equal((await call(w, 'GET', `/services/${sAll}`)).status, 200, 'the whole church\'s');
+  const people = ((await call(w, 'GET', '/people')).body.rows as Json[]).map((p) => p.id);
+  assert.ok(people.includes(pEn) && !people.includes(pZh));
+  assert.equal((await call(w, 'GET', `/people/${pZh}`)).status, 404);
+  assert.equal((await call(w, 'GET', `/groups/${gZh}`)).status, 404);
+  assert.ok(!((await call(w, 'GET', '/groups')).body as Json[]).some((g) => g.id === gZh));
+  // what they create belongs to their congregation
+  const made = await call(w, 'POST', '/services', { date: '2036-03-09', congregation_id: zh });
+  assert.equal(made.body.service.congregation_id, en);
+  // reports and the calendar: theirs and the whole church's
+  const cal = ((await call(w, 'GET', '/calendar?from=2036-03-01&to=2036-03-31')).body as Json[]).map((i) => i.id);
+  assert.ok(cal.includes(sEn) && cal.includes(sAll) && !cal.includes(sZh));
+  assert.equal((await call(w, 'GET', '/reports/attendance?from=2036-01-01&to=2036-12-31')).body.period.congregation_id, en);
+  // administrators are never walled
+  const adminId = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'admin').id;
+  await call(as.admin, 'PATCH', `/users/${adminId}`, { congregation_id: en });
+  assert.equal((await call(as.admin, 'GET', `/services/${sZh}`)).status, 200);
+});

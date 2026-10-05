@@ -5,6 +5,7 @@ import type { Group, GroupKind, GroupMember, L10n } from '../../shared/types.ts'
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { isLeaderRole, roleRank } from '../../shared/group-roles.ts';
+import { inWall, wallSql } from '../lib/walls.ts';
 
 export class Conflict extends Error {
   status = 409;
@@ -83,6 +84,11 @@ export function listGroups(f: GroupFilter = {}) {
     params.push(f.congregation_id);
   }
   if (!f.inactive) where.push('active = 1');
+  const wall = wallSql('congregation_id');
+  if (wall.sql) {
+    where.push(wall.sql.replace(/^ AND /, ''));
+    params.push(...wall.params);
+  }
   const gs = groups.list(where.join(' AND '), params, 'sort, id');
   const t = today();
   const counts = new Map(
@@ -108,7 +114,7 @@ export function groupDetail(id: number) {
 
 export function createGroup(input: Record<string, unknown>) {
   if (input.kind === 'serving_team') throw new BadRequest('Serving teams are added in Volunteers (Add team), where their rota roles are set.');
-  return groups.insert(input);
+  return groups.insert(inWall(input));
 }
 
 export function updateGroup(id: number, patch: Record<string, unknown>) {

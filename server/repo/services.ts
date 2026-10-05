@@ -10,6 +10,7 @@ import { roleByName, roles, serviceAssignments } from './volunteers.ts';
 import { getSettings } from './settings.ts';
 import { listCongregations } from './congregations.ts';
 import { backgroundByName } from './backgrounds.ts';
+import { inWall, wallSql } from '../lib/walls.ts';
 
 export const services = table<Service>({
   name: 'services',
@@ -81,10 +82,10 @@ export function listServices(q: ServiceQuery = {}) {
      FROM services s LEFT JOIN groups g ON g.id = s.group_id LEFT JOIN service_records r ON r.service_id = s.id
      LEFT JOIN people p ON p.id = s.leader_id
      WHERE s.kind = ? AND (? IS NULL OR s.date >= ?) AND (? IS NULL OR s.date <= ?) AND (? IS NULL OR s.congregation_id = ?)
-       AND (? IS NULL OR s.group_id = ?) ${q.group_id === 'none' ? 'AND s.group_id IS NULL' : ''}
+       AND (? IS NULL OR s.group_id = ?) ${q.group_id === 'none' ? 'AND s.group_id IS NULL' : ''}${wallSql('s.congregation_id').sql}
      ORDER BY s.date ${q.from && !q.to ? 'ASC' : 'DESC'}, s.start_time LIMIT ?`,
     q.kind ?? 'service', q.from ?? null, q.from ?? null, q.to ?? null, q.to ?? null, q.congregation_id ?? null, q.congregation_id ?? null,
-    typeof q.group_id === 'number' ? q.group_id : null, typeof q.group_id === 'number' ? q.group_id : null, q.limit ?? 200,
+    typeof q.group_id === 'number' ? q.group_id : null, typeof q.group_id === 'number' ? q.group_id : null, ...wallSql('s.congregation_id').params, q.limit ?? 200,
   );
   return rows.map((r) => ({
     ...services.decode(r)!, item_count: r.item_count as number, assigned_count: r.assigned_count as number,
@@ -246,6 +247,7 @@ function blockIdsByName(): Map<string, number> {
 }
 
 export function createService(input: Partial<Service> & { date: string }, templateId?: number | null) {
+  input = inWall(input);
   const settings = getSettings();
   const tpl = templateId ? templates.get(templateId) : undefined;
   // the congregation: as given, else the template's; its languages are the starting point
@@ -283,6 +285,7 @@ export function createService(input: Partial<Service> & { date: string }, templa
  * group's meeting pattern and name, without an offering. A one-off meeting (no group) needs a title of its own.
  */
 export function createMeeting(input: Partial<Service> & { date: string }) {
+  input = inWall(input);
   const settings = getSettings();
   const g = input.group_id
     ? get<{ id: number; name: string; congregation_id: number | null; pattern: string }>('SELECT id, name, congregation_id, pattern FROM groups WHERE id = ?', input.group_id)

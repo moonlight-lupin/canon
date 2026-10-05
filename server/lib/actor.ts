@@ -11,6 +11,8 @@ export interface Actor {
   via: Via;
   /** MCP: the connected client (e.g. "Claude") */
   client?: string | null;
+  /** the congregation this account is limited to (lib/walls.ts); null = the whole church */
+  congregation_id?: number | null;
 }
 
 const store = new AsyncLocalStorage<Actor>();

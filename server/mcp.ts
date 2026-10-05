@@ -35,6 +35,7 @@ import { RECORD_TOOLS } from './mcp-tools/records.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
 import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
 import type { PermModule } from '../shared/permissions.ts';
+import { wallOf } from './auth.ts';
 export type { ToolDef } from './mcp-tools/common.ts';
 
 const VERSION = '0.1.0';
@@ -320,7 +321,7 @@ export function buildServer(auth: McpAuth, base = '') {
       async (args: Args) => {
         let r: CallToolResult;
         try {
-          r = ok(await asActor({ user_id: auth.user.id, user_name: auth.user.display_name, via: 'mcp', client: clientName(auth.clientId) }, () => t.handler(args ?? {}, ctx)));
+          r = ok(await asActor({ user_id: auth.user.id, user_name: auth.user.display_name, via: 'mcp', client: clientName(auth.clientId), congregation_id: wallOf(auth.user) }, () => t.handler(args ?? {}, ctx)));
         } catch (e) {
           r = fail(errorMessage(e), e instanceof BatchError ? e.errors : undefined);
         }

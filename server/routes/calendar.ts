@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import * as cal from '../repo/calendar.ts';
 import { h, id, str } from './helpers.ts';
+import { inWall } from '../lib/walls.ts';
 
 export const calendarRoutes = express.Router();
 
@@ -29,7 +30,7 @@ calendarRoutes.post('/events', h((req) => {
   const b = EventInput.parse(req.body);
   if (!Object.values(b.title).some((v) => v?.trim())) throw Object.assign(new Error('Give the event a title.'), { status: 400 });
   cal.checkEvent(b);
-  return cal.events.insert(b);
+  return cal.events.insert(inWall(b));
 }));
 calendarRoutes.patch('/events/:id', h((req) => {
   const b = EventInput.partial().parse(req.body);

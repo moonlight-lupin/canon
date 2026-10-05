@@ -15,6 +15,7 @@ import * as grp from '../repo/groups.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
 import { seesMemberDetails } from '../lib/permissions.ts';
+import { inWall } from '../lib/walls.ts';
 
 export const peopleRoutes = express.Router();
 
@@ -44,7 +45,7 @@ peopleRoutes.get('/people/:id', h((req) => {
 }));
 peopleRoutes.post('/people', h((req) => {
   const b = S.PersonInput.parse(req.body);
-  return reg.people.insert({ ...b, custom: reg.customFor({}, b.custom) ?? {} });
+  return reg.people.insert(inWall({ ...b, custom: reg.customFor({}, b.custom) ?? {} }));
 }));
 peopleRoutes.patch('/people/:id', h((req) => {
   const pid = id(req);

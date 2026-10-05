@@ -970,6 +970,8 @@ const zhHant: Record<string, string> = {
  "Volunteers and rota": "同工與事奉表",
  "Meetings and calendar": "聚會活動與日曆",
  "Service records and reports": "聚會記錄與報表",
+ "Limited to": "限定於",
+ "An account limited to one congregation sees its services, meetings, records, members and groups, and the whole church’s — not those of other congregations. Administrators always see everything.": "限定於某個堂的帳戶，只看到該堂以及全教會的聚會、聚會活動、記錄、會友和群組——看不到其他堂的資料。管理員始終可以看到全部。",
  "Paper size, what each bulletin prints, and slide colours and fonts are set in templates and themes.": "紙張大小、次序單印刷內容，以及投影的顏色與字體，都在模板與主題中設定。",
  "How the slides look on the projector, and what the printed bulletin includes.": "設定投影畫面的樣式，以及印刷次序單要包含的內容。",
  "Slide themes": "投影主題",

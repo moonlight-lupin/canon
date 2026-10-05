@@ -4,6 +4,7 @@ import { all, type SqlValue } from '../db.ts';
 import { BadRequest, table, likeTerm } from '../lib/table.ts';
 import { cleanCustomValues } from '../../shared/member-fields.ts';
 import { getSettings } from './settings.ts';
+import { wallSql } from '../lib/walls.ts';
 
 export const people = table<Person>({
   name: 'people',
@@ -64,6 +65,11 @@ export function listPeople(f: PeopleQuery = {}) {
     where.push('p.household_id = ?');
     params.push(f.household_id);
   }
+  const wall = wallSql('p.congregation_id');
+  if (wall.sql) {
+    where.push(wall.sql.replace(/^ AND /, ''));
+    params.push(...wall.params);
+  }
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const total = (all<{ n: number }>(`SELECT COUNT(*) n FROM people p ${w}`, ...params)[0]).n;
   const rows = all<Person & { household_name: string | null }>(
@@ -86,13 +92,16 @@ const withCustom = <T extends { custom?: unknown }>(p: T): T => {
 
 export function householdsWithMembers() {
   const hs = households.list('', [], 'name COLLATE NOCASE');
-  const members = all<Person>('SELECT * FROM people WHERE household_id IS NOT NULL ORDER BY household_role, birth_date').map(withCustom);
-  return hs.map((h) => ({ ...h, members: members.filter((m) => m.household_id === h.id) }));
+  const wall = wallSql('congregation_id');
+  const members = all<Person>(`SELECT * FROM people WHERE household_id IS NOT NULL${wall.sql} ORDER BY household_role, birth_date`, ...wall.params).map(withCustom);
+  // behind a congregation wall: the households with someone in it
+  return hs.map((h) => ({ ...h, members: members.filter((m) => m.household_id === h.id) })).filter((h) => !wall.sql || h.members.length);
 }
 
 /** People with birthdays in the next `days` days (wraps around year end). */
 export function upcomingBirthdays(days = 14, from = new Date()) {
-  const rows = all<Person>(`SELECT * FROM people WHERE birth_date IS NOT NULL AND status NOT IN ('deceased','transferred')`);
+  const wall = wallSql('congregation_id');
+  const rows = all<Person>(`SELECT * FROM people WHERE birth_date IS NOT NULL AND status NOT IN ('deceased','transferred')${wall.sql}`, ...wall.params);
   const start = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
   return rows
     .map((p) => {
