@@ -5,13 +5,15 @@ What is planned for Canon after v0.10.0. Plans change: each release is scoped in
 | Version | Theme |
 |---|---|
 | 0.10.0 | Reporting — done |
-| 0.11.0 | Hardening: archiving, storage, privacy |
+| 0.11.0 | Hardening: archiving, storage, privacy; custom member fields |
 | 0.12.0 | Lending library |
 | 0.13.0 | Asset register |
 | 0.14.0 | Roles and permissions, second hardening round |
 | 0.15.0 | Book-keeping |
 | 0.15.1 | Claim forms |
 | 0.16.0 | UI/UX audit |
+
+**Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
 Roles and permissions come before the finance modules, because book-keeping and claims need roles such as treasurer and claims approver. Until then, each new module gets its own on/off permission within the current administrator / editor / read-only roles.
 
@@ -32,6 +34,7 @@ Roles and permissions come before the finance modules, because book-keeping and 
 - Administrators can **open an archive** in Canon, read-only. Archive files are included in backups.
 - The archive age is **set per kind of data**. Visitors' contact details have their own, shorter setting and are erased rather than archived (personal data is kept only as long as it is needed).
 - A **Storage** panel in Settings: database size, what uses the space, how fast it grows, and an early warning.
+- **Custom fields on members**: the church adds its own fields (text, date, yes/no, a choice from a list), shown on the member page, usable in filters and CSV import/export. A field can be marked sensitive: then read-only accounts and AI agents don't see it unless personal data is shared.
 - **Read-only accounts no longer see members' contact details or pastoral notes** (phone, e-mail, address, notes) — in screens, searches and exports. Birthdays show the day and month only, without the year.
 - A **log of who viewed member records**, and a **security checklist** in Settings: disk encryption, backup encryption, where backups are kept, and the retention settings.
 - **Release discipline**: tests, type checking and the production build in CI on every push; versioned releases with upgrade notes; a supported-runtime list.
