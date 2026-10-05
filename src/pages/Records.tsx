@@ -1,7 +1,8 @@
 // Records → Service records: per service held, attendance, new visitors, notes for the team, offerings and the
-// cash count, with a printable cash-count declaration for the counters to sign. Read-only users see attendance and
-// notes only (the server leaves money and visitors' contact details out for them).
-import { useEffect, useMemo, useState } from 'react';
+// cash count, with a printable cash-count declaration for the counters to sign — on paper, or on screen with
+// signature pads (Currency and funds → Signing). Offerings in another currency are counted and totalled separately.
+// Read-only users see attendance and notes only (the server leaves money and visitors' contact details out for them).
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, qs, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -11,8 +12,8 @@ import { InfoTip } from '../components/InfoTip.tsx';
 import { HistoryButton } from '../components/LogTools.tsx';
 import { CONG_LABEL, CongregationBadge, CongregationFilter, useCongregationFilter, useCongregations } from '../components/Congregations.tsx';
 import {
-  CURRENCIES, DENOMINATIONS, OFFERING_METHODS, cashTotal, denomLabel, methodTotal, money, parseMoney,
-  type OfferingLine, type OfferingMethod, type ServiceRecord, type Visitor,
+  CURRENCIES, DENOMINATIONS, OFFERING_METHODS, cashTotal, countProblems, denomLabel, foreignCounted, foreignCurrencies, methodTotal, money, parseMoney,
+  type ForeignCash, type OfferingLine, type OfferingMethod, type ServiceRecord, type Visitor,
 } from '../../shared/records.ts';
 import type { L10n, ServiceFull } from '../types-client.ts';
 import './records.css';
@@ -30,6 +31,8 @@ interface Row {
   visitors: number;
   offering_total: number | null;
   cash_counted: number | null;
+  /** offerings in other currencies than the record's, kept apart from offering_total */
+  other_currencies?: { currency: string; total: number }[];
   currency: string;
   verified: boolean;
   has_notes: boolean;
@@ -53,6 +56,8 @@ export default function Records() {
   const visitors = rows.reduce((s, r) => s + r.visitors, 0);
   const currency = rows.find((r) => r.recorded)?.currency ?? 'SGD';
   const offerings = rows.reduce((s, r) => s + (r.offering_total ?? 0), 0);
+  const others = new Map<string, number>();
+  for (const r of rows) for (const o of r.other_currencies ?? []) others.set(o.currency, (others.get(o.currency) ?? 0) + o.total);
   const unverified = rows.filter((r) => r.recorded && (r.offering_total ?? 0) > 0 && !r.verified).length;
   // read-only users get no money from the server; editors always see the columns
   const seeMoney = canEdit || rows.some((r) => r.offering_total !== null);
@@ -69,7 +74,7 @@ export default function Records() {
           <div className="rec-stats">
             <div className="card"><div className="small muted">{t('Average attendance')}</div><div className="rec-big">{avg ?? '—'}</div><div className="small muted">{t('{n} services recorded').replace('{n}', String(recorded.length))}</div></div>
             <div className="card"><div className="small muted">{t('New visitors')}</div><div className="rec-big">{visitors}</div></div>
-            {seeMoney && <div className="card"><div className="small muted">{t('Offerings')}</div><div className="rec-big">{money(offerings, currency, true)}</div>{unverified > 0 && <div className="small warn-text">{t('{n} cash counts not yet verified').replace('{n}', String(unverified))}</div>}</div>}
+            {seeMoney && <div className="card"><div className="small muted">{t('Offerings')}</div><div className="rec-big">{money(offerings, currency, true)}</div>{[...others].map(([c, v]) => <div key={c} className="small muted">+ {money(v, c, true)}</div>)}{unverified > 0 && <div className="small warn-text">{t('{n} cash counts not yet verified').replace('{n}', String(unverified))}</div>}</div>}
           </div>
           {isAdmin && <OfferingSettings />}
           {!rows.length ? <div className="card"><Empty title={t('No services in this period')} /></div> : (
@@ -88,7 +93,7 @@ export default function Records() {
                       <td><CongregationBadge id={r.congregation_id} list={congs} /> <Bi v={r.title} /></td>
                       <td className="right">{r.attendance ?? <span className="muted">—</span>}{r.online ? <span className="small muted"> +{r.online} {t('online')}</span> : null}</td>
                       <td className="right">{r.visitors || ''}</td>
-                      {seeMoney && <td className="right nowrap">{r.offering_total ? money(r.offering_total, r.currency) : ''}</td>}
+                      {seeMoney && <td className="right nowrap">{r.offering_total ? money(r.offering_total, r.currency) : ''}{(r.other_currencies ?? []).map((o) => <div key={o.currency} className="small muted">+ {money(o.total, o.currency, true)}</div>)}</td>}
                       {seeMoney && <td>{r.verified ? <span className="badge ok"><Icon name="check" width={12} height={12} />{t('Verified')}</span> : (r.offering_total ?? 0) > 0 ? <span className="badge warn">{t('Not verified')}</span> : null}</td>}
                       <td className="right">{r.has_notes && <Icon name="text" width={14} height={14} />}{!r.recorded && canEdit && <span className="small muted">{t('Not recorded')}</span>}</td>
                     </tr>
@@ -108,11 +113,12 @@ function OfferingSettings() {
   const { t } = useI18n();
   const { settings, reloadSettings } = useSession();
   const { run, busy } = useAction();
-  const cur = settings?.offering ?? { currency: 'SGD', funds: ['General'] };
+  const cur = settings?.offering ?? { currency: 'SGD', funds: ['General'], signing: 'paper' as const };
   const [currency, setCurrency] = useState(cur.currency);
   const [funds, setFunds] = useState(cur.funds.join('\n'));
+  const [signing, setSigning] = useState<'paper' | 'screen'>(cur.signing ?? 'paper');
   const save = () => run(async () => {
-    await api.put('/offering-settings', { currency, funds: funds.split('\n').map((f) => f.trim()).filter(Boolean) });
+    await api.put('/offering-settings', { currency, funds: funds.split('\n').map((f) => f.trim()).filter(Boolean), signing });
     reloadSettings();
   }, t('Saved.'));
   return (
@@ -124,6 +130,9 @@ function OfferingSettings() {
         </Field>
         <Field label={<>{t('Funds')} <InfoTip text={t('One per line, e.g. General, Missions, Building. They appear in the offerings list of every record.')} /></>}>
           <textarea rows={4} value={funds} onChange={(e) => setFunds(e.target.value)} style={{ width: 240 }} />
+        </Field>
+        <Field label={<>{t('Signing the count')} <InfoTip text={t('On paper: print the declaration, the counters sign it, then mark the count as verified. On screen: each counter signs on the record with a finger, pen or mouse; when two have signed, the count is verified and their signatures are printed on the declaration.')} /></>}>
+          <Seg value={signing} onChange={setSigning} options={[{ value: 'paper', label: t('On paper') }, { value: 'screen', label: t('On screen') }]} />
         </Field>
         <button className="btn primary" style={{ alignSelf: 'flex-end' }} onClick={save} disabled={busy}>{t('Save')}</button>
       </div>
@@ -149,6 +158,10 @@ export function RecordEditor() {
     if (rec.data) setD(rec.data);
   }, [rec.data]);
   const funds = settings?.offering?.funds ?? ['General'];
+  const onScreen = settings?.offering?.signing === 'screen';
+  const [signer, setSigner] = useState('');
+  const [ink, setInk] = useState<string | null>(null);
+  const [padKey, setPadKey] = useState(0);
 
   if (svc.error || rec.error) return <div className="page"><ErrorBox error={(svc.error ?? rec.error)!} /></div>;
   if (!svc.data || !d) return <div className="page"><Loading /></div>;
@@ -158,23 +171,46 @@ export function RecordEditor() {
   const cur = d.currency;
   const dirty = JSON.stringify(d) !== JSON.stringify(rec.data);
   const set = (p: Partial<Rec>) => setD((x) => (x ? { ...x, ...p } : x));
-  const cashLines = methodTotal(d.offerings, 'cash');
+  const cashLines = methodTotal(d.offerings, 'cash', cur, cur);
   const counted = cashTotal(d.cash);
+  const foreign = foreignCurrencies(d.offerings, cur);
+  const problems = countProblems(d);
+  const sigs = d.signatures ?? [];
+  const setForeign = (c: string, p: Partial<ForeignCash>) => set({ foreign_cash: { ...d.foreign_cash, [c]: { ...d.foreign_cash?.[c], ...p } } });
 
+  const body = () => restricted
+    ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes }
+    : {
+        attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency,
+        // counts of currencies no longer in the offerings are dropped
+        foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
+      };
   const save = () => run(async () => {
-    const body = restricted
-      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes }
-      : { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency };
-    const r = await api.put<Rec>(`/services/${sid}/record`, body);
+    const r = await api.put<Rec>(`/services/${sid}/record`, body());
     rec.setData({ ...r, saved: true });
   }, t('Saved.'));
   const verify = (v: boolean) => {
     if (!v && !confirmAction(t('Reopen this cash count? The offerings can then be changed again.'))) return;
     run(async () => {
-      if (dirty) await api.put(`/services/${sid}/record`, { offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency });
+      if (dirty) await api.put(`/services/${sid}/record`, body());
       const r = await api.post<Rec>(`/services/${sid}/record/verify`, { verified: v });
       rec.setData({ ...r, saved: true });
     }, v ? t('Marked as counted and verified.') : t('Reopened.'));
+  };
+  const sign = () => run(async () => {
+    if (dirty || !d.saved) await api.put(`/services/${sid}/record`, body());
+    const r = await api.post<Rec>(`/services/${sid}/record/sign`, { name: signer, image: ink });
+    rec.setData({ ...r, saved: true });
+    setSigner('');
+    setInk(null);
+    setPadKey((k) => k + 1);
+  }, t('Signed.'));
+  const unsign = (name: string) => {
+    if (!confirmAction(t('Remove the signature of {name}?').replace('{name}', name))) return;
+    run(async () => {
+      const r = await api.post<Rec>(`/services/${sid}/record/unsign`, { name });
+      rec.setData({ ...r, saved: true });
+    }, t('Removed.'));
   };
   const num = (v: number | null, on: (n: number | null) => void, w = 110) => (
     <input type="number" min={0} inputMode="numeric" style={{ width: w }} value={v ?? ''} onChange={(e) => on(e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value))))} />
@@ -251,8 +287,8 @@ export function RecordEditor() {
                 </div>
               </div>
               {d.offerings.length === 0 ? <div className="small muted">{t('No offerings entered yet.')}</div> : (
-                <table className="t rec-lines">
-                  <thead><tr><th>{t('Fund')}</th><th>{t('Method')}</th><th className="right">{t('Amount')}</th><th>{t('Note')}</th><th /></tr></thead>
+                <div className="table-wrap"><table className="t rec-lines">
+                  <thead><tr><th>{t('Fund')}</th><th>{t('Method')}</th><th>{t('Currency')} <InfoTip text={t('For the odd gift in another currency, e.g. a USD note. Each currency is counted and totalled on its own; nothing is converted.')} /></th><th className="right">{t('Amount')}</th><th>{t('Note')}</th><th /></tr></thead>
                   <tbody>
                     {d.offerings.map((l, i) => (
                       <OfferingRow key={i} line={l} funds={funds} currency={cur}
@@ -261,12 +297,15 @@ export function RecordEditor() {
                     ))}
                   </tbody>
                   <tfoot>
-                    {OFFERING_METHODS.filter((m) => d.offerings.some((l) => l.method === m)).map((m) => (
-                      <tr key={m} className="small muted"><td /><td>{t(METHOD_LABEL[m])}</td><td className="right">{money(methodTotal(d.offerings, m), cur)}</td><td colSpan={2} /></tr>
+                    {OFFERING_METHODS.filter((m) => d.offerings.some((l) => l.method === m && (l.currency ?? cur) === cur)).map((m) => (
+                      <tr key={m} className="small muted"><td /><td>{t(METHOD_LABEL[m])}</td><td /><td className="right">{money(methodTotal(d.offerings, m, cur, cur), cur)}</td><td colSpan={2} /></tr>
                     ))}
-                    <tr><td><strong>{t('Total')}</strong></td><td /><td className="right"><strong>{money(methodTotal(d.offerings), cur, true)}</strong></td><td colSpan={2} /></tr>
+                    <tr><td><strong>{t('Total')}</strong></td><td /><td /><td className="right"><strong>{money(methodTotal(d.offerings, undefined, cur, cur), cur, true)}</strong></td><td colSpan={2} /></tr>
+                    {foreign.map((c) => (
+                      <tr key={c}><td><strong>{t('Total')} {c}</strong></td><td colSpan={2} className="small muted">{t('kept apart, not converted')}</td><td className="right"><strong>{money(methodTotal(d.offerings, undefined, c, cur), c, true)}</strong></td><td colSpan={2} /></tr>
+                    ))}
                   </tfoot>
-                </table>
+                </table></div>
               )}
             </section>
 
@@ -280,26 +319,78 @@ export function RecordEditor() {
                 {t('Counted')}: <strong>{money(counted, cur, true)}</strong> · {t('Cash offerings')}: <strong>{money(cashLines, cur, true)}</strong>
                 {counted !== cashLines && <> · {t('Difference')}: <strong>{money(Math.abs(counted - cashLines), cur, true)}</strong></>}
               </div>
-              <Field label={<>{t('Counted by')} <InfoTip text={t('At least two people count the cash together and sign the declaration.')} /></>}>
-                <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                  {[...d.counters, ...Array(Math.max(0, 2 - d.counters.length)).fill('')].map((c: string, i: number) => (
-                    <input key={i} value={c} placeholder={`${t('Counter')} ${i + 1}`} style={{ width: 200 }}
-                      onChange={(e) => { const next = [...d.counters, ...Array(Math.max(0, 2 - d.counters.length)).fill('')]; next[i] = e.target.value; set({ counters: next }); }} />
-                  ))}
-                  {d.counters.length >= 2 && d.counters.length < 6 && <button className="btn sm ghost" onClick={() => set({ counters: [...d.counters, ''] })}><Icon name="plus" />{t('Add counter')}</button>}
-                </div>
-              </Field>
+              {foreign.map((c) => {
+                const f = d.foreign_cash?.[c] ?? {};
+                const got = foreignCounted(f);
+                const due = methodTotal(d.offerings, 'cash', c, cur);
+                return (
+                  <div key={c} className="rec-foreign stack">
+                    <h4>{t('Cash in {c}').replace('{c}', c)}</h4>
+                    {DENOMINATIONS[c]
+                      ? <CashCount currency={c} cash={f.cash ?? {}} onChange={(cash) => setForeign(c, { cash })} />
+                      : <Field label={<>{t('Counted total')} <InfoTip text={t('Canon has no list of notes and coins for this currency: enter the total counted.')} /></>}><MoneyInput value={f.total ?? 0} currency={c} onChange={(v) => setForeign(c, { total: v ?? 0 })} /></Field>}
+                    <div className={`callout small ${got === due ? '' : 'warn'}`}>
+                      {t('Counted')}: <strong>{money(got, c, true)}</strong> · {t('Cash offerings')}: <strong>{money(due, c, true)}</strong>
+                      {got !== due && <> · {t('Difference')}: <strong>{money(Math.abs(got - due), c, true)}</strong></>}
+                    </div>
+                    <Field label={<>{t('Value in {c} once exchanged').replace('{c}', cur)} <InfoTip text={t('Optional: what this cash was worth in the church’s currency when it was exchanged or banked. For the treasurer; it is not added to the totals.')} /></>}>
+                      <MoneyInput value={f.converted ?? null} currency={cur} empty onChange={(v) => setForeign(c, { converted: v })} />
+                    </Field>
+                  </div>
+                );
+              })}
+              {!onScreen && (
+                <Field label={<>{t('Counted by')} <InfoTip text={t('At least two people count the cash together and sign the declaration.')} /></>}>
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    {[...d.counters, ...Array(Math.max(0, 2 - d.counters.length)).fill('')].map((c: string, i: number) => (
+                      <input key={i} value={c} placeholder={`${t('Counter')} ${i + 1}`} style={{ width: 200 }}
+                        onChange={(e) => { const next = [...d.counters, ...Array(Math.max(0, 2 - d.counters.length)).fill('')]; next[i] = e.target.value; set({ counters: next }); }} />
+                    ))}
+                    {d.counters.length >= 2 && d.counters.length < 6 && <button className="btn sm ghost" onClick={() => set({ counters: [...d.counters, ''] })}><Icon name="plus" />{t('Add counter')}</button>}
+                  </div>
+                </Field>
+              )}
             </section>
           </fieldset>
         )}
       </fieldset>
+
+      {!restricted && onScreen && (
+        <section className="card stack rec-signing">
+          <h3>{t('Counters’ signatures')} <InfoTip text={t('Each counter signs here with a finger, pen or mouse once the count matches. When two have signed, the count is verified. Changing the money afterwards removes the signatures.')} /></h3>
+          {sigs.length > 0 && (
+            <div className="rec-sigs">
+              {sigs.map((g) => (
+                <figure key={g.name} className="rec-sig">
+                  <img src={g.image} alt={t('Signature of {name}').replace('{name}', g.name)} />
+                  <figcaption>
+                    <strong>{g.name}</strong>
+                    <span className="small muted">{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</span>
+                    {canEdit && (!d.verified_at || isAdmin) && <button className="btn sm ghost icon danger" onClick={() => unsign(g.name)} disabled={busy} aria-label={t('Remove')}><Icon name="trash" /></button>}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+          {d.verified_at ? null : !canEdit ? null : problems.length || !d.offerings.length ? (
+            <div className="small muted">{t('Signing opens when the offerings are entered and every cash count matches its cash lines.')}</div>
+          ) : (
+            <div className="stack">
+              <div className="small muted">{sigs.length === 0 ? t('First counter: type your name and sign below.') : t('Second counter: type your name and sign below.')}</div>
+              <input value={signer} onChange={(e) => setSigner(e.target.value)} placeholder={t('Your name')} style={{ maxWidth: 320 }} />
+              <SignaturePad key={padKey} onChange={setInk} />
+              <div><button className="btn primary" onClick={sign} disabled={busy || !signer.trim() || !ink}><Icon name="check" />{t('Sign the count')}</button></div>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="rec-actions">
         {!restricted && <Link className="btn" to={`/records/${sid}/declaration`} target="_blank"><Icon name="print" />{t('Print cash-count declaration')}</Link>}
         <div className="grow" />
         {canEdit && !restricted && (d.verified_at
           ? isAdmin && <button className="btn" onClick={() => verify(false)} disabled={busy}>{t('Reopen cash count')}</button>
-          : <button className="btn" onClick={() => verify(true)} disabled={busy || !d.offerings.length}><Icon name="check" />{t('Mark as counted and verified')}</button>)}
+          : !onScreen && <button className="btn" onClick={() => verify(true)} disabled={busy || !d.offerings.length}><Icon name="check" />{t('Mark as counted and verified')}</button>)}
         {canEdit && <button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button>}
       </div>
       {locked && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified: only an administrator can change the offerings.')}</div>}
@@ -307,10 +398,19 @@ export function RecordEditor() {
   );
 }
 
-function OfferingRow({ line, funds, currency, onChange, onRemove }: { line: OfferingLine; funds: string[]; currency: string; onChange: (p: Partial<OfferingLine>) => void; onRemove: () => void }) {
+function OfferingRow({ line, funds, currency: main, onChange, onRemove }: { line: OfferingLine; funds: string[]; currency: string; onChange: (p: Partial<OfferingLine>) => void; onRemove: () => void }) {
   const { t } = useI18n();
+  const currency = line.currency ?? main;
   const [text, setText] = useState(line.amount ? money(line.amount, currency).replace(/,/g, '') : '');
   const bad = parseMoney(text, currency) === null;
+  const pickCurrency = (v: string) => {
+    if (v === '…') {
+      const code = (window.prompt(t('Currency code (three letters, e.g. THB)')) ?? '').trim().toUpperCase();
+      if (/^[A-Z]{3}$/.test(code)) onChange({ currency: code === main ? undefined : code });
+      return;
+    }
+    onChange({ currency: v === main ? undefined : v });
+  };
   return (
     <tr>
       <td>
@@ -323,6 +423,12 @@ function OfferingRow({ line, funds, currency, onChange, onRemove }: { line: Offe
           {OFFERING_METHODS.map((m) => <option key={m} value={m}>{t(METHOD_LABEL[m])}</option>)}
         </select>
       </td>
+      <td>
+        <select className="rec-cur" value={currency} onChange={(e) => pickCurrency(e.target.value)}>
+          {[...new Set([main, ...CURRENCIES, currency])].map((c) => <option key={c} value={c}>{c}</option>)}
+          <option value="…">{t('Other…')}</option>
+        </select>
+      </td>
       <td className="right">
         <input inputMode="decimal" className={bad ? 'invalid' : ''} style={{ width: 130, textAlign: 'right' }} value={text}
           onChange={(e) => { setText(e.target.value); const v = parseMoney(e.target.value, currency); if (v !== null) onChange({ amount: v }); }} />
@@ -330,6 +436,77 @@ function OfferingRow({ line, funds, currency, onChange, onRemove }: { line: Offe
       <td><input value={line.note ?? ''} onChange={(e) => onChange({ note: e.target.value || undefined })} /></td>
       <td><button className="btn sm ghost icon danger" onClick={onRemove} aria-label={t('Remove')}><Icon name="trash" /></button></td>
     </tr>
+  );
+}
+
+/** An amount typed as "12.50"; `empty` allows leaving it blank (null). */
+function MoneyInput({ value, currency, onChange, empty }: { value: number | null; currency: string; onChange: (v: number | null) => void; empty?: boolean }) {
+  const [text, setText] = useState(value ? money(value, currency).replace(/,/g, '') : '');
+  const bad = parseMoney(text, currency) === null;
+  return (
+    <input inputMode="decimal" className={bad ? 'invalid' : ''} style={{ width: 150, textAlign: 'right' }} value={text} placeholder={empty ? '—' : '0.00'}
+      onChange={(e) => {
+        setText(e.target.value);
+        if (empty && !e.target.value.trim()) return onChange(null);
+        const v = parseMoney(e.target.value, currency);
+        if (v !== null) onChange(v);
+      }} />
+  );
+}
+
+/** Sign with a finger, pen or mouse; reports the drawing as a PNG data URL (null when cleared). */
+function SignaturePad({ onChange }: { onChange: (png: string | null) => void }) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLCanvasElement>(null);
+  const last = useRef<[number, number] | null>(null);
+  const [blank, setBlank] = useState(true);
+  const at = (e: React.PointerEvent<HTMLCanvasElement>): [number, number] => {
+    const c = e.currentTarget;
+    const r = c.getBoundingClientRect();
+    return [((e.clientX - r.left) * c.width) / r.width, ((e.clientY - r.top) * c.height) / r.height];
+  };
+  const stroke = (from: [number, number], to: [number, number]) => {
+    const g = ref.current?.getContext('2d');
+    if (!g) return;
+    g.strokeStyle = '#1e2430';
+    g.lineWidth = 3;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.beginPath();
+    g.moveTo(...from);
+    g.lineTo(...to);
+    g.stroke();
+  };
+  const down = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const p = at(e);
+    last.current = p;
+    stroke(p, [p[0] + 0.1, p[1] + 0.1]);
+  };
+  const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!last.current) return;
+    const p = at(e);
+    stroke(last.current, p);
+    last.current = p;
+  };
+  const up = () => {
+    if (!last.current) return;
+    last.current = null;
+    setBlank(false);
+    onChange(ref.current?.toDataURL('image/png') ?? null);
+  };
+  const clear = () => {
+    const c = ref.current;
+    c?.getContext('2d')?.clearRect(0, 0, c.width, c.height);
+    setBlank(true);
+    onChange(null);
+  };
+  return (
+    <div className="sig-pad">
+      <canvas ref={ref} width={600} height={200} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-label={t('Signature pad')} />
+      {blank && <span className="sig-hint">{t('Sign here')}</span>}
+      <button type="button" className="btn sm ghost" onClick={clear} disabled={blank}>{t('Clear')}</button>
+    </div>
   );
 }
 
@@ -372,6 +549,7 @@ export function CashDeclaration() {
     const named = (r?.counters ?? []).filter((c) => c.trim());
     return [...named, ...Array(Math.max(0, 3 - named.length)).fill('')];
   }, [r]);
+  const signed = r?.signatures ?? [];
   if (svc.error || rec.error) return <ErrorBox error={(svc.error ?? rec.error)!} />;
   if (!svc.data || !r || !den) return <Loading />;
   const s = svc.data;
@@ -407,13 +585,35 @@ export function CashDeclaration() {
         </div>
         <p className="decl-total">{both('Total cash counted', '现金总额')}: <strong>{money(cashTotal(r.cash), cur, true)}</strong></p>
 
+        {foreignCurrencies(r.offerings, cur).map((fc) => {
+          const f = r.foreign_cash?.[fc] ?? {};
+          const fd = DENOMINATIONS[fc];
+          const fline = (dn: number) => {
+            const n = f.cash?.[String(dn)] ?? 0;
+            return n ? <tr key={dn}><td className="right">{denomLabel(dn, fc)}</td><td className="right">{n}</td><td className="right">{money(n * dn, fc)}</td></tr> : null;
+          };
+          return (
+            <div key={fc}>
+              <h3>{both(`Cash in ${fc}`, `${fc} 现金`)}</h3>
+              {fd && f.cash && Object.values(f.cash).some(Boolean) && (
+                <table className="decl-methods"><thead><tr><th className="right">{both('Note / coin', '面额')}</th><th className="right">{both('Count', '数量')}</th><th className="right">{both('Amount', '金额')}</th></tr></thead><tbody>{[...fd.notes, ...fd.coins].map(fline)}</tbody></table>
+              )}
+              <p className="decl-total">{both(`Total ${fc} cash counted`, `${fc} 现金总额`)}: <strong>{money(foreignCounted(f), fc, true)}</strong>
+                {f.converted != null && <> · {both(`Value in ${cur} once exchanged`, `兑换后价值 (${cur})`)}: {money(f.converted, cur, true)}</>}</p>
+            </div>
+          );
+        })}
+
         <h3>{both('Offerings by method', '奉献方式')}</h3>
         <table className="decl-methods">
           <tbody>
-            {OFFERING_METHODS.filter((m) => r.offerings.some((l) => l.method === m)).map((m) => (
-              <tr key={m}><th>{t(METHOD_LABEL[m])}</th><td className="right">{money(methodTotal(r.offerings, m), cur)}</td></tr>
+            {OFFERING_METHODS.filter((m) => r.offerings.some((l) => l.method === m && (l.currency ?? cur) === cur)).map((m) => (
+              <tr key={m}><th>{t(METHOD_LABEL[m])}</th><td className="right">{money(methodTotal(r.offerings, m, cur, cur), cur)}</td></tr>
             ))}
-            <tr className="sum"><th>{both('Total offerings', '奉献总额')}</th><td className="right">{money(methodTotal(r.offerings), cur, true)}</td></tr>
+            <tr className="sum"><th>{both('Total offerings', '奉献总额')}</th><td className="right">{money(methodTotal(r.offerings, undefined, cur, cur), cur, true)}</td></tr>
+            {foreignCurrencies(r.offerings, cur).map((fc) => (
+              <tr key={fc} className="sum"><th>{both(`Total offerings in ${fc} (not converted)`, `${fc} 奉献总额（未兑换）`)}</th><td className="right">{money(methodTotal(r.offerings, undefined, fc, cur), fc, true)}</td></tr>
+            ))}
           </tbody>
         </table>
 
@@ -424,9 +624,15 @@ export function CashDeclaration() {
         </p>
         <table className="decl-sign">
           <thead><tr><th>{both('Name', '姓名')}</th><th>{both('Signature', '签名')}</th><th>{both('Date', '日期')}</th></tr></thead>
-          <tbody>{counters.map((n, i) => <tr key={i}><td>{n}</td><td /><td /></tr>)}</tbody>
+          <tbody>
+            {signed.length
+              ? signed.map((g) => <tr key={g.name}><td>{g.name}</td><td className="decl-sig"><img src={g.image} alt="" /></td><td>{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN', { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)
+              : counters.map((n, i) => <tr key={i}><td>{n}</td><td /><td /></tr>)}
+          </tbody>
         </table>
-        {r.verified_at && <p className="small muted">{both('Marked as verified in Canon by', '已在 Canon 中由以下人员确认')} {r.verified_by}, {new Date(r.verified_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</p>}
+        {r.verified_at && (signed.length
+          ? <p className="small muted">{both('Signed on screen in Canon; the signatures belong to the count above.', '已在 Canon 屏幕上签名；签名对应以上点算。')}</p>
+          : <p className="small muted">{both('Marked as verified in Canon by', '已在 Canon 中由以下人员确认')} {r.verified_by}, {new Date(r.verified_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</p>)}
       </div>
     </div>
   );

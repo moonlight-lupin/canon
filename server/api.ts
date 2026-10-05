@@ -372,7 +372,8 @@ const RecordInput = z.object({
   online: z.number().int().min(0).max(1000000).nullable().optional(),
   visitors: z.array(VisitorSchema).max(500).optional(),
   notes: z.string().max(20000).nullable().optional(),
-  offerings: z.array(z.object({ fund: z.string().max(100), method: z.string().max(20), amount: z.number().int().min(0), note: z.string().max(300).optional() })).max(200).optional(),
+  offerings: z.array(z.object({ fund: z.string().max(100), method: z.string().max(20), amount: z.number().int().min(0), currency: z.string().max(3).optional(), note: z.string().max(300).optional() })).max(200).optional(),
+  foreign_cash: z.record(z.string().regex(/^[A-Z]{3}$/), z.object({ cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(), total: z.number().int().min(0).optional(), converted: z.number().int().min(0).nullable().optional() })).optional(),
   cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(),
   counters: z.array(z.string().max(120)).max(10).optional(),
   currency: z.string().max(5).optional(),
@@ -384,10 +385,12 @@ api.get('/services/:id/record', h((req) => {
   return req.user?.role === 'viewer' ? rec.forViewer(r) : r;
 }));
 api.put('/services/:id/record', h((req) => rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req))));
+api.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));
+api.post('/services/:id/record/unsign', h((req) => rec.unsign(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name, recWho(req))));
 api.post('/services/:id/record/verify', h((req) => rec.setVerified(id(req), z.object({ verified: z.boolean() }).parse(req.body).verified, recWho(req))));
 api.put('/offering-settings', requireAdmin, h((req) => {
-  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30) }).parse(req.body);
-  return updateSettings({ offering: { currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))] } }).offering;
+  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30), signing: z.enum(['paper', 'screen']).optional() }).parse(req.body);
+  return updateSettings({ offering: { currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))], signing: b.signing ?? getSettings().offering.signing ?? 'paper' } }).offering;
 }));
 
 // ---------------------------------------------------------------- library check (languages that drift apart, duplicates)

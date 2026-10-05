@@ -519,6 +519,11 @@ const MIGRATIONS: (string | Migration)[] = [
       }
     },
   },
+  // v0.9.1 — offerings in other currencies; counters' signatures drawn on screen
+  `
+  ALTER TABLE service_records ADD COLUMN foreign_cash TEXT NOT NULL DEFAULT '{}';  -- JSON {currency: {cash, total, converted}}
+  ALTER TABLE service_records ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]';    -- JSON [{name, image, signed_at, by, hash}]
+  `,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

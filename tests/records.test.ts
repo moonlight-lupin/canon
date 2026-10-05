@@ -13,6 +13,7 @@ let svc: typeof import('../server/repo/services.ts');
 let M: typeof import('../shared/records.ts');
 let actor: typeof import('../server/lib/actor.ts');
 let log: typeof import('../server/repo/changelog.ts');
+let settings: typeof import('../server/repo/settings.ts');
 
 before(async () => {
   R = await import('../server/repo/records.ts');
@@ -20,6 +21,7 @@ before(async () => {
   M = await import('../shared/records.ts');
   actor = await import('../server/lib/actor.ts');
   log = await import('../server/repo/changelog.ts');
+  settings = await import('../server/repo/settings.ts');
 });
 
 const editor = { name: 'Ed Itor', admin: false };
@@ -76,4 +78,73 @@ test('records: save, verify (two counters, matching count), lock for editors, ad
   assert.equal(list[0].attendance, 121);
   assert.equal(list[0].offering_total, 35080);
   assert.equal(list[0].visitors, 1);
+});
+
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+test('other currencies: counted and totalled apart, each must match before verifying', () => {
+  const s = svc.createService({ date: '2033-03-06' }).service;
+  R.saveRecord(s.id, {
+    offerings: [
+      { fund: 'General', method: 'cash', amount: 5000 },
+      { fund: 'General', method: 'cash', amount: 2000, currency: 'USD' },
+      { fund: 'Missions', method: 'cash', amount: 100000, currency: 'THB' },
+    ],
+    cash: { '5000': 1 }, counters: ['Ann', 'Ben'],
+  }, editor);
+  assert.throws(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 1, currency: 'usd' }] }, editor), /currency code/);
+  // the USD and THB cash is not counted yet
+  assert.throws(() => R.setVerified(s.id, true, editor), /THB.*USD/);
+  R.saveRecord(s.id, { foreign_cash: { USD: { cash: { '1000': 2 } }, THB: { total: 100000, converted: 3900 } } }, editor);
+  assert.deepEqual(M.countProblems(R.recordFor(s.id)), []);
+  assert.ok(R.setVerified(s.id, true, editor).verified_at);
+
+  const row = R.listRecords({ from: '2033-03-01', to: '2033-03-31' })[0];
+  assert.equal(row.offering_total, 5000); // the church's currency only
+  assert.deepEqual(row.other_currencies, [{ currency: 'THB', total: 100000 }, { currency: 'USD', total: 2000 }]);
+});
+
+test('on-screen signing: only when chosen, needs a matching count, two signatures verify, a money change clears them', () => {
+  const s = svc.createService({ date: '2033-04-03' }).service;
+  R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7000 }], cash: { '5000': 1, '1000': 1 } }, editor);
+  assert.throws(() => R.sign(s.id, { name: 'Ann', image: PNG }, editor), /on paper/);
+
+  settings.updateSettings({ offering: { ...settings.getSettings().offering, signing: 'screen' } });
+  try {
+    assert.throws(() => R.setVerified(s.id, true, editor), /signs on screen/);
+    assert.throws(() => R.sign(s.id, { name: 'Ann', image: 'data:text/html,<b>x</b>' }, editor), /could not be read/);
+    R.saveRecord(s.id, { cash: { '5000': 1 } }, editor);
+    assert.throws(() => R.sign(s.id, { name: 'Ann', image: PNG }, editor), /does not match/);
+    R.saveRecord(s.id, { cash: { '5000': 1, '1000': 2 } }, editor);
+
+    let r = R.sign(s.id, { name: 'Ann', image: PNG }, editor);
+    assert.equal(r.signatures.length, 1);
+    assert.equal(r.verified_at, null);
+    // signing again under the same name replaces the signature
+    r = R.sign(s.id, { name: 'ann', image: PNG }, editor);
+    assert.equal(r.signatures.length, 1);
+    r = R.sign(s.id, { name: 'Ben', image: PNG }, editor);
+    assert.equal(r.signatures.length, 2);
+    assert.ok(r.verified_at);
+    assert.deepEqual(r.counters, ['ann', 'Ben']);
+    assert.throws(() => R.sign(s.id, { name: 'Cy', image: PNG }, editor), /already verified/);
+    assert.throws(() => R.unsign(s.id, 'Ben', editor), /administrator/);
+
+    // notes and attendance do not disturb the signatures; an administrator's money change does
+    R.saveRecord(s.id, { attendance: 80 }, editor);
+    assert.equal(R.recordFor(s.id).signatures.length, 2);
+    r = R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7500 }] }, admin);
+    assert.deepEqual(r.signatures, []);
+    assert.equal(r.verified_at, null);
+
+    // reopening a signed count asks for new signatures
+    R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7000 }] }, editor);
+    R.sign(s.id, { name: 'Ann', image: PNG }, editor);
+    R.sign(s.id, { name: 'Ben', image: PNG }, editor);
+    r = R.setVerified(s.id, false, admin);
+    assert.deepEqual(r.signatures, []);
+    assert.deepEqual(R.forViewer(R.recordFor(s.id)).signatures, []);
+  } finally {
+    settings.updateSettings({ offering: { ...settings.getSettings().offering, signing: 'paper' } });
+  }
 });

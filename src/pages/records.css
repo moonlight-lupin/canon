@@ -44,3 +44,19 @@ input.invalid { border-color: var(--danger, #a33); }
 }
 .rec-settings { margin-bottom: 14px; padding: 10px 16px; } .rec-settings summary { cursor: pointer; font-weight: 600; }
 .rec-page fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
+.rec-lines select.rec-cur { width: auto; }
+.rec-lines td:nth-child(1) select { min-width: 120px; }
+.rec-lines td:nth-child(2) select { min-width: 110px; }
+.rec-lines td:nth-child(4) input { min-width: 90px; }
+.rec-foreign { border-top: 1px dashed var(--line); padding-top: 10px; }
+.rec-foreign h4 { margin: 0; }
+.rec-signing { margin-top: 12px; }
+.rec-sigs { display: flex; gap: 12px; flex-wrap: wrap; }
+.rec-sig { margin: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; color: #1e2430; }
+.rec-sig img { display: block; width: 220px; height: auto; }
+.rec-sig figcaption { display: flex; gap: 8px; align-items: center; }
+.sig-pad { position: relative; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.sig-pad canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; background: #fff; border: 1px dashed var(--line); border-radius: 8px; touch-action: none; cursor: crosshair; }
+.sig-hint { position: absolute; left: 14px; bottom: 12px; color: #9aa; pointer-events: none; font-size: 13px; }
+.decl-sig { padding: 0 6px !important; }
+.decl-sig img { display: block; max-height: 13mm; max-width: 70mm; }

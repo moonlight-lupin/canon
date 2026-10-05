@@ -243,8 +243,14 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 - **New visitors**: name, contact, **How they came**, **Follow-up by** and notes. Visitors' details are personal data: record only what the church needs to follow up.
 - **Notes for the team**: what went well, what to fix, prayer needs.
 - **Offerings**: one line per fund and method (cash, cheque, bank transfer, PayNow, card), with totals per method. Administrators set the **Currency and funds** at the top of the list.
-- **Cash count**: the number of each note and coin; Canon adds them up and shows any difference from the cash lines. Enter at least two **Counted by** names, then **Mark as counted and verified** (the count must match). After that only an administrator can change the money (**Reopen cash count**); attendance and notes can still be updated.
-- **Print cash-count declaration** prints an A4 page with the count, the totals by method, a short declaration, and name, signature and date lines for the counters to sign.
+- **Another currency**: when a gift comes in another currency (say a USD note in an SGD church), set that line's **Currency** (pick **Other…** to type any three-letter code, e.g. THB). Each currency is totalled on its own and never converted: the list and the totals show the church's currency, with the others listed underneath (“+ USD 20.00”).
+- **Cash count**: the number of each note and coin; Canon adds them up and shows any difference from the cash lines. Cash in another currency gets its own count under **Cash in USD** (or just a **Counted total** for currencies Canon has no notes and coins for), and an optional **Value once exchanged** in the church's currency for the treasurer (not added to the totals). Every currency's count must match its cash lines.
+- **Signing the count**: administrators choose under **Currency and funds** how counters sign:
+  - **On paper** (the default): enter at least two **Counted by** names, print the declaration for them to sign, then **Mark as counted and verified**.
+  - **On screen**: once every count matches, each counter types their name and signs on the record with a finger, pen or mouse (**Sign the count**). When two have signed, the count is verified. The signatures belong to that exact count: if an administrator changes the money or reopens the count, the signatures are removed and the counters sign again.
+
+  After verification only an administrator can change the money (**Reopen cash count**); attendance and notes can still be updated.
+- **Print cash-count declaration** prints an A4 page with the count (each currency separately), the totals by method, a short declaration, and the counters' signatures — drawn on screen, or blank name, signature and date lines to sign on paper. Churches that sign on screen can still print blank lines as a fallback before anyone has signed.
 
 Read-only users see attendance and notes only, without offerings or visitors' contact details. Every change is in **Settings → Change log** (an administrator's **History** button on the record shows just that service).
 

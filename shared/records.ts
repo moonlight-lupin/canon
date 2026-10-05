@@ -7,9 +7,33 @@ export const OFFERING_METHODS: OfferingMethod[] = ['cash', 'cheque', 'transfer',
 export interface OfferingLine {
   fund: string;
   method: OfferingMethod;
-  /** minor units (cents) */
+  /** minor units (cents) of `currency` */
   amount: number;
+  /** another currency than the record's (e.g. a USD note in an SGD church); absent = the record's currency */
+  currency?: string;
   note?: string;
+}
+
+/** Cash in another currency: counted by denomination (known currencies) or as a total, and its value once exchanged. */
+export interface ForeignCash {
+  /** denomination (minor units) → count, for currencies Canon knows */
+  cash?: Record<string, number>;
+  /** the counted total in minor units, for other currencies */
+  total?: number;
+  /** what it was worth in the record's currency when exchanged or banked (minor units); entered by hand */
+  converted?: number | null;
+}
+
+/** A counter's signature drawn on screen. */
+export interface Signature {
+  name: string;
+  /** PNG data URL of the drawn signature */
+  image: string;
+  signed_at: string;
+  /** the Canon account that was signed in */
+  by: string;
+  /** fingerprint of the money when signed: a later change makes the signature stale */
+  hash: string;
 }
 
 export interface Visitor {
@@ -35,6 +59,10 @@ export interface ServiceRecord {
   /** the people who counted the cash */
   counters: string[];
   currency: string;
+  /** cash in other currencies, by currency code */
+  foreign_cash: Record<string, ForeignCash>;
+  /** counters' signatures drawn on screen (when the church signs on screen) */
+  signatures: Signature[];
   verified_at: string | null;
   verified_by: string | null;
   updated_at: string;
@@ -58,8 +86,35 @@ export const CURRENCIES = Object.keys(DENOMINATIONS);
 export const cashTotal = (cash: Record<string, number>) =>
   Object.entries(cash).reduce((sum, [d, n]) => sum + Number(d) * (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0), 0);
 
-export const methodTotal = (lines: OfferingLine[], method?: OfferingMethod) =>
-  lines.filter((l) => !method || l.method === method).reduce((s, l) => s + (Number.isFinite(l.amount) ? l.amount : 0), 0);
+/** Total of the offering lines (optionally one method), in one currency (default: lines in the record's currency). */
+export const methodTotal = (lines: OfferingLine[], method?: OfferingMethod, currency?: string, main?: string) =>
+  lines
+    .filter((l) => (!method || l.method === method) && (currency === undefined || (l.currency ?? main) === currency || (!l.currency && currency === main)))
+    .reduce((s, l) => s + (Number.isFinite(l.amount) ? l.amount : 0), 0);
+
+/** The currencies other than the record's that appear in the offerings, sorted. */
+export const foreignCurrencies = (lines: OfferingLine[], main: string) =>
+  [...new Set(lines.map((l) => l.currency).filter((c): c is string => !!c && c !== main))].sort();
+
+/** Cash counted in a foreign currency: by denomination when known, else the entered total. */
+export const foreignCounted = (f: ForeignCash | undefined) => (f?.cash && Object.keys(f.cash).length ? cashTotal(f.cash) : f?.total ?? 0);
+
+/** What has to match before a cash count can be verified: each currency's count against its cash lines. */
+export function countProblems(r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>): { currency: string; counted: number; lines: number }[] {
+  const out: { currency: string; counted: number; lines: number }[] = [];
+  const main = { currency: r.currency, counted: cashTotal(r.cash), lines: methodTotal(r.offerings, 'cash', r.currency, r.currency) };
+  if (main.counted !== main.lines) out.push(main);
+  for (const c of foreignCurrencies(r.offerings, r.currency)) {
+    const counted = foreignCounted(r.foreign_cash?.[c]);
+    const lines = methodTotal(r.offerings, 'cash', c, r.currency);
+    if (counted !== lines) out.push({ currency: c, counted, lines });
+  }
+  return out;
+}
+
+/** Money fingerprint: signatures belong to this exact count. */
+export const moneyKey = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) =>
+  JSON.stringify([r.currency, r.offerings.map((l) => [l.fund, l.method, l.amount, l.currency ?? '']), Object.entries(r.cash).filter(([, n]) => n).sort(), r.foreign_cash ?? {}]);
 
 /** 12345 → "123.45" (with thousands separators). */
 export function money(minor: number, currency = 'SGD', withCode = false): string {
