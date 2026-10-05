@@ -184,7 +184,7 @@ export function RecordEditor() {
     : locked
       ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors }
       : {
-        attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency,
+        attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency, counted_on: d.counted_on ?? null,
         // counts of currencies no longer in the offerings are dropped
         foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
       };
@@ -350,6 +350,9 @@ export function RecordEditor() {
                   </div>
                 );
               })}
+              <Field label={<>{t('Date counted')} <InfoTip text={t('The day the cash was counted. It is printed on the declaration; left empty, the service date is used.')} /></>}>
+                <input type="date" value={d.counted_on ?? ''} max={today()} onChange={(e) => set({ counted_on: e.target.value || null })} style={{ width: 170 }} />
+              </Field>
               {!onScreen && (
                 <Field label={<>{t('Counted by')} <InfoTip text={t('At least two people count the cash together and sign the declaration.')} /></>}>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -587,6 +590,7 @@ export function CashDeclaration() {
             <tr><th>{both('Date', '日期')}</th><td>{fmtDate(s.date, lang)} · {s.start_time}</td></tr>
             {c && <tr><th>{lt(CONG_LABEL)}</th><td>{lt(c.name)}</td></tr>}
             <tr><th>{both('Currency', '货币')}</th><td>{cur}</td></tr>
+            <tr><th>{both('Date counted', '点算日期')}</th><td>{fmtDate(r.counted_on ?? s.date, lang)}</td></tr>
           </tbody>
         </table>
 
@@ -639,7 +643,7 @@ export function CashDeclaration() {
           <tbody>
             {signed.length
               ? signed.map((g) => <tr key={g.name}><td>{g.name}</td><td className="decl-sig"><img src={g.image} alt="" /></td><td>{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN', { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)
-              : counters.map((n, i) => <tr key={i}><td>{n}</td><td /><td /></tr>)}
+              : counters.map((n, i) => <tr key={i}><td>{n}</td><td /><td>{n ? fmtDate(r.counted_on ?? s.date, lang, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td></tr>)}
           </tbody>
         </table>
         {r.verified_at && (signed.length

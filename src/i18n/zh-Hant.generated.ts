@@ -689,6 +689,8 @@ const zhHant: Record<string, string> = {
  "not recognised": "無法識別",
  "Songs": "詩歌",
  "Reading": "讀經",
+ "Date counted": "點算日期",
+ "The day the cash was counted. It is printed on the declaration; left empty, the service date is used.": "點算現金的日期，會印在聲明上；留空則使用聚會日期。",
  "Paper size, what each bulletin prints, and slide colours and fonts are set in templates and themes.": "紙張大小、次序單印刷內容，以及投影的顏色與字體，都在模板與主題中設定。",
  "How the slides look on the projector, and what the printed bulletin includes.": "設定投影畫面的樣式，以及印刷次序單要包含的內容。",
  "Slide themes": "投影主題",

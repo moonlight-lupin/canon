@@ -524,6 +524,8 @@ const MIGRATIONS: (string | Migration)[] = [
   ALTER TABLE service_records ADD COLUMN foreign_cash TEXT NOT NULL DEFAULT '{}';  -- JSON {currency: {cash, total, converted}}
   ALTER TABLE service_records ADD COLUMN signatures TEXT NOT NULL DEFAULT '[]';    -- JSON [{name, image, signed_at, by, hash}]
   `,
+  // v0.10.2 — the date the cash was counted (printed on the declaration; empty = the service date)
+  `ALTER TABLE service_records ADD COLUMN counted_on TEXT;`,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

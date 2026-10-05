@@ -556,5 +556,8 @@ const zh: Record<string, string> = {
   "not recognised": "无法识别",
   "Songs": "诗歌",
   "Reading": "读经",
+  // v0.10.2 — date counted
+  "Date counted": "点算日期",
+  "The day the cash was counted. It is printed on the declaration; left empty, the service date is used.": "点算现金的日期，会印在声明上；留空则使用聚会日期。",
 };
 export default zh;

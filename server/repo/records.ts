@@ -13,7 +13,7 @@ import { services } from './services.ts';
 
 export const records = table<ServiceRecord>({
   name: 'service_records',
-  cols: ['service_id', 'attendance', 'children', 'online', 'visitors', 'notes', 'offerings', 'cash', 'counters', 'currency', 'verified_at', 'verified_by', 'foreign_cash', 'signatures'],
+  cols: ['service_id', 'attendance', 'children', 'online', 'visitors', 'notes', 'offerings', 'cash', 'counters', 'currency', 'verified_at', 'verified_by', 'foreign_cash', 'signatures', 'counted_on'],
   json: ['visitors', 'offerings', 'cash', 'counters', 'foreign_cash', 'signatures'],
   touch: true,
   log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
@@ -22,7 +22,7 @@ export const records = table<ServiceRecord>({
 const blank = (serviceId: number): Omit<ServiceRecord, 'id' | 'updated_at'> => ({
   service_id: serviceId, attendance: null, children: null, online: null, visitors: [], notes: null,
   offerings: [], cash: {}, counters: [], currency: getSettings().offering.currency, verified_at: null, verified_by: null,
-  foreign_cash: {}, signatures: [],
+  foreign_cash: {}, signatures: [], counted_on: null,
 });
 
 /** The record of a service (an empty one, not yet saved, when nothing was entered). */
@@ -32,7 +32,8 @@ export function recordFor(serviceId: number): ServiceRecord & { saved: boolean }
   return r ? { ...r, saved: true } : { id: 0, updated_at: '', ...blank(serviceId), saved: false };
 }
 
-const MONEY_FIELDS = ['offerings', 'cash', 'counters', 'currency', 'foreign_cash'] as const;
+/** Fields locked once the count is verified (what the declaration attests). */
+const MONEY_FIELDS = ['offerings', 'cash', 'counters', 'currency', 'foreign_cash', 'counted_on'] as const;
 const hashOf = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) => crypto.createHash('sha256').update(moneyKey(r)).digest('base64url').slice(0, 16);
 /** How the church signs the cash count: on paper (default) or on screen. */
 export const signingMode = () => (getSettings().offering.signing === 'screen' ? 'screen' : 'paper');
@@ -43,7 +44,8 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
   // compare what is sent with what is stored: an unchanged copy of the money (the editor sends the whole record) is fine
   const sentMoney = Object.fromEntries(MONEY_FIELDS.filter((k) => patch[k] !== undefined).map((k) => [k, patch[k]]));
   const nextMoney = { ...cur, ...sentMoney } as ServiceRecord;
-  const moneyChanged = hashOf(nextMoney) !== hashOf(cur) || JSON.stringify(nextMoney.counters ?? []) !== JSON.stringify(cur.counters ?? []);
+  const moneyChanged = hashOf(nextMoney) !== hashOf(cur) || JSON.stringify(nextMoney.counters ?? []) !== JSON.stringify(cur.counters ?? [])
+    || (nextMoney.counted_on ?? null) !== (cur.counted_on ?? null);
   if (cur.verified_at && moneyChanged) {
     if (!who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can reopen it to change the offerings.');
     throw new Conflict('The cash count has been verified. Reopen the cash count first (Reopen cash count), then change the offerings and verify it again.');
@@ -55,6 +57,7 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
     }
   }
   if (patch.currency && !DENOMINATIONS[patch.currency]) throw new BadRequest(`Unknown currency ${patch.currency}`);
+  if (patch.counted_on && !/^\d{4}-\d{2}-\d{2}$/.test(patch.counted_on)) throw new BadRequest('The date counted must be a date (YYYY-MM-DD).');
   for (const l of patch.offerings ?? []) {
     if (l.currency && !/^[A-Z]{3}$/.test(l.currency)) throw new BadRequest(`"${l.currency}" is not a currency code (three capital letters, e.g. USD)`);
   }

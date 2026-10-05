@@ -184,3 +184,15 @@ test('change log keeps money in full (signatures without images), written with t
   const parsed = typeof offerings === 'string' ? JSON.parse(offerings) : offerings;
   assert.equal(parsed.length, 30, 'not shortened');
 });
+
+test('date counted: saved, printed default is the service date, locked once verified', () => {
+  const s = svc.createService({ date: '2033-06-05' }).service;
+  assert.equal(R.recordFor(s.id).counted_on, null);
+  assert.throws(() => R.saveRecord(s.id, { counted_on: '5/6/2033' }, editor), /must be a date/);
+  R.saveRecord(s.id, { counted_on: '2033-06-06', counters: ['Ann', 'Ben'], offerings: [{ fund: 'General', method: 'cash', amount: 1000 }], cash: { '1000': 1 } }, editor);
+  assert.equal(R.recordFor(s.id).counted_on, '2033-06-06');
+  R.setVerified(s.id, true, editor);
+  assert.throws(() => R.saveRecord(s.id, { counted_on: '2033-06-07' }, admin), /Reopen/);
+  R.saveRecord(s.id, { counted_on: '2033-06-06', attendance: 40 }, editor); // unchanged date with other edits is fine
+  assert.equal(R.recordFor(s.id).attendance, 40);
+});

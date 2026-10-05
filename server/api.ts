@@ -378,6 +378,7 @@ const RecordInput = z.object({
   foreign_cash: z.record(z.string().regex(/^[A-Z]{3}$/), z.object({ cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(), total: z.number().int().min(0).optional(), converted: z.number().int().min(0).nullable().optional() })).optional(),
   cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(),
   counters: z.array(z.string().max(120)).max(10).optional(),
+  counted_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   currency: z.string().max(5).optional(),
 });
 api.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined })

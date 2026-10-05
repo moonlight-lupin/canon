@@ -75,6 +75,8 @@ export interface ServiceRecord {
   signatures: Signature[];
   verified_at: string | null;
   verified_by: string | null;
+  /** the day the cash was counted, YYYY-MM-DD (null = the service date) */
+  counted_on: string | null;
   updated_at: string;
 }
 
