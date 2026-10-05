@@ -7,7 +7,7 @@ import { db, migrate, schemaVersion } from '../db.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
-import { copyArchivesTo, eraseVisitorContacts } from './archive.ts';
+import { copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
@@ -137,6 +137,9 @@ export async function restoreBackup(file: string): Promise<{ safety: string; res
   migrate();
   clearSettingsCache();
   updateSettings(keep);
+  // an older backup may still hold visitors' details since erased, or records since archived
+  syncArchiveIndex();
+  eraseVisitorContacts(getSettings().retention.visitor_contact_months);
   setMeta('last_backup_at', safety.created);
   setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: path.basename(file), safety: safety.name }));
   logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${path.basename(file)} (the data before it was saved as ${safety.name})` });
@@ -174,6 +177,13 @@ let timer: NodeJS.Timeout | null = null;
 /** Check every 30 minutes whether an automatic backup is due (also shortly after start-up). */
 export function startBackupScheduler(log: (s: string) => void = console.log) {
   if (timer) return;
+  try {
+    // archives made by 0.11.0 (or copied in by hand): their services' records become read-only here too
+    const n = syncArchiveIndex();
+    if (n) log(`archives: ${n} archived service records linked`);
+  } catch (e) {
+    log(`archives: could not read the archive files — ${(e as Error).message}`);
+  }
   const tick = () => {
     try {
       const due = nextDue();
@@ -194,7 +204,7 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       const c = pruneMemberViews(change_log_months);
       if (a || b || c) log(`logs: removed ${a} change-log, ${b} AI-activity and ${c} member-view entries past the keep period`);
       const v = eraseVisitorContacts(getSettings().retention.visitor_contact_months);
-      if (v) log(`records: erased the contact details of ${v} visitors past the keep period`);
+      if (v.visitors || v.log) log(`records: erased the details of ${v.visitors} visitors (and ${v.log} change-log copies) past the keep period`);
       recordSizeSnapshot();
     } catch (e) {
       log(`logs: tidy failed — ${(e as Error).message}`);

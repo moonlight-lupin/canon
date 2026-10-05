@@ -22,6 +22,7 @@ interface Spec {
   json?: string[];
   bool?: string[];
   touch?: boolean; // maintain updated_at
+  revision?: boolean; // count saves in `revision` (edit conflicts: see lib/versions.ts)
   /** change log: false = not logged; parent = the record this one belongs to (shown in that record's history) */
   log?: false | { parent?: (row: Record<string, unknown>) => { entity: string; id: number } | null };
 }
@@ -75,6 +76,8 @@ export function table<T extends { id: number }>(spec: Spec) {
     },
     insertNow(data: Record<string, unknown>): T {
       const e = encode(data);
+      // the first save is revision 1, so a screen that saw no record (0) notices one made meanwhile
+      if (spec.revision) e.revision = 1;
       const keys = Object.keys(e);
       const sql = keys.length
         ? `INSERT INTO ${spec.name} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`
@@ -94,6 +97,7 @@ export function table<T extends { id: number }>(spec: Spec) {
       if (keys.length) {
         const sets = keys.map((k) => `${k} = ?`);
         if (spec.touch) sets.push(`updated_at = datetime('now')`);
+        if (spec.revision) sets.push('revision = revision + 1');
         const r = db.prepare(`UPDATE ${spec.name} SET ${sets.join(', ')} WHERE id = ?`).run(...keys.map((k) => e[k]), id);
         if (!r.changes) throw new NotFound(`${spec.name} ${id} not found`);
       }

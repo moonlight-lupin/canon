@@ -12,7 +12,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
 // ---------------------------------------------------------------- Node.js version
-const want = (pkg.engines?.node ?? '>=22.18').replace(/^>=\s*/, '').split('.').map(Number);
+const want = (pkg.engines?.node ?? '>=24').replace(/^>=\s*/, '').split('.').map(Number);
 const have = process.versions.node.split('.').map(Number);
 const older = have[0] !== want[0] ? have[0] < want[0] : (have[1] ?? 0) < (want[1] ?? 0);
 if (older) {

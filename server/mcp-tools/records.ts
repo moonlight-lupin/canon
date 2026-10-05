@@ -29,6 +29,8 @@ function recordOut(serviceId: number, ctx: Ctx) {
     service_id: serviceId, saved: r.saved, attendance: r.attendance, children: r.children, online: r.online, notes: r.notes,
     visitors: r.visitors.map((v, i) => visitorOut(v, i, ctx)),
   };
+  // moved to an archive file: read-only, and not in the reports (an administrator can bring it back in Canon)
+  if (r.archived_year) Object.assign(out, { archived_year: r.archived_year, read_only: `in the ${r.archived_year} archive` });
   if (money(ctx)) {
     Object.assign(out, {
       currency: r.currency, offerings: r.offerings, cash_count: r.cash, foreign_cash: r.foreign_cash,

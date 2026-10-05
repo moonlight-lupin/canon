@@ -40,7 +40,7 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
 };
 
 /** Columns never written to the log. */
-const SKIP = new Set(['updated_at', 'created_at', 'password_hash', 'share_token', 'position', 'sort']);
+const SKIP = new Set(['updated_at', 'created_at', 'password_hash', 'share_token', 'position', 'sort', 'revision']);
 const MAX_VALUE = 400;
 
 type Row = Record<string, unknown>;

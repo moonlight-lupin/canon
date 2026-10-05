@@ -10,7 +10,7 @@ import * as arc from '../repo/archive.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { listGrants, revokeGrant, externalBase } from '../oauth.ts';
 import { toolCatalog } from '../mcp.ts';
-import { h, sendCsv, str } from './helpers.ts';
+import { h, id, sendCsv, str } from './helpers.ts';
 
 export const adminRoutes = express.Router();
 
@@ -76,6 +76,7 @@ const yearOf = (req: Request) => {
 };
 adminRoutes.get('/archives/:year/records', requireAdmin, h((req) => arc.archivedRecords(yearOf(req))));
 adminRoutes.get('/archives/:year/changes', requireAdmin, h((req) => arc.archivedChanges(yearOf(req), { page: Number(req.query.page) || 1, q: str(req.query.q) })));
+adminRoutes.post('/archives/:year/records/:service/restore', requireAdmin, h((req) => arc.restoreArchivedRecord(yearOf(req), id(req, 'service'))));
 adminRoutes.get('/archives/:year/download', requireAdmin, (req, res, next) => {
   try {
     res.download(arc.archivePath(yearOf(req)));

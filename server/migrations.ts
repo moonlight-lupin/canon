@@ -571,4 +571,16 @@ export const MIGRATIONS: (string | Migration)[] = [
   CREATE INDEX member_views_person ON member_views(person_id);
   ALTER TABLE users ADD COLUMN last_login_at TEXT;
   `,
+  // 21 (0.11.1): a revision number for edit conflicts (counts saves; a timestamp is only to the second), and which
+  // services have their record in an archive file (that record is read-only and the service can't be deleted)
+  `
+  ALTER TABLE services ADD COLUMN revision INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE people ADD COLUMN revision INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE service_records ADD COLUMN revision INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE archived_records (
+    service_id INTEGER PRIMARY KEY REFERENCES services(id) ON DELETE RESTRICT,
+    year INTEGER NOT NULL,
+    archived_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  `,
 ];

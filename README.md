@@ -7,7 +7,7 @@
 
 It was designed with a bilingual (English / 中文) Reformed and Presbyterian congregation in mind, but its languages, liturgies and templates are all configurable. The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3; Gal 6:16).
 
-[![CI](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml/badge.svg)](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![Node 22.18+](https://img.shields.io/badge/node-%E2%89%A522.18-417e38)
+[![CI](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml/badge.svg)](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![Node 24+](https://img.shields.io/badge/node-%E2%89%A524-417e38)
 
 ## Features
 
@@ -41,7 +41,7 @@ The [user guide](docs/guide/en.md) describes all of it.
 ## Quick start
 
 **Windows office PC**
-1. Install **Node.js 22.18 or newer** (LTS) from <https://nodejs.org>.
+1. Install **Node.js 24 or newer** (LTS) from <https://nodejs.org>.
 2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs and builds everything.
 3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Other computers on the office network open `http://<office-pc-name>:3000`.
 
@@ -66,7 +66,7 @@ Keep the "Canon server" window open while Canon is in use.
 ## Privacy
 
 - Member data stays in your own database (`data/`, never in the repository).
-- Read-only accounts see members' names, not their contact details or notes, and see birthdays as day and month only. Custom fields marked sensitive are for administrators only.
+- Read-only accounts see members' names, not their contact details or notes, and see birthdays as day and month only. Custom fields marked sensitive are hidden from read-only accounts too (editors and administrators see them).
 - AI agents see personal details only if an administrator allows it, and never when acting for a read-only user.
 - **Settings → Security & privacy** has a checklist, a log of who opened which member, how long visitors' details are kept, and yearly archives.
 - The database is an ordinary file: protect the computer it is on with disk encryption, and an account for each person.

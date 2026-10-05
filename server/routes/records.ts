@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as rec from '../repo/records.ts';
+import * as arc from '../repo/archive.ts';
 import * as reports from '../repo/reports.ts';
 import { Forbidden } from '../lib/table.ts';
 import { assertFresh } from '../lib/versions.ts';
@@ -36,6 +37,8 @@ recordRoutes.get('/records', h((req) => rec.listRecords({ from: str(req.query.fr
 // reports (Records → Reports): offerings for editors and administrators only; visitors' contact details likewise
 const reportPeriod = (req: Request) => reports.period({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined });
 const canSeeMoney = (req: Request) => req.user?.role === 'admin' || req.user?.role === 'editor';
+// which years are in archive files (reports cover the live database only, and say so)
+recordRoutes.get('/reports/archived-years', h(() => ({ years: arc.archiveYears() })));
 recordRoutes.get('/reports/attendance', h((req) => reports.attendanceReport(reportPeriod(req))));
 recordRoutes.get('/reports/offerings', h((req) => {
   if (!canSeeMoney(req)) throw new Forbidden('Offerings are only shown to editors and administrators.');
@@ -82,7 +85,8 @@ recordRoutes.delete('/visitor-cards/:id', h((req) => {
 recordRoutes.delete('/services/:id/record', requireAdmin, h((req) => rec.deleteRecord(id(req), recWho(req))));
 recordRoutes.put('/services/:id/record', h((req) => {
   const cur = rec.recordFor(id(req));
-  if (cur.saved) assertFresh(req, cur, 'service_records', cur.id);
+  // a screen that saw no record yet sends 0: a record someone else created meanwhile is a conflict too
+  assertFresh(req, cur.saved ? cur : { revision: 0 }, 'service_records', cur.id);
   return rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req));
 }));
 recordRoutes.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));

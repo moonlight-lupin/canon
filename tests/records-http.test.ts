@@ -144,29 +144,45 @@ test('logs export as CSV for administrators, with the filters applied', async ()
   assert.equal((await get(as.viewer, '/mcp/audit.csv')).status, 403);
 });
 
-test('edit conflicts: a save based on an older version is refused with who changed it; own fresh saves pass', async () => {
+test('edit conflicts: a save based on an older revision is refused, even within the same second; own saves pass', async () => {
   const svcRepo = await import('../server/repo/services.ts');
   const s2 = svcRepo.createService({ date: '2034-09-03' }).service.id;
   const withVersion = async (who: Session, method: string, url: string, body: unknown, version: string) => {
     const r = await fetch(`${base}/api${url}`, { method, headers: { 'Content-Type': 'application/json', Cookie: who.cookie, 'X-CSRF-Token': who.csrf, 'X-Base-Version': version }, body: JSON.stringify(body) });
     return { status: r.status, body: (await r.json().catch(() => null)) as Json };
   };
-  const opened = (await call(as.editor, 'GET', `/services/${s2}`)).body.updated_at as string;
-  await new Promise((r) => setTimeout(r, 1100)); // versions are kept to the second
-  const other = await call(as.admin, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Other' });
+  // no waiting: two saves in the same second are still told apart
+  const opened = String((await call(as.editor, 'GET', `/services/${s2}`)).body.revision);
+  const other = await withVersion(as.admin, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Other' }, opened);
   assert.equal(other.status, 200);
+  assert.equal(other.body.revision, Number(opened) + 1);
   const stale = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, opened);
-  assert.equal(stale.status, 409);
+  assert.equal(stale.status, 409, 'same base revision, same second: the second save is refused');
   assert.match(stale.body.error, /changed this by Test admin/);
-  const fresh = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, other.body.updated_at);
-  assert.equal(fresh.status, 200, 'saving on top of the latest version is fine');
-  assert.equal((await call(as.editor, 'PATCH', `/services/${s2}`, { theme: { en: 'x' } })).status, 200, 'no version sent: not checked');
+  assert.equal((await call(as.editor, 'GET', `/services/${s2}`)).body.preacher, 'Rev. Other', 'the first save stands');
+  const fresh = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, String(other.body.revision));
+  assert.equal(fresh.status, 200, 'saving on top of the latest revision is fine');
+  assert.equal((await call(as.editor, 'PATCH', `/services/${s2}`, { theme: { en: 'x' } })).status, 200, 'no version sent (agents, imports): not checked');
+  // a screen opened before 0.11.1 sends the time of the last save: still understood
+  const svcNow = (await call(as.editor, 'GET', `/services/${s2}`)).body;
+  assert.equal((await withVersion(as.editor, 'PATCH', `/services/${s2}`, { notes: 'old screen' }, svcNow.updated_at)).status, 200);
+  // editing the order of service does not change the details' revision (no false conflict for the planner)
+  const before = (await call(as.editor, 'GET', `/services/${s2}`)).body.revision;
+  assert.equal((await call(as.editor, 'POST', `/services/${s2}/items`, { item: { kind: 'prayer', title: { en: 'Prayer' } } })).status, 200);
+  assert.equal((await call(as.editor, 'GET', `/services/${s2}`)).body.revision, before);
 
-  // the same for a service record
-  await call(as.editor, 'PUT', `/services/${s2}/record`, { attendance: 10 });
-  const recOpened = (await call(as.editor, 'GET', `/services/${s2}/record`)).body.updated_at as string;
-  await new Promise((r) => setTimeout(r, 1100));
-  await call(as.admin, 'PUT', `/services/${s2}/record`, { attendance: 11 });
-  assert.equal((await withVersion(as.editor, 'PUT', `/services/${s2}/record`, { attendance: 12 }, recOpened)).status, 409);
+  // a service record: same-second saves, and a record someone else created while this screen showed none
+  const blank = await withVersion(as.editor, 'PUT', `/services/${s2}/record`, { attendance: 10 }, '0');
+  assert.equal(blank.status, 200);
+  assert.equal(blank.body.revision, 1);
+  assert.equal((await withVersion(as.admin, 'PUT', `/services/${s2}/record`, { attendance: 9 }, '0')).status, 409, 'it was created meanwhile');
+  assert.equal((await withVersion(as.admin, 'PUT', `/services/${s2}/record`, { attendance: 11 }, '1')).status, 200);
+  assert.equal((await withVersion(as.editor, 'PUT', `/services/${s2}/record`, { attendance: 12 }, '1')).status, 409);
   assert.equal((await call(as.editor, 'GET', `/services/${s2}/record`)).body.attendance, 11, 'their number stands');
+
+  // members
+  const reg = await import('../server/repo/registers.ts');
+  const pid = reg.people.insert({ first_name: 'Ottoline', last_name: 'Quarry' }).id;
+  assert.equal((await withVersion(as.admin, 'PATCH', `/people/${pid}`, { phone: '9000 0201' }, '1')).status, 200);
+  assert.equal((await withVersion(as.editor, 'PATCH', `/people/${pid}`, { phone: '9000 0202' }, '1')).status, 409);
 });

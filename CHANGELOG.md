@@ -4,10 +4,36 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.11.1 — fixes from the v0.11.0 review
+
+- **Archived records stay protected.** Canon now remembers which services have their record in an archive file:
+  - that record is read-only;
+  - nobody can start a second record for the service, delete it or move it to another date;
+  - an archive never holds two records for one service.
+  - To correct one, an administrator brings it back from the archive (logged), and the next archiving files it again.
+  - Archives made by 0.11.0 are linked at start-up. One that already holds two records for a service is flagged.
+- **Erasing visitors' details reaches every copy:**
+  - service records, archive files and the change log;
+  - archiving erases first;
+  - a restored backup is erased again straight away.
+  - Backups keep their copies until they are removed, and Settings says so.
+- **Edit conflicts use a revision number** instead of the time of the last save, so two saves in the same second are no longer missed:
+  - the record page's saves before verifying, signing and finishing are checked too;
+  - a record someone else created meanwhile is caught;
+  - editing the order of service no longer makes a later save of the service details look like a conflict.
+- **Node.js 24 is now required.** 0.11.0 claimed 22.18, which failed in CI.
+- **Clearer about what the numbers mean:**
+  - reports say when a period includes archived years;
+  - new-visitor figures count entries on service records, not different people;
+  - Settings warns when the change log is kept for less time than the archive age.
+- Corrected: fields marked sensitive are hidden from read-only accounts (and from AI agents without personal data); editors and administrators see them.
+- AI agents: `canon_get_service_record` returns `archived_year` and `read_only` for an archived record.
+- Database: 20 → 21.
+
 ## 0.11.0 — hardening
 
 - **Read-only accounts** no longer see members' phone, e-mail, address or notes, and see birthdays as day and month only. Share links and agents acting for read-only users get the same.
-- **Custom member fields** (Settings → Member fields): text, date, yes/no or a choice. A field marked *sensitive* is shown to administrators only. Custom fields are in the member form, filters and the CSV export and import.
+- **Custom member fields** (Settings → Member fields): text, date, yes/no or a choice. A field marked *sensitive* is hidden from read-only accounts, and from AI agents unless personal data is shared; editors and administrators see and edit it. Custom fields are in the member form, filters and the CSV export and import.
 - **Settings → Security & privacy:**
   - a checklist of the church's own security settings;
   - a log of who opened which member's details;

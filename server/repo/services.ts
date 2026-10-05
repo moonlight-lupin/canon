@@ -19,6 +19,7 @@ export const services = table<Service>({
   ],
   json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form'],
   touch: true,
+  revision: true,
 });
 
 export const items = table<ServiceItem>({

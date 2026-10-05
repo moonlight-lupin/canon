@@ -8,11 +8,11 @@ What changed in each version: [CHANGELOG.md](../CHANGELOG.md).
 
 | | Supported |
 |---|---|
-| Node.js | 22.18 or newer; the current LTS (24) is recommended. Older versions are refused at start, with a message. |
+| Node.js | 24 or newer (the current LTS). Older versions are refused at start, with a message. |
 | Database | Any database from an earlier Canon is upgraded. A database from a *newer* Canon is refused unchanged: install that newer Canon again. |
 | Backups | A backup from any earlier Canon can be restored; it is upgraded when restored. |
 
-Tests run on Windows and Linux, on Node.js 22.18 and 24, for every change ([CI](../.github/workflows/ci.yml)).
+Tests run on Windows and Linux, on Node.js 24, for every change ([CI](../.github/workflows/ci.yml)).
 
 ## Windows office PC
 

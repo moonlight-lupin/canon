@@ -52,6 +52,8 @@ export interface Person {
   custom?: Record<string, string>;
   created_at: string;
   updated_at: string;
+  /** how many times it was saved (edit conflicts) */
+  revision?: number;
 }
 
 export type CoworkerCategory = 'pastor' | 'elder' | 'deacon' | 'ministry_staff' | 'admin_staff' | 'lay_leader';
@@ -318,6 +320,8 @@ export interface Service {
   bulletin_template_id: number | null;
   created_at: string;
   updated_at: string;
+  /** how many times it was saved (edit conflicts) */
+  revision?: number;
 }
 
 export type Season = 'advent' | 'christmas' | 'epiphany' | 'lent' | 'holy_week' | 'easter' | 'pentecost' | 'ordinary';

@@ -48,6 +48,7 @@ export function RecordEditor() {
   if (!svc.data || !d) return <div className="page"><Loading /></div>;
   const s = svc.data;
   const restricted = !!d.hidden?.length;
+  const archivedYear = (d as Rec & { archived_year?: number | null }).archived_year ?? null;
   // a verified count is locked for everyone; an administrator reopens it to correct it
   const locked = !!d.verified_at;
   const cur = d.currency;
@@ -69,25 +70,28 @@ export function RecordEditor() {
         // counts of currencies no longer in the offerings are dropped
         foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
       };
+  // the revision this screen started from (0: no record yet), sent with every save so nobody's work is overwritten
+  const base = () => String(rec.data?.saved ? rec.data.revision ?? 0 : 0);
+  const put = () => api.put<Rec>(`/services/${sid}/record`, body(), base());
   const save = () => run(async () => {
-    const r = await api.put<Rec>(`/services/${sid}/record`, body(), rec.data?.saved ? rec.data.updated_at : null);
+    const r = await put();
     rec.setData({ ...r, saved: true });
   }, t('Saved.'));
   const verify = (v: boolean) => {
     if (!v && !confirmAction(t('Reopen this cash count? The offerings can then be changed again.'))) return;
     run(async () => {
-      if (dirty) await api.put(`/services/${sid}/record`, body());
+      if (dirty) await put();
       const r = await api.post<Rec>(`/services/${sid}/record/verify`, { verified: v });
       rec.setData({ ...r, saved: true });
     }, v ? t('Marked as counted and verified.') : t('Reopened.'));
   };
   const finish = () => run(async () => {
-    if (dirty) await api.put(`/services/${sid}/record`, body());
+    if (dirty) await put();
     const r = await api.post<Rec>(`/services/${sid}/record/finish`, {});
     rec.setData({ ...r, saved: true });
   }, t('Signing finished: the count is verified.'));
   const sign = () => run(async () => {
-    if (dirty || !d.saved) await api.put(`/services/${sid}/record`, body());
+    if (dirty || !d.saved) await put();
     const r = await api.post<Rec>(`/services/${sid}/record/sign`, { name: signer, image: ink });
     rec.setData({ ...r, saved: true });
     setSigner('');
@@ -112,6 +116,28 @@ export function RecordEditor() {
     <input type="number" min={0} inputMode="numeric" style={{ width: w }} value={v ?? ''} onChange={(e) => on(e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value))))} />
   );
 
+  if (archivedYear) {
+    return (
+      <div className="page rec-page">
+        <div className="rec-head">
+          <Link className="btn sm ghost" to="/records"><Icon name="chevronLeft" />{t('Service records')}</Link>
+          <h1><Bi v={s.title} /></h1>
+          <span className="muted">{fmtDate(s.date, lang)} · {s.start_time}</span>
+          <CongregationBadge id={s.congregation_id} list={congs} />
+          <div className="grow" />
+          <Link className="btn sm ghost" to={`/services/${sid}`}><Icon name="calendar" />{t('Open the service')}</Link>
+          {isAdmin && d.saved && <HistoryButton entity="service_records" id={d.id} />}
+        </div>
+        <section className="card stack">
+          <h3>{t('Archived')}</h3>
+          <p className="muted" style={{ margin: 0 }}>
+            {t('This record is in the {year} archive, so it is read-only and not counted in reports. Administrators can open the archive, or bring the record back to correct it, under Settings → Security & privacy.').replace('{year}', String(archivedYear))}
+          </p>
+          {isAdmin && <div><Link className="btn sm" to="/settings?tab=security"><Icon name="eye" />{t('Open the archive')}</Link></div>}
+        </section>
+      </div>
+    );
+  }
   return (
     <div className="page rec-page">
       <div className="rec-head">

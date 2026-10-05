@@ -57,7 +57,7 @@ export function SecurityTab() {
 }
 
 interface ArchiveYear { year: number; records: number; changes: number; ai: number; views: number }
-interface ArchiveFile extends ArchiveYear { name: string; size: number }
+interface ArchiveFile extends ArchiveYear { name: string; size: number; duplicates?: number }
 
 /** How long visitors' details are kept; archiving old years; the archive files. */
 function KeepingCard({ onChanged }: { onChanged: () => void }) {
@@ -88,7 +88,7 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
     <section className="card stack">
       <h3>{t('Keeping and archiving')} <InfoTip text={t('Personal data should be kept only as long as it is needed, and old records can move out of the live database into one read-only file per year. Archive files are copied with every backup.')} /></h3>
       <div className="row" style={{ gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <Field label={<>{t('Erase visitors’ contact details after')} <InfoTip text={t('Phone or e-mail, prayer request, how they described themselves and notes are erased from service records this many months after the service. Names, how they came and follow-up stay, so reports still count them.')} /></>}>
+        <Field label={<>{t('Erase visitors’ contact details after')} <InfoTip text={t('Phone or e-mail, prayer request, how they described themselves and notes are erased this many months after the service: from service records, archive files and the change log. Names, how they came and follow-up stay, so reports still count them. Backups keep their copies until they are removed (Settings → Backups → keep the newest).')} /></>}>
           <select value={r.visitor_contact_months} onChange={(e) => save({ visitor_contact_months: Number(e.target.value) })} disabled={busy}>
             {[6, 12, 18, 24, 36, 60].map((m) => <option key={m} value={m}>{t('{n} months').replace('{n}', String(m))}</option>)}
             <option value={0}>{t('Never (keep)')}</option>
@@ -102,6 +102,11 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
         </Field>
         <button className="btn" onClick={check} disabled={busy || !r.archive_years}>{t('Check what can be archived')}</button>
       </div>
+      {!!r.archive_years && !!r.change_log_months && r.change_log_months < r.archive_years * 12 && (
+        <div className="callout small">
+          {t('The change log keeps {m} months, so its entries are removed before they are old enough to archive: archives will hold service records, not their history. To archive the history too, keep the change log longer (Settings → Change log).').replace('{m}', String(r.change_log_months))}
+        </div>
+      )}
       {preview && (
         <div className="callout small">
           {!preview.length ? t('Nothing to archive yet.') : (
@@ -119,7 +124,7 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
           <tbody>
             {files.data!.map((f) => (
               <tr key={f.year}>
-                <td><strong>{f.year}</strong></td><td className="right">{f.records}</td><td className="right">{f.changes}</td><td className="right">{(f.size / 1e6).toFixed(1)} MB</td>
+                <td><strong>{f.year}</strong>{(f.duplicates ?? 0) > 0 && <> <span className="badge warn" title={t('Archived by Canon 0.11.0: download the archive and compare the records before bringing one back.')}>{t('{n} services with two records').replace('{n}', String(f.duplicates))}</span></>}</td><td className="right">{f.records}</td><td className="right">{f.changes}</td><td className="right">{(f.size / 1e6).toFixed(1)} MB</td>
                 <td className="right nowrap">
                   <button className="btn sm" onClick={() => setOpen(f.year)}><Icon name="eye" />{t('Open')}</button>{' '}
                   <a className="btn sm ghost" href={`/api/archives/${f.year}/download`}><Icon name="download" />{t('Download')}</a>
@@ -129,14 +134,23 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
           </tbody>
         </table>
       )}
-      {open != null && <ArchiveViewer year={open} onClose={() => setOpen(null)} />}
+      {open != null && <ArchiveViewer year={open} onClose={() => setOpen(null)} onChanged={() => files.reload()} />}
     </section>
   );
 }
 
 /** One archived year, read-only: its service records and its change log. */
-function ArchiveViewer({ year, onClose }: { year: number; onClose: () => void }) {
+function ArchiveViewer({ year, onClose, onChanged }: { year: number; onClose: () => void; onChanged: () => void }) {
   const { t, lang } = useI18n();
+  const { run, busy } = useAction();
+  const bringBack = (serviceId: number) => {
+    if (!confirmAction(t('Bring this record back into Canon to correct it? It leaves the archive until the next archiving, and the change is logged.'))) return;
+    run(async () => {
+      await api.post(`/archives/${year}/records/${serviceId}/restore`, {});
+      recs.reload();
+      onChanged();
+    }, t('Brought back: it can be corrected on Service records.'));
+  };
   const [view, setView] = useState<'records' | 'changes'>('records');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -151,11 +165,11 @@ function ArchiveViewer({ year, onClose }: { year: number; onClose: () => void })
             <table className="t">
               <thead><tr><th>{t('Date')}</th><th>{t('Service')}</th><th className="right">{t('Attendance')}</th><th className="right">{t('New visitors')}</th><th className="right">{t('Offerings')}</th><th /></tr></thead>
               <tbody>
-                {recs.data.map((r) => (
-                  <tr key={r.service_id}>
+                {recs.data.map((r, i) => (
+                  <tr key={`${r.service_id}-${i}`}>
                     <td className="nowrap">{fmtDate(r.date, lang)}</td><td><Bi v={r.title} /></td><td className="right">{r.attendance ?? '—'}</td><td className="right">{r.visitors || ''}</td>
                     <td className="right nowrap">{Object.entries(r.totals).map(([c, v]) => money(v, c, true)).join(' · ')}</td>
-                    <td>{r.verified && <span className="badge ok">{t('Verified')}</span>}</td>
+                    <td className="nowrap">{r.verified && <span className="badge ok">{t('Verified')}</span>} <button className="btn sm ghost" disabled={busy} onClick={() => bringBack(r.service_id)} title={t('Bring this record back into Canon to correct it')}>{t('Bring back')}</button></td>
                   </tr>
                 ))}
               </tbody>

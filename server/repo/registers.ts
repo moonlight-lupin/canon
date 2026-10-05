@@ -14,6 +14,7 @@ export const people = table<Person>({
   ],
   json: ['honorific', 'custom'],
   touch: true,
+  revision: true,
 });
 
 export const households = table<Household>({ name: 'households', cols: ['name', 'address', 'phone', 'notes'] });

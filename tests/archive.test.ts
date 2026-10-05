@@ -18,6 +18,8 @@ const svc = await import('../server/repo/services.ts');
 const rec = await import('../server/repo/records.ts');
 const A = await import('../server/repo/archive.ts');
 const { db, get, run } = await import('../server/db.ts');
+const S = await import('../server/repo/settings.ts');
+const { DatabaseSync } = await import('node:sqlite');
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Session = { cookie: string; csrf: string };
@@ -67,11 +69,11 @@ after(async () => {
 
 test('visitors\' contact details, prayer requests and notes are erased after the set months; names stay', () => {
   const n = A.eraseVisitorContacts(24, new Date('2026-10-05'));
-  assert.equal(n, 2, '2018 and 2019, not last week');
+  assert.equal(n.visitors, 2, '2018 and 2019, not last week');
   const old = rec.recordFor(ids.y2018).visitors[0];
   assert.deepEqual(old, { name: 'Old Visitor', source: 'Friend' });
   assert.equal(rec.recordFor(ids.recent).visitors[0].contact, '9000 0077');
-  assert.equal(A.eraseVisitorContacts(0), 0, '0 = keep');
+  assert.deepEqual(A.eraseVisitorContacts(0), { visitors: 0, log: 0 }, '0 = keep');
 });
 
 test('archiving: preview, then each old year in its own file; services stay; nothing archived twice', async () => {
@@ -111,4 +113,109 @@ test('archives can be listed, read and downloaded (administrators), and go along
   assert.equal(A.copyArchivesTo(backups), 2);
   assert.ok(fs.existsSync(path.join(backups, 'archives', 'canon-archive-2019.db')));
   assert.equal(A.copyArchivesTo(backups), 0, 'unchanged files are not copied again');
+});
+
+test('an archived record is read-only: no new record, no deleting or moving the service; an administrator can bring it back', async () => {
+  const sid = ids.y2018;
+  assert.equal(rec.recordFor(sid).archived_year, 2018);
+  const put = await call(as.editor, 'PUT', `/services/${sid}/record`, { attendance: 99 });
+  assert.equal(put.status, 409, 'no second record for an archived service');
+  assert.match(put.json!.error, /2018 archive/);
+  assert.equal((await call(as.editor, 'DELETE', `/services/${sid}`)).status, 409, 'the service stays');
+  assert.equal((await call(as.editor, 'PATCH', `/services/${sid}`, { date: '2025-01-05' })).status, 409, 'nor moves to another year');
+  assert.equal((await call(as.editor, 'PATCH', `/services/${sid}`, { preacher: 'Rev. Test' })).status, 200, 'other details can change');
+  const row = (await call(as.editor, 'GET', '/records?from=2018-01-01&to=2018-12-31')).json!.find((r: Json) => r.service_id === sid);
+  assert.equal(row.archived_year, 2018);
+
+  // archiving again adds nothing twice
+  A.runArchive(false, 5);
+  assert.equal(A.listArchives().find((a) => a.year === 2018)!.records, 1);
+
+  // the correction process: bring it back, correct it, archive again
+  assert.equal((await call(as.editor, 'POST', `/archives/2018/records/${sid}/restore`, {})).status, 403);
+  const back = await call(as.admin, 'POST', `/archives/2018/records/${sid}/restore`, {});
+  assert.equal(back.status, 200, back.text);
+  assert.equal(rec.recordFor(sid).saved, true);
+  assert.equal(rec.recordFor(sid).attendance, 50);
+  assert.equal(A.listArchives().find((a) => a.year === 2018)!.records, 0);
+  assert.equal((await call(as.editor, 'PUT', `/services/${sid}/record`, { attendance: 51 })).status, 200, 'now it can be corrected');
+  assert.ok(get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE summary LIKE 'Brought the service record%'")!.n >= 1, 'logged');
+  A.runArchive(false, 5);
+  assert.equal(A.listArchives().find((a) => a.year === 2018)!.records, 1);
+  assert.equal(rec.recordFor(sid).archived_year, 2018);
+  assert.equal(A.archivedRecords(2018)[0].attendance, 51, 'the corrected record is the one archived');
+});
+
+test('a record restored from an older backup, also in an archive: the same one is not archived twice; a different one stops archiving', () => {
+  const sid = ids.y2019;
+  assert.equal(A.archivedRecords(2019)[0].service_id, sid);
+  // as if a backup from before archiving was restored: the live record is back, the archive marker is not
+  const d = new DatabaseSync(A.archivePath(2019), { readOnly: true });
+  const archived = d.prepare('SELECT * FROM service_records WHERE service_id = ?').get(sid) as Record<string, string | number | null>;
+  d.close();
+  run('DELETE FROM archived_records WHERE service_id = ?', sid);
+  const cols = Object.keys(archived);
+  run(`INSERT INTO service_records (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, ...cols.map((c) => archived[c]));
+  A.runArchive(false, 5);
+  assert.equal(A.listArchives().find((a) => a.year === 2019)!.records, 1, 'the same record: not archived twice');
+  assert.equal(rec.recordFor(sid).archived_year, 2019);
+
+  // a different record for the same service: archiving stops and says why
+  run('DELETE FROM archived_records WHERE service_id = ?', sid);
+  run("INSERT INTO service_records (service_id, attendance, updated_at) VALUES (?, 7, '2026-01-01 00:00:00')", sid);
+  assert.throws(() => A.runArchive(false, 5), /already has a different record/);
+  assert.equal(A.listArchives().find((a) => a.year === 2019)!.records, 1, 'nothing archived');
+  run('DELETE FROM service_records WHERE service_id = ?', sid);
+  // archives made by 0.11.0 (no markers): linked again
+  assert.equal(A.syncArchiveIndex(), 1);
+  assert.equal(rec.recordFor(sid).archived_year, 2019);
+});
+
+test("erasing visitors' details also reaches archive files and the change log; archiving erases first", async () => {
+  const visitor = { name: 'Late Visitor', contact: '9000 0088', prayer: 'a prayer', source: 'Friend' };
+  const inArchive = (year: number, sid: number) => {
+    const d = new DatabaseSync(A.archivePath(year), { readOnly: true });
+    try {
+      return (d.prepare('SELECT visitors FROM service_records WHERE service_id = ?').get(sid) as { visitors: string }).visitors;
+    } finally {
+      d.close();
+    }
+  };
+  // erasing off: a 2017 record with contact details reaches the archive, and the change log keeps a copy
+  S.updateSettings({ retention: { ...S.getSettings().retention, visitor_contact_months: 0 } });
+  const s17 = svc.createService({ date: '2017-06-04', title: { en: 'Test 2017' } }).service.id;
+  assert.equal((await call(as.editor, 'PUT', `/services/${s17}/record`, { attendance: 30, visitors: [visitor] })).status, 200);
+  assert.ok(get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE entity = 'service_records' AND changes LIKE '%9000 0088%'")!.n >= 1);
+  A.runArchive(false, 5);
+  assert.match(inArchive(2017, s17), /9000 0088/);
+  // now erase: the archive file and the change log lose the details; the name stays
+  S.updateSettings({ retention: { ...S.getSettings().retention, visitor_contact_months: 24 } });
+  const n = A.eraseVisitorContacts(24);
+  assert.ok(n.visitors >= 1 && n.log >= 1, JSON.stringify(n));
+  assert.doesNotMatch(inArchive(2017, s17), /9000 0088|a prayer/);
+  assert.match(inArchive(2017, s17), /Late Visitor/);
+  assert.equal(get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE changes LIKE '%9000 0088%'")!.n, 0, 'no copy left in the change log');
+
+  // erasing on: archiving erases first, so the details never reach the archive
+  const s16 = svc.createService({ date: '2016-03-06', title: { en: 'Test 2016' } }).service.id;
+  rec.saveRecord(s16, { attendance: 20, visitors: [{ ...visitor, contact: '9000 0099' }] }, editor);
+  A.runArchive(false, 5);
+  assert.doesNotMatch(inArchive(2016, s16), /9000 0099/);
+  assert.match(inArchive(2016, s16), /Late Visitor/);
+});
+
+test('a record archived by an older Canon (fewer columns) can be brought back and archived again', () => {
+  const s15 = svc.createService({ date: '2015-05-03', title: { en: 'Test 2015' } }).service.id;
+  rec.saveRecord(s15, { attendance: 15 }, editor);
+  A.runArchive(false, 5);
+  // as 0.11.0 left it: no revision column in the archive
+  const d = new DatabaseSync(A.archivePath(2015));
+  d.exec('ALTER TABLE service_records DROP COLUMN revision');
+  d.close();
+  assert.deepEqual(A.restoreArchivedRecord(2015, s15), { restored: true, service_id: s15 });
+  const back = rec.recordFor(s15);
+  assert.equal(back.attendance, 15);
+  assert.equal(typeof back.revision, 'number');
+  A.runArchive(false, 5);
+  assert.equal(rec.recordFor(s15).archived_year, 2015);
 });

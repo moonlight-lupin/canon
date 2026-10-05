@@ -20,6 +20,7 @@ interface Row {
   title: L10n;
   congregation_id: number | null;
   recorded: boolean;
+  archived_year?: number | null;
   attendance: number | null;
   children: number | null;
   online: number | null;
@@ -90,7 +91,7 @@ export default function Records() {
                       <td className="right">{r.visitors || ''}</td>
                       {seeMoney && <td className="right nowrap">{r.offering_total ? money(r.offering_total, r.currency) : ''}{(r.other_currencies ?? []).map((o) => <div key={o.currency} className="small muted">+ {money(o.total, o.currency, true)}</div>)}</td>}
                       {seeMoney && <td>{r.verified ? <span className="badge ok"><Icon name="check" width={12} height={12} />{t('Verified')}</span> : (r.offering_total ?? 0) > 0 ? <span className="badge warn">{t('Not verified')}</span> : null}</td>}
-                      <td className="right">{(r.pending_cards ?? 0) > 0 && <span className="badge warn" title={t('Visitor cards to review')}>{r.pending_cards} {t('to review')}</span>} {r.has_notes && <Icon name="text" width={14} height={14} />}{!r.recorded && canEdit && <span className="small muted">{t('Not recorded')}</span>}</td>
+                      <td className="right">{(r.pending_cards ?? 0) > 0 && <span className="badge warn" title={t('Visitor cards to review')}>{r.pending_cards} {t('to review')}</span>} {r.has_notes && <Icon name="text" width={14} height={14} />}{r.archived_year ? <span className="badge" title={t('Read-only: open it from Settings → Security & privacy')}>{t('Archived')} {r.archived_year}</span> : !r.recorded && canEdit && <span className="small muted">{t('Not recorded')}</span>}</td>
                     </tr>
                   ))}
                 </tbody>

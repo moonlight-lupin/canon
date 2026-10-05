@@ -82,6 +82,8 @@ export interface ServiceRecord {
   /** the day the cash was counted, YYYY-MM-DD (null = the service date) */
   counted_on: string | null;
   updated_at: string;
+  /** how many times it was saved (edit conflicts) */
+  revision?: number;
 }
 
 /** Notes and coins per currency, largest first, in minor units. */

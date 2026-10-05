@@ -7,6 +7,7 @@ import { MAX_SERVICE_LANGS } from '../../shared/languages.ts';
 import { requireAdmin } from '../auth.ts';
 import * as svc from '../repo/services.ts';
 import * as rec from '../repo/records.ts';
+import { Conflict } from '../lib/table.ts';
 import { assertFresh } from '../lib/versions.ts';
 import { cleanRef } from '../repo/refs.ts';
 import { renderService } from '../repo/render.ts';
@@ -62,6 +63,9 @@ serviceRoutes.patch('/services/:id', h((req) => {
   const sid = id(req);
   assertFresh(req, svc.services.get(sid), 'services', sid);
   const b = S.ServiceInput.partial().parse(req.body);
+  // a service whose record is in an archive file keeps its date (the archive is filed by year)
+  const year = b.date !== undefined && b.date !== svc.services.get(sid).date ? rec.archivedYear(sid) : null;
+  if (year) throw new Conflict(`This service's record is in the ${year} archive, so its date can't be changed.`);
   return svc.services.update(sid, { ...b, ...(b.ref !== undefined ? { ref: cleanRef('service', b.ref, sid) } : {}) });
 }));
 serviceRoutes.delete('/services/:id', h((req) => {

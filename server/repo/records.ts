@@ -3,6 +3,8 @@
 // added, e.g. a transfer received later): an administrator reopens the count to correct the cash, and it is verified
 // again. A service with a record cannot be deleted (the record would go with it).
 // Every change goes to the change log (table() logs it with the person who made it).
+// A record moved to an archive file (repo/archive.ts) is read-only: archived_records remembers which services have
+// one, so a new record can't be started for them and the service can't be deleted or moved to another date.
 import type { ServiceRecord } from '../../shared/records.ts';
 import { DENOMINATIONS, OFFERING_METHODS, cashKey, cashTotal, countProblems, foreignCurrencies, methodTotal, money } from '../../shared/records.ts';
 import type { Signature } from '../../shared/records.ts';
@@ -17,6 +19,7 @@ export const records = table<ServiceRecord>({
   cols: ['service_id', 'attendance', 'children', 'online', 'visitors', 'notes', 'offerings', 'cash', 'counters', 'currency', 'verified_at', 'verified_by', 'foreign_cash', 'signatures', 'counted_on'],
   json: ['visitors', 'offerings', 'cash', 'counters', 'foreign_cash', 'signatures'],
   touch: true,
+  revision: true,
   log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
 });
 
@@ -26,11 +29,22 @@ const blank = (serviceId: number): Omit<ServiceRecord, 'id' | 'updated_at'> => (
   foreign_cash: {}, signatures: [], counted_on: null,
 });
 
-/** The record of a service (an empty one, not yet saved, when nothing was entered). */
-export function recordFor(serviceId: number): ServiceRecord & { saved: boolean } {
+/** The year of the archive file a service's record was moved to, or null. */
+export const archivedYear = (serviceId: number) => get<{ year: number }>('SELECT year FROM archived_records WHERE service_id = ?', serviceId)?.year ?? null;
+
+/** Refuse to change a record that is in an archive file. */
+export function assertNotArchived(serviceId: number) {
+  const year = archivedYear(serviceId);
+  if (year) {
+    throw new Conflict(`This service's record is in the ${year} archive, so it is read-only. To correct it, an administrator brings it back from the archive first (Settings → Security & privacy → Archive ${year}).`);
+  }
+}
+
+/** The record of a service (an empty one, not yet saved, when nothing was entered; read-only when archived). */
+export function recordFor(serviceId: number): ServiceRecord & { saved: boolean; archived_year: number | null } {
   services.get(serviceId);
   const r = records.list('service_id = ?', [serviceId])[0];
-  return r ? { ...r, saved: true } : { id: 0, updated_at: '', ...blank(serviceId), saved: false };
+  return r ? { ...r, saved: true, archived_year: null } : { id: 0, updated_at: '', revision: 0, ...blank(serviceId), saved: false, archived_year: archivedYear(serviceId) };
 }
 
 /** Fields locked once the count is verified (what the declaration attests). */
@@ -43,6 +57,7 @@ export const signingMode = () => (getSettings().offering.signing === 'screen' ? 
 
 /** Save part of a service's record. Money is locked once verified, except for administrators. */
 export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who: { name: string; admin: boolean }): ServiceRecord {
+  assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   // compare what is sent with what is stored: an unchanged copy of the money (the editor sends the whole record) is fine
   const sentMoney = Object.fromEntries(MONEY_FIELDS.filter((k) => patch[k] !== undefined).map((k) => [k, patch[k]]));
@@ -65,7 +80,7 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
   for (const l of patch.offerings ?? []) {
     if (l.currency && !/^[A-Z]{3}$/.test(l.currency)) throw new BadRequest(`"${l.currency}" is not a currency code (three capital letters, e.g. USD)`);
   }
-  const { id: _i, service_id: _s, saved: _v, updated_at: _u, verified_at: _va, verified_by: _vb, signatures: _sg, ...rest } = patch as ServiceRecord & { saved?: boolean };
+  const { id: _i, service_id: _s, saved: _v, updated_at: _u, verified_at: _va, verified_by: _vb, signatures: _sg, revision: _r, archived_year: _ay, ...rest } = patch as ServiceRecord & { saved?: boolean; archived_year?: unknown };
   // drop fields sent unchanged (an editor's screen sends the whole record)
   for (const k of MONEY_FIELDS) if (k in rest && JSON.stringify((rest as Record<string, unknown>)[k]) === JSON.stringify(cur[k] ?? null)) delete (rest as Record<string, unknown>)[k];
   // signatures belong to one exact count: when the cash changes they no longer apply (a verified count cannot change, above)
@@ -75,6 +90,7 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
 
 /** Mark the cash count as counted and verified (or undo that, administrators only). */
 export function setVerified(serviceId: number, verified: boolean, who: { name: string; admin: boolean }): ServiceRecord {
+  assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (!cur.saved) throw new BadRequest('Enter the offerings first.');
   if (!verified) {
@@ -103,6 +119,7 @@ function checkCount(r: ServiceRecord) {
  */
 export function sign(serviceId: number, input: { name: string; image: string }, who: { name: string; admin: boolean }): ServiceRecord {
   if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper (Currency and funds → Signing).');
+  assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (!cur.saved || !cur.offerings.length) throw new BadRequest('Enter the offerings first.');
   if (cur.verified_at) throw new BadRequest('The cash count is already verified.');
@@ -119,6 +136,7 @@ export function sign(serviceId: number, input: { name: string; image: string }, 
 /** Everyone has signed: verify the count (at least the church's minimum number of signatures, for this exact count). */
 export function finishSigning(serviceId: number, who: { name: string; admin: boolean }): ServiceRecord {
   if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper.');
+  assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (!cur.saved) throw new BadRequest('Enter the offerings first.');
   if (cur.verified_at) throw new BadRequest('The cash count is already verified.');
@@ -133,6 +151,7 @@ export function finishSigning(serviceId: number, who: { name: string; admin: boo
 
 /** Remove a signature (before the count is verified, or by an administrator — which reopens the count). */
 export function unsign(serviceId: number, name: string, who: { name: string; admin: boolean }): ServiceRecord {
+  assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (cur.verified_at && !who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can remove a signature.');
   const next = (cur.signatures ?? []).filter((s) => s.name !== name);
@@ -142,6 +161,8 @@ export function unsign(serviceId: number, name: string, who: { name: string; adm
 
 /** Refuse to delete a service that has a record: deleting the service would take its attendance and money with it. */
 export function assertServiceDeletable(serviceId: number) {
+  const year = archivedYear(serviceId);
+  if (year) throw new Conflict(`This service's record is in the ${year} archive, so the service cannot be deleted.`);
   if (records.list('service_id = ?', [serviceId]).length) {
     throw new Conflict('This service has a service record (attendance, visitors or offerings), so it cannot be deleted. If the record was entered by mistake, an administrator can delete it first on the record page.');
   }
@@ -150,6 +171,7 @@ export function assertServiceDeletable(serviceId: number) {
 /** Delete a service's record (administrators; a verified count must be reopened first). Logged in full. */
 export function deleteRecord(serviceId: number, who: { admin: boolean }) {
   if (!who.admin) throw new Forbidden('Only an administrator can delete a service record.');
+  assertNotArchived(serviceId);
   const cur = recordFor(serviceId);
   if (!cur.saved) return { deleted: false };
   if (cur.verified_at) throw new Conflict('The cash count has been verified. Reopen it first if the record really has to be deleted.');
@@ -179,9 +201,9 @@ export function listRecords(q: RecordsQuery) {
     where.push('s.congregation_id = ?');
     params.push(q.congregation_id);
   }
-  const rows = all<{ id: number; date: string; start_time: string; title: string; congregation_id: number | null; record_id: number | null }>(
-    `SELECT s.id, s.date, s.start_time, s.title, s.congregation_id, r.id AS record_id FROM services s
-     LEFT JOIN service_records r ON r.service_id = s.id WHERE ${where.join(' AND ')} ORDER BY s.date DESC, s.start_time DESC LIMIT 400`,
+  const rows = all<{ id: number; date: string; start_time: string; title: string; congregation_id: number | null; record_id: number | null; archived_year: number | null }>(
+    `SELECT s.id, s.date, s.start_time, s.title, s.congregation_id, r.id AS record_id, a.year AS archived_year FROM services s
+     LEFT JOIN service_records r ON r.service_id = s.id LEFT JOIN archived_records a ON a.service_id = s.id WHERE ${where.join(' AND ')} ORDER BY s.date DESC, s.start_time DESC LIMIT 400`,
     ...params,
   );
   const cardsWaiting = new Map(all<{ service_id: number; n: number }>('SELECT service_id, COUNT(*) AS n FROM visitor_cards GROUP BY service_id').map((r) => [r.service_id, r.n]));
@@ -191,6 +213,7 @@ export function listRecords(q: RecordsQuery) {
     return {
       service_id: s.id, date: s.date, start_time: s.start_time, title: JSON.parse(s.title), congregation_id: s.congregation_id,
       recorded: !!r,
+      archived_year: s.archived_year,
       attendance: r?.attendance ?? null, children: r?.children ?? null, online: r?.online ?? null,
       visitors: r?.visitors.length ?? 0,
       offering_total: r ? methodTotal(r.offerings, undefined, r.currency, r.currency) : null,
@@ -208,7 +231,8 @@ export function listRecords(q: RecordsQuery) {
 export function forViewer(r: ServiceRecord & { saved?: boolean }) {
   // built from an allowlist: a field added to records later stays hidden from viewers until it is listed here
   return {
-    id: r.id, service_id: r.service_id, saved: r.saved, updated_at: r.updated_at,
+    id: r.id, service_id: r.service_id, saved: r.saved, updated_at: r.updated_at, revision: r.revision,
+    archived_year: (r as { archived_year?: number | null }).archived_year ?? null,
     attendance: r.attendance, children: r.children, online: r.online, notes: r.notes,
     visitors: r.visitors.map((v) => ({ name: v.name, source: v.source, status: v.status })),
     currency: r.currency, offerings: [], cash: {}, counters: [], foreign_cash: {}, signatures: [], verified_at: null, verified_by: null,
@@ -219,7 +243,7 @@ export function forViewer(r: ServiceRecord & { saved?: boolean }) {
 /** A list row for a viewer: the same allowlist idea (no money of any currency). */
 export const listRowForViewer = (r: ReturnType<typeof listRecords>[number]) => ({
   service_id: r.service_id, date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
-  recorded: r.recorded, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors, has_notes: r.has_notes,
+  recorded: r.recorded, archived_year: r.archived_year, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors, has_notes: r.has_notes,
   currency: r.currency, offering_total: null, cash_counted: null, other_currencies: [], verified: false, pending_cards: 0,
 });
 

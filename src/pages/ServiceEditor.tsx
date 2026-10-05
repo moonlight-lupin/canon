@@ -79,21 +79,22 @@ export default function ServiceEditor() {
   }, [setSvc, flush]);
 
   // the Bulletin tab saves the weekly sections itself; keep the loaded service in step
-  const onBulletinContent = useCallback((c: ServiceFull['bulletin_content'], updatedAt?: string) => {
-    if (updatedAt) version.current = updatedAt;
-    setSvc((s) => (s ? { ...s, bulletin_content: c, ...(updatedAt ? { updated_at: updatedAt } : {}) } : s));
+  const onBulletinContent = useCallback((c: ServiceFull['bulletin_content'], revision?: number) => {
+    if (revision != null) version.current = String(revision);
+    setSvc((s) => (s ? { ...s, bulletin_content: c, ...(revision != null ? { revision } : {}) } : s));
   }, [setSvc]);
 
-  // the version of the service row this page has; own saves move it on, so only someone else's change conflicts
+  // the revision of the service's details this page has; own saves move it on, so only someone else's change
+  // conflicts (editing items, the team or the share link does not change it)
   const version = useRef<string | null>(null);
   useEffect(() => {
-    if (svc?.updated_at && !version.current) version.current = svc.updated_at;
-  }, [svc?.updated_at]);
+    if (svc?.revision != null && version.current == null) version.current = String(svc.revision);
+  }, [svc?.revision]);
   const patchService = useCallback(async (patch: Partial<ServiceFull>, check = false) => {
     const r = await run(() => api.patch<ServiceFull>(`/services/${sid}`, patch, check ? version.current : null));
     if (r) {
-      version.current = r.updated_at;
-      setSvc((s) => (s ? { ...s, ...patch, updated_at: r.updated_at } : s));
+      version.current = String(r.revision ?? '');
+      setSvc((s) => (s ? { ...s, ...patch, updated_at: r.updated_at, revision: r.revision } : s));
     }
   }, [setSvc, run, sid]);
 

@@ -4,7 +4,7 @@
 // month's offerings print as a one-page summary for the treasurer.
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { qs } from '../api.ts';
+import { qs, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { PageHead, Seg, fmtDate, today, useSession } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
@@ -54,10 +54,13 @@ export default function Reports() {
   const kind = (tabs.find((x) => x.kind === params.get('tab'))?.kind ?? 'attendance') as ReportKind;
   const [preset, setPreset] = useState<Preset>('12m');
   const [custom, setCustom] = useState<[string, string]>(() => presetRange('12m'));
+  const archived = useApi<{ years: number[] }>('/reports/archived-years');
   const [from, to] = preset === 'custom' ? custom : presetRange(preset);
   const [cong, setCong, congs] = useCongregationFilter('reports');
   const q = qs({ from, to, congregation: cong });
   const ctx: Ctx = { q, from, to, cong, congs };
+  // years in archive files that this period touches: reports read the live records only
+  const archivedIn = (archived.data?.years ?? []).filter((y) => String(y) >= from.slice(0, 4) && String(y) <= to.slice(0, 4));
 
   return (
     <div className="page rep-page">
@@ -86,6 +89,11 @@ export default function Reports() {
         </div>
       </div>
       <p className="rep-period">{fmtDate(from, lang)} – {fmtDate(to, lang)}</p>
+      {archivedIn.length > 0 && (
+        <div className="callout small no-print">
+          {t('Records from {years} are in archive files and are not included here. Administrators can open them under Settings → Security & privacy.').replace('{years}', archivedIn.join(', '))}
+        </div>
+      )}
       {kind === 'attendance' && <AttendanceTab {...ctx} />}
       {kind === 'offerings' && canEdit && <OfferingsTab {...ctx} />}
       {kind === 'visitors' && <VisitorsTab {...ctx} />}

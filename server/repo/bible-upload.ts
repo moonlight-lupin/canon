@@ -303,9 +303,10 @@ export function translationUsage(code: string) {
   const default_for = Object.keys(bibles).filter((l) => bibles[l] === code);
   const services = get<{ n: number }>(
     `SELECT COUNT(DISTINCT s.id) n FROM services s
-     WHERE EXISTS (SELECT 1 FROM json_each(s.bibles) WHERE value = ?1)
-        OR EXISTS (SELECT 1 FROM service_items i, json_each(i.bibles) j WHERE i.service_id = s.id AND j.value = ?1)`,
-    code,
+     WHERE EXISTS (SELECT 1 FROM json_each(s.bibles) WHERE value = ?)
+        OR EXISTS (SELECT 1 FROM service_items i, json_each(i.bibles) j WHERE i.service_id = s.id AND j.value = ?)`,
+    // two plain placeholders (a repeated ?1 with one value was refused by older node:sqlite)
+    code, code,
   )!.n;
   return { default_for, services };
 }

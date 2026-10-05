@@ -21,7 +21,7 @@ export function VisitorsTab({ q, congs }: Ctx) {
   return (
     <>
       <div className="rep-stats">
-        <Stat label={t('New visitors')} value={total} />
+        <Stat label={t('New visitors')} value={total} tip={t('Counted as entries on service records: someone who came twice and was entered twice counts twice. Canon does not link visitors across services, so these are not numbers of different people.')} />
         <Stat label={t('Contacted')} value={r.funnel.contacted} sub={pct(r.funnel.contacted, total)} />
         <Stat label={t('Came back')} value={r.funnel.returning} sub={pct(r.funnel.returning, total)} />
         <Stat label={t('Joined the church')} value={r.funnel.joined} sub={pct(r.funnel.joined, total)} />
@@ -29,7 +29,7 @@ export function VisitorsTab({ q, congs }: Ctx) {
       {!total ? <div className="card"><Empty title={t('No new visitors recorded in this period')} /></div> : (
         <>
           <div className="rep-grid">
-            <Section title={t('Follow-up')} tip={t('Set each visitor’s follow-up on the service record: Contacted, Came back, Joined the church. A visitor who joined is counted in every step before it.')}>
+            <Section title={t('Follow-up')} tip={t('Set each visitor’s follow-up on the service record: Contacted, Came back, Joined the church. A visitor who joined is counted in every step before it. Each step counts visitor entries on service records, not different people.')}>
               <Bars items={(['new', 'contacted', 'returning', 'joined'] as VisitorStatus[]).map((s) => ({ key: s, label: t(VISITOR_STATUS_LABEL[s]), value: r.funnel[s], note: pct(r.funnel[s], total) }))} />
             </Section>
             {(r.abouts?.length ?? 0) > 0 && (
