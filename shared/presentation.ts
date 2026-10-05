@@ -803,6 +803,9 @@ export const backgroundUrl = (id: number, version: string) => `/api/assets/slide
 export const blockImageUrl = (id: number, version: string) => `/api/assets/${blockImageKey(id)}?v=${encodeURIComponent(version)}`;
 /** The block's QR code as SVG (PNG with `.png`); `v` busts the cache when the block changes. */
 export const blockQrUrl = (id: number, version: string, ext: 'svg' | 'png' = 'svg') => `/api/bulletin-blocks/${id}/qr.${ext}?v=${encodeURIComponent(version)}`;
+/** The QR image of a block; blocks Canon adds itself (negative ids, e.g. the visitor form) are drawn from their value. */
+export const blockQrSrc = (id: number, version: string, value?: string) =>
+  id < 0 ? `/api/bulletin-blocks/qr.svg?text=${encodeURIComponent(value ?? '')}` : blockQrUrl(id, version);
 /** A QR code for any text (live preview while typing, downloads). */
 export const qrPreviewUrl = (text: string, ext: 'svg' | 'png' = 'svg', download = false) =>
   `/api/bulletin-blocks/qr.${ext}?text=${encodeURIComponent(text)}${download ? '&download=1' : ''}`;

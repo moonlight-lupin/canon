@@ -32,6 +32,7 @@ import { InfoTip } from '../components/InfoTip.tsx';
 import { Combo, type ComboOption } from '../components/Combo.tsx';
 import { CongregationField } from '../components/Congregations.tsx';
 import { ServiceBulletinTab } from './ServiceBulletinTab.tsx';
+import { VisitorFormPanel } from './VisitorForm.tsx';
 import type { BulletinBlock } from '../../shared/presentation.ts';
 import { BibleSelect, useBibles, useChurchBible } from '../components/BibleTools.tsx';
 
@@ -80,7 +81,7 @@ export default function ServiceEditor() {
   /** a library item being dragged from the panel, and the agenda item it would land before */
   const [libDrag, setLibDrag] = useState<{ label: string; item: Partial<ServiceItem> } | null>(null);
   const [dropBefore, setDropBefore] = useState<number | 'end' | null>(null);
-  const [tab, setTab] = useState<'order' | 'team' | 'bulletin'>('order');
+  const [tab, setTab] = useState<'order' | 'team' | 'bulletin' | 'visitors'>('order');
   const [showDetails, setShowDetails] = useState(false);
   const [dialog, setDialog] = useState<null | 'duplicate' | 'template'>(null);
 
@@ -316,6 +317,7 @@ export default function ServiceEditor() {
           {t('Team & roster')} <span className="badge" style={{ marginLeft: 4 }}>{svc.assignments.filter((a) => a.status !== 'declined').length}</span>
         </button>
         <button className={tab === 'bulletin' ? 'on' : ''} onClick={() => setTab('bulletin')}>{t('Bulletin')}</button>
+        <button className={tab === 'visitors' ? 'on' : ''} onClick={() => setTab('visitors')}>{t('Visitor form')}</button>
         <div className="grow" />
         <button onClick={() => setShowDetails((s) => !s)}><Icon name="edit" style={{ width: 14, height: 14, verticalAlign: -2, marginRight: 4 }} />{t('Edit')}…</button>
       </div>
@@ -411,6 +413,8 @@ export default function ServiceEditor() {
           {libDrag && <div className="drag-chip"><Icon name="plus" width={14} height={14} />{libDrag.label}</div>}
         </DragOverlay>
         </DndContext>
+      ) : tab === 'visitors' ? (
+        <VisitorFormPanel serviceId={svc.id} canEdit={canEdit} />
       ) : tab === 'bulletin' ? (
         <ServiceBulletinTab svc={svc} canEdit={canEdit} onContent={onBulletinContent} />
       ) : (

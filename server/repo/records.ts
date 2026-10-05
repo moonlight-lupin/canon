@@ -184,6 +184,7 @@ export function listRecords(q: RecordsQuery) {
      LEFT JOIN service_records r ON r.service_id = s.id WHERE ${where.join(' AND ')} ORDER BY s.date DESC, s.start_time DESC LIMIT 400`,
     ...params,
   );
+  const cardsWaiting = new Map(all<{ service_id: number; n: number }>('SELECT service_id, COUNT(*) AS n FROM visitor_cards GROUP BY service_id').map((r) => [r.service_id, r.n]));
   const recs = new Map(records.list(rows.some((r) => r.record_id) ? `id IN (${rows.filter((r) => r.record_id).map((r) => r.record_id).join(',') || 0})` : '1=0').map((r) => [r.service_id, r]));
   return rows.map((s) => {
     const r = recs.get(s.id);
@@ -198,6 +199,7 @@ export function listRecords(q: RecordsQuery) {
       currency: r?.currency ?? getSettings().offering.currency,
       verified: !!r?.verified_at,
       has_notes: !!r?.notes?.trim(),
+      pending_cards: cardsWaiting.get(s.id) ?? 0,
     };
   });
 }
@@ -218,7 +220,7 @@ export function forViewer(r: ServiceRecord & { saved?: boolean }) {
 export const listRowForViewer = (r: ReturnType<typeof listRecords>[number]) => ({
   service_id: r.service_id, date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
   recorded: r.recorded, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors, has_notes: r.has_notes,
-  currency: r.currency, offering_total: null, cash_counted: null, other_currencies: [], verified: false,
+  currency: r.currency, offering_total: null, cash_counted: null, other_currencies: [], verified: false, pending_cards: 0,
 });
 
 export const recordCount = () => get<{ n: number }>('SELECT COUNT(*) AS n FROM service_records')?.n ?? 0;

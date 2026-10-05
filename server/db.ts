@@ -542,6 +542,24 @@ const MIGRATIONS: (string | Migration)[] = [
   ALTER TABLE templates ADD COLUMN slide_theme_id INTEGER REFERENCES slide_themes(id) ON DELETE SET NULL;
   ALTER TABLE templates ADD COLUMN bulletin_template_id INTEGER REFERENCES bulletin_templates(id) ON DELETE SET NULL;
   `,
+  // v0.10.6 — the visitor form: each service's form link and QR choices; visitors' entries wait for review
+  `
+  ALTER TABLE services ADD COLUMN visitor_form TEXT NOT NULL DEFAULT '{}';  -- JSON {token, bulletin, slides}
+  CREATE UNIQUE INDEX services_visitor_token ON services(json_extract(visitor_form, '$.token')) WHERE json_extract(visitor_form, '$.token') IS NOT NULL;
+  CREATE TABLE visitor_cards (
+    id INTEGER PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    name TEXT NOT NULL,
+    contact TEXT,
+    source TEXT,
+    wants_contact INTEGER NOT NULL DEFAULT 0,
+    prayer TEXT,
+    consent INTEGER NOT NULL DEFAULT 0,
+    lang TEXT
+  );
+  CREATE INDEX visitor_cards_service ON visitor_cards(service_id);
+  `,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

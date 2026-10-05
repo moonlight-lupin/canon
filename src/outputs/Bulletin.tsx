@@ -18,7 +18,7 @@ import {
 } from './content.tsx';
 import { CrossMark, logoUrl, useLogo } from '../components/brand.tsx';
 import {
-  ANNOUNCEMENTS_KEY, DEFAULT_BULLETIN_OPTIONS, blockImageUrl, blockQrUrl, bracket, bracketL10n, bulletinDecision, firstStanza, hasSection, hymnLine,
+  ANNOUNCEMENTS_KEY, DEFAULT_BULLETIN_OPTIONS, blockImageUrl, blockQrSrc, blockQrUrl, bracket, bracketL10n, bulletinDecision, firstStanza, hasSection, hymnLine,
   padBooklet, withVersion,
   type BulletinBlock, type BulletinFull, type BulletinOptions, type BulletinSection, type BulletinTemplate,
 } from '../../shared/presentation.ts';
@@ -361,7 +361,7 @@ function blockBlocks(ids: number[], all: BulletinBlock[], langs: Lang[], prefix:
       }
       continue;
     }
-    const src = b.kind === 'qr' ? (b.data.value ? blockQrUrl(b.id, b.updated_at) : null) : b.data.image ? blockImageUrl(b.id, b.data.image) : null;
+    const src = b.kind === 'qr' ? (b.data.value ? blockQrSrc(b.id, b.updated_at, b.data.value) : null) : b.data.image ? blockImageUrl(b.id, b.data.image) : null;
     if (!src) continue;
     if (row.length === 3) flush();
     row.push(
@@ -485,7 +485,8 @@ export function buildBulletin(b: BulletinBuild): { main: Block[]; back: Block[];
   };
   const ord = buildOrder(r, langs, b.layout, b.decide, b.show, fmt);
   const content = bulletinContent(r);
-  const blockList = b.blocks.length ? b.blocks : r.bulletin.blocks ?? [];
+  // the library's blocks (live while editing), plus blocks Canon adds for this service (negative ids, e.g. the visitor form's QR)
+  const blockList = [...(b.blocks.length ? b.blocks : r.bulletin.blocks ?? []).filter((x) => x.id > 0), ...(r.bulletin.blocks ?? []).filter((x) => x.id < 0)];
   const heading = (v: L10n | undefined, dflt: L10n | null, key: string): Block[] => {
     const h = hasAny(v) ? v! : dflt;
     return h ? [{ key, keep: true, node: <div className="bl-anhead"><Bi v={h} langs={langs} sep="  ·  " /></div> }] : [];

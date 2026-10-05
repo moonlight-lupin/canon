@@ -15,9 +15,9 @@ export const services = table<Service>({
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
     'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
-    'congregation_id', 'ref',
+    'congregation_id', 'ref', 'visitor_form',
   ],
-  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content'],
+  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form'],
   touch: true,
 });
 
@@ -263,8 +263,9 @@ export function createService(input: Partial<Service> & { date: string }, templa
 export function duplicateService(id: number, date: string, withRoster = false) {
   const src = getServiceFull(id);
   return tx(() => {
-    const { id: _id, items: its, assignments: as, share_token: _t, created_at: _c, updated_at: _u, ...rest } = src;
-    const svc = services.insert({ ...rest, date, status: 'draft', share_token: null });
+    // a copy gets no share link, reference or visitor form of its own (they are unique to the original)
+    const { id: _id, items: its, assignments: as, share_token: _t, created_at: _c, updated_at: _u, ref: _r, visitor_form: _vf, ...rest } = src;
+    const svc = services.insert({ ...rest, date, status: 'draft', share_token: null, ref: null, visitor_form: {} });
     for (const it of its) {
       const { id: _iid, service_id: _sid, ...r } = it;
       items.insert({ ...r, service_id: svc.id });

@@ -52,6 +52,8 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 | Service records: offerings and visitors' contact details | ✓ | ✓ (until the cash count is verified) | — |
 | Reopen a verified cash count | ✓ | — | — |
 | Delete a service record entered by mistake | ✓ | — | — |
+| Visitor form: switch it on for a service, review visitors' entries | ✓ | ✓ | — |
+| Visitor form: switch it on for the church, its texts | ✓ | — | — |
 | Reports: attendance, visitors, serving, songs and Scripture, membership | ✓ | ✓ | ✓ (visitors without contact details) |
 | Reports: offerings, and the monthly summary for the treasurer | ✓ | ✓ | — |
 | Import CSV; export personal data | ✓ | ✓ | — |
@@ -259,6 +261,16 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 - **Print cash-count declaration** prints an A4 page with the count (each currency separately), the totals by method, a short declaration, and the counters' signatures — drawn on screen, or blank name, signature and date lines to sign on paper. Churches that sign on screen can still print blank lines as a fallback before anyone has signed.
 
 Read-only users see attendance and notes only, without offerings or visitors' contact details. Every change is in **Settings → Change log** (an administrator's **History** button on the record shows just that service).
+
+## Visitor form {#visitor-form}
+
+Visitors can tell you they came by filling in a short form on their phone: **name**, **phone or e-mail** (optional), **how they heard about the church** (optional), **I would like someone to contact me**, and — if the church offers it — a **prayer request** (optional). A box to agree to the church keeping their details must be ticked when they leave contact details or a prayer request.
+
+1. An administrator switches it on in **Settings → Visitor form**, and can change the **Welcome text**, the **Consent text**, whether to offer the prayer request box, and until how many days after the service entries are accepted (from the day before the service).
+2. On a service, the **Visitor form** tab switches the form on for that service. Choose where its QR code appears: **Print the QR code on the bulletin's back page**, **Show the QR code on a slide after the Announcements**, or **Print cards** (eight to an A4 page for the welcome desk or the pews) — any or all.
+3. Entries do not go straight into the records: they wait under **Visitor cards to review** (on the service's Visitor form tab and on its service record; the records list shows how many wait). **Accept** adds the visitor to the service's **New visitors** (marked "via visitor form", with any prayer request); **Discard** deletes spam or duplicates.
+
+The form is a public page: anyone with the service's link or QR code can open it without signing in, so phones need to reach Canon — set the **Public address** in Settings → AI / MCP (otherwise the link works only on the church's own network). The page shows only the church name and the service's title and date, has no scripts, and refuses entries that come too fast, too often from one place, or outside the open days. Contact details and prayer requests are personal data (PDPA): read-only users and AI assistants never see them unless personal data is shared.
 
 ## Reports {#reports}
 

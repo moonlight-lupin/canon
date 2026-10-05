@@ -53,6 +53,8 @@ export interface Visitor {
   source?: string;
   follow_up_by?: string;
   notes?: string;
+  /** a prayer request (from the visitor form): sensitive, shown like contact details */
+  prayer?: string;
 }
 
 export interface ServiceRecord {

@@ -20,7 +20,7 @@ const money = (ctx: Ctx) => canRead(ctx, 'contributions') && ctx.auth.user.role 
 
 const visitorOut = (v: Visitor, i: number, ctx: Ctx) => ({
   index: i, name: v.name, source: v.source ?? null, follow_up_by: v.follow_up_by ?? null, status: v.status ?? 'new',
-  ...(ctx.pii ? { contact: v.contact ?? null, notes: v.notes ?? null } : {}),
+  ...(ctx.pii ? { contact: v.contact ?? null, notes: v.notes ?? null, prayer: v.prayer ?? null } : {}),
 });
 
 function recordOut(serviceId: number, ctx: Ctx) {

@@ -7,6 +7,7 @@ import './db.ts';
 import { api } from './api.ts';
 import { oauthRouter } from './oauth.ts';
 import { mcpRouter } from './mcp.ts';
+import { visitorFormRouter } from './routes/visitor-form.ts';
 
 /** Build the Express app (no listen) so tests can mount it on an ephemeral port. */
 export function createApp() {
@@ -26,11 +27,13 @@ export function createApp() {
   app.use('/mcp', mcpRouter);
 
   app.use('/api', express.json({ limit: '2mb' }), api);
+  // the public visitor form (/v/<token>): no sign-in, its own small HTML page
+  app.use(visitorFormRouter);
 
   // Web app (production build). In development Vite serves the client and proxies here.
   if (fs.existsSync(config.distDir)) {
     app.use(express.static(config.distDir, { index: false, maxAge: '1h' }));
-    app.get(/^\/(?!api\/|mcp|oauth\/|\.well-known\/).*/, (_req, res) => {
+    app.get(/^\/(?!api\/|mcp|oauth\/|\.well-known\/|v\/).*/, (_req, res) => {
       res.sendFile(path.join(config.distDir, 'index.html'));
     });
   }

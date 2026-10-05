@@ -34,6 +34,7 @@ import * as rec from './repo/records.ts';
 import * as reports from './repo/reports.ts';
 import { Forbidden } from './lib/table.ts';
 import { cleanRef } from './repo/refs.ts';
+import * as vf from './repo/visitor-form.ts';
 import * as bg from './repo/backgrounds.ts';
 import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
@@ -368,7 +369,7 @@ api.get('/bible/search', h((req) => bible.searchBible(z.string().min(2).parse(re
 // ---------------------------------------------------------------- service records (attendance, visitors, offerings)
 
 const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: req.user?.role === 'admin' });
-const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional() });
+const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional(), prayer: z.string().max(1500).optional() });
 const RecordInput = z.object({
   attendance: z.number().int().min(0).max(100000).nullable().optional(),
   children: z.number().int().min(0).max(100000).nullable().optional(),
@@ -403,6 +404,30 @@ api.get('/reports/membership', h((req) => reports.membershipReport(reportPeriod(
 api.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));
   return canSeeMoney(req) ? r : rec.forViewer(r);
+}));
+// visitor form: settings (administrators), a service's form (editors), the review queue (editors)
+const origin = (req: Request) => `${req.protocol}://${req.get('host')}`;
+api.get('/visitor-form-settings', h(() => vf.formSettings()));
+api.put('/visitor-form-settings', requireAdmin, h((req) => vf.saveFormSettings(z.object({
+  enabled: z.boolean().optional(), prayer: z.boolean().optional(), welcome: S.L10nSchema.optional(), consent: S.L10nSchema.optional(),
+  days_after: z.number().int().min(0).max(14).optional(),
+}).parse(req.body))));
+api.get('/services/:id/visitor-form', h((req) => vf.serviceFormInfo(id(req), origin(req))));
+api.put('/services/:id/visitor-form', h((req) => {
+  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators can change the visitor form.');
+  return vf.setServiceForm(id(req), z.object({ enabled: z.boolean(), bulletin: z.boolean().optional(), slides: z.boolean().optional() }).parse(req.body), origin(req));
+}));
+api.get('/services/:id/visitor-cards', h((req) => {
+  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators review visitor cards.');
+  return vf.cardsFor(id(req));
+}));
+api.post('/visitor-cards/:id/accept', h((req) => {
+  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators review visitor cards.');
+  return vf.acceptCard(id(req), recWho(req));
+}));
+api.delete('/visitor-cards/:id', h((req) => {
+  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators review visitor cards.');
+  return vf.discardCard(id(req));
 }));
 api.delete('/services/:id/record', requireAdmin, h((req) => rec.deleteRecord(id(req), recWho(req))));
 api.put('/services/:id/record', h((req) => rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req))));

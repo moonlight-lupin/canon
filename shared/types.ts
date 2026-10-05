@@ -287,6 +287,8 @@ export interface Service {
   congregation_id?: number | null;
   /** a reference people choose, e.g. "EN-2026-12-25" (unique among services) */
   ref?: string | null;
+  /** the visitor form's link and QR choices (shared/visitor-form.ts); set through its own endpoint */
+  visitor_form?: { token?: string; bulletin?: boolean; slides?: boolean };
   id: number;
   date: string; // YYYY-MM-DD
   start_time: string; // HH:MM

@@ -6,7 +6,7 @@ import { useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg, useLatest } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { L10n, Lang, RenderedService } from '../types-client.ts';
-import { ASPECT_WIDTH, backgroundUrl, blockImageUrl, blockQrUrl, type SlideAspect, type SlideTheme } from '../../shared/presentation.ts';
+import { ASPECT_WIDTH, backgroundUrl, blockImageUrl, blockQrSrc, blockQrUrl, type SlideAspect, type SlideTheme } from '../../shared/presentation.ts';
 import type { RenderedSlideBlock } from '../../shared/render-types.ts';
 import { Bi, LANG_ATTR, biParts, biText, dateParts, hasAny, langOptions, langsFor, modeFor, speaker, timeRange, type LangMode } from './content.tsx';
 import { logoUrl, useLogo } from '../components/brand.tsx';
@@ -416,7 +416,7 @@ function SlideBlock({ b, langs }: { b: RenderedSlideBlock; langs: Lang[] }) {
     blockLines(v, langs).map((p, i) => <div key={i} className={`${cls} lang-${p.lang}`} lang={LANG_ATTR[p.lang]}>{p.text}</div>);
   return (
     <div className={`sl-block slide-block block-${b.kind}`}>
-      {b.kind === 'qr' && <div className="sl-qr slide-qr"><img src={blockQrUrl(b.id, b.v)} alt="" /></div>}
+      {b.kind === 'qr' && <div className="sl-qr slide-qr"><img src={blockQrSrc(b.id, b.v, b.value)} alt="" /></div>}
       {b.kind === 'image' && b.has_image && <div className="sl-qr slide-qr"><img src={blockImageUrl(b.id, b.v)} alt="" /></div>}
       {b.kind === 'text' && <div className={`sl-block-text slide-block-text${b.bold ? ' b' : ''}`}>{lines(b.text, 'sl-block-line')}</div>}
       {b.kind !== 'text' && hasAny(b.caption) && <div className="sl-block-cap slide-block-caption">{lines(b.caption, 'sl-block-line')}</div>}

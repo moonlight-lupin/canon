@@ -2,7 +2,7 @@
 // cash count, with a printable cash-count declaration for the counters to sign — on paper, or on screen with
 // signature pads (Currency and funds → Signing). Offerings in another currency are counted and totalled separately.
 // Read-only users see attendance and notes only (the server leaves money and visitors' contact details out for them).
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, qs, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -10,6 +10,7 @@ import { Bi, Empty, ErrorBox, Field, Loading, PageHead, Seg, addDays, confirmAct
 import { Icon } from '../components/icons.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { HistoryButton } from '../components/LogTools.tsx';
+import { VisitorCardsReview } from './VisitorForm.tsx';
 import { CONG_LABEL, CongregationBadge, CongregationFilter, useCongregationFilter, useCongregations } from '../components/Congregations.tsx';
 import {
   CURRENCIES, DENOMINATIONS, METHOD_LABEL, OFFERING_METHODS, cashTotal, countProblems, denomLabel, foreignCounted, foreignCurrencies, methodTotal, money, parseMoney,
@@ -36,6 +37,8 @@ interface Row {
   currency: string;
   verified: boolean;
   has_notes: boolean;
+  /** visitor-form entries waiting for review */
+  pending_cards?: number;
 }
 
 
@@ -94,7 +97,7 @@ export default function Records() {
                       <td className="right">{r.visitors || ''}</td>
                       {seeMoney && <td className="right nowrap">{r.offering_total ? money(r.offering_total, r.currency) : ''}{(r.other_currencies ?? []).map((o) => <div key={o.currency} className="small muted">+ {money(o.total, o.currency, true)}</div>)}</td>}
                       {seeMoney && <td>{r.verified ? <span className="badge ok"><Icon name="check" width={12} height={12} />{t('Verified')}</span> : (r.offering_total ?? 0) > 0 ? <span className="badge warn">{t('Not verified')}</span> : null}</td>}
-                      <td className="right">{r.has_notes && <Icon name="text" width={14} height={14} />}{!r.recorded && canEdit && <span className="small muted">{t('Not recorded')}</span>}</td>
+                      <td className="right">{(r.pending_cards ?? 0) > 0 && <span className="badge warn" title={t('Visitor cards to review')}>{r.pending_cards} {t('to review')}</span>} {r.has_notes && <Icon name="text" width={14} height={14} />}{!r.recorded && canEdit && <span className="small muted">{t('Not recorded')}</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -236,7 +239,8 @@ export function RecordEditor() {
                   {d.visitors.map((v, i) => {
                     const upd = (p: Partial<Visitor>) => set({ visitors: d.visitors.map((x, j) => (j === i ? { ...x, ...p } : x)) });
                     return (
-                      <tr key={i}>
+                      <Fragment key={i}>
+                      <tr>
                         <td><input value={v.name} onChange={(e) => upd({ name: e.target.value })} placeholder={t('Name')} /></td>
                         {!restricted && <td><input value={v.contact ?? ''} onChange={(e) => upd({ contact: e.target.value })} placeholder={t('Phone or e-mail')} /></td>}
                         <td><input value={v.source ?? ''} onChange={(e) => upd({ source: e.target.value })} placeholder={t('e.g. invited by a friend')} disabled={restricted} /></td>
@@ -245,6 +249,8 @@ export function RecordEditor() {
                         {!restricted && <td><input value={v.notes ?? ''} onChange={(e) => upd({ notes: e.target.value })} /></td>}
                         {!restricted && <td><button className="btn sm ghost icon danger" onClick={() => set({ visitors: d.visitors.filter((_, j) => j !== i) })} aria-label={t('Remove')}><Icon name="trash" /></button></td>}
                       </tr>
+                      {!restricted && v.prayer && <tr className="rec-prayer"><td colSpan={7} className="small"><strong>{t('Prayer request')}:</strong> {v.prayer}</td></tr>}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -253,6 +259,8 @@ export function RecordEditor() {
           )}
           {!restricted && <div className="small muted pdpa">{t('Visitors’ details are personal data: record only what the church needs to follow up (PDPA).')}</div>}
         </section>
+
+        {!restricted && canEdit && <VisitorCardsReview serviceId={sid} onAccepted={() => rec.reload()} />}
 
         <section className="card stack">
           <h3>{t('Notes for the team')}</h3>
