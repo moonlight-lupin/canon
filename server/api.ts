@@ -35,6 +35,7 @@ import * as rec from './repo/records.ts';
 import * as reports from './repo/reports.ts';
 import { Forbidden } from './lib/table.ts';
 import { cleanRef } from './repo/refs.ts';
+import { cleanFieldDefs, type MemberField } from '../shared/member-fields.ts';
 import { toCsv } from '../shared/reports.ts';
 import * as vf from './repo/visitor-form.ts';
 import * as bg from './repo/backgrounds.ts';
@@ -281,8 +282,24 @@ api.get('/people/:id', h((req) => {
     unavailability: vol.unavailability.list('person_id = ?', [p.id], 'start_date'),
   };
 }));
-api.post('/people', h((req) => reg.people.insert(S.PersonInput.parse(req.body))));
-api.patch('/people/:id', h((req) => reg.people.update(id(req), S.PersonInput.partial().parse(req.body))));
+api.post('/people', h((req) => {
+  const b = S.PersonInput.parse(req.body);
+  return reg.people.insert({ ...b, custom: reg.customFor({}, b.custom) ?? {} });
+}));
+api.patch('/people/:id', h((req) => {
+  const pid = id(req);
+  const b = S.PersonInput.partial().parse(req.body);
+  const custom = reg.customFor(reg.people.get(pid).custom, b.custom);
+  return reg.people.update(pid, { ...b, ...(custom ? { custom } : {}) });
+}));
+/** Settings → Member fields (administrators): the church's own fields on the member register. */
+api.put('/member-fields', requireAdmin, h((req) => {
+  const b = z.array(z.object({
+    key: z.string().max(40).optional(), label: S.L10nSchema, type: z.enum(['text', 'date', 'yesno', 'choice']),
+    options: z.array(S.L10nSchema).max(30).optional(), sensitive: z.boolean().optional(),
+  })).max(30).parse(req.body);
+  return updateSettings({ member_fields: cleanFieldDefs(b as MemberField[], getSettings().member_fields ?? []) }).member_fields;
+}));
 api.delete('/people/:id', h((req) => reg.people.remove(id(req))));
 api.put('/people/:id/roles', h((req) => {
   const pid = id(req);

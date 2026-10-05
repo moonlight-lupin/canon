@@ -9,6 +9,25 @@ import {
   col, collect, diff, l10nCols, mergeL10n, missingRequired, parseDate, parseEnum, parseText, presentLangs, readFields, readL10n, type Field,
 } from './common.ts';
 import type { Ctx } from './engine.ts';
+import { cleanCustomValues, optionValue, type MemberField } from '../../shared/member-fields.ts';
+import { getSettings } from '../repo/settings.ts';
+
+/** The church's own fields (Settings → Member fields): one column each, custom_<key>. */
+const customDefs = (): MemberField[] => getSettings().member_fields ?? [];
+const customCols = () => customDefs().map((d) => col(
+  `custom_${d.key}`,
+  M(d.label.en || Object.values(d.label)[0] || d.key, d.label.zh || d.label.en || d.key),
+  d.type === 'date' ? M('A date, e.g. 2024-05-12.', '日期，如 2024-05-12。')
+    : d.type === 'yesno' ? M('yes or no.', 'yes（是）或 no（否）。')
+      : d.type === 'choice' ? M(`One of: ${(d.options ?? []).map((o) => optionValue(o, getSettings().languages[0])).join(', ')}.`, `以下其一：${(d.options ?? []).map((o) => optionValue(o, getSettings().languages[0])).join('、')}。`)
+        : M('Text.', '文字。'),
+  { ...(d.type === 'yesno' ? { values: ['yes', 'no'] } : d.type === 'choice' ? { values: (d.options ?? []).map((o) => optionValue(o, getSettings().languages[0])) } : {}) },
+));
+const customOf = (p: Row | undefined): Record<string, string> => {
+  const c = p?.custom as unknown;
+  if (!c) return {};
+  return (typeof c === 'string' ? JSON.parse(c) : c) as Record<string, string>;
+};
 
 type Row = Person & { household_name: string | null };
 
@@ -74,7 +93,7 @@ export const members: Entity = {
     '每行一位会友。有编号（id）的行会更新该会友；否则以相同的名字、姓氏和出生日期找到的会友会被更新；其余的会新增。',
   ),
   l10n: ['honorific'],
-  columns: (ctx) => [ID, ...FIELDS.map((f) => f.col), ...honorificCols(ctx)],
+  columns: (ctx) => [ID, ...FIELDS.map((f) => f.col), ...honorificCols(ctx), ...customCols()],
   example: () => [
     { first_name: 'David', last_name: 'Tan', native_name: '陈大卫', gender: 'M', birth_date: '1978-03-12', phone: '+60 12-345 6789', email: 'david.tan@example.com', address: '12 Jalan Bukit, 47300 Petaling Jaya', status: 'member', membership_date: '2005-06-05', baptism_date: '2003-04-20', baptism_type: 'adult', preferred_lang: 'en', household: 'Tan family', household_role: 'head' },
     { first_name: 'Grace', last_name: 'Tan', native_name: '林美恩', gender: 'F', birth_date: '1981-11-02', phone: '+60 16-222 3344', status: 'member', baptism_date: '1999-12-25', baptism_type: 'adult', preferred_lang: 'zh', household: 'Tan family', household_role: 'spouse' },
@@ -85,6 +104,8 @@ export const members: Entity = {
     for (const f of FIELDS) out[f.col.key] = f.get(p);
     const h = typeof p.honorific === 'string' ? (JSON.parse(p.honorific) as Record<string, string>) : (p.honorific ?? {});
     for (const l of ctx.langs) out[`honorific_${l}`] = h[l] ?? '';
+    const c = customOf(p);
+    for (const d of customDefs()) out[`custom_${d.key}`] = c[d.key] ?? '';
     return out;
   }),
   fileName: () => 'members',
@@ -147,6 +168,21 @@ export const members: Entity = {
           for (const l of hLangs) {
             f.inc[`honorific_${l}`] = inc[l] ?? '';
             if (cur) f.cur[`honorific_${l}`] = curH[l] ?? '';
+          }
+        }
+      }
+      // the church's own fields: the file's values on top of the stored ones (an empty cell clears that field)
+      const cdefs = customDefs().filter((d) => present.has(`custom_${d.key}`));
+      if (cdefs.length) {
+        const curC = customOf(cur);
+        const given = Object.fromEntries(cdefs.map((d) => [d.key, r.v[`custom_${d.key}`] ?? '']));
+        const { values, errors: ce } = cleanCustomValues({ ...curC, ...given }, customDefs(), getSettings().languages[0]);
+        errors.push(...ce.map((e) => M(e, e)));
+        if (JSON.stringify(values) !== JSON.stringify(curC)) {
+          patch.custom = values;
+          for (const d of cdefs) {
+            f.inc[`custom_${d.key}`] = values[d.key] ?? '';
+            if (cur) f.cur[`custom_${d.key}`] = curC[d.key] ?? '';
           }
         }
       }

@@ -20,6 +20,7 @@ export const HouseholdInput = z.object({
 
 export const PersonInput = z.object({
   first_name: z.string().min(1).max(200),
+  custom: z.record(z.string().max(40), z.union([z.string().max(500), z.null()])).optional(),
   last_name: z.string().max(200).optional(),
   native_name: optStr,
   preferred_name: optStr,

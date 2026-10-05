@@ -1,4 +1,5 @@
 // Member register: people, households and upcoming birthdays.
+import { optionValue, type MemberField } from '../../shared/member-fields.ts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, api, qs, useApi } from '../api.ts';
@@ -103,7 +104,7 @@ function MembersActions({ onAdd, onImported }: { onAdd: () => void; onImported: 
 // ---------------------------------------------------------------- people list
 
 function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) => void }) {
-  const { t, lang } = useI18n();
+  const { t, lang, lt } = useI18n();
   // read-only accounts are not sent contact details: leave the columns out
   const { canEdit } = useSession();
   const [q, setQ] = useState('');
@@ -111,6 +112,10 @@ function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) 
   const [status, setStatus] = useState<MemberStatus | 'all'>('all');
   const [cong, setCong, congs] = useCongregationFilter('members');
   const { data, error, loading, reload } = useApi<{ total: number; rows: PersonRow[] }>(`/people${qs({ q: dq, limit: 5000, congregation: cong })}`);
+  // filter by one of the church's own yes / no or choice fields: "key=value"
+  const { settings: st } = useSession();
+  const filterable = (st?.member_fields ?? []).filter((d) => (d.type === 'yesno' || d.type === 'choice') && (canEdit || !d.sensitive));
+  const [fieldFilter, setFieldFilter] = useState('');
   useEffect(() => {
     if (version) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,7 +126,11 @@ function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) 
     for (const p of data?.rows ?? []) c[p.status] = (c[p.status] ?? 0) + 1;
     return c;
   }, [data]);
-  const rows = useMemo(() => (data?.rows ?? []).filter((p) => status === 'all' || p.status === status), [data, status]);
+  const rows = useMemo(() => {
+    const [fk, ...fv] = fieldFilter.split('=');
+    const want = fv.join('=');
+    return (data?.rows ?? []).filter((p) => (status === 'all' || p.status === status) && (!fieldFilter || (p.custom?.[fk] ?? '') === want));
+  }, [data, status, fieldFilter]);
   const yr = (d: string | null) => (d ? d.slice(0, 4) : '');
 
   return (
@@ -131,6 +140,18 @@ function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) 
           <SearchBox value={q} onChange={setQ} placeholder={t('Name, 中文名, email or phone…')} />
         </div>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
+        {filterable.length > 0 && (
+          <select className="mini" value={fieldFilter} onChange={(e) => setFieldFilter(e.target.value)} aria-label={t('Member fields')} style={{ height: 32 }}>
+            <option value="">{t('All members')}</option>
+            {filterable.map((d) => (
+              <optgroup key={d.key} label={lt(d.label)}>
+                {(d.type === 'yesno' ? [['yes', t('Yes')], ['no', t('No')]] : (d.options ?? []).map((o) => [optionValue(o, st?.languages?.[0]), lt(o)])).map(([v, l]) => (
+                  <option key={v} value={`${d.key}=${v}`}>{lt(d.label)}: {l}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        )}
         <div className="fchips" role="group" aria-label={t('Status')}>
           <button className={`fchip${status === 'all' ? ' on' : ''}`} onClick={() => setStatus('all')}>
             {t('All')} <span className="n">{data?.rows.length ?? 0}</span>
@@ -205,11 +226,14 @@ const toDraft = (p: Person): Draft => {
 
 function PersonEditor({ id, households, onClose, onSaved }: { id: number | null; households: HouseholdWithMembers[]; onClose: () => void; onSaved: () => void }) {
   const { t, lang, lt } = useI18n();
-  const { canEdit, isAdmin } = useSession();
+  const { canEdit, isAdmin, settings } = useSession();
+  // the church's own fields; read-only accounts are not sent the sensitive ones, so leave those out
+  const fieldDefs = (settings?.member_fields ?? []).filter((d) => canEdit || !d.sensitive);
   const detail = useApi<PersonDetail>(id ? `/people/${id}` : null);
   const teams = useApi<TeamWithRoles[]>('/teams');
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [honorific, setHonorific] = useState<L10n>({});
+  const [custom, setCustom] = useState<Record<string, string>>({});
   const [roles, setRoles] = useState<number[]>([]);
   const [rolesDirty, setRolesDirty] = useState(false);
   const { run, busy } = useAction();
@@ -221,6 +245,7 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
       initialised.current = true;
       setDraft(toDraft(detail.data));
       setHonorific(detail.data.honorific ?? {});
+      setCustom(detail.data.custom ?? {});
       setRoles(detail.data.roles);
       setRolesDirty(false);
     }
@@ -241,6 +266,8 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
     body.congregation_id = draft.congregation_id ? Number(draft.congregation_id) : null;
     const h = Object.fromEntries(Object.entries(honorific).map(([k, v]) => [k, v?.trim()]).filter(([, v]) => v));
     body.honorific = Object.keys(h).length ? h : null;
+    // the church's own fields: every defined one is sent ("" clears it)
+    if (fieldDefs.length) body.custom = Object.fromEntries(fieldDefs.map((d) => [d.key, custom[d.key] ?? '']));
     const ok = await run(async () => {
       const p = id ? await api.patch<Person>(`/people/${id}`, body) : await api.post<Person>('/people', body);
       if (rolesDirty || (!id && roles.length)) await api.put(`/people/${p.id}/roles`, { role_ids: roles });
@@ -352,10 +379,22 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
                 )}
               </div>
             </section>
-            <section>
-              <h3 className="sect">{t('Notes')}</h3>
-              <textarea rows={3} value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
-            </section>
+            {fieldDefs.length > 0 && (
+              <section>
+                <h3 className="sect">{t('More details')}</h3>
+                <div className="form-grid">
+                  {fieldDefs.map((d) => (
+                    <CustomFieldInput key={d.key} def={d} value={custom[d.key] ?? ''} onChange={(v) => setCustom((c) => ({ ...c, [d.key]: v }))} />
+                  ))}
+                </div>
+              </section>
+            )}
+            {canEdit && (
+              <section>
+                <h3 className="sect">{t('Notes')}</h3>
+                <textarea rows={3} value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
+              </section>
+            )}
           </fieldset>
 
           <div className="grid cols-2">
@@ -798,4 +837,34 @@ function HonorificField({ value, onChange, person }: { value: L10n; onChange: (v
       </div>
     </Field>
   );
+}
+
+/** One of the church's own fields (Settings → Member fields) on a member's page. */
+function CustomFieldInput({ def, value, onChange }: { def: MemberField; value: string; onChange: (v: string) => void }) {
+  const { t, lt } = useI18n();
+  const { settings } = useSession();
+  const label = <>{lt(def.label)}{def.sensitive && <span className="badge" style={{ marginLeft: 6 }} title={t('Hidden from read-only accounts and AI assistants.')}>{t('Sensitive')}</span>}</>;
+  if (def.type === 'date') return <Field label={label}><input type="date" value={value} onChange={(e) => onChange(e.target.value)} /></Field>;
+  if (def.type === 'yesno') {
+    return (
+      <Field label={label}>
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">—</option><option value="yes">{t('Yes')}</option><option value="no">{t('No')}</option>
+        </select>
+      </Field>
+    );
+  }
+  if (def.type === 'choice') {
+    const opts = (def.options ?? []).map((o) => ({ value: optionValue(o, settings?.languages?.[0]), label: lt(o) }));
+    return (
+      <Field label={label}>
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">—</option>
+          {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {value && !opts.some((o) => o.value === value) && <option value={value}>{value}</option>}
+        </select>
+      </Field>
+    );
+  }
+  return <Field label={label}><input value={value} maxLength={500} onChange={(e) => onChange(e.target.value)} /></Field>;
 }

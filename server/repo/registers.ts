@@ -1,16 +1,18 @@
 // Member register (people, households) and co-worker register.
 import type { Coworker, Household, Person } from '../../shared/types.ts';
 import { all, type SqlValue } from '../db.ts';
-import { table, likeTerm } from '../lib/table.ts';
+import { BadRequest, table, likeTerm } from '../lib/table.ts';
+import { cleanCustomValues } from '../../shared/member-fields.ts';
+import { getSettings } from './settings.ts';
 
 export const people = table<Person>({
   name: 'people',
   cols: [
     'first_name', 'last_name', 'native_name', 'preferred_name', 'gender', 'birth_date', 'phone', 'email', 'address',
     'household_id', 'household_role', 'status', 'membership_date', 'baptism_date', 'baptism_type', 'profession_date',
-    'preferred_lang', 'honorific', 'notes', 'congregation_id',
+    'preferred_lang', 'honorific', 'notes', 'congregation_id', 'custom',
   ],
-  json: ['honorific'],
+  json: ['honorific', 'custom'],
   touch: true,
 });
 
@@ -67,13 +69,23 @@ export function listPeople(f: PeopleQuery = {}) {
     `SELECT p.*, h.name AS household_name FROM people p LEFT JOIN households h ON h.id = p.household_id ${w}
      ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE LIMIT ? OFFSET ?`,
     ...params, f.limit ?? 500, f.offset ?? 0,
-  );
+  ).map(withCustom);
   return { total, rows };
 }
 
+/** Rows read with plain SQL carry `custom` as JSON text: decode it like table() does. */
+const withCustom = <T extends { custom?: unknown }>(p: T): T => {
+  if (typeof p.custom !== 'string') return p;
+  try {
+    return { ...p, custom: JSON.parse(p.custom) };
+  } catch {
+    return { ...p, custom: {} };
+  }
+};
+
 export function householdsWithMembers() {
   const hs = households.list('', [], 'name COLLATE NOCASE');
-  const members = all<Person>('SELECT * FROM people WHERE household_id IS NOT NULL ORDER BY household_role, birth_date');
+  const members = all<Person>('SELECT * FROM people WHERE household_id IS NOT NULL ORDER BY household_role, birth_date').map(withCustom);
   return hs.map((h) => ({ ...h, members: members.filter((m) => m.household_id === h.id) }));
 }
 
@@ -110,3 +122,17 @@ export function listCoworkers(opts: { active?: boolean } = {}) {
 }
 
 // CSV import / export of the register lives in server/csv/members.ts (CSV framework).
+
+// ---------------------------------------------------------------- custom member fields
+
+/** A person's custom values for saving: the stored ones with the given ones on top ("" or null clears a field). */
+export function customFor(current: Record<string, string> | null | undefined, given: Record<string, string | null> | undefined): Record<string, string> | undefined {
+  if (given === undefined) return undefined;
+  const defs = getSettings().member_fields ?? [];
+  const merged: Record<string, unknown> = { ...(current ?? {}), ...given };
+  const { values, errors } = cleanCustomValues(merged, defs, getSettings().languages[0]);
+  if (errors.length) throw new BadRequest(errors.join(' '));
+  // values of fields that were removed are kept (they come back if the field is added again)
+  const kept = Object.fromEntries(Object.entries(current ?? {}).filter(([k]) => !defs.some((d) => d.key === k)));
+  return { ...kept, ...values };
+}

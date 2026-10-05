@@ -645,5 +645,25 @@ const zh: Record<string, string> = {
   "to review": "待审核",
   // v0.10.7 — log export
   "Download every entry matching these filters (up to 20,000) for Excel.": "下载符合这些筛选条件的所有记录（最多 20,000 条），可用 Excel 打开。",
+  // v0.11.0 — custom member fields
+  "Member fields": "会友栏位",
+  "Your own fields on the member register, e.g. “Cell group leader?”, “Joined via”, “Dietary needs”. They show on each member’s page, can filter the members list, and are columns in the members CSV (custom_…).": "会友名册中你自己加的栏位，例如“小组组长？”、“如何加入”、“饮食需要”。它们会显示在每位会友的页面，可用来筛选会友列表，也会成为会友 CSV 中的栏位（custom_…）。",
+  "No fields yet.": "还没有栏位。",
+  "Label": "名称",
+  "Type": "类型",
+  "Text": "文字",
+  "Yes / no": "是／否",
+  "Choice from a list": "从列表中选择",
+  "Hidden from read-only accounts and from AI assistants unless the church shares personal data.": "只读帐户看不到；AI 助手也看不到，除非教会开放个人资料。",
+  "Sensitive": "敏感",
+  "Move down": "下移",
+  "Choices": "选项",
+  "Add choice": "加入选项",
+  "CSV column": "CSV 栏位",
+  "Add field": "加入栏位",
+  "Removing a field hides it everywhere; values already entered are kept and come back if a field with the same name is added again.": "删除栏位后它会在各处隐藏；已填写的资料会保留，若再加入同名栏位就会重新出现。",
+  "More details": "其他资料",
+  "Hidden from read-only accounts and AI assistants.": "只读帐户和 AI 助手看不到。",
+  "All members": "所有会友",
 };
 export default zh;

@@ -48,6 +48,8 @@ export interface Person {
   /** honorific per language: Chinese titles follow the name (林明华弟兄), English ones precede it (Bro. Lim) */
   honorific: L10n | null;
   notes: string | null;
+  /** the church's own fields (Settings → Member fields): key → value as text */
+  custom?: Record<string, string>;
   created_at: string;
   updated_at: string;
 }

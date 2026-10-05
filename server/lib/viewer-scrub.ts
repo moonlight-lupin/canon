@@ -2,8 +2,12 @@
 // teams and the rota — but not how to reach someone or what was written about them:
 //  - member routes (people, households, co-workers, groups, teams, rota, away dates, dashboard): no phone, e-mail,
 //    address, notes or reasons for absence; a birth date becomes just the birthday (day and month, no year, no age);
-//  - service routes: no contact details (service and item notes stay — viewers may read the service).
+//  - service routes: no contact details (service and item notes stay — viewers may read the service);
+//  - custom member fields marked sensitive (Settings → Member fields) are left out.
 // Applied to every JSON response of those routes for viewers, so a field added later is covered by its name.
+
+import { visibleCustom } from '../../shared/member-fields.ts';
+import { getSettings } from '../repo/settings.ts';
 
 const CONTACT = new Set(['phone', 'email', 'address']);
 const PRIVATE = new Set(['notes', 'reason']);
@@ -16,6 +20,19 @@ export function scrubForViewer<T>(value: T, member: boolean): T {
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (CONTACT.has(k)) continue;
     if (member && PRIVATE.has(k)) continue;
+    if (member && k === 'custom') {
+      // also when a route sends the stored JSON text: never pass it through as it is
+      let values: unknown = v;
+      if (typeof v === 'string') {
+        try {
+          values = JSON.parse(v);
+        } catch {
+          values = {};
+        }
+      }
+      out.custom = values && typeof values === 'object' && !Array.isArray(values) ? visibleCustom(values as Record<string, unknown>, getSettings().member_fields ?? [], false) : {};
+      continue;
+    }
     if (member && k === 'birth_date') {
       out.birth_date = null;
       if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) out.birthday = v.slice(5, 10);

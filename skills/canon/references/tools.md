@@ -12,7 +12,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | templates | `canon_get_templates` | `canon_save_service_as_template` |
 | library | `canon_search_library`, `canon_get_library_item`, `canon_bible` | `canon_save_song`, `canon_save_text` |
 | volunteers | `canon_get_rota` | `canon_update_rota` (batch), `canon_update_team_members` (batch), `canon_set_unavailability` |
-| members | `canon_find_people`, `canon_get_person` | `canon_save_person`, `canon_save_household` |
+| members | `canon_find_people`, `canon_get_person` (+ the church's own fields in `custom`) | `canon_save_person` (`fields.custom` for own fields), `canon_save_household` |
 | coworkers | `canon_list_coworkers` | `canon_save_coworker` |
 | groups | `canon_find_groups` | `canon_save_group`, `canon_update_group_members` (batch) |
 | records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |

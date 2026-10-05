@@ -562,6 +562,8 @@ const MIGRATIONS: (string | Migration)[] = [
   `,
   // v0.10.6 — "Which describes you best?" on the visitor form
   `ALTER TABLE visitor_cards ADD COLUMN about TEXT;`,
+  // v0.11.0 — custom member fields (definitions in settings.member_fields; values per person, JSON {key: text})
+  `ALTER TABLE people ADD COLUMN custom TEXT NOT NULL DEFAULT '{}';`,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

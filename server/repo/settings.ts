@@ -1,4 +1,5 @@
 import { DEFAULT_VISITOR_FORM, type VisitorFormSettings } from '../../shared/visitor-form.ts';
+import type { MemberField } from '../../shared/member-fields.ts';
 import type { L10n, Lang, McpConfig } from '../../shared/types.ts';
 import { langInfo } from '../../shared/languages.ts';
 import { all, run } from '../db.ts';
@@ -54,6 +55,8 @@ export interface Settings {
   offering: { currency: string; funds: string[]; signing?: 'paper' | 'screen'; min_counters?: number };
   /** Settings → Visitor form (see shared/visitor-form.ts) */
   visitor_form: VisitorFormSettings;
+  /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
+  member_fields: MemberField[];
   /** how many months the change log and the AI activity log keep (0 = everything) */
   retention: { change_log_months: number; mcp_audit_months: number };
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
@@ -85,6 +88,7 @@ export const DEFAULT_SETTINGS: Settings = {
   retention: { change_log_months: 24, mcp_audit_months: 12 },
   offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   visitor_form: DEFAULT_VISITOR_FORM,
+  member_fields: [],
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {

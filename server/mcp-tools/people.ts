@@ -6,8 +6,10 @@ import * as S from '../../shared/schemas.ts';
 import type { Person } from '../../shared/types.ts';
 import { tx } from '../db.ts';
 import * as reg from '../repo/registers.ts';
+import { getSettings } from '../repo/settings.ts';
 import * as grp from '../repo/groups.ts';
 import { findCongregation } from '../repo/congregations.ts';
+import { sensitiveKeys, visibleCustom } from '../../shared/member-fields.ts';
 import { COWORKER_PII, HOUSEHOLD_PII, Id, InputError, Limit, PERSON_PII, RO, WRITE, mergeL10nFields, redact, type ToolDef } from './common.ts';
 
 const MemberStatus = z.enum(['member', 'regular', 'visitor', 'inactive', 'transferred', 'deceased']);
@@ -26,7 +28,10 @@ function personSummary(p: Person & { household_name?: string | null }, pii: bool
   };
 }
 
-const personOut = (p: Person, pii: boolean) => ({ ...redact(p, PERSON_PII, pii), name: reg.displayName(p) });
+const personOut = (p: Person, pii: boolean) => {
+  const custom = visibleCustom(p.custom, getSettings().member_fields ?? [], pii);
+  return { ...redact(p, PERSON_PII, pii), custom: Object.keys(custom).length ? custom : undefined, name: reg.displayName(p) };
+};
 
 function householdOut(id: number, pii: boolean) {
   const h = reg.households.get(id);
@@ -84,7 +89,7 @@ export const PEOPLE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_get_person', module: 'members', access: 'read', title: 'Get a person', annotations: RO,
-    description: 'One person from the member register: names, status, membership / baptism dates, household and co-worker positions. Contact details only when the administrator exposes them.',
+    description: 'One person from the member register: names, status, membership / baptism dates, household, co-worker positions and the church\'s own fields (custom: key → value; Settings → Member fields — sensitive ones only when the administrator exposes personal data). Contact details only when the administrator exposes them.',
     input: { id: Id },
     handler: (a, ctx) => {
       const p = reg.people.get(a.id);
@@ -102,7 +107,14 @@ export const PEOPLE_TOOLS: ToolDef[] = [
     description: 'Add a person (no id; fields.first_name required; native_name for a name in another script, e.g. Chinese; status defaults to regular) or update one (id; only the given fields change, e.g. status, household_id + household_role, membership / baptism dates). Search with canon_find_people first to avoid duplicates. Returns the person. Example: {"id":45,"fields":{"status":"member","membership_date":"2026-10-04"}}.',
     input: { id: Id.optional(), fields: S.PersonInput.partial().default({}) },
     handler: (a, ctx) => {
-      const p = a.id ? reg.people.update(a.id, mergeL10nFields(reg.people.get(a.id), a.fields, ['honorific'])) : reg.people.insert(S.PersonInput.parse(a.fields));
+      const cur = a.id ? reg.people.get(a.id) : undefined;
+      if (a.fields.custom && !ctx.pii) {
+        const hide = sensitiveKeys(getSettings().member_fields ?? []);
+        if (Object.keys(a.fields.custom).some((k) => hide.has(k))) throw new InputError('Sensitive member fields can only be changed when the church shares personal data with AI agents.');
+      }
+      const custom = reg.customFor(cur?.custom, a.fields.custom);
+      const fields = { ...a.fields, ...(custom ? { custom } : {}) };
+      const p = cur ? reg.people.update(cur.id, mergeL10nFields(cur, fields, ['honorific'])) : reg.people.insert(S.PersonInput.parse(fields));
       return { ...personOut(p, ctx.pii), created: a.id ? undefined : true };
     },
   },
