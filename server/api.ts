@@ -369,7 +369,7 @@ api.get('/bible/search', h((req) => bible.searchBible(z.string().min(2).parse(re
 // ---------------------------------------------------------------- service records (attendance, visitors, offerings)
 
 const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: req.user?.role === 'admin' });
-const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional(), prayer: z.string().max(1500).optional() });
+const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional(), prayer: z.string().max(1500).optional(), about: z.string().max(200).optional() });
 const RecordInput = z.object({
   attendance: z.number().int().min(0).max(100000).nullable().optional(),
   children: z.number().int().min(0).max(100000).nullable().optional(),
@@ -411,6 +411,8 @@ api.get('/visitor-form-settings', h(() => vf.formSettings()));
 api.put('/visitor-form-settings', requireAdmin, h((req) => vf.saveFormSettings(z.object({
   enabled: z.boolean().optional(), prayer: z.boolean().optional(), welcome: S.L10nSchema.optional(), consent: S.L10nSchema.optional(),
   days_after: z.number().int().min(0).max(14).optional(),
+  sources: z.array(S.L10nSchema).max(12).optional(),
+  abouts: z.array(S.L10nSchema).max(12).optional(),
 }).parse(req.body))));
 api.get('/services/:id/visitor-form', h((req) => vf.serviceFormInfo(id(req), origin(req))));
 api.put('/services/:id/visitor-form', h((req) => {

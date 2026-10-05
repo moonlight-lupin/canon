@@ -17,6 +17,7 @@ const svc = await import('../server/repo/services.ts');
 const vf = await import('../server/repo/visitor-form.ts');
 const { renderService } = await import('../server/repo/render.ts');
 const { db } = await import('../server/db.ts');
+const { resetVisitorFormLimits, PER_ADDRESS } = await import('../server/routes/visitor-form.ts');
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Session = { cookie: string; csrf: string };
@@ -149,4 +150,57 @@ test('the QR code goes on the bulletin back page and on a slide when chosen; cop
   const copy = svc.duplicateService(sid, '2034-04-02');
   assert.equal(copy.ref ?? null, null, 'reference not copied (it is unique)');
   assert.deepEqual(copy.visitor_form ?? {}, {}, 'visitor form link not copied');
+});
+
+test('"How did you hear about us?": the church\'s answers (kept in its first language), Other with words, edited in Settings', async () => {
+  resetVisitorFormLimits();
+  const page = await (await fetch(`${base}/v/${token}`)).text();
+  assert.ok(page.includes('A friend or family member invited me') && page.includes('亲友邀请'), 'default answers in both languages');
+  assert.ok(page.includes('name="source_choice" value="other"'));
+  await fill({ name: 'Chooser One', source_choice: '0' });
+  await fill({ name: 'Chooser Two', source_choice: 'other', source: 'a podcast' });
+  await fill({ name: 'Chooser Three', source_choice: '99', source: '' });
+  const cards = vf.cardsFor(sid);
+  assert.deepEqual(cards.map((c) => [c.name, c.source]), [
+    ['Chooser One', 'A friend or family member invited me'], ['Chooser Two', 'a podcast'], ['Chooser Three', null],
+  ]);
+  const saved = await call(as.admin, 'PUT', '/visitor-form-settings', { sources: [{ en: 'Test answer', zh: '测试' }, {}] });
+  assert.deepEqual(saved.body.sources, [{ en: 'Test answer', zh: '测试' }], 'empty answers are dropped');
+  assert.ok((await (await fetch(`${base}/v/${token}`)).text()).includes('Test answer'));
+});
+
+test('per-address limit: generous (church Wi-Fi shares one address), then refused', async () => {
+  resetVisitorFormLimits();
+  const pages = await Promise.all(Array.from({ length: PER_ADDRESS + 1 }, () => fetch(`${base}/v/${token}`).then((r) => r.text())));
+  await new Promise((r) => setTimeout(r, 2100));
+  const statuses: number[] = [];
+  for (const html of pages) {
+    const t = /name="t" value="([^"]+)"/.exec(html)?.[1] ?? '';
+    const r = await fetch(`${base}/v/${token}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ t, name: 'Repeat Sender' }).toString() });
+    statuses.push(r.status);
+  }
+  assert.deepEqual(statuses, [...Array(PER_ADDRESS).fill(200), 429]);
+  assert.ok(PER_ADDRESS >= 30, 'room for a congregation on shared Wi-Fi');
+});
+
+test('"Which describes you best?": one of the church\'s answers, sensitive, counted in the report for editors only', async () => {
+  resetVisitorFormLimits();
+  const page = await (await fetch(`${base}/v/${token}`)).text();
+  assert.ok(page.includes('慕道友') && page.includes('Interested in the Christian faith'));
+  await fill({ name: 'Seeker Example', about_choice: '0', source_choice: '1' });
+  await fill({ name: 'Made Up', about_choice: '42' });
+  const cards = vf.cardsFor(sid).filter((c) => ['Seeker Example', 'Made Up'].includes(c.name));
+  assert.deepEqual(cards.map((c) => c.about), ['Interested in the Christian faith', null], 'only the church\'s answers are kept');
+  await call(as.editor, 'POST', `/visitor-cards/${cards[0].id}/accept`, {});
+  const rec = await call(as.editor, 'GET', `/services/${sid}/record`);
+  assert.equal(rec.body.visitors.find((v: Json) => v.name === 'Seeker Example').about, 'Interested in the Christian faith');
+  const viewer = await call(as.viewer, 'GET', `/services/${sid}/record`);
+  assert.ok(!('about' in viewer.body.visitors.find((v: Json) => v.name === 'Seeker Example')), 'hidden from read-only users');
+  const rep = await call(as.editor, 'GET', `/reports/visitors?from=${today}&to=${today}`);
+  assert.deepEqual(rep.body.abouts, [{ about: 'Interested in the Christian faith', count: 1 }]);
+  const repViewer = await call(as.viewer, 'GET', `/reports/visitors?from=${today}&to=${today}`);
+  assert.equal(repViewer.body.abouts, undefined);
+  // no answers = the question is not asked
+  await call(as.admin, 'PUT', '/visitor-form-settings', { abouts: [] });
+  assert.ok(!(await (await fetch(`${base}/v/${token}`)).text()).includes('about_choice'));
 });

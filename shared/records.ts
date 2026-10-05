@@ -55,6 +55,8 @@ export interface Visitor {
   notes?: string;
   /** a prayer request (from the visitor form): sensitive, shown like contact details */
   prayer?: string;
+  /** how they describe themselves, e.g. "Interested in the Christian faith": sensitive, shown like contact details */
+  about?: string;
 }
 
 export interface ServiceRecord {

@@ -104,6 +104,7 @@ export function VisitorCardsReview({ serviceId, onAccepted }: { serviceId: numbe
             <strong>{c.name}</strong>
             {c.contact && <span> · {c.contact}</span>}
             {c.wants_contact && <span className="badge lapis" style={{ marginLeft: 6 }}>{t('Would like to be contacted')}</span>}
+            {c.about && <div className="small">{t('About them')}: {c.about}</div>}
             {c.source && <div className="small">{t('How they came')}: {c.source}</div>}
             {c.prayer && <div className="small vf-prayer"><strong>{t('Prayer request')}:</strong> {c.prayer}</div>}
             <div className="small muted">{new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}{c.consent ? ` · ${t('agreed to the church keeping these details')}` : ''}</div>

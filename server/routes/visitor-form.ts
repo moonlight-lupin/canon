@@ -18,17 +18,23 @@ const sign = (s: string) => crypto.createHmac('sha256', KEY).update(s).digest('b
 const MIN_MS = 2_000;
 const MAX_MS = 3 * 3600_000;
 
-// per address: at most 6 entries in 10 minutes
+// per address: at most PER_ADDRESS entries in 10 minutes. Generous on purpose: through a public address, every
+// phone on the church's Wi-Fi shares one address, and many visitors may fill in the form right after the service.
+// (Each service also stops at 500 entries waiting for review.)
+export const PER_ADDRESS = 40;
 const hits = new Map<string, number[]>();
 function limited(ip: string): boolean {
   const now = Date.now();
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < 600_000);
-  if (recent.length >= 6) return true;
+  if (recent.length >= PER_ADDRESS) return true;
   recent.push(now);
   hits.set(ip, recent);
   if (hits.size > 5000) for (const [k, v] of hits) if (!v.some((t) => now - t < 600_000)) hits.delete(k);
   return false;
 }
+
+/** For tests: forget the per-address counts. */
+export const resetVisitorFormLimits = () => hits.clear();
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -37,6 +43,9 @@ const W: Words = {
   name: { en: 'Your name', zh: '您的姓名' },
   contact: { en: 'Phone or e-mail (optional)', zh: '电话或电邮（可不填）' },
   source: { en: 'How did you hear about us? (optional)', zh: '您怎样知道这个聚会？（可不填）' },
+  other: { en: 'Other', zh: '其他' },
+  about: { en: 'Which describes you best? (optional)', zh: '哪一项最适合形容您？（可不填）' },
+  otherBox: { en: 'Please tell us', zh: '请说明' },
   wants: { en: 'I would like someone from the church to contact me', zh: '我希望教会有人与我联络' },
   prayer: { en: 'Prayer request (optional)', zh: '代祷事项（可不填）' },
   send: { en: 'Send', zh: '提交' },
@@ -72,7 +81,10 @@ input[type=text],textarea{width:100%;font:inherit;padding:11px 12px;border:1px s
 textarea{min-height:96px;resize:vertical}.check{display:flex;gap:10px;align-items:flex-start;font-weight:400;margin:16px 0}
 .check input{width:22px;height:22px;margin-top:2px;flex:none}button{margin-top:18px;width:100%;font:600 1.05rem system-ui,sans-serif;padding:13px;border:0;border-radius:10px;background:#2f4a7a;color:#f6f2e8}
 .err{background:#f6e2df;border:1px solid #a3362e;border-radius:10px;padding:10px 12px;margin-bottom:12px}.done{text-align:center;padding:18px 4px}
-.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.small{font-size:.85rem;color:#7a7f88}`;
+.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.small{font-size:.85rem;color:#7a7f88}
+fieldset.opts{border:0;padding:0;margin:14px 0 0}fieldset.opts legend{font-weight:600;font-size:.95rem;margin-bottom:6px;padding:0}
+.opt{display:flex;gap:10px;align-items:center;font-weight:400;margin:6px 0;padding:9px 12px;border:1px solid #ddd4c0;border-radius:10px;background:#faf7f0}
+.opt input{width:20px;height:20px;flex:none;margin:0}fieldset.opts input[type=text]{margin-top:6px}`;
 
 function page(res: Response, status: number, langs: string[], body: string) {
   const s = getSettings();
@@ -91,6 +103,30 @@ function page(res: Response, status: number, langs: string[], body: string) {
   );
 }
 
+/** "How did you hear about us?": the church's options as large tap targets, then Other with a box (no scripts needed). */
+function sourceField(options: L10n[], L: string[], keep: Record<string, string>) {
+  const picked = keep.source_choice ?? '';
+  if (!options.length) {
+    return `<label for="source">${say('source', L)}</label><input type="text" id="source" name="source" maxlength="${CARD_LIMITS.source}" value="${esc(keep.source ?? '')}">`;
+  }
+  const radio = (value: string, label: string) =>
+    `<label class="opt"><input type="radio" name="source_choice" value="${value}"${picked === value ? ' checked' : ''}><span>${label}</span></label>`;
+  return `<fieldset class="opts"><legend>${say('source', L)}</legend>` +
+    options.map((o, i) => radio(String(i), pickL10n(o, L))).join('') +
+    radio('other', say('other', L)) +
+    `<input type="text" name="source" maxlength="${CARD_LIMITS.source}" placeholder="${esc(stripTags(say('otherBox', L)))}" aria-label="${esc(stripTags(say('other', L)))}" value="${esc(keep.source ?? '')}">` +
+    `</fieldset>`;
+}
+/** "Which describes you best?": the church's answers only (no Other); not asked when there are none. */
+function aboutField(options: L10n[], L: string[], keep: Record<string, string>) {
+  if (!options.length) return '';
+  const picked = keep.about_choice ?? '';
+  return `<fieldset class="opts"><legend>${say('about', L)}</legend>` +
+    options.map((o, i) => `<label class="opt"><input type="radio" name="about_choice" value="${i}"${picked === String(i) ? ' checked' : ''}><span>${pickL10n(o, L)}</span></label>`).join('') +
+    `</fieldset>`;
+}
+const stripTags = (s: string) => s.replace(/<br>/g, ' / ').replace(/<[^>]+>/g, '');
+
 function formHtml(token: string, svc: ReturnType<typeof serviceByFormToken>, error?: string, keep: Record<string, string> = {}) {
   const f = formSettings();
   const L = svc.languages;
@@ -105,7 +141,8 @@ function formHtml(token: string, svc: ReturnType<typeof serviceByFormToken>, err
     `<div class="trap" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>` +
     `<label for="name">${say('name', L)}</label><input type="text" id="name" name="name" required maxlength="${CARD_LIMITS.name}" autocomplete="name" value="${v('name')}">` +
     `<label for="contact">${say('contact', L)}</label><input type="text" id="contact" name="contact" maxlength="${CARD_LIMITS.contact}" autocomplete="tel" value="${v('contact')}">` +
-    `<label for="source">${say('source', L)}</label><input type="text" id="source" name="source" maxlength="${CARD_LIMITS.source}" value="${v('source')}">` +
+    aboutField(f.abouts, L, keep) +
+    sourceField(f.sources, L, keep) +
     `<label class="check"><input type="checkbox" name="wants_contact" value="1"${keep.wants_contact ? ' checked' : ''}><span>${say('wants', L)}</span></label>` +
     (f.prayer ? `<label for="prayer">${say('prayer', L)}</label><textarea id="prayer" name="prayer" maxlength="${CARD_LIMITS.prayer}">${v('prayer')}</textarea>` : '') +
     `<label class="check"><input type="checkbox" name="consent" value="1"${keep.consent ? ' checked' : ''}><span class="small">${pickL10n(f.consent, L)}</span></label>` +

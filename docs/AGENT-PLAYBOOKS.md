@@ -146,7 +146,7 @@ Patterns:
 - Member contact details, addresses, birth dates and notes are returned **only** if the administrator has turned on "Expose member contact details & birthdays". Otherwise they are withheld: do not try to obtain or infer them.
 - Even when exposed, use the minimum: names and dates for the task at hand. Don't copy personal data into chats, documents or other tools unless the user asked for it. Don't include ages or birth years unless asked.
 - Rota, group and service tools return names only, never contact details.
-- Service records: visitors are returned by name, how they came and follow-up only; their contact details, notes and prayer requests (from the visitor form) only when personal data is exposed. Agents do not see or review visitor-form entries waiting for review; staff accept them in Canon. Signature images are never returned. Report totals for offerings; do not single out individual services or people in summaries.
+- Service records: visitors are returned by name, how they came and follow-up only; their contact details, notes, prayer requests and how they describe themselves (`about`, from the visitor form) only when personal data is exposed. Agents do not see or review visitor-form entries waiting for review; staff accept them in Canon. Signature images are never returned. Report totals for offerings; do not single out individual services or people in summaries.
 - Agents cannot send e-mail. Volunteer reminders are sent by staff from the service's **Team & roster** tab after a preview.
 - Every tool call is written to an audit log the administrator can read (argument names only for the registers).
 

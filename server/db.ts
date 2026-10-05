@@ -560,6 +560,8 @@ const MIGRATIONS: (string | Migration)[] = [
   );
   CREATE INDEX visitor_cards_service ON visitor_cards(service_id);
   `,
+  // v0.10.6 — "Which describes you best?" on the visitor form
+  `ALTER TABLE visitor_cards ADD COLUMN about TEXT;`,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

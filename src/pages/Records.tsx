@@ -11,6 +11,7 @@ import { Icon } from '../components/icons.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { HistoryButton } from '../components/LogTools.tsx';
 import { VisitorCardsReview } from './VisitorForm.tsx';
+import { sourceLabel } from '../../shared/visitor-form.ts';
 import { CONG_LABEL, CongregationBadge, CongregationFilter, useCongregationFilter, useCongregations } from '../components/Congregations.tsx';
 import {
   CURRENCIES, DENOMINATIONS, METHOD_LABEL, OFFERING_METHODS, cashTotal, countProblems, denomLabel, foreignCounted, foreignCurrencies, methodTotal, money, parseMoney,
@@ -129,6 +130,8 @@ export function RecordEditor() {
     if (rec.data) setD(rec.data);
   }, [rec.data]);
   const funds = settings?.offering?.funds ?? ['General'];
+  // the visitor form's answers, suggested when typing "How they came"
+  const sourceOptions = (settings?.visitor_form?.sources ?? []).map((o) => sourceLabel(o, settings?.languages?.[0])).filter(Boolean);
   const onScreen = settings?.offering?.signing === 'screen';
   const minCount = Math.min(6, Math.max(2, settings?.offering?.min_counters ?? 2));
   const [signer, setSigner] = useState('');
@@ -243,13 +246,18 @@ export function RecordEditor() {
                       <tr>
                         <td><input value={v.name} onChange={(e) => upd({ name: e.target.value })} placeholder={t('Name')} /></td>
                         {!restricted && <td><input value={v.contact ?? ''} onChange={(e) => upd({ contact: e.target.value })} placeholder={t('Phone or e-mail')} /></td>}
-                        <td><input value={v.source ?? ''} onChange={(e) => upd({ source: e.target.value })} placeholder={t('e.g. invited by a friend')} disabled={restricted} /></td>
+                        <td><input value={v.source ?? ''} list="rec-sources" onChange={(e) => upd({ source: e.target.value })} placeholder={t('e.g. invited by a friend')} disabled={restricted} /></td>
                         {!restricted && <td><input value={v.follow_up_by ?? ''} onChange={(e) => upd({ follow_up_by: e.target.value })} /></td>}
                         <td><select value={v.status ?? 'new'} disabled={restricted} onChange={(e) => upd({ status: e.target.value === 'new' ? undefined : (e.target.value as VisitorStatus) })}>{VISITOR_STATUSES.map((s) => <option key={s} value={s}>{t(VISITOR_STATUS_LABEL[s])}</option>)}</select></td>
                         {!restricted && <td><input value={v.notes ?? ''} onChange={(e) => upd({ notes: e.target.value })} /></td>}
                         {!restricted && <td><button className="btn sm ghost icon danger" onClick={() => set({ visitors: d.visitors.filter((_, j) => j !== i) })} aria-label={t('Remove')}><Icon name="trash" /></button></td>}
                       </tr>
-                      {!restricted && v.prayer && <tr className="rec-prayer"><td colSpan={7} className="small"><strong>{t('Prayer request')}:</strong> {v.prayer}</td></tr>}
+                      {!restricted && (v.prayer || v.about) && (
+                        <tr className="rec-prayer"><td colSpan={7} className="small">
+                          {v.about && <><strong>{t('About them')}:</strong> {v.about}{v.prayer ? ' · ' : ''}</>}
+                          {v.prayer && <><strong>{t('Prayer request')}:</strong> {v.prayer}</>}
+                        </td></tr>
+                      )}
                       </Fragment>
                     );
                   })}
@@ -257,6 +265,7 @@ export function RecordEditor() {
               </table>
             </div>
           )}
+          <datalist id="rec-sources">{sourceOptions.map((s) => <option key={s} value={s} />)}</datalist>
           {!restricted && <div className="small muted pdpa">{t('Visitors’ details are personal data: record only what the church needs to follow up (PDPA).')}</div>}
         </section>
 

@@ -14,7 +14,15 @@ export interface VisitorFormSettings {
   consent: L10n;
   /** entries are accepted from the day before the service until this many days after it */
   days_after: number;
+  /** answers offered for "How did you hear about us?" (an "Other" box is always added) */
+  sources: L10n[];
+  /** answers offered for "Which describes you best?" (none = the question is not asked); sensitive, like contact details */
+  abouts: L10n[];
 }
+
+/** The answer kept for a chosen option: in the church's first language, so reports group the same answer together. */
+export const sourceLabel = (o: L10n, firstLang = 'en') => (o[firstLang] || o.en || o.zh || Object.values(o).find(Boolean) || '').trim();
+export const MAX_SOURCES = 12;
 
 export const DEFAULT_VISITOR_FORM: VisitorFormSettings = {
   enabled: false,
@@ -25,6 +33,23 @@ export const DEFAULT_VISITOR_FORM: VisitorFormSettings = {
     zh: '我同意教会保存这些资料，用来欢迎及联络我，并不会向教会以外的人透露。',
   },
   days_after: 3,
+  sources: [
+    { en: 'A friend or family member invited me', zh: '亲友邀请' },
+    { en: 'I live or work nearby', zh: '住在或在附近工作' },
+    { en: 'Walked past', zh: '路过' },
+    { en: 'Online search or map', zh: '网上搜索或地图' },
+    { en: 'Social media', zh: '社交媒体' },
+    { en: 'Church website', zh: '教会网站' },
+    { en: 'A church event', zh: '教会活动' },
+    { en: 'Moved from another church', zh: '从别的教会转来' },
+  ],
+  abouts: [
+    { en: 'Interested in the Christian faith', zh: '慕道友' },
+    { en: 'A believer, not yet baptised', zh: '已信主，未受洗' },
+    { en: 'A baptised Christian', zh: '已受洗的基督徒' },
+    { en: 'Visiting or travelling', zh: '路过或旅行中' },
+    { en: 'Looking for a church home', zh: '寻找教会' },
+  ],
 };
 
 /** One service's form: its link (token) and where its QR code is shown. */
@@ -49,6 +74,8 @@ export interface VisitorCard {
   source: string | null;
   wants_contact: boolean;
   prayer: string | null;
+  /** "Which describes you best?" — sensitive */
+  about: string | null;
   consent: boolean;
   lang: string | null;
 }

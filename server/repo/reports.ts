@@ -187,11 +187,14 @@ export function visitorsReport(q: Period, opts: { contact: boolean }): VisitorsR
   const funnel = Object.fromEntries(VISITOR_STATUSES.map((st, i) => [st, visitors.filter((v) => STAGE(v.status) >= i).length])) as VisitorsReport['funnel'];
   const sources = new Map<string, number>();
   for (const v of visitors) if (v.source) sources.set(v.source, (sources.get(v.source) ?? 0) + 1);
+  const abouts = new Map<string, number>();
+  for (const s of svcs) for (const v of recs.get(s.id)?.visitors ?? []) if (v.name?.trim() && v.about?.trim()) abouts.set(v.about.trim(), (abouts.get(v.about.trim()) ?? 0) + 1);
   return {
     period: p,
     visitors: visitors.reverse(),
     funnel,
     sources: [...sources].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count || a.source.localeCompare(b.source)),
+    ...(opts.contact ? { abouts: [...abouts].map(([about, count]) => ({ about, count })).sort((a, b) => b.count - a.count) } : {}),
     months: monthsBetween(p.from, p.to).map((month) => ({ month, count: visitors.filter((v) => v.date.startsWith(month)).length })),
   };
 }

@@ -441,6 +441,11 @@ function VisitorsTab({ q, congs }: Ctx) {
             <Section title={t('Follow-up')} tip={t('Set each visitor’s follow-up on the service record: Contacted, Came back, Joined the church. A visitor who joined is counted in every step before it.')}>
               <Bars items={(['new', 'contacted', 'returning', 'joined'] as VisitorStatus[]).map((s) => ({ key: s, label: t(VISITOR_STATUS_LABEL[s]), value: r.funnel[s], note: pct(r.funnel[s], total) }))} />
             </Section>
+            {(r.abouts?.length ?? 0) > 0 && (
+              <Section title={t('Who they are')} tip={t('How visitors described themselves on the visitor form (counted; who said what stays on the service records).')}>
+                <Bars items={r.abouts!.map((a) => ({ key: a.about, label: a.about, value: a.count }))} />
+              </Section>
+            )}
             <Section title={t('How they came')}>
               {r.sources.length ? <Bars items={r.sources.slice(0, 12).map((s) => ({ key: s.source, label: s.source, value: s.count }))} /> : <div className="small muted">{t('Not recorded.')}</div>}
             </Section>

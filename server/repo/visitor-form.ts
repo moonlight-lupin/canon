@@ -2,7 +2,7 @@
 // cards until an editor accepts them into the service record's New visitors, or discards them. Nothing a visitor
 // sends is shown publicly; the public page shows only the church name and the service's title and date.
 import crypto from 'node:crypto';
-import { type ServiceVisitorForm, type VisitorCard, type VisitorFormSettings, CARD_LIMITS, DEFAULT_VISITOR_FORM, VISITOR_QR_BLOCK_ID } from '../../shared/visitor-form.ts';
+import { type ServiceVisitorForm, type VisitorCard, type VisitorFormSettings, CARD_LIMITS, DEFAULT_VISITOR_FORM, MAX_SOURCES, VISITOR_QR_BLOCK_ID, sourceLabel } from '../../shared/visitor-form.ts';
 import type { L10n } from '../../shared/types.ts';
 import { all, get, run } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
@@ -21,6 +21,8 @@ export function saveFormSettings(p: Partial<VisitorFormSettings>): VisitorFormSe
     welcome: p.welcome ?? cur.welcome,
     consent: p.consent ?? cur.consent,
     days_after: Math.min(14, Math.max(0, Math.floor(p.days_after ?? cur.days_after))),
+    sources: (p.sources ?? cur.sources).filter((o) => Object.values(o).some((v) => v?.trim())).slice(0, MAX_SOURCES),
+    abouts: (p.abouts ?? cur.abouts).filter((o) => Object.values(o).some((v) => v?.trim())).slice(0, MAX_SOURCES),
   };
   updateSettings({ visitor_form: next });
   return next;
@@ -112,16 +114,24 @@ export function submitCard(token: string, input: Record<string, unknown>): Visit
   const name = clip(input.name, CARD_LIMITS.name);
   if (!name) throw new BadRequest('Please write your name.');
   const contact = clip(input.contact, CARD_LIMITS.contact) || null;
+  // "How did you hear about us?": one of the church's options (kept in its first language), or the visitor's own words
+  const choice = typeof input.source_choice === 'string' ? input.source_choice : '';
+  const options = formSettings().sources;
+  const chosen = /^\d+$/.test(choice) ? options[Number(choice)] : undefined;
+  const source = chosen ? sourceLabel(chosen, getSettings().languages[0]) : clip(input.source, CARD_LIMITS.source) || null;
+  // "Which describes you best?": only one of the church's answers
+  const aboutChoice = typeof input.about_choice === 'string' && /^\d+$/.test(input.about_choice) ? formSettings().abouts[Number(input.about_choice)] : undefined;
+  const about = aboutChoice ? sourceLabel(aboutChoice, getSettings().languages[0]) : null;
   const prayer = formSettings().prayer ? clipText(input.prayer, CARD_LIMITS.prayer) || null : null;
   const consent = input.consent === true || input.consent === 'on' || input.consent === '1';
   if ((contact || prayer) && !consent) throw new BadRequest('Please tick the box to agree, or leave your contact details and prayer request empty.');
   const pending = get<{ n: number }>('SELECT COUNT(*) AS n FROM visitor_cards WHERE service_id = ?', svc.id)?.n ?? 0;
   if (pending >= 500) throw new BadRequest('This form cannot take more entries at the moment.');
   run(
-    'INSERT INTO visitor_cards (service_id, name, contact, source, wants_contact, prayer, consent, lang) VALUES (?,?,?,?,?,?,?,?)',
-    svc.id, name, contact, clip(input.source, CARD_LIMITS.source) || null,
+    'INSERT INTO visitor_cards (service_id, name, contact, source, wants_contact, prayer, consent, lang, about) VALUES (?,?,?,?,?,?,?,?,?)',
+    svc.id, name, contact, source ? source.slice(0, CARD_LIMITS.source) : null,
     input.wants_contact === true || input.wants_contact === 'on' || input.wants_contact === '1' ? 1 : 0,
-    prayer, consent ? 1 : 0, clip(input.lang, 10) || null,
+    prayer, consent ? 1 : 0, clip(input.lang, 10) || null, about,
   );
   return cardsFor(svc.id).at(-1)!;
 }
@@ -129,7 +139,7 @@ export function submitCard(token: string, input: Record<string, unknown>): Visit
 const decode = (r: Record<string, unknown>): VisitorCard => ({
   id: Number(r.id), service_id: Number(r.service_id), created_at: String(r.created_at), name: String(r.name),
   contact: (r.contact as string | null) ?? null, source: (r.source as string | null) ?? null, wants_contact: !!r.wants_contact,
-  prayer: (r.prayer as string | null) ?? null, consent: !!r.consent, lang: (r.lang as string | null) ?? null,
+  prayer: (r.prayer as string | null) ?? null, about: (r.about as string | null) ?? null, consent: !!r.consent, lang: (r.lang as string | null) ?? null,
 });
 
 export const cardsFor = (serviceId: number): VisitorCard[] =>
@@ -152,7 +162,7 @@ export function acceptCard(id: number, who: { name: string; admin: boolean }) {
   const notes = [c.wants_contact ? 'Would like to be contacted' : '', 'via visitor form'].filter(Boolean).join(' · ');
   const visitors = [...rec.visitors, {
     name: c.name, ...(c.contact ? { contact: c.contact } : {}), ...(c.source ? { source: c.source } : {}),
-    ...(c.prayer ? { prayer: c.prayer } : {}), notes,
+    ...(c.prayer ? { prayer: c.prayer } : {}), ...(c.about ? { about: c.about } : {}), notes,
   }];
   const r = saveRecord(c.service_id, { visitors }, who);
   run('DELETE FROM visitor_cards WHERE id = ?', id);

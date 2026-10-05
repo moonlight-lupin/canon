@@ -54,6 +54,8 @@ export interface VisitorsReport {
   /** how many reached each step (a visitor who joined was also contacted and came back) */
   funnel: Record<VisitorStatus, number>;
   sources: { source: string; count: number }[];
+  /** "Which describes you best?" answers, counted (editors and administrators only) */
+  abouts?: { about: string; count: number }[];
   months: { month: string; count: number }[];
 }
 
