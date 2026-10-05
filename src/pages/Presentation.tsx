@@ -1,4 +1,4 @@
-// Service Planner → Slide templates and Bulletin templates.
+// Planner → Slide templates and Bulletin templates.
 // Each page opens on a gallery of templates (pick the church default, make a copy, hide the ones nobody uses) and
 // edits one template at a time in a few numbered steps beside a large live preview. Built-in templates can't be
 // changed or deleted: they open as a preview with "Make a copy to customise", and can be archived instead. Any
@@ -29,7 +29,7 @@ export default function Presentation() {
   return <Navigate to={q === 'bulletin' ? '/bulletin-templates' : q === 'blocks' ? '/library?tab=blocks' : '/slide-templates'} replace />;
 }
 
-/** Service Planner → Slide templates: how the slides look on the projector (and in the PowerPoint download). */
+/** Planner → Slide templates: how the slides look on the projector (and in the PowerPoint download). */
 export function SlideTemplatesPage() {
   const { t } = useI18n();
   const { canEdit, isAdmin, settings, reloadSettings } = useSession();
@@ -64,7 +64,7 @@ export function SlideTemplatesPage() {
         <ThemeEditor key={editing.id} theme={editing} isDefault={editing.id === defaultId} langs={langs} r={r} onBack={() => setEditId(null)} acts={acts} onSaved={reload} />
       ) : (
         <>
-          <PageHead eyebrow={t('Service Planner')} title={t('Slide templates')} sub={t('How the slides look on the projector and in the PowerPoint download: colours, background, fonts, text size and screen shape.')}>
+          <PageHead eyebrow={t('Planner')} title={t('Slide templates')} sub={t('How the slides look on the projector and in the PowerPoint download: colours, background, fonts, text size and screen shape.')}>
             <GuideLink anchor="slide-templates" />
             {canEdit && <ImportTemplateButton onImported={afterImport} />}
           </PageHead>

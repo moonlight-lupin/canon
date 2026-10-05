@@ -37,7 +37,7 @@ export default function Meetings() {
 
   return (
     <div className="page">
-      <PageHead eyebrow={t('Congregation')} title={t('Meetings')} sub={t('Fellowship meetings, cell groups, Sunday school classes, one-off gatherings and other meetings, with their records.')}>
+      <PageHead eyebrow={t('Planner')} title={t('Meetings')} sub={t('Fellowship meetings, cell groups, Sunday school classes, one-off gatherings and other meetings, with their records.')}>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
         <select value={group ?? ''} onChange={(e) => setGroup(e.target.value)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
           <option value="">{t('All meetings')}</option>

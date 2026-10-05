@@ -116,7 +116,7 @@ const zh: Record<string, string> = {
   'Names of those leading each item': '各项目带领者的名字',
   'Time of each item': '各项目的时间',
   'A sample page, drawn by the real bulletin. Your own services print the same way.': '由真正的次序单绘制的样本页，实际聚会的印刷效果相同。',
-  'Bulletin templates decide which items print their full words. Manage them in Service Planner → Bulletin templates.': '次序单模板决定哪些项目印出完整内容。可在「聚会策划 → 次序单模板」中管理。',
+  'Bulletin templates decide which items print their full words. Manage them in Planner → Bulletin templates.': '次序单模板决定哪些项目印出完整内容。可在「策划 → 次序单模板」中管理。',
 
   // ---- service planner
   'Bulletin template': '次序单模板',

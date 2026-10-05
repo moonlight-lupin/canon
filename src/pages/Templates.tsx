@@ -90,7 +90,7 @@ export default function Templates() {
   );
   return (
     <div className="page">
-      <PageHead eyebrow={t('Service Planner')} title={t('Service templates')} sub={lt({ en: 'Reusable orders of worship. Hymn slots are left empty to fill each week.', zh: '可重复使用的聚会程序。诗歌位置留空，每周填写。' })}>
+      <PageHead eyebrow={t('Planner')} title={t('Service templates')} sub={lt({ en: 'Reusable orders of worship. Hymn slots are left empty to fill each week.', zh: '可重复使用的聚会程序。诗歌位置留空，每周填写。' })}>
         <CsvTools entity="templates" label={t('Templates')} onImported={reload} />
         {canEdit && <button className="btn primary" onClick={() => setEdit({ name: {}, description: {}, service_type: 'lords_day', start_time: '10:00', items: [] })}><Icon name="plus" />{t('New template')}</button>}
       </PageHead>

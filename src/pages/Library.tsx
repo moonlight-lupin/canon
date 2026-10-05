@@ -23,7 +23,7 @@ export default function Library() {
   const setTab = (k: LibTab) => setSp(k === 'songs' ? {} : { tab: k }, { replace: true });
   return (
     <div className="page">
-      <PageHead eyebrow={`${t('Service Planner')} · ${t('Library')}`} title={t(LIB_TAB_LABEL[tab])}>
+      <PageHead eyebrow={`${t('Planner')} · ${t('Library')}`} title={t(LIB_TAB_LABEL[tab])}>
         {(tab === 'songs' || tab === 'texts' || tab === 'bible') && <LibraryCheckButton />}
       </PageHead>
       <div className="tabs">

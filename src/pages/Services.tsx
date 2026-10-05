@@ -23,7 +23,7 @@ export default function Services() {
 
   return (
     <div className="page">
-      <PageHead eyebrow={t('Service Planner')} title={t('Services')}>
+      <PageHead eyebrow={t('Planner')} title={t('Services')}>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
         <Seg value={when} onChange={setWhen} options={[{ value: 'upcoming', label: t('Upcoming') }, { value: 'past', label: t('Past') }]} />
         {canEdit && <button className="btn primary" onClick={() => setParams({ new: '' })}><Icon name="plus" />{t('New service')}</button>}

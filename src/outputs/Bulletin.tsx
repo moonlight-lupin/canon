@@ -85,7 +85,7 @@ export default function Bulletin() {
       <div className="out-bar no-print">
         <Link to={`/services/${id}`} className="btn ghost sm"><Icon name="chevronLeft" />{t('Back')}</Link>
         <div className="out-bar-title"><Bi v={r.title} langs={langs} /> <span className="muted">· {t('Bulletin')}</span></div>
-        <label className="out-ctl" title={t('Bulletin templates decide which items print their full words. Manage them in Service Planner → Bulletin templates.')}>
+        <label className="out-ctl" title={t('Bulletin templates decide which items print their full words. Manage them in Planner → Bulletin templates.')}>
           <span>{t('Template')}</span>
           {templates?.length && currentTpl != null ? (
             <select value={currentTpl} onChange={(e) => { const v = Number(e.target.value); setTplSel(v === r.bulletin.template_id ? null : v); setOv({}); }}>

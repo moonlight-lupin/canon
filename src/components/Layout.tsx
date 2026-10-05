@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -14,9 +14,11 @@ import { pageOff } from '../../shared/modules.ts';
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean }[] }[] = [
   { group: '', items: [{ to: '/', label: 'Dashboard', icon: 'home' }, { to: '/calendar', label: 'Calendar', icon: 'calendar' }] },
   {
-    group: 'Service Planner',
+    // services and meetings are both planned here
+    group: 'Planner',
     items: [
       { to: '/services', label: 'Services', icon: 'calendar' },
+      { to: '/meetings', label: 'Meetings', icon: 'clock' },
       { to: '/library', label: 'Library', icon: 'book' },
       { to: '/templates', label: 'Service templates', icon: 'layout' },
       { to: '/bulletin-templates', label: 'Bulletin templates', icon: 'print' },
@@ -27,7 +29,6 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
     group: 'Congregation',
     items: [
       { to: '/groups', label: 'Groups', icon: 'layout' },
-      { to: '/meetings', label: 'Meetings', icon: 'clock' },
       { to: '/members', label: 'Members', icon: 'users' },
       { to: '/coworkers', label: 'Co-workers', icon: 'shield' },
       { to: '/volunteers', label: 'Volunteers', icon: 'hands' },
@@ -37,6 +38,16 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
   { group: 'Administration', items: [{ to: '/settings', label: 'Settings', icon: 'settings' }] },
 ];
 
+// Sections folded in the sidebar (this browser only): room for more modules without a long list.
+const FOLD_KEY = 'canon.nav.folded';
+function readFolded(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(FOLD_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 export function Layout() {
   const { user: me, isAdmin: admin, settings: church } = useSession();
@@ -52,6 +63,28 @@ export function Layout() {
   const { user, logout } = useSession();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
+  const [folded, setFolded] = useState<string[]>(readFolded);
+  const toggleFold = (group: string) => setFolded((f) => {
+    const next = f.includes(group) ? f.filter((g) => g !== group) : [...f, group];
+    try {
+      localStorage.setItem(FOLD_KEY, JSON.stringify(next));
+    } catch { /* private window: folding still works for this visit */ }
+    return next;
+  });
+  const isActive = (to: string) => (to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(to));
+  // going to a page in a folded section opens that section (it can be folded again by hand)
+  useEffect(() => {
+    const g = NAV.find((x) => x.group && x.items.some((it) => (it.to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(it.to))))?.group;
+    if (!g) return;
+    setFolded((f) => {
+      if (!f.includes(g)) return f;
+      const next = f.filter((x) => x !== g);
+      try {
+        localStorage.setItem(FOLD_KEY, JSON.stringify(next));
+      } catch { /* private window */ }
+      return next;
+    });
+  }, [loc.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: settings } = useApi<Settings>('/settings');
 
   // UI languages offered: English plus any of the church's languages that have a translated interface.
@@ -73,17 +106,32 @@ export function Layout() {
         </div>
         <Tagline className="brand-tagline" />
         <nav className="nav">
-          {NAV.filter((g) => g.items.some(visible)).map((g) => (
-            <div key={g.group} className="nav" style={{ gap: 1 }}>
-              {g.group && <div className="nav-group">{t(g.group)}</div>}
-              {g.items.filter(visible).map((it) => (
-                <NavLink key={it.to} to={it.to} end={it.to === '/'} className={({ isActive }) => (isActive || (it.to !== '/' && loc.pathname.startsWith(it.to)) ? 'active' : '')}>
-                  <Icon name={it.icon} />
-                  {t(it.label)}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+          {NAV.filter((g) => g.items.some(visible)).map((g) => {
+            const items = g.items.filter(visible);
+            const shut = !!g.group && folded.includes(g.group);
+            const id = `nav-${g.group.toLowerCase().replace(/\W+/g, '-')}`;
+            return (
+              <div key={g.group} className="nav" style={{ gap: 1 }}>
+                {g.group && (
+                  <button type="button" className="nav-group" aria-expanded={!shut} aria-controls={id}
+                    onClick={(e) => { e.stopPropagation(); toggleFold(g.group); }} title={shut ? t('Show this section') : t('Fold this section')}>
+                    <span>{t(g.group)}</span>
+                    <Icon name={shut ? 'chevronRight' : 'chevronDown'} />
+                  </button>
+                )}
+                {!shut && (
+                  <div id={id} className="nav" style={{ gap: 1 }}>
+                    {items.map((it) => (
+                      <NavLink key={it.to} to={it.to} end={it.to === '/'} className={() => (isActive(it.to) ? 'active' : '')}>
+                        <Icon name={it.icon} />
+                        {t(it.label)}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         <div className="side-foot">
           <Seg<Lang> value={lang} onChange={changeLang} options={uiLangs.map((l) => ({ value: l, label: langInfo(l).short }))} />

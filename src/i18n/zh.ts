@@ -34,7 +34,10 @@ const zh: Record<string, string> = {
   'One language at a time': '一次编辑一种语言',
   'One at a time': '逐一语言',
   'Automatic from': '自动转换自',
-  'Service Planner': '聚会策划',
+  // the sidebar section for services and meetings
+  'Planner': '策划',
+  'Show this section': '展开此部分',
+  'Fold this section': '收起此部分',
   Congregation: '会众',
   'Service templates': '聚会模板',
   'Bulletin templates': '次序单模板',

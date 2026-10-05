@@ -405,7 +405,7 @@ export const PROMPTS: PromptDef[] = [
         writeServices
           ? `5. Build the service: canon_create_service {"date":…} (from the closest template, or copy_from a similar past service), then ONE canon_edit_order batch for the items in order (songs with ref_id and stanzas, readings with scripture_ref, liturgy with ref_id, posture where printed, leaders). Weekly texts and announcements go in bulletin_content with canon_update_service. Leave the status as "draft".${asTemplate ? ' Then save the order as a reusable template: canon_save_service_as_template.' : ''}`
           : `5. ${readOnlyNote('services')}`,
-        '6. The look: no tool changes bulletin or slide templates, so write a short settings sheet the user can follow in Service Planner → Bulletin templates / Slide templates (make a copy of the closest built-in template, then):',
+        '6. The look: no tool changes bulletin or slide templates, so write a short settings sheet the user can follow in Planner → Bulletin templates / Slide templates (make a copy of the closest built-in template, then):',
         source !== 'slides'
           ? '   - Bulletin: 1 Paper and languages (paper size and fold, languages side by side or one after the other); 2 What to print (hymn words, readings, liturgy: all the words / first verse / title only); 3 Cover and order of service (cover or banner and its colours, list or table, hymn numbers, posture, leaders, times); 4 Page layout (the sections in printed order, where new pages start, what is on the back cover).'
           : null,

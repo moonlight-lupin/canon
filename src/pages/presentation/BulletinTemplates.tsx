@@ -47,7 +47,7 @@ export const colOf = (v: string) => (v === 'reference' ? 'title' : v);
 
 export const CHOICE_SHORT: Record<string, string> = { full: 'words', first_stanza: 'first verse', title: 'title', reference: 'reference' };
 
-/** Service Planner → Bulletin templates: what the printed bulletin includes and how it is laid out. */
+/** Planner → Bulletin templates: what the printed bulletin includes and how it is laid out. */
 export function BulletinTemplatesPage() {
   const { t, lt } = useI18n();
   const { canEdit, isAdmin, settings, reloadSettings } = useSession();
@@ -86,7 +86,7 @@ export function BulletinTemplatesPage() {
   ];
   return (
     <div className="page">
-      <PageHead eyebrow={t('Service Planner')} title={t('Bulletin templates')} sub={t('What each printed bulletin includes: paper, cover, which items print in full, and the order of its pages.')}>
+      <PageHead eyebrow={t('Planner')} title={t('Bulletin templates')} sub={t('What each printed bulletin includes: paper, cover, which items print in full, and the order of its pages.')}>
         <GuideLink anchor="bulletin-templates" />
         {canEdit && <ImportTemplateButton onImported={afterImport} />}
       </PageHead>

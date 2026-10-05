@@ -96,7 +96,14 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 16px 0; }
 .brand-name { font-family: var(--serif); font-size: 20px; font-weight: 600; line-height: 1; }
 .brand-church { font-size: 11px; color: var(--ink-3); margin-top: 3px; line-height: 1.3; }
 .nav { display: flex; flex-direction: column; gap: 1px; position: relative; }
-.nav-group { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--reed-ink); padding: 14px 10px 4px; }
+.nav-group {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--reed-ink); padding: 14px 10px 4px; border-radius: var(--r); text-align: left;
+}
+.nav-group svg { width: 14px; height: 14px; opacity: 0; transition: opacity 0.15s; }
+.nav-group:hover svg, .nav-group:focus-visible svg, .nav-group[aria-expanded="false"] svg { opacity: 0.8; }
+.nav-group:hover { color: var(--ink); }
+.nav-group:focus-visible { outline: 2px solid var(--lapis); outline-offset: -2px; }
 .nav a {
   display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--r);
   color: var(--ink-2); font-size: 13.5px; position: relative;
