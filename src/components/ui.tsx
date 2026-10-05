@@ -242,11 +242,14 @@ export function L10nEditScope({ children }: { children: ReactNode }) {
 const covered = (have: Lang[], l: Lang) =>
   have.includes(l) || (l === 'zh-Hant' && have.includes('zh')) || (l === 'zh' && have.includes('zh-Hant'));
 
-/** Dialog header control: which language the fields show, gap markers, and the side-by-side toggle. */
-export function L10nSwitcher() {
+/**
+ * Which language a dialog's or a section's fields show — all of them at once — with gap markers and the
+ * side-by-side toggle. On a page it appears once a section has `min` multilingual fields (default: any).
+ */
+export function L10nSwitcher({ min = 1 }: { min?: number }) {
   const ctx = useContext(L10nEdit);
   const { t } = useI18n();
-  if (!ctx || ctx.langs.length < 2 || !Object.keys(ctx.filled).length) return null;
+  if (!ctx || ctx.langs.length < 2 || Object.keys(ctx.filled).length < min) return null;
   const fields = Object.values(ctx.filled);
   // a gap = a field that has text in some language but not this one
   const gaps = (l: Lang) => fields.filter((have) => have.length > 0 && !covered(have, l)).length;
@@ -292,6 +295,10 @@ export function L10nInput({
   const shown = [...langs, ...extra];
   const filledLangs = shown.filter((l) => v[l]?.trim());
   const [localLang, setLocalLang] = useState<Lang>(shown[0]);
+  // inside a dialog or section with a language switch: this field's own tab overrides it until the switch is used again
+  const [peek, setPeek] = useState<Lang | null>(null);
+  const ctxLang = ctx?.lang;
+  useEffect(() => setPeek(null), [ctxLang]);
 
   // Register with the dialog so its switcher can show gaps.
   const [id] = useState(() => `l10n-${++l10nSeq}`);
@@ -336,20 +343,25 @@ export function L10nInput({
     );
   }
 
-  // One language at a time: the dialog's language, or this field's own tabs outside a dialog
-  const active = ctx ? (shown.includes(ctx.lang) ? ctx.lang : shown[0]) : shown.includes(localLang) ? localLang : shown[0];
+  // One language at a time: this field's own tab, else the dialog's or section's language, else the first
+  const want = ctx ? peek ?? ctx.lang : localLang;
+  const active = shown.includes(want) ? want : shown[0];
+  // hovering a tab shows this field's text in that language, to check the wording without switching
+  const tip = (l: Lang) => {
+    const text = v[l]?.trim();
+    return `${langInfo(l).name}: ${text ? (text.length > 200 ? `${text.slice(0, 200)}…` : text) : t('(empty)')}`;
+  };
   return (
     <div className="l10n single">
-      {!ctx && (
-        <div className="l10n-tabs" role="tablist">
-          {shown.map((l) => (
-            <button key={l} type="button" role="tab" aria-selected={active === l} className={active === l ? 'on' : ''} onClick={() => setLocalLang(l)} title={langInfo(l).name}>
-              {langInfo(l).short}
-              {filledLangs.length > 0 && !covered(filledLangs, l) && <span className="l10n-gap" aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="l10n-tabs" role="tablist">
+        {shown.map((l) => (
+          <button key={l} type="button" role="tab" aria-selected={active === l} className={active === l ? 'on' : ''}
+            onClick={() => (ctx ? setPeek(l) : setLocalLang(l))} title={tip(l)}>
+            {langInfo(l).short}
+            {filledLangs.length > 0 && !covered(filledLangs, l) && <span className="l10n-gap" aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
       {field(active, false)}
     </div>
   );

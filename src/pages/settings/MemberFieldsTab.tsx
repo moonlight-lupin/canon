@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Field, L10nInput, useAction, useSession } from '../../components/ui.tsx';
+import { Field, L10nInput, useAction, useSession, L10nEditScope, L10nSwitcher } from '../../components/ui.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { MAX_MEMBER_FIELDS, MEMBER_FIELD_TYPES, type MemberField, type MemberFieldType } from '../../../shared/member-fields.ts';
@@ -29,8 +29,12 @@ export function MemberFieldsTab() {
     reloadSettings();
   }, t('Saved.'));
   return (
+    <L10nEditScope>
     <div className="card stack">
-      <div className="small muted">{t('Your own fields on the member register, e.g. “Cell group leader?”, “Joined via”, “Dietary needs”. They show on each member’s page, can filter the members list, and are columns in the members CSV (custom_…).')}</div>
+      <div className="l10n-section-head">
+        <div className="small muted">{t('Your own fields on the member register, e.g. “Cell group leader?”, “Joined via”, “Dietary needs”. They show on each member’s page, can filter the members list, and are columns in the members CSV (custom_…).')}</div>
+        <L10nSwitcher min={2} />
+      </div>
       {!fields.length && <div className="small muted">{t('No fields yet.')}</div>}
       {fields.map((f, i) => (
         <div key={f.key || `new-${i}`} className="card sub-card stack mf-row">
@@ -72,5 +76,6 @@ export function MemberFieldsTab() {
         <InfoTip text={t('Removing a field hides it everywhere; values already entered are kept and come back if a field with the same name is added again.')} />
       </div>
     </div>
+    </L10nEditScope>
   );
 }

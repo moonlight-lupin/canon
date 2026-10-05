@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
-import { Bi, ErrorBox, L10nInput, Loading, useSession, useToast } from '../components/ui.tsx';
+import { Bi, ErrorBox, L10nInput, Loading, useSession, useToast, L10nEditScope, L10nSwitcher } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import { hasAnyText } from '../../shared/labels.ts';
 import { ANNOUNCEMENTS_KEY, weeklySections, type BulletinTemplate } from '../../shared/presentation.ts';
@@ -78,6 +78,7 @@ export function ServiceBulletinTab({ svc, canEdit, onContent }: { svc: ServiceFu
   if (!templates) return <Loading />;
 
   return (
+    <L10nEditScope>
     <div className="card stack" style={{ maxWidth: 860 }}>
       <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
@@ -87,6 +88,7 @@ export function ServiceBulletinTab({ svc, canEdit, onContent }: { svc: ServiceFu
         <div className="row" style={{ gap: 8 }}>
           {saving === 'pending' && <span className="small muted">{t('Saving…')}</span>}
           {saving === 'saved' && <span className="small muted"><Icon name="check" width={13} height={13} style={{ verticalAlign: -2 }} /> {t('Saved.')}</span>}
+          <L10nSwitcher min={2} />
           <Link className="btn sm" to={`/services/${svc.id}/bulletin`}><Icon name="print" />{t('Bulletin')}</Link>
         </div>
       </div>
@@ -120,5 +122,6 @@ export function ServiceBulletinTab({ svc, canEdit, onContent }: { svc: ServiceFu
         })
       )}
     </div>
+    </L10nEditScope>
   );
 }

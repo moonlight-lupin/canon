@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { useCanRecord, Bi, ErrorBox, Field, L10nInput, Loading, confirmAction, fmtDate, addDays, useAction, useSession } from '../../components/ui.tsx';
+import { useCanRecord, Bi, ErrorBox, Field, L10nInput, Loading, confirmAction, fmtDate, addDays, useAction, useSession, L10nEditScope, L10nSwitcher } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { Combo, type ComboOption } from '../../components/Combo.tsx';
@@ -98,8 +98,12 @@ export default function MeetingPage() {
       </section>
 
       <fieldset disabled={!canEdit} className="bare stack">
+        <L10nEditScope>
         <section className="card stack">
-          <h3 style={{ margin: 0 }}>{t('Details')}</h3>
+          <div className="l10n-section-head">
+            <h3 style={{ margin: 0 }}>{t('Details')}</h3>
+            <L10nSwitcher min={2} />
+          </div>
           <Field label={t('Title')}><L10nInput value={d.title} onChange={(v: L10n) => set({ title: v })} /></Field>
           <div className="form-grid">
             <Field label={t('Date')}><input type="date" value={d.date} onChange={(e) => set({ date: e.target.value })} /></Field>
@@ -122,6 +126,7 @@ export default function MeetingPage() {
           <Field label={t('Notes')}><textarea rows={3} value={d.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} /></Field>
           {canEdit && <div><button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button></div>}
         </section>
+        </L10nEditScope>
       </fieldset>
 
       <section className="card stack">

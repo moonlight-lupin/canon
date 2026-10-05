@@ -100,8 +100,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 16px 0; }
   display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: none; cursor: pointer;
   font: inherit; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--reed-ink); padding: 14px 10px 4px; border-radius: var(--r); text-align: left;
 }
-.nav-group svg { width: 14px; height: 14px; opacity: 0; transition: opacity 0.15s; }
-.nav-group:hover svg, .nav-group:focus-visible svg, .nav-group[aria-expanded="false"] svg { opacity: 0.8; }
+.nav .nav-group svg { width: 14px; height: 14px; opacity: 0.4; transition: opacity 0.15s; }
+.nav .nav-group:hover svg, .nav .nav-group:focus-visible svg, .nav .nav-group[aria-expanded="false"] svg { opacity: 0.9; }
 .nav-group:hover { color: var(--ink); }
 .nav-group:focus-visible { outline: 2px solid var(--lapis); outline-offset: -2px; }
 .nav a {
@@ -487,3 +487,7 @@ table.t tr.click:hover td { background: var(--sunk); }
 .tp-menu-list button:hover:not(:disabled), .tp-menu-list button:focus-visible { background: var(--paper-2); outline: none; }
 .tp-menu-list button:disabled { color: var(--ink-3); cursor: not-allowed; }
 .tp-menu-list button.danger { color: var(--danger); }
+
+/* a section with one language switch for its multilingual fields (components/ui.tsx L10nSection) */
+.l10n-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.l10n-section-head > :first-child { margin: 0; }

@@ -1,7 +1,7 @@
 // The service planner: the service's details (date, title, preacher, languages, cover, templates…).
 import { useState } from 'react';
 import { useContentLangs, useI18n } from '../../i18n.tsx';
-import { Field, L10nInput, useSession } from '../../components/ui.tsx';
+import { Field, L10nInput, useSession, L10nEditScope, L10nSwitcher } from '../../components/ui.tsx';
 import { MAX_SERVICE_LANGS, langInfo } from '../../../shared/languages.ts';
 import { SEASON_KEYS } from '../../components/brand.tsx';
 import { SEASONS, seasonOf } from '../../../shared/season.ts';
@@ -30,6 +30,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
     if (next.length && next.length <= MAX_SERVICE_LANGS) set('languages', next);
   };
   return (
+    <L10nEditScope>
     <div className="card" style={{ marginBottom: 16 }}>
       <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0 }} className="stack">
         <div className="form-grid">
@@ -79,6 +80,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
           <BulletinTemplateField value={d.bulletin_template_id ?? null} onChange={(v) => set('bulletin_template_id', v)} />
           <SlideThemeField value={d.slide_theme_id ?? null} onChange={(v) => set('slide_theme_id', v)} />
         </div>
+        <div className="l10n-section-head"><span /><L10nSwitcher min={2} /></div>
         <Field label={t('Title')}><L10nInput value={d.title} onChange={(v) => set('title', v)} /></Field>
         <Field label={t('Sermon title')}><L10nInput value={d.sermon_title} onChange={(v) => set('sermon_title', v)} /></Field>
         <Field label={t('Theme')}><L10nInput value={d.theme} onChange={(v) => set('theme', v)} /></Field>
@@ -94,6 +96,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
         </div>
       </fieldset>
     </div>
+    </L10nEditScope>
   );
 }
 

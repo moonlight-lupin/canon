@@ -36,6 +36,7 @@ const zh: Record<string, string> = {
   'Automatic from': '自动转换自',
   // the sidebar section for services and meetings
   'Planner': '策划',
+  '(empty)': '（空白）',
   'Show this section': '展开此部分',
   'Fold this section': '收起此部分',
   Congregation: '会众',

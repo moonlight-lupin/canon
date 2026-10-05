@@ -1574,6 +1574,7 @@ const zhHant: Record<string, string> = {
  "One at a time": "逐一語言",
  "Automatic from": "自動轉換自",
  "Planner": "策劃",
+ "(empty)": "（空白）",
  "Show this section": "展開此部分",
  "Fold this section": "收起此部分",
  "Service templates": "聚會模板",

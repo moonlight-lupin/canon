@@ -2,7 +2,7 @@
 
 Canon helps the church office plan the Sunday service, print the bulletin, project the slides and keep the registers. This guide follows the weekly routine. Labels in **bold** are exactly what you see on screen.
 
-> **Tip:** Everything you type in one language can be typed in each of the church's languages. Simplified and Traditional Chinese convert automatically, so type Chinese only once.
+> **Tip:** Everything you type in one language can be typed in each of the church's languages. Simplified and Traditional Chinese convert automatically, so type Chinese only once. Where a dialog or a section has several such fields, the language switch at its top right (**EN** / **简** …) turns all of them to one language at once, and **Side by side** shows every language together. Each field also keeps its own small language tabs: click one to switch just that field, or hover over it to read the field in that language without switching.
 
 ## Getting started
 

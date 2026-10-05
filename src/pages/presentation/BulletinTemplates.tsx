@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Bi, ErrorBox, Field, L10nInput, Loading, PageHead, Seg, confirmAction, useAction, useSession } from '../../components/ui.tsx';
+import { Bi, ErrorBox, Field, L10nInput, Loading, PageHead, Seg, confirmAction, useAction, useSession, L10nEditScope, L10nSwitcher } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { COVER_LABEL } from '../../outputs/bulletin-build.tsx';
 import { PAPERS, PAPER_ORDER } from '../../outputs/bulletin-paper.tsx';
@@ -227,10 +227,13 @@ export function TemplateEditor({ tpl, isDefault, onBack, acts, onSaved }: {
       {head}
       <div className="tp-editor">
         <div className="tp-steps">
-          <div className="pr-grid">
-            <Field label={t('Template name')}><L10nInput value={draft.name} onChange={(n) => setDraft((d) => ({ ...d, name: n }))} /></Field>
-            <Field label={<TipLabel label={t('Description')} tip={t('A short note shown in the template list, e.g. “Lord’s Supper Sundays”.')} />}><L10nInput value={draft.description} onChange={(n) => setDraft((d) => ({ ...d, description: n }))} /></Field>
-          </div>
+          <L10nEditScope>
+            <div className="l10n-section-head"><span /><L10nSwitcher min={2} /></div>
+            <div className="pr-grid">
+              <Field label={t('Template name')}><L10nInput value={draft.name} onChange={(n) => setDraft((d) => ({ ...d, name: n }))} /></Field>
+              <Field label={<TipLabel label={t('Description')} tip={t('A short note shown in the template list, e.g. “Lord’s Supper Sundays”.')} />}><L10nInput value={draft.description} onChange={(n) => setDraft((d) => ({ ...d, description: n }))} /></Field>
+            </div>
+          </L10nEditScope>
 
           <Step n={1} title={t('Paper and languages')} summary={sum.paper} open={steps.isOpen(1)} onToggle={() => steps.toggle(1)}>
             <div className="pr-grid">
