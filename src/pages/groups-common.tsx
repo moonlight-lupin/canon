@@ -111,6 +111,7 @@ export function GroupFormModal({
   group, kind, nextSort = 0, onClose, onSaved,
 }: { group: Group | null; kind?: GroupKind; nextSort?: number; onClose: () => void; onSaved: (g: Group) => void }) {
   const { t } = useI18n();
+  const { settings } = useSession();
   const { run, busy } = useAction();
   const [name, setName] = useState<L10n>(group?.name ?? {});
   const [k, setK] = useState<GroupKind>(group?.kind ?? kind ?? 'fellowship');
@@ -166,7 +167,7 @@ export function GroupFormModal({
           <Field label={t('Description')} className="span-all"><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
           <label className="check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{t('Active')}</label>
         </div>
-        {k !== 'serving_team' && <PatternFields value={pattern} onChange={setPattern} />}
+        {k !== 'serving_team' && settings?.modules?.meetings !== false && <PatternFields value={pattern} onChange={setPattern} />}
       </div>
     </Modal>
   );
@@ -232,6 +233,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
   const { canEdit } = useSession();
   const { data, error, reload } = useApi<GroupDetail>(`/groups/${groupId}`);
   const people = usePeople();
+  const meetingsOn = useSession().settings?.modules?.meetings !== false;
   const toast = useToast();
   const { run, busy } = useAction();
   const [editing, setEditing] = useState(false);
@@ -311,8 +313,8 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
               )}
             </div>
             <div className="row" style={{ gap: 6 }}>
-              {data.kind !== 'serving_team' && <Link className="btn sm" to={`/meetings?group=${data.id}`}><Icon name="clock" />{t('Meetings')}</Link>}
-              {canEdit && data.pattern?.every && <button className="btn sm" onClick={ahead} disabled={busy} title={t('Create this group’s meetings for the coming weeks from its meeting pattern')}><Icon name="plus" />{t('Create meetings ahead')}</button>}
+              {data.kind !== 'serving_team' && meetingsOn && <Link className="btn sm" to={`/meetings?group=${data.id}`}><Icon name="clock" />{t('Meetings')}</Link>}
+              {canEdit && meetingsOn && data.pattern?.every && <button className="btn sm" onClick={ahead} disabled={busy} title={t('Create this group’s meetings for the coming weeks from its meeting pattern')}><Icon name="plus" />{t('Create meetings ahead')}</button>}
               {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
             </div>
           </div>

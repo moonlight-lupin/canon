@@ -85,7 +85,7 @@ type Rule = [RegExp, PermModule | 'signed_in' | 'admin' | 'csv'];
 const RULES: Rule[] = [
   [/^\/congregations\/\d+$/, 'admin'],
   [/^\/(me|settings|dashboard|calendar|about|congregations|presentation\/defaults|reports\/archived-years)$/, 'signed_in'],
-  [/^\/(users|access-roles|backups|archives|security|member-views|storage|change-log|log-retention|mcp|email\/(settings|test)|offering-settings)(\/|\.|$)/, 'admin'],
+  [/^\/(users|access-roles|modules|backups|archives|security|member-views|storage|change-log|log-retention|mcp|email\/(settings|test)|offering-settings)(\/|\.|$)/, 'admin'],
   // read by editors' screens; changed by administrators (the route says so)
   [/^\/visitor-form-settings$/, 'records'],
   [/^\/services\/\d+\/record(\/|$)/, 'records'],

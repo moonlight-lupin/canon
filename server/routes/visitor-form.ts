@@ -153,6 +153,7 @@ function formHtml(token: string, svc: ReturnType<typeof serviceByFormToken>, err
 const ipOf = (req: Request) => req.ip ?? req.socket.remoteAddress ?? '?';
 
 visitorFormRouter.get('/v/:token', (req, res) => {
+  if (getSettings().modules.visitor_form === false) return page(res, 404, ['en', 'zh'], `<p class="done">${say('gone', ['en', 'zh'])}</p>`);
   let svc: ReturnType<typeof serviceByFormToken>;
   try {
     svc = serviceByFormToken(req.params.token);
@@ -164,6 +165,7 @@ visitorFormRouter.get('/v/:token', (req, res) => {
 });
 
 visitorFormRouter.post('/v/:token', express.urlencoded({ extended: false, limit: '8kb', parameterLimit: 20 }), (req, res) => {
+  if (getSettings().modules.visitor_form === false) return page(res, 404, ['en', 'zh'], `<p class="done">${say('gone', ['en', 'zh'])}</p>`);
   const token = req.params.token;
   let svc: ReturnType<typeof serviceByFormToken>;
   try {

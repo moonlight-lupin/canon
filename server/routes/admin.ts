@@ -14,6 +14,7 @@ import { h, id, sendCsv, str } from './helpers.ts';
 import * as ar from '../repo/access-roles.ts';
 import { listRoles } from '../lib/permissions.ts';
 import { PERM_MODULES } from '../../shared/permissions.ts';
+import { OPTIONAL_MODULES } from '../../shared/modules.ts';
 
 export const adminRoutes = express.Router();
 
@@ -123,6 +124,15 @@ adminRoutes.post('/mcp/check-public-url', requireAdmin, h(async (req) => {
 }));
 adminRoutes.get('/mcp/grants', requireAdmin, h(() => listGrants()));
 adminRoutes.delete('/mcp/grants/:grant', requireAdmin, h((req) => revokeGrant(String(req.params.grant))));
+
+// ---------------------------------------------------------------- optional parts of Canon
+
+adminRoutes.put('/modules', requireAdmin, h((req) => {
+  const b = z.partialRecord(z.enum(OPTIONAL_MODULES), z.boolean()).parse(req.body);
+  const before = getSettings().modules;
+  const after = updateSettings({ modules: { ...before, ...b } }).modules;
+  return after;
+}));
 
 // ---------------------------------------------------------------- roles for accounts (not rota roles)
 

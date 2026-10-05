@@ -49,9 +49,9 @@ function presetRange(p: Preset): [string, string] {
 
 export default function Reports() {
   const { t, lang } = useI18n();
-  const { canEdit, can } = useSession();
+  const { canEdit, can, settings } = useSession();
   const [params, setParams] = useSearchParams();
-  const tabs = TABS.filter((x) => !x.money || can('contributions', 'read'));
+  const tabs = TABS.filter((x) => (!x.money || can('contributions', 'read')) && (x.kind !== 'serving' || settings?.modules?.volunteers !== false));
   const kind = (tabs.find((x) => x.kind === params.get('tab'))?.kind ?? 'attendance') as ReportKind;
   const [preset, setPreset] = useState<Preset>('12m');
   const [custom, setCustom] = useState<[string, string]>(() => presetRange('12m'));
@@ -72,7 +72,7 @@ export default function Reports() {
     <div className="page rep-page">
       <PageHead eyebrow={t('Records')} title={t('Reports')} sub={t('Trends and summaries over a period, to print or export to Excel.')}>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
-        {byKind && <Seg value={of} onChange={setOf} options={[{ value: 'service', label: t('Services') }, { value: 'meeting', label: t('Meetings') }]} />}
+        {byKind && settings?.modules?.meetings !== false && <Seg value={of} onChange={setOf} options={[{ value: 'service', label: t('Services') }, { value: 'meeting', label: t('Meetings') }]} />}
         {byKind && of === 'meeting' && (
           <select value={group ?? ''} onChange={(e) => setGroup(Number(e.target.value) || null)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
             <option value="">{t('All groups')}</option>

@@ -344,6 +344,7 @@ export function createMeetingsAhead(groupId: number, weeks?: number, today = new
 
 /** Every active group that creates its meetings ahead (daily). Returns how many meetings were made. */
 export function createAllMeetingsAhead(today?: string): number {
+  if (getSettings().modules.meetings === false) return 0;
   const ids = all<{ id: number; pattern: string }>("SELECT id, pattern FROM groups WHERE active = 1 AND kind != 'serving_team'")
     .filter((g) => ((JSON.parse(g.pattern || '{}') as MeetingPattern).ahead_weeks ?? 0) > 0).map((g) => g.id);
   return ids.reduce((n, id) => n + createMeetingsAhead(id, undefined, today).length, 0);

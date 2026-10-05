@@ -293,11 +293,11 @@ export default function ServiceEditor() {
 
       <div className="tabs">
         <button className={tab === 'order' ? 'on' : ''} onClick={() => setTab('order')}>{t('Order of worship')}</button>
-        <button className={tab === 'team' ? 'on' : ''} onClick={() => setTab('team')}>
+        {settings?.modules?.volunteers !== false && <button className={tab === 'team' ? 'on' : ''} onClick={() => setTab('team')}>
           {t('Team & roster')} <span className="badge" style={{ marginLeft: 4 }}>{svc.assignments.filter((a) => a.status !== 'declined').length}</span>
-        </button>
+        </button>}
         <button className={tab === 'bulletin' ? 'on' : ''} onClick={() => setTab('bulletin')}>{t('Bulletin')}</button>
-        <button className={tab === 'visitors' ? 'on' : ''} onClick={() => setTab('visitors')}>{t('Visitor form')}</button>
+        {settings?.modules?.visitor_form !== false && <button className={tab === 'visitors' ? 'on' : ''} onClick={() => setTab('visitors')}>{t('Visitor form')}</button>}
         <div className="grow" />
         <button onClick={() => setShowDetails((s) => !s)}><Icon name="edit" style={{ width: 14, height: 14, verticalAlign: -2, marginRight: 4 }} />{t('Edit')}…</button>
       </div>

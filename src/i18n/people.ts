@@ -874,5 +874,10 @@ const zh: Record<string, string> = {
   "By": "核准人",
   "Current": "最新",
   "Changed since": "之后已更改",
+  "Modules": "功能模块",
+  "Turn off what your church doesn’t use: it is hidden for everyone and AI assistants don’t see it. Nothing is deleted — turning it on again brings everything back.": "关闭教会不使用的部分：所有人都不会再看到，AI 助手也看不到。不会删除任何资料——重新开启即可恢复一切。",
+  "Fellowship meetings, cell groups, Sunday school and one-off meetings with their records, recurring meetings, and the church calendar.": "团契聚会、小组、主日学和单次聚会及其记录、定期聚会，以及教会日历。",
+  "Serving teams, rota roles, who serves at each service, away dates, reminders and the serving report.": "事奉团队、事奉岗位、每次聚会的事奉安排、请假日期、提醒和事奉报表。",
+  "The form new visitors fill in on their phones (QR codes on the bulletin and slides), reviewed before it joins the record.": "新朋友用手机填写的表格（次序单和投影上的二维码），审核后才加入记录。",
 };
 export default zh;

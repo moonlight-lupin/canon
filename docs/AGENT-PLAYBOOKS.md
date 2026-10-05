@@ -178,7 +178,7 @@ The MCP server offers these as prompts; each is offered only when your access al
 
 ## 12. Troubleshooting
 
-- **A tool or playbook is missing**: the administrator has set that module to off or read-only in Settings → AI / MCP, your connection was approved with read-only scope, or the signed-in user's role doesn't allow it. Ask the user to check with the administrator; don't work around it.
+- **A tool or playbook is missing**: the administrator has set that module to off or read-only in Settings → AI / MCP, your connection was approved with read-only scope, the signed-in user's role doesn't allow it, or the church has switched that part of Canon off (Settings → Modules: meetings and calendar, volunteers and rota, visitor form). Ask the user to check with the administrator; don't work around it.
 - **member_care is missing**: members is off, or "Expose member contact details & birthdays" is off (the default).
 - **No service-record or offerings tools**: Service records and Offerings are off by default; offerings also need Service records on and an editor or administrator account.
 - **"N of M operations failed — nothing was applied"**: read the per-op errors, fix them, resend the whole batch.

@@ -62,7 +62,7 @@ Call to Worship → Invocation → Hymn of praise (stand) → Reading of the Law
 
 ## Troubleshooting
 
-- Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, or the user's role doesn't allow it.
+- Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, the user's role doesn't allow it, or that part of Canon is switched off (Settings → Modules).
 - `member_care` missing → members off, or member details not exposed (the default).
 - "N of M operations failed — nothing was applied" → fix the per-op errors, resend the whole batch.
 - "No Bible is set up for language …" → an administrator adds one in Settings → Languages.

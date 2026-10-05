@@ -5,8 +5,10 @@ import type { Role } from '../shared/types.ts';
 import { all, get, run } from './db.ts';
 import { config } from './config.ts';
 import { leaderMayWrite } from './lib/leaders.ts';
-import { gateRequest, isAdmin } from './lib/permissions.ts';
+import { gateRequest, isAdmin, meetingPath } from './lib/permissions.ts';
 import { outsideWall } from './lib/walls.ts';
+import { moduleOff } from '../shared/modules.ts';
+import { getSettings } from './repo/settings.ts';
 
 export interface User {
   id: number;
@@ -129,6 +131,10 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   const u = sessionUser(req);
   if (!u) return res.status(401).json({ error: 'Not signed in' });
   if (!SAFE.has(req.method) && req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Bad CSRF token' });
+  // a part of Canon the church has switched off (Settings → Modules) is not there at all
+  if (moduleOff(req.method, req.path, getSettings().modules) || (getSettings().modules.meetings === false && meetingPath(req.path))) {
+    return res.status(404).json({ error: 'This part of Canon is turned off (Settings → Modules).' });
+  }
   const why = gateRequest(u, req.method, req.path);
   if (why && !(!SAFE.has(req.method) && leaderMayWrite(u.person_id, req))) return res.status(403).json({ error: why });
   // an account limited to one congregation can't reach another congregation's items (lib/walls.ts)

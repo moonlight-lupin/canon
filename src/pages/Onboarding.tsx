@@ -10,6 +10,7 @@ import { AddBibleDialog, CopyrightNote, refreshBibles, type Translation } from '
 import { LanguagePicker } from '../components/LanguagePicker.tsx';
 import { MAX_SERVICE_LANGS, langInfo } from '../../shared/languages.ts';
 import type { Lang, Settings } from '../types-client.ts';
+import { ModulesPanel } from './settings/ModulesTab.tsx';
 
 interface CatalogBible { code: string; name: string; lang: string; year?: number; imported: number; job: { status: string; message: string } | null }
 const OTHER = '_other';
@@ -201,6 +202,10 @@ export default function Onboarding({ settings, onDone }: { settings: Settings; o
         </div>
       </div>
       <p className="muted">{t('Choose the languages your church worships in and import the Bibles. You can change all of this later in Settings → Languages.')}</p>
+      <section className="card stack" style={{ marginBottom: 14 }}>
+        <h2 style={{ margin: 0 }}>{t('Modules')}</h2>
+        <ModulesPanel initial={settings.modules} />
+      </section>
       <LanguagesPanel settings={settings} onSaved={onDone} saveLabel={t('Finish setup')} />
     </div>
   );

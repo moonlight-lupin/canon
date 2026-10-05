@@ -44,7 +44,7 @@ interface Row {
 export default function Records() {
   const { t, lang } = useI18n();
   const nav = useNavigate();
-  const { canEdit, isAdmin, can } = useSession();
+  const { canEdit, isAdmin, can, settings } = useSession();
   const [range, setRange] = useState<'8' | '26' | '52'>('8');
   const [cong, setCong, congs] = useCongregationFilter('records');
   // services and meetings apart: a cell group's headcount would distort a Sunday's average
@@ -67,7 +67,7 @@ export default function Records() {
     <div className="page">
       <PageHead eyebrow={t('Records')} title={t('Service records')} sub={t('Attendance, new visitors, notes for the team and offerings, for each service held.')}>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
-        <Seg value={kind} onChange={setKind} options={[{ value: 'service', label: t('Services') }, { value: 'meeting', label: t('Meetings') }]} />
+        {settings?.modules?.meetings !== false && <Seg value={kind} onChange={setKind} options={[{ value: 'service', label: t('Services') }, { value: 'meeting', label: t('Meetings') }]} />}
         <Seg value={range} onChange={setRange} options={[{ value: '8', label: t('8 weeks') }, { value: '26', label: t('6 months') }, { value: '52', label: t('12 months') }]} />
       </PageHead>
       {error && <ErrorBox error={error} />}

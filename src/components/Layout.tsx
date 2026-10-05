@@ -9,6 +9,7 @@ import { UI_LANGS, langInfo } from '../../shared/languages.ts';
 import { Seg, useSession } from './ui.tsx';
 import type { Settings } from '../types-client.ts';
 import { allows, pageModule } from '../../shared/permissions.ts';
+import { pageOff } from '../../shared/modules.ts';
 
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean }[] }[] = [
   { group: '', items: [{ to: '/', label: 'Dashboard', icon: 'home' }, { to: '/calendar', label: 'Calendar', icon: 'calendar' }] },
@@ -38,10 +39,11 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
 
 
 export function Layout() {
-  const { user: me, isAdmin: admin } = useSession();
+  const { user: me, isAdmin: admin, settings: church } = useSession();
   // pages the account's role can't read are left out of the sidebar (the server refuses them anyway)
   const visible = (it: { to: string; admin?: boolean }) => {
     if (it.admin) return admin;
+    if (pageOff(it.to, church?.modules)) return false;
     const m = pageModule(it.to);
     // Settings is everyone's (their own profile); its tabs are for administrators
     return m === null || m === 'admin' || allows(me.role_def, m, 'read');

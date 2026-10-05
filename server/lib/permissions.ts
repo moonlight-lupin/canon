@@ -45,6 +45,9 @@ export const mayReopenCounts = (u: WithRole) => !!roleOf(u)?.reopen_counts;
 /** Can this account change anything at all (else it is read-only, e.g. for AI connections)? */
 export const editsAnything = (u: WithRole) => { const r = roleOf(u); return !!r && (r.admin || PERM_MODULES.some((m) => r.access[m] === 'edit')); };
 
+/** Whether a service-shaped path is a meeting's (its service row, its items, its record). */
+export const meetingPath = (path: string) => /^\/(services|items)\/\d+/.test(path) && serviceModule(path) === 'meetings';
+
 /** The module of a service-shaped path: a meeting's service row belongs to Meetings, not Services. */
 function serviceModule(path: string): PermModule {
   const s = /^\/services\/(\d+)/.exec(path);

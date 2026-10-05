@@ -251,3 +251,24 @@ test('approved, dated versions of the bulletin and slides: kept exactly, and Can
   await call(as.planner, 'POST', `/services/${sid}/approvals`, {});
   assert.equal(((await call(as.viewer, 'GET', `/services/${sid}/approvals`)).body as Json[])[0].current, true);
 });
+
+test('optional parts of Canon can be switched off: hidden, refused, no AI tools — and back on with nothing lost', async () => {
+  const { allowedTools } = await import('../server/mcp.ts');
+  assert.equal((await call(as.editor, 'PUT', '/modules', { meetings: false })).status, 403, 'administrators only');
+  assert.equal((await call(as.admin, 'PUT', '/modules', { meetings: false, volunteers: false, visitor_form: false })).status, 200);
+  assert.equal((await call(as.editor, 'GET', '/meetings')).status, 404);
+  assert.equal((await call(as.editor, 'GET', '/calendar?from=2036-01-01&to=2036-01-31')).status, 404);
+  assert.equal((await call(as.editor, 'GET', `/services/${ids.meeting}`)).status, 404, 'a meeting through its service address too');
+  assert.equal((await call(as.editor, 'GET', `/services/${ids.service}`)).status, 200, 'services stay');
+  assert.equal((await call(as.editor, 'GET', '/rota?from=2036-01-01&to=2036-01-31')).status, 404);
+  assert.equal((await call(as.editor, 'GET', '/teams')).status, 200, 'other pages still read the teams');
+  assert.equal((await call(as.editor, 'POST', '/teams', { name: { en: 'Test team' } })).status, 404);
+  assert.equal((await call(as.editor, 'GET', `/services/${ids.service}/visitor-form`)).status, 404);
+  const cfg = { ...S.getSettings().mcp, enabled: true, modules: { ...S.getSettings().mcp.modules, volunteers: 'write', services: 'write' } };
+  const tools = allowedTools(cfg as never, new Set(['canon:read', 'canon:write']), 'admin').map((t) => t.name);
+  assert.ok(!tools.includes('canon_get_rota') && !tools.includes('canon_get_calendar') && tools.includes('canon_get_service'));
+  // back on: everything is there again
+  await call(as.admin, 'PUT', '/modules', { meetings: true, volunteers: true, visitor_form: true });
+  assert.equal((await call(as.editor, 'GET', `/services/${ids.meeting}`)).status, 200);
+  assert.equal((await call(as.editor, 'GET', '/rota?from=2036-01-01&to=2036-01-31')).status, 200);
+});

@@ -4,6 +4,7 @@ import type { L10n, Lang, McpConfig } from '../../shared/types.ts';
 import { langInfo } from '../../shared/languages.ts';
 import { all, run } from '../db.ts';
 import { logChange } from './changelog.ts';
+import { DEFAULT_MODULES, type ModuleSwitches } from '../../shared/modules.ts';
 
 export type PaperSize = 'a4-booklet' | 'a4' | 'a5' | 'letter-booklet' | 'letter';
 export type CoverStyle = 'plain' | 'cross' | 'logo' | 'verse';
@@ -55,6 +56,8 @@ export interface Settings {
   offering: { currency: string; funds: string[]; signing?: 'paper' | 'screen'; min_counters?: number; /** on screen: counters approve from their own accounts */ own_accounts?: boolean };
   /** Settings → Visitor form (see shared/visitor-form.ts) */
   visitor_form: VisitorFormSettings;
+  /** optional parts of Canon switched on or off (shared/modules.ts) */
+  modules: ModuleSwitches;
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
   member_fields: MemberField[];
   /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
@@ -91,6 +94,7 @@ export const DEFAULT_SETTINGS: Settings = {
   retention: { change_log_months: 24, mcp_audit_months: 12, visitor_contact_months: 24, archive_years: 5 },
   offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   visitor_form: DEFAULT_VISITOR_FORM,
+  modules: DEFAULT_MODULES,
   member_fields: [],
   security: { disk_encryption: false },
   trust_proxy: false,
@@ -128,6 +132,7 @@ export function getSettings(): Settings {
   out.backup = { ...DEFAULT_SETTINGS.backup, ...out.backup };
   out.retention = { ...DEFAULT_SETTINGS.retention, ...out.retention };
   out.visitor_form = { ...DEFAULT_SETTINGS.visitor_form, ...out.visitor_form };
+  out.modules = { ...DEFAULT_MODULES, ...out.modules };
   out.default_languages = out.default_languages.filter((l) => out.languages.includes(l));
   if (!out.default_languages.length) out.default_languages = out.languages.slice(0, 2);
   cache = out;
