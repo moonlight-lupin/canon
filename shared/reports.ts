@@ -8,6 +8,10 @@ export interface Period {
   from: string;
   to: string;
   congregation_id?: number;
+  /** services (the default), meetings of groups, or both */
+  kind?: 'service' | 'meeting' | 'all';
+  /** meetings of one group */
+  group_id?: number;
 }
 
 export type ReportKind = 'attendance' | 'offerings' | 'visitors' | 'serving' | 'songs' | 'scripture' | 'membership';

@@ -206,7 +206,20 @@ export interface LiturgyText {
 
 // ---------------------------------------------------------------- groups
 
-export type GroupKind = 'committee' | 'fellowship' | 'cell_group' | 'ministry' | 'other' | 'serving_team';
+export type GroupKind = 'committee' | 'fellowship' | 'cell_group' | 'sunday_school' | 'ministry' | 'other' | 'serving_team';
+
+/** When a group meets, for creating its meetings ahead (0.12). every: weekly, every two weeks, or one weekday a month. */
+export interface MeetingPattern {
+  every?: 'week' | '2weeks' | 'month';
+  /** 0 = Sunday … 6 = Saturday */
+  weekday?: number;
+  /** for 'month': 1–4 = first … fourth, 5 = last */
+  nth?: number;
+  time?: string;
+  place?: string;
+  /** how many weeks ahead to create meetings (0 = by hand only) */
+  ahead_weeks?: number;
+}
 
 /** Committees (Session, Board of Deacons, Missions), fellowships 团契, cell groups 小组, ministries. */
 export interface Group {
@@ -220,6 +233,11 @@ export interface Group {
   meeting: string | null;
   active: boolean;
   sort: number;
+  /** Sunday school classes: the pupils' ages */
+  age_min?: number | null;
+  age_max?: number | null;
+  /** when the group meets, for creating its meetings ahead */
+  pattern?: MeetingPattern;
 }
 
 export interface GroupMember {
@@ -230,6 +248,8 @@ export interface GroupMember {
   role: string | null;
   start_date: string | null;
   end_date: string | null;
+  /** leads the group: a read-only account linked to this member can record the group's meetings */
+  leads?: boolean;
 }
 
 // ---------------------------------------------------------------- services
@@ -287,6 +307,20 @@ export type ServiceStatus = 'draft' | 'final';
 export type Posture = 'stand' | 'sit' | 'kneel';
 
 export interface Service {
+  /** a service of worship, or a meeting of a group (fellowship, cell group, Sunday school class …) */
+  kind?: 'service' | 'meeting';
+  /** meetings: the group that meets (none for a one-off meeting) */
+  group_id?: number | null;
+  /** meetings: where it is held */
+  place?: string | null;
+  /** meetings: who leads it — a member (whose linked account can record the meeting) … */
+  leader_id?: number | null;
+  /** … or the name of someone outside the register */
+  chair?: string | null;
+  /** meetings: the topic (the passage is sermon_ref) */
+  topic?: L10n;
+  /** whether an offering is taken (services always; each meeting turns it on or off) */
+  offering?: boolean;
   /** the congregation it belongs to (English / Chinese / … services of one church); null = the whole church */
   congregation_id?: number | null;
   /** a reference people choose, e.g. "EN-2026-12-25" (unique among services) */

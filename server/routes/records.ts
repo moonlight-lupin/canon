@@ -32,10 +32,13 @@ const RecordInput = z.object({
   counted_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   currency: z.string().max(5).optional(),
 });
-recordRoutes.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined })
+recordRoutes.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined, kind: str(req.query.kind) as rec.RecordsQuery['kind'], group_id: Number(req.query.group) || undefined })
   .map((r) => (canSeeMoney(req) ? r : rec.listRowForViewer(r)))));
 // reports (Records → Reports): offerings for editors and administrators only; visitors' contact details likewise
-const reportPeriod = (req: Request) => reports.period({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined });
+const reportPeriod = (req: Request) => reports.period({
+  from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined,
+  kind: str(req.query.kind), group_id: Number(req.query.group) || undefined,
+});
 const canSeeMoney = (req: Request) => req.user?.role === 'admin' || req.user?.role === 'editor';
 // which years are in archive files (reports cover the live database only, and say so)
 recordRoutes.get('/reports/archived-years', h(() => ({ years: arc.archiveYears() })));

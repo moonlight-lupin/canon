@@ -306,7 +306,7 @@ export function similarServices(
   const before = opts.before ?? t.date;
   const limit = opts.limit ?? 5;
   const tSeason = t.season ?? seasonOf(t.date);
-  const rows = all<ServiceRow>('SELECT id, date, title, service_type, sermon_ref, sermon_title, preacher, template_id, season FROM services WHERE date < ? AND id != ? ORDER BY date DESC', before, t.id ?? 0);
+  const rows = all<ServiceRow>("SELECT id, date, title, service_type, sermon_ref, sermon_title, preacher, template_id, season FROM services WHERE kind = 'service' AND date < ? AND id != ? ORDER BY date DESC", before, t.id ?? 0);
   if (!rows.length) return [];
 
   const songSet = new Set(t.song_ids ?? []);

@@ -48,6 +48,10 @@ export function RecordEditor() {
   if (!svc.data || !d) return <div className="page"><Loading /></div>;
   const s = svc.data;
   const restricted = !!d.hidden?.length;
+  // a meeting may take no offering: then its record is headcount, visitors and notes only
+  const takesOffering = s.offering !== false;
+  const noMoney = restricted || !takesOffering;
+  const isMeeting = s.kind === 'meeting';
   const archivedYear = (d as Rec & { archived_year?: number | null }).archived_year ?? null;
   // a verified count is locked for everyone; an administrator reopens it to correct it
   const locked = !!d.verified_at;
@@ -63,6 +67,8 @@ export function RecordEditor() {
 
   const body = () => restricted
     ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes }
+    : !takesOffering
+      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors }
     : locked
       ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings }
       : {
@@ -125,7 +131,9 @@ export function RecordEditor() {
           <span className="muted">{fmtDate(s.date, lang)} · {s.start_time}</span>
           <CongregationBadge id={s.congregation_id} list={congs} />
           <div className="grow" />
-          <Link className="btn sm ghost" to={`/services/${sid}`}><Icon name="calendar" />{t('Open the service')}</Link>
+          {isMeeting
+          ? <Link className="btn sm ghost" to={`/meetings/${sid}`}><Icon name="clock" />{t('Open the meeting')}</Link>
+          : <Link className="btn sm ghost" to={`/services/${sid}`}><Icon name="calendar" />{t('Open the service')}</Link>}
           {isAdmin && d.saved && <HistoryButton entity="service_records" id={d.id} />}
         </div>
         <section className="card stack">
@@ -146,7 +154,9 @@ export function RecordEditor() {
         <span className="muted">{fmtDate(s.date, lang)} · {s.start_time}</span>
         <CongregationBadge id={s.congregation_id} list={congs} />
         <div className="grow" />
-        <Link className="btn sm ghost" to={`/services/${sid}`}><Icon name="calendar" />{t('Open the service')}</Link>
+        {isMeeting
+          ? <Link className="btn sm ghost" to={`/meetings/${sid}`}><Icon name="clock" />{t('Open the meeting')}</Link>
+          : <Link className="btn sm ghost" to={`/services/${sid}`}><Icon name="calendar" />{t('Open the service')}</Link>}
         {isAdmin && d.saved && <HistoryButton entity="service_records" id={d.id} />}
       </div>
 
@@ -208,7 +218,7 @@ export function RecordEditor() {
           <textarea rows={4} value={d.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} placeholder={t('What went well, what to fix next time, prayer needs…')} />
         </section>
 
-        {!restricted && (
+        {!noMoney && (
           <div className="stack">
             <section className="card stack">
               <div className="row between rec-off-head">
@@ -295,7 +305,7 @@ export function RecordEditor() {
         )}
       </fieldset>
 
-      {!restricted && onScreen && (
+      {!noMoney && onScreen && (
         <section className="card stack rec-signing">
           <h3>{t('Counters’ signatures')} <InfoTip text={t('Each counter signs here with a finger, pen or mouse once the count matches. When everyone has signed (at least the church’s minimum), press Finish signing to verify the count. Changing the cash before that removes the signatures.')} /></h3>
           {sigs.length > 0 && (
@@ -333,15 +343,15 @@ export function RecordEditor() {
       )}
 
       <div className="rec-actions">
-        {!restricted && <Link className="btn" to={`/records/${sid}/declaration`} target="_blank"><Icon name="print" />{t('Print cash-count declaration')}</Link>}
+        {!noMoney && <Link className="btn" to={`/records/${sid}/declaration`} target="_blank"><Icon name="print" />{t('Print cash-count declaration')}</Link>}
         {isAdmin && d.saved && !d.verified_at && <button className="btn ghost danger" onClick={removeRecord} disabled={busy}><Icon name="trash" />{t('Delete record')}</button>}
         <div className="grow" />
-        {canEdit && !restricted && (d.verified_at
+        {canEdit && !noMoney && (d.verified_at
           ? isAdmin && <button className="btn" onClick={() => verify(false)} disabled={busy}>{t('Reopen cash count')}</button>
           : !onScreen && <button className="btn" onClick={() => verify(true)} disabled={busy || !d.offerings.length}><Icon name="check" />{t('Mark as counted and verified')}</button>)}
         {canEdit && <button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button>}
       </div>
-      {locked && !restricted && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified, so the cash is locked. To correct it, an administrator reopens the count; it is then verified again.')}</div>}
+      {locked && !noMoney && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified, so the cash is locked. To correct it, an administrator reopens the count; it is then verified again.')}</div>}
     </div>
   );
 }

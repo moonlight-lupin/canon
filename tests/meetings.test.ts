@@ -1,0 +1,153 @@
+// Meetings (0.12): a lighter kind of service linked to a group. New meetings copy the group's previous one; the
+// offering is on or off per meeting; services and meetings stay apart in lists, the rota and reports; a meeting
+// without an offering has no money in its record or the offerings report. Fictional data.
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import type { AddressInfo } from 'node:net';
+import type { Server } from 'node:http';
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-meetings-'));
+process.env.CANON_DB = path.join(tmp, 'canon.db');
+
+const { createApp } = await import('../server/app.ts');
+const { createUser } = await import('../server/auth.ts');
+const svc = await import('../server/repo/services.ts');
+const reg = await import('../server/repo/registers.ts');
+const { db } = await import('../server/db.ts');
+
+type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+type Session = { cookie: string; csrf: string };
+let server: Server;
+let base = '';
+const as: Record<'admin' | 'editor' | 'viewer', Session> = {} as never;
+const ids: Record<string, number> = {};
+
+async function login(username: string): Promise<Session> {
+  const r = await fetch(`${base}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password: 'correct-horse-7' }) });
+  assert.equal(r.status, 200);
+  return { cookie: r.headers.getSetCookie().map((c) => c.split(';')[0]).join('; '), csrf: ((await r.json()) as Json).csrf };
+}
+async function call(who: Session, method: string, url: string, body?: unknown) {
+  const r = await fetch(`${base}/api${url}`, {
+    method, headers: { 'Content-Type': 'application/json', Cookie: who.cookie, 'X-CSRF-Token': who.csrf }, body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return { status: r.status, body: (await r.json().catch(() => null)) as Json };
+}
+
+before(async () => {
+  for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-7', role });
+  server = createApp().listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  for (const role of ['admin', 'editor', 'viewer'] as const) as[role] = await login(role);
+  ids.service = svc.createService({ date: '2035-03-04' }).service.id;
+  const g = await call(as.editor, 'POST', '/groups', { name: { en: 'Test Riverside Fellowship' }, kind: 'fellowship', pattern: { time: '19:45', place: 'Fellowship hall' } });
+  assert.equal(g.status, 200, JSON.stringify(g.body));
+  ids.group = g.body.id;
+  ids.leader = reg.people.insert({ first_name: 'Linnea', last_name: 'Moorcroft' }).id;
+  ids.member = reg.people.insert({ first_name: 'Tobin', last_name: 'Ashgrove' }).id;
+});
+
+after(async () => {
+  await new Promise((r) => server.close(r));
+  try {
+    db.close();
+  } catch { /* ignore */ }
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('a group marks who leads it: leader roles by default, then the mark itself', async () => {
+  const lead = await call(as.editor, 'POST', `/groups/${ids.group}/members`, { person_id: ids.leader, role: 'Leader' });
+  const mem = await call(as.editor, 'POST', `/groups/${ids.group}/members`, { person_id: ids.member, role: 'Member' });
+  assert.equal(lead.body.leads, true);
+  assert.equal(mem.body.leads, false);
+  assert.equal((await call(as.editor, 'PATCH', `/group-members/${mem.body.id}`, { leads: true })).body.leads, true);
+  assert.equal((await call(as.editor, 'PATCH', `/group-members/${mem.body.id}`, { leads: false })).body.leads, false);
+  // a Sunday school class, with its pupils' ages
+  const ss = await call(as.editor, 'POST', '/groups', { name: { en: 'Test Primary Class' }, kind: 'sunday_school', age_min: 6, age_max: 8 });
+  assert.equal(ss.status, 200);
+  assert.deepEqual([ss.body.kind, ss.body.age_min, ss.body.age_max], ['sunday_school', 6, 8]);
+  const teacher = await call(as.editor, 'POST', `/groups/${ss.body.id}/members`, { person_id: ids.member, role: 'Teacher' });
+  assert.equal(teacher.body.leads, true, 'a teacher leads a class');
+});
+
+test('a new meeting copies the group\'s previous one; the first takes the group\'s pattern and no offering', async () => {
+  const first = await call(as.editor, 'POST', '/meetings', { group_id: ids.group, date: '2035-03-07' });
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  ids.m1 = first.body.id;
+  assert.equal(first.body.kind, 'meeting');
+  assert.equal(first.body.title.en, 'Test Riverside Fellowship');
+  assert.equal(first.body.start_time, '19:45');
+  assert.equal(first.body.place, 'Fellowship hall');
+  assert.equal(first.body.offering, false);
+  const upd = await call(as.editor, 'PATCH', `/services/${ids.m1}`, { place: 'Linnea\'s home', leader_id: ids.leader, offering: true, topic: { en: 'Prayer' } });
+  assert.equal(upd.status, 200);
+  const second = await call(as.editor, 'POST', '/meetings', { group_id: ids.group, date: '2035-03-14' });
+  ids.m2 = second.body.id;
+  assert.deepEqual([second.body.place, second.body.leader_id, second.body.offering, second.body.start_time], ['Linnea\'s home', ids.leader, true, '19:45']);
+  assert.deepEqual(second.body.topic, {}, 'the topic is each meeting\'s own');
+  // duplicating carries the offering choice too
+  const third = await call(as.editor, 'POST', `/services/${ids.m2}/duplicate`, { date: '2035-03-21' });
+  assert.equal(third.body.offering, true);
+  assert.equal(third.body.kind, 'meeting');
+  ids.m3 = third.body.id;
+  assert.equal((await call(as.editor, 'PATCH', `/services/${ids.m3}`, { offering: false })).status, 200);
+  assert.equal((await call(as.viewer, 'POST', '/meetings', { group_id: ids.group, date: '2035-03-28' })).status, 403);
+});
+
+test('a one-off meeting belongs to no group: it needs a title, copies nothing, and has its own leader', async () => {
+  assert.equal((await call(as.editor, 'POST', '/meetings', { date: '2035-04-02' })).status, 400, 'no group and no title');
+  const one = await call(as.editor, 'POST', '/meetings', { date: '2035-04-02', title: { en: 'Test Prayer Night' }, leader_id: ids.member });
+  assert.equal(one.status, 200, JSON.stringify(one.body));
+  assert.deepEqual([one.body.group_id, one.body.leader_id, one.body.offering, one.body.place], [null, ids.member, false, null]);
+  ids.oneOff = one.body.id;
+  // a leader outside the register: a name only
+  assert.equal((await call(as.editor, 'PATCH', `/services/${ids.oneOff}`, { leader_id: null, chair: 'Visiting Speaker' })).body.chair, 'Visiting Speaker');
+  const list = (await call(as.editor, 'GET', '/meetings?from=2035-01-01&group=none')).body as Json[];
+  assert.deepEqual(list.map((m) => m.id), [ids.oneOff]);
+  const all = (await call(as.editor, 'GET', '/meetings?from=2035-01-01')).body as Json[];
+  assert.equal(all.find((m) => m.id === ids.m2)!.leader_name, 'Linnea Moorcroft');
+});
+
+test('services and meetings stay apart: lists, the rota and the next service', async () => {
+  const services = (await call(as.editor, 'GET', '/services?from=2035-01-01')).body as Json[];
+  assert.ok(services.some((s) => s.id === ids.service));
+  assert.ok(!services.some((s) => s.kind === 'meeting'), 'no meetings among services');
+  const meetings = (await call(as.editor, 'GET', `/meetings?from=2035-01-01&group=${ids.group}`)).body as Json[];
+  assert.deepEqual(meetings.map((m) => m.id), [ids.m1, ids.m2, ids.m3]);
+  assert.equal(meetings[0].group_name.en, 'Test Riverside Fellowship');
+  const rota = (await call(as.editor, 'GET', '/rota?from=2035-03-01&to=2035-03-31')).body;
+  assert.ok(!rota.services.some((s: Json) => [ids.m1, ids.m2, ids.m3].includes(s.id)), 'meetings are not on the rota');
+});
+
+test('a meeting\'s record: the offering when one is taken, none when not; reports keep them apart', async () => {
+  // with an offering
+  const withMoney = await call(as.editor, 'PUT', `/services/${ids.m2}/record`, { attendance: 14, offerings: [{ fund: 'General', method: 'transfer', amount: 3000 }] });
+  assert.equal(withMoney.status, 200, JSON.stringify(withMoney.body));
+  // without: headcount and visitors only; offering lines are refused
+  assert.equal((await call(as.editor, 'PUT', `/services/${ids.m3}/record`, { attendance: 11, visitors: [{ name: 'Test Newcomer' }] })).status, 200);
+  const refused = await call(as.editor, 'PUT', `/services/${ids.m3}/record`, { offerings: [{ fund: 'General', method: 'cash', amount: 500 }] });
+  assert.equal(refused.status, 400);
+  assert.match(refused.body.error, /No offering is taken/);
+  // a Sunday service with a bigger number
+  await call(as.editor, 'PUT', `/services/${ids.service}/record`, { attendance: 120, offerings: [{ fund: 'General', method: 'transfer', amount: 90000 }] });
+
+  const list = (k: string) => call(as.editor, 'GET', `/records?from=2035-01-01&to=2035-12-31&kind=${k}`);
+  const meetingRows = (await list('meeting')).body as Json[];
+  assert.deepEqual(meetingRows.map((r) => r.service_id).sort(), [ids.m1, ids.m2, ids.m3, ids.oneOff].sort(), 'one-off meetings too');
+  assert.equal(meetingRows.find((r) => r.service_id === ids.m3)!.offering_total, null, 'no offering: no money shown');
+  assert.equal(meetingRows.find((r) => r.service_id === ids.m2)!.offering_total, 3000);
+  assert.ok(!((await list('service')).body as Json[]).some((r) => r.kind === 'meeting'));
+
+  const att = (q: string) => call(as.editor, 'GET', `/reports/attendance?from=2035-01-01&to=2035-12-31${q}`);
+  assert.equal((await att('')).body.summary.average, 120, 'services only by default: meetings don\'t lower the Sunday average');
+  const m = (await att(`&kind=meeting&group=${ids.group}`)).body;
+  assert.equal(m.summary.average, (14 + 11) / 2);
+  assert.equal(m.period.kind, 'meeting');
+  const off = (q: string) => call(as.editor, 'GET', `/reports/offerings?from=2035-01-01&to=2035-12-31${q}`);
+  assert.equal((await off('&kind=meeting')).body.services.length, 1, 'only the meeting that takes an offering');
+  assert.equal((await off('')).body.services.length, 1, 'services only by default');
+});

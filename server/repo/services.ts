@@ -15,9 +15,10 @@ export const services = table<Service>({
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
     'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
-    'congregation_id', 'ref', 'visitor_form',
+    'congregation_id', 'ref', 'visitor_form', 'kind', 'group_id', 'place', 'chair', 'leader_id', 'topic', 'offering',
   ],
-  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form'],
+  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form', 'topic'],
+  bool: ['offering'],
   touch: true,
   revision: true,
 });
@@ -63,17 +64,32 @@ export interface ServiceQuery {
   limit?: number;
   /** only this congregation's services */
   congregation_id?: number | null;
+  /** services (the default) or meetings */
+  kind?: 'service' | 'meeting';
+  /** meetings of one group; 'none': one-off meetings */
+  group_id?: number | 'none' | null;
 }
 
 export function listServices(q: ServiceQuery = {}) {
   const rows = all<Record<string, unknown>>(
     `SELECT s.*, (SELECT COUNT(*) FROM service_items i WHERE i.service_id = s.id) AS item_count,
-            (SELECT COUNT(*) FROM assignments a WHERE a.service_id = s.id AND a.status != 'declined') AS assigned_count
-     FROM services s WHERE (? IS NULL OR s.date >= ?) AND (? IS NULL OR s.date <= ?) AND (? IS NULL OR s.congregation_id = ?)
+            (SELECT COUNT(*) FROM assignments a WHERE a.service_id = s.id AND a.status != 'declined') AS assigned_count,
+            g.name AS group_name, g.color AS group_color,
+            r.attendance AS attendance, (r.id IS NOT NULL) AS recorded,
+            CASE WHEN p.id IS NOT NULL THEN TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) END AS leader_name
+     FROM services s LEFT JOIN groups g ON g.id = s.group_id LEFT JOIN service_records r ON r.service_id = s.id
+     LEFT JOIN people p ON p.id = s.leader_id
+     WHERE s.kind = ? AND (? IS NULL OR s.date >= ?) AND (? IS NULL OR s.date <= ?) AND (? IS NULL OR s.congregation_id = ?)
+       AND (? IS NULL OR s.group_id = ?) ${q.group_id === 'none' ? 'AND s.group_id IS NULL' : ''}
      ORDER BY s.date ${q.from && !q.to ? 'ASC' : 'DESC'}, s.start_time LIMIT ?`,
-    q.from ?? null, q.from ?? null, q.to ?? null, q.to ?? null, q.congregation_id ?? null, q.congregation_id ?? null, q.limit ?? 200,
+    q.kind ?? 'service', q.from ?? null, q.from ?? null, q.to ?? null, q.to ?? null, q.congregation_id ?? null, q.congregation_id ?? null,
+    typeof q.group_id === 'number' ? q.group_id : null, typeof q.group_id === 'number' ? q.group_id : null, q.limit ?? 200,
   );
-  return rows.map((r) => ({ ...services.decode(r)!, item_count: r.item_count as number, assigned_count: r.assigned_count as number }));
+  return rows.map((r) => ({
+    ...services.decode(r)!, item_count: r.item_count as number, assigned_count: r.assigned_count as number,
+    group_name: r.group_name ? JSON.parse(String(r.group_name)) as L10n : null, group_color: (r.group_color as string | null) ?? null,
+    attendance: (r.attendance as number | null) ?? null, recorded: !!r.recorded, leader_name: (r.leader_name as string | null) ?? null,
+  }));
 }
 
 export function getServiceFull(id: number): ServiceFull {
@@ -258,6 +274,45 @@ export function createService(input: Partial<Service> & { date: string }, templa
     }
     return { service: getServiceFull(svc.id), missing };
   });
+}
+
+/**
+ * A new meeting. Of a group: what isn't given is copied from the group's previous meeting (time, place, leader, title,
+ * languages, offering or not), so after the first one a meeting is mostly just a date; the very first takes the
+ * group's meeting pattern and name, without an offering. A one-off meeting (no group) needs a title of its own.
+ */
+export function createMeeting(input: Partial<Service> & { date: string }) {
+  const settings = getSettings();
+  const g = input.group_id
+    ? get<{ id: number; name: string; congregation_id: number | null; pattern: string }>('SELECT id, name, congregation_id, pattern FROM groups WHERE id = ?', input.group_id)
+    : undefined;
+  if (input.group_id && !g) throw new NotFound('That group does not exist.');
+  if (!g && !Object.values(input.title ?? {}).some((v) => String(v ?? '').trim())) throw new BadRequest('Give the meeting a title (it belongs to no group).');
+  const prevRow = g ? get<{ id: number }>("SELECT id FROM services WHERE kind = 'meeting' AND group_id = ? ORDER BY date DESC, start_time DESC LIMIT 1", g.id) : undefined;
+  const prev = prevRow ? services.get(prevRow.id) : null;
+  const pattern = JSON.parse(g?.pattern || '{}') as { time?: string; place?: string };
+  const congregationId = input.congregation_id !== undefined ? input.congregation_id : (g?.congregation_id ?? null);
+  const cong = congregationId ? listCongregations().find((c) => c.id === congregationId) : undefined;
+  const langs = cong?.languages.filter((l) => settings.languages.includes(l)) ?? [];
+  const svc = services.insert({
+    kind: 'meeting',
+    service_type: 'meeting',
+    group_id: g?.id ?? null,
+    congregation_id: congregationId,
+    start_time: prev?.start_time ?? pattern.time ?? '20:00',
+    title: prev?.title ?? (g ? JSON.parse(g.name) : {}),
+    place: prev?.place ?? pattern.place ?? null,
+    leader_id: prev?.leader_id ?? null,
+    chair: prev?.chair ?? null,
+    offering: prev?.offering ?? false,
+    languages: prev?.languages ?? (langs.length ? langs : settings.default_languages),
+    sermon_title: {},
+    theme: {},
+    topic: {},
+    ...Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)),
+    status: 'final',
+  });
+  return getServiceFull(svc.id);
 }
 
 /** Copy a service (items and optionally the roster) to a new date. */

@@ -253,7 +253,9 @@ export default function ServiceEditor() {
           </span>
         }
       >
-        <Link to="/services" className="btn ghost"><Icon name="chevronLeft" />{t('Services')}</Link>
+        {svc.kind === 'meeting'
+          ? <Link to={`/meetings/${sid}`} className="btn ghost"><Icon name="chevronLeft" />{t('Meeting')}</Link>
+          : <Link to="/services" className="btn ghost"><Icon name="chevronLeft" />{t('Services')}</Link>}
         {canEdit ? (
           <Seg value={svc.status} onChange={(v) => patchService({ status: v })} options={[{ value: 'draft', label: t('Draft') }, { value: 'final', label: t('Final') }]} />
         ) : (
@@ -280,7 +282,7 @@ export default function ServiceEditor() {
               <button className="btn sm ghost" onClick={() => setDialog('template')}><Icon name="layout" />{t('Save as template')}</button>
               <button className="btn sm ghost danger" onClick={async () => {
                 if (!confirmAction(t('Are you sure?'))) return;
-                if (await run(() => api.del(`/services/${sid}`))) nav('/services');
+                if (await run(() => api.del(`/services/${sid}`))) nav(svc.kind === 'meeting' ? '/meetings' : '/services');
               }}><Icon name="trash" /></button>
             </>
           )}

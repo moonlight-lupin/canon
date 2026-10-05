@@ -69,6 +69,10 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
     if (!who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can reopen it to change the cash.');
     throw new Conflict('The cash count has been verified. Reopen the cash count first (Reopen cash count), then change the cash and verify it again.');
   }
+  if (patch.offerings && JSON.stringify(patch.offerings) !== JSON.stringify(cur.offerings)
+      && get<{ offering: number }>('SELECT offering FROM services WHERE id = ?', serviceId)?.offering === 0) {
+    throw new BadRequest('No offering is taken at this meeting. Turn the offering on on the meeting’s page first.');
+  }
   if (patch.offerings) {
     for (const l of patch.offerings) {
       if (!OFFERING_METHODS.includes(l.method)) throw new BadRequest(`Unknown payment method "${l.method}"`);
@@ -183,6 +187,9 @@ export interface RecordsQuery {
   from?: string;
   to?: string;
   congregation_id?: number;
+  /** services or meetings (both when not given) */
+  kind?: 'service' | 'meeting';
+  group_id?: number;
 }
 
 /** Services in a period with their record totals (newest first). */
@@ -201,9 +208,19 @@ export function listRecords(q: RecordsQuery) {
     where.push('s.congregation_id = ?');
     params.push(q.congregation_id);
   }
-  const rows = all<{ id: number; date: string; start_time: string; title: string; congregation_id: number | null; record_id: number | null; archived_year: number | null }>(
-    `SELECT s.id, s.date, s.start_time, s.title, s.congregation_id, r.id AS record_id, a.year AS archived_year FROM services s
-     LEFT JOIN service_records r ON r.service_id = s.id LEFT JOIN archived_records a ON a.service_id = s.id WHERE ${where.join(' AND ')} ORDER BY s.date DESC, s.start_time DESC LIMIT 400`,
+  if (q.kind === 'service' || q.kind === 'meeting') {
+    where.push('s.kind = ?');
+    params.push(q.kind);
+  }
+  if (q.group_id) {
+    where.push('s.group_id = ?');
+    params.push(q.group_id);
+  }
+  const rows = all<{ id: number; date: string; start_time: string; title: string; congregation_id: number | null; record_id: number | null; archived_year: number | null; kind: string; group_id: number | null; offering: number; group_name: string | null }>(
+    `SELECT s.id, s.date, s.start_time, s.title, s.congregation_id, r.id AS record_id, a.year AS archived_year,
+            s.kind, s.group_id, s.offering, g.name AS group_name FROM services s
+     LEFT JOIN service_records r ON r.service_id = s.id LEFT JOIN archived_records a ON a.service_id = s.id
+     LEFT JOIN groups g ON g.id = s.group_id WHERE ${where.join(' AND ')} ORDER BY s.date DESC, s.start_time DESC LIMIT 400`,
     ...params,
   );
   const cardsWaiting = new Map(all<{ service_id: number; n: number }>('SELECT service_id, COUNT(*) AS n FROM visitor_cards GROUP BY service_id').map((r) => [r.service_id, r.n]));
@@ -214,11 +231,16 @@ export function listRecords(q: RecordsQuery) {
       service_id: s.id, date: s.date, start_time: s.start_time, title: JSON.parse(s.title), congregation_id: s.congregation_id,
       recorded: !!r,
       archived_year: s.archived_year,
+      kind: s.kind === 'meeting' ? 'meeting' as const : 'service' as const,
+      group_id: s.group_id,
+      group_name: s.group_name ? JSON.parse(s.group_name) as Record<string, string> : null,
+      offering: !!s.offering,
       attendance: r?.attendance ?? null, children: r?.children ?? null, online: r?.online ?? null,
       visitors: r?.visitors.length ?? 0,
-      offering_total: r ? methodTotal(r.offerings, undefined, r.currency, r.currency) : null,
-      cash_counted: r ? cashTotal(r.cash) : null,
-      other_currencies: r ? foreignCurrencies(r.offerings, r.currency).map((c) => ({ currency: c, total: methodTotal(r.offerings, undefined, c, r.currency) })) : [],
+      // a meeting without an offering has no money to show (or to wait for verification)
+      offering_total: r && s.offering ? methodTotal(r.offerings, undefined, r.currency, r.currency) : null,
+      cash_counted: r && s.offering ? cashTotal(r.cash) : null,
+      other_currencies: r && s.offering ? foreignCurrencies(r.offerings, r.currency).map((c) => ({ currency: c, total: methodTotal(r.offerings, undefined, c, r.currency) })) : [],
       currency: r?.currency ?? getSettings().offering.currency,
       verified: !!r?.verified_at,
       has_notes: !!r?.notes?.trim(),
@@ -243,7 +265,7 @@ export function forViewer(r: ServiceRecord & { saved?: boolean }) {
 /** A list row for a viewer: the same allowlist idea (no money of any currency). */
 export const listRowForViewer = (r: ReturnType<typeof listRecords>[number]) => ({
   service_id: r.service_id, date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
-  recorded: r.recorded, archived_year: r.archived_year, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors, has_notes: r.has_notes,
+  recorded: r.recorded, archived_year: r.archived_year, kind: r.kind, group_id: r.group_id, group_name: r.group_name, offering: r.offering, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors, has_notes: r.has_notes,
   currency: r.currency, offering_total: null, cash_counted: null, other_currencies: [], verified: false, pending_cards: 0,
 });
 

@@ -8,6 +8,7 @@ import { tr, useContentLangs, useI18n } from '../i18n.tsx';
 import { Bi, ErrorBox, Field, L10nInput, Loading, Modal, confirmAction, fmtDate, useAction, useSession } from '../components/ui.tsx';
 import { CongregationField } from '../components/Congregations.tsx';
 import { Link } from 'react-router-dom';
+import { InfoTip } from '../components/InfoTip.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { Group, GroupKind, GroupMember, L10n, PersonRow, TeamWithRoles } from '../types-client.ts';
 import { PeopleMultiSelect, PersonName } from './people-common.tsx';
@@ -16,6 +17,9 @@ import './groups.css';
 // ---------------------------------------------------------------- types (server payloads)
 
 export type GroupRow = Group & { member_count: number; leaders: { person_id: number; name: string; role: string | null }[] };
+/** Groups whose meetings are kept here (serving teams serve at services; they don't hold meetings of their own). */
+export const meetingGroups = (groups: GroupRow[] | undefined) => (groups ?? []).filter((g) => g.kind !== 'serving_team' && g.active);
+
 export type MemberRow = GroupMember & {
   name: string; first_name: string; last_name: string; preferred_name: string | null; native_name: string | null;
   status: string; phone: string | null; email: string | null; current: boolean;
@@ -36,18 +40,18 @@ export type TeamFull = TeamWithRoles & { members: TeamMemberRef[] };
 
 // ---------------------------------------------------------------- labels
 
-export const KINDS: GroupKind[] = ['committee', 'fellowship', 'cell_group', 'ministry', 'serving_team', 'other'];
+export const KINDS: GroupKind[] = ['committee', 'fellowship', 'cell_group', 'sunday_school', 'ministry', 'serving_team', 'other'];
 /** Kinds a group can be given here (serving teams are added in Volunteers, where their rota roles are). */
 export const FORM_KINDS: GroupKind[] = KINDS.filter((k) => k !== 'serving_team');
 export const KIND_LABEL: Record<GroupKind, string> = {
-  committee: 'Committee', fellowship: 'Fellowship', cell_group: 'Cell group', ministry: 'Ministry', serving_team: 'Serving team', other: 'Other group',
+  committee: 'Committee', fellowship: 'Fellowship', cell_group: 'Cell group', sunday_school: 'Sunday school class', ministry: 'Ministry', serving_team: 'Serving team', other: 'Other group',
 };
 export const KIND_PLURAL: Record<GroupKind, string> = {
-  committee: 'Committees', fellowship: 'Fellowships', cell_group: 'Cell groups', ministry: 'Ministries', serving_team: 'Serving teams', other: 'Other groups',
+  committee: 'Committees', fellowship: 'Fellowships', cell_group: 'Cell groups', sunday_school: 'Sunday school', ministry: 'Ministries', serving_team: 'Serving teams', other: 'Other groups',
 };
 
 /** Suggested member roles. Stored as typed; these English values have translations. Free text is allowed. */
-export const ROLE_PRESETS = ['Moderator', 'Chair', 'Vice-chair', 'Secretary', 'Clerk', 'Treasurer', 'Leader', 'Assistant leader', 'Advisor', 'Member'];
+export const ROLE_PRESETS = ['Moderator', 'Chair', 'Vice-chair', 'Secretary', 'Clerk', 'Treasurer', 'Leader', 'Assistant leader', 'Teacher', 'Assistant teacher', 'Advisor', 'Member', 'Pupil'];
 const roleKey = (role: string) => `Group role · ${role}`;
 /** A stored member role in a given UI language (preset roles are translated; anything else is shown as typed). */
 export const roleIn = (role: string | null | undefined, lang: string) => {
@@ -115,10 +119,15 @@ export function GroupFormModal({
   const [color, setColor] = useState(group?.color ?? (k === 'committee' ? '#7a2f2f' : '#2f4a7a'));
   const [active, setActive] = useState(group?.active ?? true);
   const [sort, setSort] = useState(group?.sort ?? nextSort);
+  const [ageMin, setAgeMin] = useState<number | null>(group?.age_min ?? null);
+  const [ageMax, setAgeMax] = useState<number | null>(group?.age_max ?? null);
   const save = async () => {
     const g = await run(async () => {
       if (!hasAnyText(name)) throw new Error(t('Name is required.'));
-      const body = { name, kind: k, meeting: meeting.trim() || null, description: description.trim() || null, color, active, sort, congregation_id: congregationId };
+      const body = {
+        name, kind: k, meeting: meeting.trim() || null, description: description.trim() || null, color, active, sort, congregation_id: congregationId,
+        ...(k === 'sunday_school' ? { age_min: ageMin, age_max: ageMax } : {}),
+      };
       return group ? api.patch<Group>(`/groups/${group.id}`, body) : api.post<Group>('/groups', body);
     }, t('Saved.'));
     if (g) {
@@ -138,10 +147,19 @@ export function GroupFormModal({
               {(k === 'serving_team' ? KINDS : FORM_KINDS).map((x) => <option key={x} value={x}>{t(KIND_LABEL[x])}</option>)}
             </select>
           </Field>
-          <Field label={t('Meeting')} hint={t('e.g. Fridays 8pm, church hall')}><input value={meeting} onChange={(e) => setMeeting(e.target.value)} /></Field>
+          <Field label={t('When it meets')} hint={t('e.g. Fridays 8pm, church hall')}><input value={meeting} onChange={(e) => setMeeting(e.target.value)} /></Field>
           <CongregationField value={congregationId} onChange={setCongregationId} />
           <Field label={t('Colour')}><input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></Field>
           <Field label={t('Order')}><input type="number" value={sort} onChange={(e) => setSort(Number(e.target.value) || 0)} /></Field>
+          {k === 'sunday_school' && (
+            <Field label={t('Ages')} hint={t('The pupils’ ages, e.g. 6 to 8')}>
+              <span className="row" style={{ gap: 6 }}>
+                <input type="number" min={0} max={120} value={ageMin ?? ''} onChange={(e) => setAgeMin(e.target.value === '' ? null : Number(e.target.value))} style={{ width: 80 }} aria-label={t('From age')} />
+                –
+                <input type="number" min={0} max={120} value={ageMax ?? ''} onChange={(e) => setAgeMax(e.target.value === '' ? null : Number(e.target.value))} style={{ width: 80 }} aria-label={t('To age')} />
+              </span>
+            </Field>
+          )}
           <Field label={t('Description')} className="span-all"><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
           <label className="check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{t('Active')}</label>
         </div>
@@ -176,7 +194,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
   const memberIds = useMemo(() => new Set((data?.members ?? []).map((m) => m.person_id)), [data]);
   const candidates = useMemo(() => (people.data?.rows ?? []).filter((p) => !memberIds.has(p.id)), [people.data, memberIds]);
 
-  const patch = async (m: MemberRow, body: Partial<Pick<GroupMember, 'role' | 'start_date' | 'end_date'>>) => {
+  const patch = async (m: MemberRow, body: Partial<Pick<GroupMember, 'role' | 'start_date' | 'end_date' | 'leads'>>) => {
     if (await run(() => api.patch(`/group-members/${m.id}`, body))) changed();
   };
   const remove = async (m: MemberRow) => {
@@ -223,6 +241,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
                 <span className="badge lapis">{t(KIND_LABEL[data.kind])}</span>
                 {!data.active && <span className="badge">{t('Inactive')}</span>}
                 {data.meeting && <span className="small muted row" style={{ gap: 4 }}><Icon name="clock" width={13} height={13} />{data.meeting}</span>}
+                {data.kind === 'sunday_school' && (data.age_min != null || data.age_max != null) && <span className="small muted">{t('Ages')} {data.age_min ?? '?'}–{data.age_max ?? '?'}</span>}
               </div>
               {data.description && <p className="small" style={{ margin: 0 }}>{data.description}</p>}
               {data.kind === 'serving_team' && (
@@ -232,7 +251,10 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
                 </p>
               )}
             </div>
-            {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
+            <div className="row" style={{ gap: 6 }}>
+              {data.kind !== 'serving_team' && <Link className="btn sm" to={`/meetings?group=${data.id}`}><Icon name="clock" />{t('Meetings')}</Link>}
+              {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
+            </div>
           </div>
 
           <div>
@@ -245,7 +267,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
             {members.length ? (
               <div className="table-wrap card flush">
                 <table className="t gm-table">
-                  <thead><tr><th>{t('Name')}</th><th>{t('Role in group')}</th><th>{t('Term from')}</th><th>{t('Term to')}</th>{canEdit && <th />}</tr></thead>
+                  <thead><tr><th>{t('Name')}</th><th>{t('Role in group')}</th><th>{t('Leads')} <InfoTip text={t('Leaders can record this group’s meetings — headcount, visitors and the offering — with their own Canon account, even a read-only one, once it is linked to them (Settings → Users).')} /></th><th>{t('Term from')}</th><th>{t('Term to')}</th>{canEdit && <th />}</tr></thead>
                   <tbody>
                     {members.map((m) => (
                       <MemberLine key={m.id} m={m} canEdit={canEdit} busy={busy} onPatch={(b) => patch(m, b)} onRemove={() => remove(m)} lang={lang} />
@@ -276,7 +298,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
 
 function MemberLine({
   m, canEdit, busy, onPatch, onRemove, lang,
-}: { m: MemberRow; canEdit: boolean; busy: boolean; onPatch: (b: Partial<Pick<GroupMember, 'role' | 'start_date' | 'end_date'>>) => void; onRemove: () => void; lang: string }) {
+}: { m: MemberRow; canEdit: boolean; busy: boolean; onPatch: (b: Partial<Pick<GroupMember, 'role' | 'start_date' | 'end_date' | 'leads'>>) => void; onRemove: () => void; lang: string }) {
   const { t } = useI18n();
   const [role, setRole] = useState(m.role ?? '');
   const commitRole = () => {
@@ -289,6 +311,11 @@ function MemberLine({
         {!m.current && <span className="badge" style={{ marginLeft: 6 }}>{t('Past')}</span>}
       </td>
       <td>{canEdit ? <RoleInput className="role" value={role} onChange={setRole} onBlur={commitRole} /> : <RoleLabel role={m.role} />}</td>
+      <td className="center">
+        {canEdit
+          ? <input type="checkbox" checked={!!m.leads} onChange={(e) => onPatch({ leads: e.target.checked })} disabled={busy} aria-label={t('Leads')} />
+          : m.leads ? <Icon name="check" width={14} height={14} /> : null}
+      </td>
       <td className="nowrap">
         {canEdit ? <input type="date" value={m.start_date ?? ''} onChange={(e) => onPatch({ start_date: e.target.value || null })} disabled={busy} /> : fmtDate(m.start_date, lang)}
       </td>

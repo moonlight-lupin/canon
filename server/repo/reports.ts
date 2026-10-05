@@ -15,23 +15,38 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 /** A checked period: defaults to the last 12 months; at most 20 years. */
-export function period(q: { from?: string; to?: string; congregation_id?: number }): Period {
+export function period(q: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }): Period {
   const to = q.to && DATE.test(q.to) ? q.to : todayIso();
   const from = q.from && DATE.test(q.from) ? q.from : yearEarlier(to);
   if (from > to) throw new BadRequest('The start of the period is after its end.');
   if (Number(to.slice(0, 4)) - Number(from.slice(0, 4)) > 20) throw new BadRequest('Choose a period of at most 20 years.');
-  return { from, to, ...(q.congregation_id ? { congregation_id: q.congregation_id } : {}) };
+  // services unless meetings are asked for: a cell group's headcount is not a Sunday's attendance
+  const kind = q.kind === 'meeting' || q.kind === 'all' ? q.kind : 'service';
+  return {
+    from, to, ...(q.congregation_id ? { congregation_id: q.congregation_id } : {}),
+    ...(kind !== 'service' ? { kind } : {}), ...(q.group_id && kind !== 'service' ? { group_id: q.group_id } : {}),
+  };
 }
 
 interface SvcRow { id: number; date: string; start_time: string; title: string; congregation_id: number | null }
 
-function servicesIn(p: Period): SvcRow[] {
+/** The services (or meetings) in a period; withOffering: only those that take an offering. */
+function servicesIn(p: Period, withOffering = false): SvcRow[] {
   const where = ['date >= ?', 'date <= ?'];
   const params: SqlValue[] = [p.from, p.to];
   if (p.congregation_id) {
     where.push('congregation_id = ?');
     params.push(p.congregation_id);
   }
+  if (p.kind !== 'all') {
+    where.push('kind = ?');
+    params.push(p.kind ?? 'service');
+  }
+  if (p.group_id) {
+    where.push('group_id = ?');
+    params.push(p.group_id);
+  }
+  if (withOffering) where.push('offering = 1');
   return all<SvcRow>(`SELECT id, date, start_time, title, congregation_id FROM services WHERE ${where.join(' AND ')} ORDER BY date, start_time, id`, ...params);
 }
 
@@ -77,7 +92,7 @@ export function attendanceReport(q: Period): AttendanceReport {
   const counted = rows.filter((r) => r.attendance != null) as (typeof rows[number] & { attendance: number })[];
   const values = counted.map((r) => r.attendance);
   const byValue = [...counted].sort((a, b) => b.attendance - a.attendance);
-  const prevP = { from: yearEarlier(p.from), to: yearEarlier(p.to), congregation_id: p.congregation_id };
+  const prevP = { ...p, from: yearEarlier(p.from), to: yearEarlier(p.to) };
   const prevSvcs = servicesIn(prevP);
   const prevRecs = recordsFor(prevSvcs.map((s) => s.id));
   const prevValues = prevSvcs.map((s) => prevRecs.get(s.id)?.attendance).filter((v): v is number => v != null);
@@ -108,7 +123,8 @@ export function attendanceReport(q: Period): AttendanceReport {
 export function offeringsReport(q: Period): OfferingsReport {
   const p = period(q);
   const main = getSettings().offering.currency;
-  const svcs = servicesIn(p);
+  // a meeting without an offering is left out, even if its record has offering lines
+  const svcs = servicesIn(p, true);
   const recs = recordsFor(svcs.map((s) => s.id));
   const fundMonth = new Map<string, number>();
   const byFund = new Map<string, number>();
@@ -348,12 +364,12 @@ export function serviceYears(congregationId?: number): number[] {
  * Which chapters of the Bible were read (scripture items) and preached (the sermon passage), over a period or over
  * chosen years (which need not be consecutive, e.g. 2023 and 2025).
  */
-export function scriptureReport(q: { from?: string; to?: string; congregation_id?: number; years?: number[] }): ScriptureReport {
+export function scriptureReport(q: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number; years?: number[] }): ScriptureReport {
   const years = [...new Set((q.years ?? []).filter((y) => Number.isInteger(y) && y >= 1900 && y <= 2200))].sort((a, b) => a - b).slice(0, 50);
   let svcs: SvcRow[];
   let p: Period;
   if (years.length) {
-    p = { from: `${years[0]}-01-01`, to: `${years[years.length - 1]}-12-31`, ...(q.congregation_id ? { congregation_id: q.congregation_id } : {}) };
+    p = { ...period(q), from: `${years[0]}-01-01`, to: `${years[years.length - 1]}-12-31` };
     const want = new Set(years.map(String));
     svcs = servicesIn(p).filter((s) => want.has(s.date.slice(0, 4)));
   } else {

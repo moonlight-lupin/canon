@@ -4,6 +4,7 @@
 import type { Group, GroupKind, GroupMember, L10n } from '../../shared/types.ts';
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
+import { isLeaderRole, roleRank } from '../../shared/group-roles.ts';
 
 export class Conflict extends Error {
   status = 409;
@@ -11,14 +12,15 @@ export class Conflict extends Error {
 
 export const groups = table<Group>({
   name: 'groups',
-  cols: ['name', 'kind', 'description', 'color', 'meeting', 'active', 'sort', 'congregation_id'],
-  json: ['name'],
+  cols: ['name', 'kind', 'description', 'color', 'meeting', 'active', 'sort', 'congregation_id', 'age_min', 'age_max', 'pattern'],
+  json: ['name', 'pattern'],
   bool: ['active'],
 });
 
 export const groupMembers = table<GroupMember>({
   name: 'group_members',
-  cols: ['group_id', 'person_id', 'role', 'start_date', 'end_date'],
+  cols: ['group_id', 'person_id', 'role', 'start_date', 'end_date', 'leads'],
+  bool: ['leads'],
 });
 
 const personName = `TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) ||
@@ -29,19 +31,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 /** A membership counts as current while its term has not ended. */
 const CURRENT = `(gm.end_date IS NULL OR gm.end_date >= ?)`;
 
-/** Officer roles are listed first (moderator / chair / leader, then deputies, then secretary / treasurer). */
-const LEAD_RE = /^(moderator|chair(man|person)?|president|leader|head|coordinator|convenor|主席|会长|组长|议长|团长|主理|负责人)$/i;
-const DEPUTY_RE = /^(vice[- ]?(chair|president)|deputy|assistant leader|co-?leader|副主席|副会长|副组长|副团长)$/i;
-const OFFICER_RE = /^(secretary|clerk|treasurer|书记|秘书|文书|财务|司库)$/i;
-export const roleRank = (role: string | null | undefined) => {
-  const r = (role ?? '').trim();
-  if (!r || /^(member|组员|团员|会员|成员)$/i.test(r)) return 9;
-  if (LEAD_RE.test(r)) return 0;
-  if (DEPUTY_RE.test(r)) return 1;
-  if (OFFICER_RE.test(r)) return 2;
-  return 5;
-};
-export const isLeaderRole = (role: string | null | undefined) => roleRank(role) <= 1;
+export { isLeaderRole, roleRank } from '../../shared/group-roles.ts';
 
 export interface MemberRow extends GroupMember {
   name: string;
@@ -146,7 +136,7 @@ function checkTerm(start?: string | null, end?: string | null) {
   if (start && end && end < start) throw Object.assign(new Error('The end date is before the start date.'), { status: 400 });
 }
 
-export function addGroupMember(groupId: number, m: { person_id: number; role?: string | null; start_date?: string | null; end_date?: string | null }) {
+export function addGroupMember(groupId: number, m: { person_id: number; role?: string | null; start_date?: string | null; end_date?: string | null; leads?: boolean }) {
   groups.get(groupId);
   if (!get('SELECT 1 FROM people WHERE id = ?', m.person_id)) throw new NotFound(`person ${m.person_id} not found`);
   checkTerm(m.start_date, m.end_date);
@@ -154,14 +144,15 @@ export function addGroupMember(groupId: number, m: { person_id: number; role?: s
   if (existing) {
     throw new Conflict(`This person is already a member of this group — edit their membership (member id ${existing.id}) instead.`);
   }
-  return groupMembers.insert({ ...m, group_id: groupId, role: m.role?.trim() || null });
+  // a leader role (Leader, Teacher, 组长 …) leads the group unless said otherwise; later only the mark itself counts
+  return groupMembers.insert({ ...m, group_id: groupId, role: m.role?.trim() || null, leads: m.leads ?? isLeaderRole(m.role) });
 }
 
-export function updateGroupMember(memberId: number, patch: { role?: string | null; start_date?: string | null; end_date?: string | null }) {
+export function updateGroupMember(memberId: number, patch: { role?: string | null; start_date?: string | null; end_date?: string | null; leads?: boolean }) {
   const cur = groupMembers.get(memberId);
   checkTerm(patch.start_date === undefined ? cur.start_date : patch.start_date, patch.end_date === undefined ? cur.end_date : patch.end_date);
   // only the term fields may change; an explicit null clears the column
-  const p = { role: typeof patch.role === 'string' ? patch.role.trim() || null : patch.role, start_date: patch.start_date, end_date: patch.end_date };
+  const p = { role: typeof patch.role === 'string' ? patch.role.trim() || null : patch.role, start_date: patch.start_date, end_date: patch.end_date, leads: patch.leads };
   return groupMembers.update(memberId, p);
 }
 

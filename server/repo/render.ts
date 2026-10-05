@@ -410,7 +410,7 @@ function slideBlock(b: BulletinBlock, langs: Lang[]): RenderedSlideBlock {
 export function nextService(svc: Pick<ServiceFull, 'id' | 'date' | 'start_time' | 'service_type'>): { id: number; date: string } | null {
   const rows = all<{ id: number; date: string; service_type: string }>(
     `SELECT id, date, service_type FROM services
-     WHERE id != ? AND (date > ? OR (date = ? AND start_time > ?))
+     WHERE kind = 'service' AND id != ? AND (date > ? OR (date = ? AND start_time > ?))
      ORDER BY date, start_time, id LIMIT 60`,
     svc.id, svc.date, svc.date, svc.start_time,
   );

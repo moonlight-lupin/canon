@@ -225,6 +225,13 @@ The editor shows the settings in numbered steps that fold open, with a large liv
 
 - [Groups](/groups): committees, fellowships, cell groups, ministries and **Serving teams**. **Add group**, then **Add members** with a **Role in group** and term dates. To keep history, set an end date or untick **Active** instead of deleting.
   - Every volunteer team is also a **Serving team** group: its members are the team roster, with roles (a **Leader** role makes a team leader) and term dates like any group. Teams are added, renamed and deleted in **Volunteers**, where their rota roles are; renaming in either place renames both.
+  - **Leads**: tick it for the people who lead a group (a **Leader**, **Chair** or **Teacher** role ticks it when they are added). Leaders can record the group's meetings — see [Meetings](/meetings).
+  - A **Sunday school class** is a group too: its teachers lead it, its pupils are its members, and **Ages** gives the pupils' age range.
+- [Meetings](/meetings): fellowship meetings, cell groups, prayer meetings, Sunday school classes, committee meetings and one-off gatherings — a lighter kind of service with its own record.
+  - **New meeting**: choose a group and a date. A group's new meeting copies its previous one (time, place, leader, whether an offering is taken); the first one takes the group's name. For a one-off meeting choose **No group** and give it a title.
+  - On the meeting's page: **Title**, **Date**, **Start time**, **Place**, **Leader** (a member; type a name instead for someone outside the register), **Passage**, **Topic** and notes. **Next meeting** copies the meeting to another date (a week later unless you change it).
+  - **An offering is taken at this meeting**: on or off for each meeting (the next one copies it). With an offering, the record has the cash count, declaration and signing, as for a service; without one, it has headcount, new visitors and notes only, and the meeting stays out of the offerings reports.
+  - **Record this meeting** opens its record. An order of service, bulletin and slides are optional (**Add an order of service**).
 - [Members](/members): **Add person** with names, **Chinese name**, **Honorific title** (弟兄, 姐妹, Bro., Sis., Rev.…), contact, status, baptism and membership dates, household, and the church's own fields under **More details** (see below). **Birthdays** lists the coming birthdays. A yes / no or choice field can filter the list (**All members** ▾). Read-only accounts see names, households, groups and birthdays (day and month), but not contact details, notes, ages or sensitive fields.
 - [Co-workers](/coworkers): pastors, elders, deacons and staff. **Add co-worker**, choose the person, **Position** and **Category**. **Add to committee…** tags them with their committees.
 - [Volunteers](/volunteers):
@@ -245,7 +252,7 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 
 ## Service records {#service-records}
 
-[Service records](/records) (under **Records** in the sidebar) keeps what happened at each service held: attendance, new visitors, notes for the team and the offerings. The list shows the last 8 weeks, 6 months or 12 months (and a congregation, if your church has several), with the average attendance, the number of new visitors and the offering total. Click a service to open its record.
+[Service records](/records) (under **Records** in the sidebar) keeps what happened at each service held: attendance, new visitors, notes for the team and the offerings. The list shows the last 8 weeks, 6 months or 12 months (and a congregation, if your church has several), with the average attendance, the number of new visitors and the offering total. Click a service to open its record. **Services** / **Meetings** switches between services and the meetings of groups (see [Meetings](/meetings)), so a cell group's headcount never lowers a Sunday's average; a meeting without an offering shows **No offering**.
 
 - **Attendance**: **People present** (adults and children), **of whom children**, and **Online** if you stream.
 - **New visitors**: name, contact, **How they came**, **Follow-up by**, **Follow-up** (New, Contacted, Came back, Joined the church) and notes. Visitors' details are personal data: record only what the church needs to follow up.
@@ -275,7 +282,7 @@ The form is a public page: anyone with the service's link or QR code can open it
 
 ## Reports {#reports}
 
-[Reports](/reports) (under **Records** in the sidebar) sums up a period: choose **Last 3 / 6 / 12 months**, **This year**, **Last year** or **Choose dates…**, and a congregation if your church has several. **Print** prints the report on the screen; the **CSV** button on each table downloads it for Excel.
+[Reports](/reports) (under **Records** in the sidebar) sums up a period: choose **Last 3 / 6 / 12 months**, **This year**, **Last year** or **Choose dates…**, and a congregation if your church has several. Reports are about services unless you choose **Meetings** (and a group, or **All groups**); serving and membership are always about services and people. **Print** prints the report on the screen; the **CSV** button on each table downloads it for Excel.
 
 - **Attendance**: the average, the same period last year (with the change in %), the highest service, children and online, a chart of each service with a four-week average (dashed), and averages per month and congregation.
 - **Offerings** (editors and administrators): totals by fund and month and by payment method, in the church's currency; other currencies listed separately and never converted; cash counts still waiting to be verified, with how many days they have waited. **Monthly summary for the treasurer** opens one printable A4 page for a month: totals by fund and method, each service with its cash count, other currencies, and lines to sign.

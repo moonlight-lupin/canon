@@ -25,6 +25,7 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
     group: 'Congregation',
     items: [
       { to: '/groups', label: 'Groups', icon: 'layout' },
+      { to: '/meetings', label: 'Meetings', icon: 'clock' },
       { to: '/members', label: 'Members', icon: 'users' },
       { to: '/coworkers', label: 'Co-workers', icon: 'shield' },
       { to: '/volunteers', label: 'Volunteers', icon: 'hands' },

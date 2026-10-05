@@ -123,7 +123,7 @@ export function rosterWarnings(serviceId: number) {
 /** Rota grid for services between two dates. */
 export function rota(from: string, to: string, congregationId?: number) {
   const services = all<{ id: number; date: string; start_time: string; title: string; status: string; congregation_id: number | null }>(
-    'SELECT id, date, start_time, title, status, congregation_id FROM services WHERE date BETWEEN ? AND ? AND (? IS NULL OR congregation_id = ?) ORDER BY date, start_time',
+    "SELECT id, date, start_time, title, status, congregation_id FROM services WHERE kind = 'service' AND date BETWEEN ? AND ? AND (? IS NULL OR congregation_id = ?) ORDER BY date, start_time",
     from, to, congregationId ?? null, congregationId ?? null,
   ).map((s) => ({ ...s, title: JSON.parse(s.title) }));
   const ids = services.map((s) => s.id);

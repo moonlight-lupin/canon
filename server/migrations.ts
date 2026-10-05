@@ -1,6 +1,7 @@
 // The database schema, as an append-only list of migrations. PRAGMA user_version is how many have been applied.
 // Never edit a migration that has shipped: add a new one (and a line in CHANGELOG.md).
 import type { DatabaseSync } from 'node:sqlite';
+import { isLeaderRole } from '../shared/group-roles.ts';
 
 /**
  * A migration is SQL, or SQL plus a step in code. `noForeignKeys` runs it with foreign-key checks off (needed to
@@ -609,6 +610,53 @@ export const MIGRATIONS: (string | Migration)[] = [
           if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) put.run(r.entity_id, date, 'before 0.11.2');
         } catch { /* an entry that can't be read: the entry's own age decides (repo/archive.ts) */ }
       }
+    },
+  },
+  // 23 (0.12): meetings, Sunday school, group leaders, recurring meetings.
+  //  - a meeting is a lighter kind of service (services.kind = 'meeting'), of a group or a one-off, with a place,
+  //    its leader (a member: leader_id; or a name: chair), a topic and an offering that each meeting turns on or off;
+  //  - groups gain the Sunday school kind, an age range and a meeting pattern (rebuilt: kind has a CHECK);
+  //  - group_members.leads marks who leads a group (filled from leader roles once); a read-only account linked to a
+  //    member (users.person_id) records the meetings of the groups that member leads.
+  {
+    noForeignKeys: true,
+    sql: `
+    ALTER TABLE services ADD COLUMN kind TEXT NOT NULL DEFAULT 'service';
+    ALTER TABLE services ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL;
+    ALTER TABLE services ADD COLUMN place TEXT;
+    ALTER TABLE services ADD COLUMN chair TEXT;
+    ALTER TABLE services ADD COLUMN leader_id INTEGER REFERENCES people(id) ON DELETE SET NULL;
+    ALTER TABLE services ADD COLUMN topic TEXT NOT NULL DEFAULT '{}';
+    ALTER TABLE services ADD COLUMN offering INTEGER NOT NULL DEFAULT 1;
+    CREATE INDEX services_kind_date ON services(kind, date);
+    CREATE INDEX services_group_date ON services(group_id, date);
+
+    CREATE TABLE groups_v12 (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('committee','fellowship','cell_group','sunday_school','ministry','serving_team','other')),
+      description TEXT,
+      color TEXT NOT NULL DEFAULT '#64748b',
+      meeting TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      sort INTEGER NOT NULL DEFAULT 0,
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL,
+      age_min INTEGER,
+      age_max INTEGER,
+      pattern TEXT NOT NULL DEFAULT '{}'
+    );
+    INSERT INTO groups_v12 (id, name, kind, description, color, meeting, active, sort, congregation_id)
+      SELECT id, name, kind, description, color, meeting, active, sort, congregation_id FROM groups;
+    DROP TABLE groups;
+    ALTER TABLE groups_v12 RENAME TO groups;
+
+    ALTER TABLE group_members ADD COLUMN leads INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN person_id INTEGER REFERENCES people(id) ON DELETE SET NULL;
+    `,
+    run: (d) => {
+      const rows = d.prepare('SELECT id, role FROM group_members').all() as { id: number; role: string | null }[];
+      const mark = d.prepare('UPDATE group_members SET leads = 1 WHERE id = ?');
+      for (const r of rows) if (isLeaderRole(r.role)) mark.run(r.id);
     },
   },
 ];

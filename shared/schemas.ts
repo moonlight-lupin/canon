@@ -124,7 +124,15 @@ export const HymnalInput = z.object({
 /** Where a song appears: [{ hymnal_id, number }] */
 export const SongHymnalsInput = z.array(z.object({ hymnal_id: z.number().int(), number: z.string().min(1).max(12) })).max(50);
 
-export const GroupKindSchema = z.enum(['committee', 'fellowship', 'cell_group', 'ministry', 'serving_team', 'other']);
+export const GroupKindSchema = z.enum(['committee', 'fellowship', 'cell_group', 'sunday_school', 'ministry', 'serving_team', 'other']);
+export const MeetingPatternSchema = z.object({
+  every: z.enum(['week', '2weeks', 'month']).optional(),
+  weekday: z.number().int().min(0).max(6).optional(),
+  nth: z.number().int().min(1).max(5).optional(),
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  place: z.string().max(200).optional(),
+  ahead_weeks: z.number().int().min(0).max(26).optional(),
+});
 export const GroupInput = z.object({
   name: L10nSchema,
   kind: GroupKindSchema,
@@ -134,10 +142,14 @@ export const GroupInput = z.object({
   active: z.boolean().optional(),
   sort: z.number().int().optional(),
   congregation_id: z.number().int().nullable().optional(),
+  age_min: z.number().int().min(0).max(120).nullable().optional(),
+  age_max: z.number().int().min(0).max(120).nullable().optional(),
+  pattern: MeetingPatternSchema.optional(),
 });
 export const GroupMemberInput = z.object({
   person_id: z.number().int(),
   role: z.string().max(100).nullable().optional(),
+  leads: z.boolean().optional(),
   start_date: optDate,
   end_date: optDate,
 });
@@ -188,6 +200,28 @@ export const ServiceInput = z.object({
   bulletin_template_id: z.number().int().nullable().optional(),
   congregation_id: z.number().int().nullable().optional(),
   ref: z.string().max(40).nullable().optional(),
+  // meetings
+  group_id: z.number().int().nullable().optional(),
+  place: optStr,
+  leader_id: z.number().int().nullable().optional(),
+  chair: optStr,
+  topic: L10nSchema.optional(),
+  offering: z.boolean().optional(),
+});
+/** A new meeting: of a group (anything not given is copied from its previous meeting), or a one-off with a title. */
+export const MeetingInput = z.object({
+  group_id: z.number().int().nullable().optional(),
+  date,
+  start_time: time.optional(),
+  title: L10nSchema.optional(),
+  place: optStr,
+  leader_id: z.number().int().nullable().optional(),
+  chair: optStr,
+  congregation_id: z.number().int().nullable().optional(),
+  topic: L10nSchema.optional(),
+  sermon_ref: z.string().max(200).nullable().optional(),
+  offering: z.boolean().optional(),
+  notes: optStr,
 });
 
 export const TemplateItemSchema = z.object({

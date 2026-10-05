@@ -23,6 +23,8 @@ const BulletinTemplates = lazy(() => import('./pages/presentation/BulletinTempla
 const SlideTemplates = lazy(() => import('./pages/Presentation.tsx').then((m) => ({ default: m.SlideTemplatesPage })));
 const Settings = lazy(() => import('./pages/Settings.tsx'));
 const Records = lazy(() => import('./pages/Records.tsx'));
+const Meetings = lazy(() => import('./pages/Meetings.tsx'));
+const MeetingPage = lazy(() => import('./pages/meetings/MeetingPage.tsx'));
 const RecordEditor = lazy(() => import('./pages/records/RecordEditor.tsx').then((m) => ({ default: m.RecordEditor })));
 const CashDeclaration = lazy(() => import('./pages/records/CashCount.tsx').then((m) => ({ default: m.CashDeclaration })));
 const Reports = lazy(() => import('./pages/Reports.tsx'));
@@ -114,6 +116,8 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
             <Route path="members" element={<Members />} />
             <Route path="coworkers" element={<Coworkers />} />
             <Route path="groups" element={<Groups />} />
+            <Route path="meetings" element={<Meetings />} />
+            <Route path="meetings/:id" element={<MeetingPage />} />
             <Route path="volunteers" element={<Volunteers />} />
             <Route path="library" element={<Library />} />
             <Route path="templates" element={<Templates />} />

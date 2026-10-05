@@ -16,6 +16,7 @@ import { OfferingsTab } from './reports/OfferingsTab.tsx';
 import { MembershipTab, ServingTab, VisitorsTab } from './reports/PeopleTabs.tsx';
 import { AttendanceTab, ScriptureTab, SongsTab } from './reports/WorshipTabs.tsx';
 import type { Ctx } from './reports/charts.tsx';
+import { meetingGroups, type GroupRow } from './groups-common.tsx';
 
 const TABS: { kind: ReportKind; label: string; money?: boolean }[] = [
   { kind: 'attendance', label: 'Attendance' },
@@ -57,7 +58,12 @@ export default function Reports() {
   const archived = useApi<{ years: number[] }>('/reports/archived-years');
   const [from, to] = preset === 'custom' ? custom : presetRange(preset);
   const [cong, setCong, congs] = useCongregationFilter('reports');
-  const q = qs({ from, to, congregation: cong });
+  // services (the default) or meetings, optionally of one group; serving and membership are about services and people
+  const [of, setOf] = useState<'service' | 'meeting'>('service');
+  const [group, setGroup] = useState<number | null>(null);
+  const groups = useApi<GroupRow[]>('/groups');
+  const byKind = kind !== 'serving' && kind !== 'membership';
+  const q = qs({ from, to, congregation: cong, ...(byKind && of === 'meeting' ? { kind: 'meeting', group } : {}) });
   const ctx: Ctx = { q, from, to, cong, congs };
   // years in archive files that this period touches: reports read the live records only
   const archivedIn = (archived.data?.years ?? []).filter((y) => String(y) >= from.slice(0, 4) && String(y) <= to.slice(0, 4));
@@ -66,6 +72,13 @@ export default function Reports() {
     <div className="page rep-page">
       <PageHead eyebrow={t('Records')} title={t('Reports')} sub={t('Trends and summaries over a period, to print or export to Excel.')}>
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
+        {byKind && <Seg value={of} onChange={setOf} options={[{ value: 'service', label: t('Services') }, { value: 'meeting', label: t('Meetings') }]} />}
+        {byKind && of === 'meeting' && (
+          <select value={group ?? ''} onChange={(e) => setGroup(Number(e.target.value) || null)} aria-label={t('Group')}>
+            <option value="">{t('All groups')}</option>
+            {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+          </select>
+        )}
       </PageHead>
       <div className="rep-bar-top no-print">
         <Seg<ReportKind> value={kind} onChange={(k) => setParams({ tab: k }, { replace: true })} options={tabs.map((x) => ({ value: x.kind, label: t(x.label) }))} />

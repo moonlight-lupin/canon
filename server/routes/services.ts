@@ -53,6 +53,9 @@ serviceRoutes.put('/templates-default', requireAdmin, h((req) => {
 // ---------------------------------------------------------------- services
 
 serviceRoutes.get('/services', h((req) => svc.listServices({ from: str(req.query.from), to: str(req.query.to), limit: Number(req.query.limit) || undefined, congregation_id: Number(req.query.congregation) || undefined })));
+// meetings of groups (fellowships, cell groups, Sunday school classes …): a lighter kind of service
+serviceRoutes.get('/meetings', h((req) => svc.listServices({ kind: 'meeting', from: str(req.query.from), to: str(req.query.to), limit: Number(req.query.limit) || undefined, congregation_id: Number(req.query.congregation) || undefined, group_id: req.query.group === 'none' ? 'none' : Number(req.query.group) || undefined })));
+serviceRoutes.post('/meetings', h((req) => svc.createMeeting(S.MeetingInput.parse(req.body))));
 serviceRoutes.post('/services', h((req) => {
   const b = S.ServiceInput.extend({ template_id: z.number().int().nullable().optional() }).parse(req.body);
   const { template_id, ...input } = b;
