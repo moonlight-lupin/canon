@@ -7,6 +7,7 @@ import { db, migrate, schemaVersion } from '../db.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
+import { copyArchivesTo, eraseVisitorContacts } from './archive.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
@@ -57,6 +58,8 @@ export function createBackup(dir = backupDir()): BackupFile & { path: string } {
   let file = path.join(dir, `canon-${stamp()}.db`);
   for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-${i}.db`);
   db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+  // archive files (one per archived year) go along with every backup
+  copyArchivesTo(dir);
   setMeta('last_backup_at', new Date().toISOString());
   const st = fs.statSync(file);
   return { name: path.basename(file), path: file, size: st.size, created: st.mtime.toISOString() };
@@ -190,6 +193,8 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       const b = pruneAudit(mcp_audit_months);
       const c = pruneMemberViews(change_log_months);
       if (a || b || c) log(`logs: removed ${a} change-log, ${b} AI-activity and ${c} member-view entries past the keep period`);
+      const v = eraseVisitorContacts(getSettings().retention.visitor_contact_months);
+      if (v) log(`records: erased the contact details of ${v} visitors past the keep period`);
       recordSizeSnapshot();
     } catch (e) {
       log(`logs: tidy failed — ${(e as Error).message}`);

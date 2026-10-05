@@ -24,5 +24,14 @@ let file = path.join(dir, `canon-${stamp}.db`);
 for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp}-${i}.db`);
 db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
 db.prepare("INSERT INTO settings (key, value) VALUES ('_last_backup_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(new Date().toISOString());
+// archive files (one per archived year) go along with every backup
+const archives = path.join(path.dirname(config.dbPath), 'archives');
+if (fs.existsSync(archives)) {
+  fs.mkdirSync(path.join(dir, 'archives'), { recursive: true });
+  for (const name of fs.readdirSync(archives).filter((n) => /^canon-archive-\d{4}\.db$/.test(n))) {
+    const to = path.join(dir, 'archives', name);
+    if (!fs.existsSync(to) || fs.statSync(to).size !== fs.statSync(path.join(archives, name)).size) fs.copyFileSync(path.join(archives, name), to);
+  }
+}
 const version = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 console.log(`Backup written: ${file} (${(fs.statSync(file).size / 1e6).toFixed(1)} MB, database version ${version})`);

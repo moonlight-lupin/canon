@@ -6,7 +6,12 @@ import { useI18n } from '../../i18n.tsx';
 import { ErrorBox, Loading, useAction } from '../../components/ui.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { Icon } from '../../components/icons.tsx';
-import { FilterBar, Pager, stamp, useLogQuery } from '../../components/LogTools.tsx';
+import { ChangeList, FilterBar, Pager, stamp, useLogQuery, type ChangeRow } from '../../components/LogTools.tsx';
+import { useState } from 'react';
+import { qs } from '../../api.ts';
+import { Bi, Field, Modal, Seg, confirmAction, fmtDate, useSession } from '../../components/ui.tsx';
+import { money } from '../../../shared/records.ts';
+import type { L10n } from '../../types-client.ts';
 
 type CheckStatus = 'ok' | 'warn' | 'todo' | 'info';
 interface CheckItem { key: string; status: CheckStatus; title: string; detail: string; link?: string }
@@ -45,10 +50,133 @@ export function SecurityTab() {
           ))}
         </div>
       </section>
+      <KeepingCard onChanged={async () => setData(await api.get('/security'))} />
       <MemberViewsCard />
     </div>
   );
 }
+
+interface ArchiveYear { year: number; records: number; changes: number; ai: number; views: number }
+interface ArchiveFile extends ArchiveYear { name: string; size: number }
+
+/** How long visitors' details are kept; archiving old years; the archive files. */
+function KeepingCard({ onChanged }: { onChanged: () => void }) {
+  const { t } = useI18n();
+  const { settings, reloadSettings } = useSession();
+  const files = useApi<ArchiveFile[]>('/archives');
+  const { run, busy } = useAction();
+  const [preview, setPreview] = useState<ArchiveYear[] | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const r = settings?.retention;
+  if (!r) return <Loading />;
+  const save = (p: Partial<typeof r>) => run(async () => {
+    await api.put('/log-retention', p);
+    reloadSettings();
+    onChanged();
+  }, t('Saved.'));
+  const check = () => run(async () => setPreview((await api.post<{ years: ArchiveYear[] }>('/archives/run', { dry_run: true })).years));
+  const archive = () => {
+    if (!confirmAction(t('Move these years out of the live database into archive files? They can still be opened (read-only) here.'))) return;
+    run(async () => {
+      await api.post('/archives/run', {});
+      setPreview(null);
+      files.reload();
+      onChanged();
+    }, t('Archived.'));
+  };
+  return (
+    <section className="card stack">
+      <h3>{t('Keeping and archiving')} <InfoTip text={t('Personal data should be kept only as long as it is needed, and old records can move out of the live database into one read-only file per year. Archive files are copied with every backup.')} /></h3>
+      <div className="row" style={{ gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <Field label={<>{t('Erase visitors’ contact details after')} <InfoTip text={t('Phone or e-mail, prayer request, how they described themselves and notes are erased from service records this many months after the service. Names, how they came and follow-up stay, so reports still count them.')} /></>}>
+          <select value={r.visitor_contact_months} onChange={(e) => save({ visitor_contact_months: Number(e.target.value) })} disabled={busy}>
+            {[6, 12, 18, 24, 36, 60].map((m) => <option key={m} value={m}>{t('{n} months').replace('{n}', String(m))}</option>)}
+            <option value={0}>{t('Never (keep)')}</option>
+          </select>
+        </Field>
+        <Field label={<>{t('Archive records older than')} <InfoTip text={t('Service records (with their offerings) and log entries of whole years older than this move to an archive file. The services themselves stay in Canon. Charities usually keep financial records for years: archiving keeps them, it does not delete them.')} /></>}>
+          <select value={r.archive_years} onChange={(e) => save({ archive_years: Number(e.target.value) })} disabled={busy}>
+            {[3, 5, 7, 10].map((y) => <option key={y} value={y}>{t('{n} years').replace('{n}', String(y))}</option>)}
+            <option value={0}>{t('Never (keep all years)')}</option>
+          </select>
+        </Field>
+        <button className="btn" onClick={check} disabled={busy || !r.archive_years}>{t('Check what can be archived')}</button>
+      </div>
+      {preview && (
+        <div className="callout small">
+          {!preview.length ? t('Nothing to archive yet.') : (
+            <>
+              <div>{t('Ready to archive:')}</div>
+              <ul>{preview.map((y) => <li key={y.year}><strong>{y.year}</strong>: {t('{r} service records, {c} change-log entries, {a} AI activity entries').replace('{r}', String(y.records)).replace('{c}', String(y.changes)).replace('{a}', String(y.ai))}</li>)}</ul>
+              <button className="btn primary sm" onClick={archive} disabled={busy}>{t('Archive now')}</button>
+            </>
+          )}
+        </div>
+      )}
+      {(files.data?.length ?? 0) > 0 && (
+        <table className="t">
+          <thead><tr><th>{t('Archive')}</th><th className="right">{t('Service records')}</th><th className="right">{t('Change log')}</th><th className="right">{t('Size')}</th><th /></tr></thead>
+          <tbody>
+            {files.data!.map((f) => (
+              <tr key={f.year}>
+                <td><strong>{f.year}</strong></td><td className="right">{f.records}</td><td className="right">{f.changes}</td><td className="right">{(f.size / 1e6).toFixed(1)} MB</td>
+                <td className="right nowrap">
+                  <button className="btn sm" onClick={() => setOpen(f.year)}><Icon name="eye" />{t('Open')}</button>{' '}
+                  <a className="btn sm ghost" href={`/api/archives/${f.year}/download`}><Icon name="download" />{t('Download')}</a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {open != null && <ArchiveViewer year={open} onClose={() => setOpen(null)} />}
+    </section>
+  );
+}
+
+/** One archived year, read-only: its service records and its change log. */
+function ArchiveViewer({ year, onClose }: { year: number; onClose: () => void }) {
+  const { t, lang } = useI18n();
+  const [view, setView] = useState<'records' | 'changes'>('records');
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+  const recs = useApi<{ service_id: number; date: string; start_time: string; title: L10n; attendance: number | null; visitors: number; totals: Record<string, number>; verified: boolean }[]>(`/archives/${year}/records`);
+  const changes = useApi<{ rows: ChangeRow[]; total: number; page: number; size: number }>(view === 'changes' ? `/archives/${year}/changes${qs({ q, page: String(page) })}` : null);
+  return (
+    <Modal title={`${t('Archive')} ${year}`} onClose={onClose} size="lg">
+      <div className="stack">
+        <Seg value={view} onChange={setView} options={[{ value: 'records', label: t('Service records') }, { value: 'changes', label: t('Change log') }]} />
+        {view === 'records' ? (!recs.data ? <Loading /> : (
+          <div className="table-wrap">
+            <table className="t">
+              <thead><tr><th>{t('Date')}</th><th>{t('Service')}</th><th className="right">{t('Attendance')}</th><th className="right">{t('New visitors')}</th><th className="right">{t('Offerings')}</th><th /></tr></thead>
+              <tbody>
+                {recs.data.map((r) => (
+                  <tr key={r.service_id}>
+                    <td className="nowrap">{fmtDate(r.date, lang)}</td><td><Bi v={r.title} /></td><td className="right">{r.attendance ?? '—'}</td><td className="right">{r.visitors || ''}</td>
+                    <td className="right nowrap">{Object.entries(r.totals).map(([c, v]) => money(v, c, true)).join(' · ')}</td>
+                    <td>{r.verified && <span className="badge ok">{t('Verified')}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )) : (
+          <>
+            <input type="search" placeholder={t('Search names and values…')} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} style={{ maxWidth: 280 }} />
+            {!changes.data ? <Loading /> : (
+              <>
+                <ChangeList rows={changes.data.rows} entities={undefined} />
+                <Pager page={changes.data.page} size={changes.data.size} total={changes.data.total} onPage={setPage} />
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 
 interface ViewRow { id: number; at: string; user_name: string | null; person_id: number | null; person_name: string | null; via: 'web' | 'mcp' | 'export'; detail: string | null }
 const VIA_LABEL: Record<ViewRow['via'], string> = { web: 'Member page', mcp: 'AI agent', export: 'CSV export' };

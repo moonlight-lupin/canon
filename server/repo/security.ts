@@ -13,6 +13,7 @@ import { backupDir, lastBackupAt, listBackups } from './backups.ts';
 import { dateRange, paging } from './changelog.ts';
 import { likeTerm } from '../lib/table.ts';
 import { formSettings } from './visitor-form.ts';
+import { archivableYears } from './archive.ts';
 
 // ---------------------------------------------------------------- member record views
 
@@ -206,6 +207,15 @@ export function securityChecklist(): CheckItem[] {
   const vf = formSettings();
   items.push({ key: 'visitor_form', status: 'info', title: 'Visitor form', detail: vf.enabled ? 'On: services with a form have a public page visitors can fill in.' : 'Off.', link: '/settings?tab=visitor-form' });
   items.push({ key: 'retention', status: 'info', title: 'How long logs are kept', detail: `Change log and member record views: ${s.retention.change_log_months || 'all'} months; AI activity: ${s.retention.mcp_audit_months || 'all'} months.`, link: '/settings?tab=changelog' });
+  items.push(s.retention.visitor_contact_months
+    ? { key: 'visitor_contacts', status: 'ok', title: 'Visitors’ contact details', detail: `Erased ${s.retention.visitor_contact_months} months after the service (names and follow-up stay).` }
+    : { key: 'visitor_contacts', status: 'warn', title: 'Visitors’ contact details', detail: 'Kept for ever. Personal data should be kept only as long as it is needed: set how many months below.' });
+  const due = archivableYears(s.retention.archive_years ?? 0);
+  items.push(!s.retention.archive_years
+    ? { key: 'archive', status: 'info', title: 'Archiving', detail: 'Off: every year’s records stay in Canon.' }
+    : due.length
+      ? { key: 'archive', status: 'warn', title: 'Archiving', detail: `${due.map((d) => d.year).join(', ')} can be archived (records older than ${s.retention.archive_years} years). Use “Archive now” below.` }
+      : { key: 'archive', status: 'ok', title: 'Archiving', detail: `Records older than ${s.retention.archive_years} years are archived; nothing waiting.` });
   items.push({ key: 'readonly', status: 'ok', title: 'Read-only accounts', detail: 'Never see members’ contact details, notes, ages or sensitive fields.' });
   return items;
 }

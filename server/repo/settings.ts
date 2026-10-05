@@ -60,7 +60,8 @@ export interface Settings {
   /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
   security: { disk_encryption: boolean };
   /** how many months the change log and the AI activity log keep (0 = everything) */
-  retention: { change_log_months: number; mcp_audit_months: number };
+  /** months to keep logs (0 = all); visitors' contact details erased after visitor_contact_months; records archived after archive_years */
+  retention: { change_log_months: number; mcp_audit_months: number; visitor_contact_months: number; archive_years: number };
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
   trust_proxy: boolean;
   smtp: SmtpSettings;
@@ -87,7 +88,7 @@ export const DEFAULT_SETTINGS: Settings = {
   default_slide_theme_id: null,
   default_bulletin_template_id: null,
   default_service_template_id: null,
-  retention: { change_log_months: 24, mcp_audit_months: 12 },
+  retention: { change_log_months: 24, mcp_audit_months: 12, visitor_contact_months: 24, archive_years: 5 },
   offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   visitor_form: DEFAULT_VISITOR_FORM,
   member_fields: [],
@@ -125,6 +126,7 @@ export function getSettings(): Settings {
   out.mcp = { ...DEFAULT_SETTINGS.mcp, ...out.mcp, modules: { ...DEFAULT_SETTINGS.mcp.modules, ...out.mcp.modules } };
   out.smtp = { ...DEFAULT_SETTINGS.smtp, ...out.smtp, has_password: !!getMeta('smtp_password') };
   out.backup = { ...DEFAULT_SETTINGS.backup, ...out.backup };
+  out.retention = { ...DEFAULT_SETTINGS.retention, ...out.retention };
   out.visitor_form = { ...DEFAULT_SETTINGS.visitor_form, ...out.visitor_form };
   out.default_languages = out.default_languages.filter((l) => out.languages.includes(l));
   if (!out.default_languages.length) out.default_languages = out.languages.slice(0, 2);

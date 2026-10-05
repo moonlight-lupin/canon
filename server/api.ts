@@ -39,6 +39,7 @@ import { cleanFieldDefs, type MemberField } from '../shared/member-fields.ts';
 import { toCsv } from '../shared/reports.ts';
 import * as vf from './repo/visitor-form.ts';
 import * as sec from './repo/security.ts';
+import * as arc from './repo/archive.ts';
 import * as bg from './repo/backgrounds.ts';
 import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
@@ -645,9 +646,29 @@ api.get('/change-log.csv', requireAdmin, h((req, res) => {
   ]);
 }));
 api.put('/log-retention', requireAdmin, h((req) => {
-  const b = z.object({ change_log_months: z.number().int().min(0).max(120), mcp_audit_months: z.number().int().min(0).max(120) }).parse(req.body);
-  return updateSettings({ retention: b }).retention;
+  const b = z.object({
+    change_log_months: z.number().int().min(0).max(120).optional(), mcp_audit_months: z.number().int().min(0).max(120).optional(),
+    visitor_contact_months: z.number().int().min(0).max(120).optional(), archive_years: z.number().int().min(0).max(30).optional(),
+  }).parse(req.body);
+  return updateSettings({ retention: { ...getSettings().retention, ...b } }).retention;
 }));
+// archives (administrators): preview / run, list, open read-only, download
+api.post('/archives/run', requireAdmin, h((req) => arc.runArchive(!!z.object({ dry_run: z.boolean().optional() }).parse(req.body ?? {}).dry_run)));
+api.get('/archives', requireAdmin, h(() => arc.listArchives()));
+const yearOf = (req: Request) => {
+  const y = Number(req.params.year);
+  if (!Number.isInteger(y) || y < 1900 || y > 2200) throw Object.assign(new Error('Bad year'), { status: 400 });
+  return y;
+};
+api.get('/archives/:year/records', requireAdmin, h((req) => arc.archivedRecords(yearOf(req))));
+api.get('/archives/:year/changes', requireAdmin, h((req) => arc.archivedChanges(yearOf(req), { page: Number(req.query.page) || 1, q: str(req.query.q) })));
+api.get('/archives/:year/download', requireAdmin, (req, res, next) => {
+  try {
+    res.download(arc.archivePath(yearOf(req)));
+  } catch (e) {
+    next(e);
+  }
+});
 api.get('/mcp/tools', requireAdmin, h(() => toolCatalog()));
 api.get('/mcp/endpoint', requireAdmin, h((req) => ({
   url: `${externalBase(req)}/mcp`,
