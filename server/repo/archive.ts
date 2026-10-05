@@ -49,13 +49,16 @@ function eraseIn(d: DatabaseSync, before: string, schema = 'main'): { visitors: 
     d.prepare(`UPDATE ${schema}.service_records SET visitors = ? WHERE id = ?`).run(JSON.stringify(strip(vs)), r.id);
     visitors += n;
   }
-  // the change log keeps old and new values: its copies of those visitors go too (by the service's date, which is
-  // what the setting is about, not by when the change was made)
+  // the change log keeps old and new values: its copies of those visitors go too, by the service's date (what the
+  // setting is about, not when the change was made). A deleted service's date comes from its tombstone; if no date
+  // can be found at all, the entry goes once it is itself older than the setting.
   let log = 0;
+  const known = `SELECT id FROM main.services UNION SELECT id FROM main.service_tombstones${schema === 'main' ? '' : ` UNION SELECT id FROM ${schema}.services`}`;
+  const old = `SELECT id FROM main.services WHERE date < ? UNION SELECT id FROM main.service_tombstones WHERE date < ?${schema === 'main' ? '' : ` UNION SELECT id FROM ${schema}.services WHERE date < ?`}`;
   const entries = d.prepare(
     `SELECT id, changes FROM ${schema}.change_log WHERE entity = 'service_records' AND changes LIKE '%visitors%'
-     AND parent_id IN (SELECT id FROM main.services WHERE date < ?${schema === 'main' ? '' : ` UNION SELECT id FROM ${schema}.services WHERE date < ?`})`,
-  ).all(...(schema === 'main' ? [before] : [before, before])) as { id: number; changes: string }[];
+     AND (parent_id IN (${old}) OR ((parent_id IS NULL OR parent_id NOT IN (${known})) AND at < ?))`,
+  ).all(...(schema === 'main' ? [before, before] : [before, before, before]), before) as { id: number; changes: string }[];
   for (const e of entries) {
     const ch = JSON.parse(e.changes || '{}') as Record<string, [unknown, unknown]>;
     if (!ch.visitors) continue;
@@ -158,9 +161,12 @@ function archiveYear(year: number) {
     for (const t of COPIED) syncTable(t);
     const ids = 'SELECT r.service_id FROM main.service_records r JOIN main.services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?';
     // one record per service in an archive. A live record already in the archive (a backup from before archiving
-    // was restored) is the same record if its id and last save match: the live copy just goes.
+    // was restored) is dropped only if it is the same record: every stored field equal (money, visitors, signatures,
+    // its last save…; the revision counter aside, as restores give different histories). Anything else stops
+    // archiving before the live record is touched.
+    const same = shared('service_records', ['revision']).split(', ').map((c) => `m.${c} IS a.${c}`).join(' AND ');
     const clash = all<{ service_id: number; same: number }>(
-      `SELECT m.service_id, (m.id = a.id AND m.updated_at = a.updated_at) AS same FROM main.service_records m
+      `SELECT m.service_id, (${same}) AS same FROM main.service_records m
        JOIN arc.service_records a ON a.service_id = m.service_id WHERE m.service_id IN (${ids})`, from, to,
     );
     const differ = clash.filter((c) => !c.same);

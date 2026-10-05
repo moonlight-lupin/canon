@@ -219,3 +219,57 @@ test('a record archived by an older Canon (fewer columns) can be brought back an
   A.runArchive(false, 5);
   assert.equal(rec.recordFor(s15).archived_year, 2015);
 });
+
+test("visitors' details in the change log are erased even after the record and its service were deleted", async () => {
+  const visitor = { name: 'Gone Visitor', contact: '9000 0111', prayer: 'a gone prayer', about: 'Travelling', notes: 'a gone note', source: 'Walked in' };
+  const s23 = svc.createService({ date: '2023-04-02', title: { en: 'Test April 2023' } }).service.id;
+  assert.equal((await call(as.editor, 'PUT', `/services/${s23}/record`, { attendance: 12, visitors: [visitor] })).status, 200);
+  assert.equal((await call(as.admin, 'DELETE', `/services/${s23}/record`)).status, 200);
+  assert.equal((await call(as.editor, 'DELETE', `/services/${s23}`)).status, 200);
+  const copies = () => get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE changes LIKE '%9000 0111%' OR changes LIKE '%a gone prayer%' OR changes LIKE '%Travelling%' OR changes LIKE '%a gone note%'")!.n;
+  assert.equal(copies(), 2, 'the create and the delete snapshots');
+  assert.equal(get<{ date: string }>('SELECT date FROM service_tombstones WHERE id = ?', s23)?.date, '2023-04-02');
+  A.eraseVisitorContacts(24, new Date('2026-10-05'));
+  assert.equal(copies(), 0, 'both snapshots erased');
+  assert.ok(get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE changes LIKE '%Gone Visitor%'")!.n >= 1, 'the name stays');
+
+  // a service deleted before 0.11.2 with no date to be found: its entries go once they are older than the setting
+  run(`INSERT INTO change_log (at, user_name, via, entity, entity_id, action, name, changes, parent_entity, parent_id)
+       VALUES ('2020-01-05 10:00:00', 'Someone', 'web', 'service_records', 990001, 'create', '#990001', ?, 'services', 990002),
+              (datetime('now'), 'Someone', 'web', 'service_records', 990003, 'create', '#990003', ?, 'services', 990004)`,
+  JSON.stringify({ visitors: [null, [{ name: 'Old Orphan', contact: '9000 0122' }]] }), JSON.stringify({ visitors: [null, [{ name: 'New Orphan', contact: '9000 0133' }]] }));
+  A.eraseVisitorContacts(24);
+  assert.equal(get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE changes LIKE '%9000 0122%'")!.n, 0, 'old orphan erased');
+  assert.equal(get<{ n: number }>("SELECT COUNT(*) AS n FROM change_log WHERE changes LIKE '%9000 0133%'")!.n, 1, 'a recent orphan waits for its own age');
+});
+
+test('a restored record that differs from the archived one (same id, same second) stops archiving and keeps its money', async () => {
+  const B = await import('../server/repo/backups.ts');
+  // restores make their safety copies in this test's folder, never the project's backups/
+  S.updateSettings({ backup: { dir: path.join(tmp, 'restore-backups'), auto: 'off', keep: 20 } });
+  const s13 = svc.createService({ date: '2013-09-01', title: { en: 'Test 2013' } }).service.id;
+  const line = (amount: number) => [{ fund: 'General', method: 'transfer' as const, amount }];
+  const first = rec.saveRecord(s13, { attendance: 13, offerings: line(5000) }, editor);
+  const a = B.createBackup();
+  rec.saveRecord(s13, { offerings: line(9000) }, editor);
+  // the same second as the first save: a timestamp can't tell them apart
+  run('UPDATE service_records SET updated_at = ? WHERE service_id = ?', first.updated_at, s13);
+  const b = B.createBackup();
+
+  await B.restoreBackup(a.path);
+  A.runArchive(false, 5);
+  assert.equal(A.archivedRecords(2013)[0].totals.SGD, 5000);
+
+  await B.restoreBackup(b.path);
+  assert.equal(rec.recordFor(s13).offerings[0].amount, 9000);
+  assert.throws(() => A.runArchive(false, 5), /already has a different record/);
+  assert.equal(rec.recordFor(s13).offerings[0].amount, 9000, 'the live record and its money stay');
+  assert.equal(A.archivedRecords(2013).length, 1);
+  assert.equal(A.archivedRecords(2013)[0].totals.SGD, 5000);
+
+  // restoring A again (the very record that was archived): the same copy is just dropped
+  await B.restoreBackup(a.path);
+  A.runArchive(false, 5);
+  assert.equal(A.archivedRecords(2013).length, 1);
+  assert.equal(rec.recordFor(s13).archived_year, 2013);
+});

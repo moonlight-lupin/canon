@@ -583,4 +583,32 @@ export const MIGRATIONS: (string | Migration)[] = [
     archived_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   `,
+  // 22 (0.11.2): a deleted service leaves its id and date, so erasing visitors' details still finds the change-log
+  // entries of its record (they outlive the service). Earlier deletions are filled in from the change log.
+  {
+    sql: `
+    CREATE TABLE service_tombstones (
+      id INTEGER PRIMARY KEY,
+      date TEXT NOT NULL,
+      deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TRIGGER services_tombstone AFTER DELETE ON services
+    BEGIN
+      INSERT OR REPLACE INTO service_tombstones (id, date) VALUES (OLD.id, OLD.date);
+    END;
+    `,
+    run: (d) => {
+      const rows = d.prepare(
+        `SELECT entity_id, changes FROM change_log WHERE entity = 'services' AND action = 'delete'
+         AND entity_id IS NOT NULL AND entity_id NOT IN (SELECT id FROM services)`,
+      ).all() as { entity_id: number; changes: string }[];
+      const put = d.prepare('INSERT OR IGNORE INTO service_tombstones (id, date, deleted_at) VALUES (?, ?, ?)');
+      for (const r of rows) {
+        try {
+          const date = (JSON.parse(r.changes) as { date?: [unknown, unknown] }).date?.[0];
+          if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) put.run(r.entity_id, date, 'before 0.11.2');
+        } catch { /* an entry that can't be read: the entry's own age decides (repo/archive.ts) */ }
+      }
+    },
+  },
 ];

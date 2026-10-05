@@ -4,6 +4,12 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.11.2 — fixes from the v0.11.1 review
+
+- **Archiving never drops a different record.** A restored record that is also in an archive is treated as the same record only if every stored field matches: money, visitors, signatures and its last save. Before, a matching id and save time were enough, so a record changed within the same second could be removed. Now archiving stops, and the live record and its money stay as they are.
+- **Erasing visitors' details reaches deleted services too.** When a service is deleted, Canon keeps its id and date, so the change-log entries of its record (the create and delete snapshots) are still erased on time. Deletions from before 0.11.2 are filled in from the change log. An entry whose service date can't be found is erased once the entry itself is older than the setting.
+- Database: 21 → 22.
+
 ## 0.11.1 — fixes from the v0.11.0 review
 
 - **Archived records stay protected.** Canon now remembers which services have their record in an archive file:
