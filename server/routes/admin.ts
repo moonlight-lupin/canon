@@ -67,6 +67,7 @@ adminRoutes.put('/log-retention', requireAdmin, h((req) => {
   const b = z.object({
     change_log_months: z.number().int().min(0).max(120).optional(), mcp_audit_months: z.number().int().min(0).max(120).optional(),
     visitor_contact_months: z.number().int().min(0).max(120).optional(), archive_years: z.number().int().min(0).max(30).optional(),
+    log_archive_years: z.number().int().min(0).max(30).nullable().optional(),
   }).parse(req.body);
   return updateSettings({ retention: { ...getSettings().retention, ...b } }).retention;
 }));

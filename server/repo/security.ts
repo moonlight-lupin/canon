@@ -13,7 +13,7 @@ import { backupDir, lastBackupAt, listBackups } from './backups.ts';
 import { dateRange, paging } from './changelog.ts';
 import { likeTerm } from '../lib/table.ts';
 import { formSettings } from './visitor-form.ts';
-import { archivableYears } from './archive.ts';
+import { archivableYears, logArchiveYears } from './archive.ts';
 import { isAdmin } from '../lib/permissions.ts';
 import { backupKey } from '../lib/backup-crypto.ts';
 
@@ -222,12 +222,15 @@ export function securityChecklist(): CheckItem[] {
   items.push(s.retention.visitor_contact_months
     ? { key: 'visitor_contacts', status: 'ok', title: 'Visitors’ contact details', detail: `Erased ${s.retention.visitor_contact_months} months after the service (names and follow-up stay).` }
     : { key: 'visitor_contacts', status: 'warn', title: 'Visitors’ contact details', detail: 'Kept for ever. Personal data should be kept only as long as it is needed: set how many months below.' });
-  const due = archivableYears(s.retention.archive_years ?? 0);
-  items.push(!s.retention.archive_years
-    ? { key: 'archive', status: 'info', title: 'Archiving', detail: 'Off: every year’s records stay in Canon.' }
+  const recYears = s.retention.archive_years ?? 0;
+  const logYears = logArchiveYears(s.retention);
+  const due = archivableYears(recYears, new Date(), logYears);
+  const ages = [recYears ? `service records after ${recYears} years` : 'service records never', logYears ? `log entries after ${logYears} years` : 'log entries never'].join(', ');
+  items.push(!recYears && !logYears
+    ? { key: 'archive', status: 'info', title: 'Archiving', detail: 'Off: every year’s records and logs stay in Canon.' }
     : due.length
-      ? { key: 'archive', status: 'warn', title: 'Archiving', detail: `${due.map((d) => d.year).join(', ')} can be archived (records older than ${s.retention.archive_years} years). Use “Archive now” below.` }
-      : { key: 'archive', status: 'ok', title: 'Archiving', detail: `Records older than ${s.retention.archive_years} years are archived; nothing waiting.` });
+      ? { key: 'archive', status: 'warn', title: 'Archiving', detail: `${due.map((d) => d.year).join(', ')} can be archived (${ages}). Use “Archive now” below.` }
+      : { key: 'archive', status: 'ok', title: 'Archiving', detail: `Archived: ${ages}; nothing waiting.` });
   items.push({ key: 'readonly', status: 'ok', title: 'Read-only accounts', detail: 'Never see members’ contact details, notes, ages or sensitive fields.' });
   return items;
 }

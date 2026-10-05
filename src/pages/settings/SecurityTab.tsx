@@ -76,6 +76,8 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
   const [open, setOpen] = useState<number | null>(null);
   const r = settings?.retention;
   if (!r) return <Loading />;
+  // log entries: their own age, or the same as service records
+  const logYears = r.log_archive_years ?? r.archive_years;
   const save = (p: Partial<typeof r>) => run(async () => {
     await api.put('/log-retention', p);
     reloadSettings();
@@ -101,15 +103,22 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
             <option value={0}>{t('Never (keep)')}</option>
           </select>
         </Field>
-        <Field label={<>{t('Archive records older than')} <InfoTip text={t('Service records (with their offerings) and log entries of whole years older than this move to an archive file. The services themselves stay in Canon. Charities usually keep financial records for years: archiving keeps them, it does not delete them.')} /></>}>
+        <Field label={<>{t('Archive records older than')} <InfoTip text={t('Service records (with their offerings) of whole years older than this move to an archive file. The services themselves stay in Canon. Charities usually keep financial records for years: archiving keeps them, it does not delete them.')} /></>}>
           <select value={r.archive_years} onChange={(e) => save({ archive_years: Number(e.target.value) })} disabled={busy}>
             {[3, 5, 7, 10].map((y) => <option key={y} value={y}>{t('{n} years').replace('{n}', String(y))}</option>)}
             <option value={0}>{t('Never (keep all years)')}</option>
           </select>
         </Field>
-        <button className="btn" onClick={check} disabled={busy || !r.archive_years}>{t('Check what can be archived')}</button>
+        <Field label={<>{t('Archive logs older than')} <InfoTip text={t('The change log, AI activity and who viewed member records: whole years older than this move to the year’s archive file. Logs are usually needed for less time than financial records.')} /></>}>
+          <select value={r.log_archive_years ?? ''} onChange={(e) => save({ log_archive_years: e.target.value === '' ? null : Number(e.target.value) })} disabled={busy}>
+            <option value="">{t('Same as records')}</option>
+            {[1, 2, 3, 5, 7, 10].map((y) => <option key={y} value={y}>{t('{n} years').replace('{n}', String(y))}</option>)}
+            <option value={0}>{t('Never (keep all years)')}</option>
+          </select>
+        </Field>
+        <button className="btn" onClick={check} disabled={busy || (!r.archive_years && !logYears)}>{t('Check what can be archived')}</button>
       </div>
-      {!!r.archive_years && !!r.change_log_months && r.change_log_months < r.archive_years * 12 && (
+      {!!logYears && !!r.change_log_months && r.change_log_months < logYears * 12 && (
         <div className="callout small">
           {t('The change log keeps {m} months, so its entries are removed before they are old enough to archive: archives will hold service records, not their history. To archive the history too, keep the change log longer (Settings → Change log).').replace('{m}', String(r.change_log_months))}
         </div>

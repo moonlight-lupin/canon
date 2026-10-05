@@ -97,28 +97,38 @@ export function eraseVisitorContacts(months: number, today = new Date()): { visi
 
 // ---------------------------------------------------------------- archiving
 
-/** Years whose records and log entries are old enough to archive (strictly older than `years` full years). */
-export function archivableYears(years: number, today = new Date()): { year: number; records: number; changes: number; ai: number; views: number }[] {
-  if (!years) return [];
-  const last = today.getFullYear() - years - 1;
+/** What to archive in a year: its service records (with offerings), its log entries (change log, AI, views), or both. */
+interface Parts { records: boolean; logs: boolean }
+
+/**
+ * Years with something old enough to archive: service records older than `years` full years, log entries older than
+ * `logYears` (by default the same; 0 = never).
+ */
+export function archivableYears(years: number, today = new Date(), logYears = years): { year: number; records: number; changes: number; ai: number; views: number; parts: Parts }[] {
+  const lastRec = years ? today.getFullYear() - years - 1 : 0;
+  const lastLog = logYears ? today.getFullYear() - logYears - 1 : 0;
+  if (!lastRec && !lastLog) return [];
   const ys = all<{ y: string }>(
     `SELECT DISTINCT y FROM (
-       SELECT substr(s.date, 1, 4) AS y FROM service_records r JOIN services s ON s.id = r.service_id
-       UNION SELECT substr(at, 1, 4) FROM change_log UNION SELECT substr(at, 1, 4) FROM mcp_audit UNION SELECT substr(at, 1, 4) FROM member_views
-     ) WHERE CAST(y AS INTEGER) <= ? ORDER BY y`, last,
+       SELECT substr(s.date, 1, 4) AS y, 'r' AS k FROM service_records r JOIN services s ON s.id = r.service_id
+       UNION SELECT substr(at, 1, 4), 'l' FROM change_log UNION SELECT substr(at, 1, 4), 'l' FROM mcp_audit UNION SELECT substr(at, 1, 4), 'l' FROM member_views
+     ) WHERE (k = 'r' AND CAST(y AS INTEGER) <= ?) OR (k = 'l' AND CAST(y AS INTEGER) <= ?) ORDER BY y`, lastRec, lastLog,
   ).map((r) => Number(r.y)).filter((y) => y > 1900);
-  return ys.map((year) => ({ year, ...countsFor(year) }));
+  return ys.map((year) => {
+    const parts = { records: year <= lastRec, logs: year <= lastLog };
+    return { year, ...countsFor(year, parts), parts };
+  });
 }
 
-function countsFor(year: number) {
+function countsFor(year: number, parts: Parts = { records: true, logs: true }) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
-  const n = (sql: string, ...p: (string | number)[]) => get<{ n: number }>(sql, ...p)?.n ?? 0;
+  const n = (on: boolean, sql: string, ...p: (string | number)[]) => (on ? get<{ n: number }>(sql, ...p)?.n ?? 0 : 0);
   return {
-    records: n('SELECT COUNT(*) AS n FROM service_records r JOIN services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?', from, to),
-    changes: n("SELECT COUNT(*) AS n FROM change_log WHERE at BETWEEN ? AND ? || ' 23:59:59'", from, to),
-    ai: n("SELECT COUNT(*) AS n FROM mcp_audit WHERE at BETWEEN ? AND ? || ' 23:59:59'", from, to),
-    views: n("SELECT COUNT(*) AS n FROM member_views WHERE at BETWEEN ? AND ? || ' 23:59:59'", from, to),
+    records: n(parts.records, 'SELECT COUNT(*) AS n FROM service_records r JOIN services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?', from, to),
+    changes: n(parts.logs, "SELECT COUNT(*) AS n FROM change_log WHERE at BETWEEN ? AND ? || ' 23:59:59'", from, to),
+    ai: n(parts.logs, "SELECT COUNT(*) AS n FROM mcp_audit WHERE at BETWEEN ? AND ? || ' 23:59:59'", from, to),
+    views: n(parts.logs, "SELECT COUNT(*) AS n FROM member_views WHERE at BETWEEN ? AND ? || ' 23:59:59'", from, to),
   };
 }
 
@@ -157,47 +167,54 @@ const shared = (t: string, skip: string[] = []) => {
 };
 
 /** Copy one year into its archive file (added to it if it exists), then remove it from the live database. */
-function archiveYear(year: number) {
+function archiveYear(year: number, parts: Parts) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
   const end = `${to} 23:59:59`;
-  const counts = countsFor(year);
+  const counts = countsFor(year, parts);
   return withArchive(year, () => tx(() => {
     db.exec('CREATE TABLE IF NOT EXISTS arc.archive_meta (key TEXT PRIMARY KEY, value TEXT)');
     for (const t of COPIED) syncTable(t);
-    const ids = 'SELECT r.service_id FROM main.service_records r JOIN main.services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?';
-    // one record per service in an archive. A live record already in the archive (a backup from before archiving
-    // was restored) is dropped only if it is the same record: every stored field equal (money, visitors, signatures,
-    // its last save…; the revision counter aside, as restores give different histories). Anything else stops
-    // archiving before the live record is touched.
-    const same = shared('service_records', ['revision']).split(', ').map((c) => `m.${c} IS a.${c}`).join(' AND ');
-    const clash = all<{ service_id: number; same: number }>(
-      `SELECT m.service_id, (${same}) AS same FROM main.service_records m
-       JOIN arc.service_records a ON a.service_id = m.service_id WHERE m.service_id IN (${ids})`, from, to,
-    );
-    const differ = clash.filter((c) => !c.same);
-    if (differ.length) {
-      throw new Conflict(`The ${year} archive already has a different record for ${differ.length} of these services (services ${differ.slice(0, 5).map((c) => c.service_id).join(', ')}). Nothing was archived. Bring the archived record back first, or compare the two.`);
-    }
-    const fresh = `${ids} AND r.service_id NOT IN (SELECT service_id FROM arc.service_records)`;
-    // the services are copied for context (title, date) and stay in Canon
-    run(`DELETE FROM arc.services WHERE id IN (${ids})`, from, to);
-    run(`INSERT INTO arc.services (${shared('services')}) SELECT ${shared('services')} FROM main.services WHERE id IN (${ids})`, from, to);
-    run(`INSERT INTO arc.service_records (${shared('service_records')}) SELECT ${shared('service_records')} FROM main.service_records WHERE service_id IN (${fresh})`, from, to);
-    try {
-      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS arc.archive_one_record_per_service ON service_records(service_id)');
-    } catch { /* an archive made by 0.11.0 may already hold a duplicate: kept as it is, and listed as such */ }
-    for (const t of ['change_log', 'mcp_audit', 'member_views'] as const) {
-      run(`INSERT INTO arc.${t} (${shared(t)}) SELECT ${shared(t)} FROM main.${t} WHERE at BETWEEN ? AND ?`, from, end);
+    if (parts.records) archiveRecords(year, from, to);
+    if (parts.logs) {
+      for (const t of ['change_log', 'mcp_audit', 'member_views'] as const) {
+        run(`INSERT INTO arc.${t} (${shared(t)}) SELECT ${shared(t)} FROM main.${t} WHERE at BETWEEN ? AND ?`, from, end);
+        run(`DELETE FROM main.${t} WHERE at BETWEEN ? AND ?`, from, end);
+      }
     }
     run("INSERT OR REPLACE INTO arc.archive_meta (key, value) VALUES ('year', ?), ('updated_at', datetime('now')), ('schema', ?)", String(year), String(get<{ user_version: number }>('PRAGMA main.user_version')?.user_version ?? ''));
-    // the live database remembers which services have their record in this archive (read-only from now on)
-    run(`INSERT OR REPLACE INTO main.archived_records (service_id, year) SELECT service_id, ? FROM (${ids})`, year, from, to);
-    run(`DELETE FROM main.visitor_cards WHERE service_id IN (${ids})`, from, to);
-    run(`DELETE FROM main.service_records WHERE service_id IN (SELECT r.service_id FROM main.service_records r JOIN main.services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?)`, from, to);
-    for (const t of ['change_log', 'mcp_audit', 'member_views'] as const) run(`DELETE FROM main.${t} WHERE at BETWEEN ? AND ?`, from, end);
     return { year, ...counts };
   }));
+}
+
+/** A year's service records into the attached archive (inside archiveYear's transaction). */
+function archiveRecords(year: number, from: string, to: string) {
+  const ids = 'SELECT r.service_id FROM main.service_records r JOIN main.services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?';
+  // one record per service in an archive. A live record already in the archive (a backup from before archiving
+  // was restored) is dropped only if it is the same record: every stored field equal (money, visitors, signatures,
+  // its last save…; the revision counter aside, as restores give different histories). Anything else stops
+  // archiving before the live record is touched.
+  const same = shared('service_records', ['revision']).split(', ').map((c) => `m.${c} IS a.${c}`).join(' AND ');
+  const clash = all<{ service_id: number; same: number }>(
+    `SELECT m.service_id, (${same}) AS same FROM main.service_records m
+     JOIN arc.service_records a ON a.service_id = m.service_id WHERE m.service_id IN (${ids})`, from, to,
+  );
+  const differ = clash.filter((c) => !c.same);
+  if (differ.length) {
+    throw new Conflict(`The ${year} archive already has a different record for ${differ.length} of these services (services ${differ.slice(0, 5).map((c) => c.service_id).join(', ')}). Nothing was archived. Bring the archived record back first, or compare the two.`);
+  }
+  const fresh = `${ids} AND r.service_id NOT IN (SELECT service_id FROM arc.service_records)`;
+  // the services are copied for context (title, date) and stay in Canon
+  run(`DELETE FROM arc.services WHERE id IN (${ids})`, from, to);
+  run(`INSERT INTO arc.services (${shared('services')}) SELECT ${shared('services')} FROM main.services WHERE id IN (${ids})`, from, to);
+  run(`INSERT INTO arc.service_records (${shared('service_records')}) SELECT ${shared('service_records')} FROM main.service_records WHERE service_id IN (${fresh})`, from, to);
+  try {
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS arc.archive_one_record_per_service ON service_records(service_id)');
+  } catch { /* an archive made by 0.11.0 may already hold a duplicate: kept as it is, and listed as such */ }
+  // the live database remembers which services have their record in this archive (read-only from now on)
+  run(`INSERT OR REPLACE INTO main.archived_records (service_id, year) SELECT service_id, ? FROM (${ids})`, year, from, to);
+  run(`DELETE FROM main.visitor_cards WHERE service_id IN (${ids})`, from, to);
+  run(`DELETE FROM main.service_records WHERE service_id IN (SELECT r.service_id FROM main.service_records r JOIN main.services s ON s.id = r.service_id WHERE s.date BETWEEN ? AND ?)`, from, to);
 }
 
 /** The years that have an archive file. */
@@ -248,14 +265,17 @@ export function restoreArchivedRecord(year: number, serviceId: number) {
   return { restored: true, service_id: serviceId };
 }
 
-/** Archive every year older than the setting (or preview it with dryRun). */
-export function runArchive(dryRun: boolean, years = getSettings().retention.archive_years ?? 5) {
-  if (!years) throw new BadRequest('Archiving is off (Keep in Canon: “all years”).');
-  const due = archivableYears(years);
+/** The age (years) after which log entries are archived: their own setting, or the same as service records. */
+export const logArchiveYears = (r = getSettings().retention) => r.log_archive_years ?? r.archive_years ?? 5;
+
+/** Archive every year older than the settings (or preview it with dryRun). */
+export function runArchive(dryRun: boolean, years = getSettings().retention.archive_years ?? 5, logYears = logArchiveYears()) {
+  if (!years && !logYears) throw new BadRequest('Archiving is off (Keep in Canon: “all years”).');
+  const due = archivableYears(years, new Date(), logYears);
   if (dryRun) return { dry_run: true, years: due };
   // what should already be erased never reaches an archive
   eraseVisitorContacts(getSettings().retention.visitor_contact_months);
-  const done = due.map((y) => archiveYear(y.year));
+  const done = due.map((y) => archiveYear(y.year, y.parts));
   if (done.length) {
     logChange({
       entity: 'settings', entity_id: null, action: 'update',

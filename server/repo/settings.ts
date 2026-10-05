@@ -64,7 +64,11 @@ export interface Settings {
   security: { disk_encryption: boolean; /** administrators must use two-step sign-in */ require_admin_2fa?: boolean };
   /** how many months the change log and the AI activity log keep (0 = everything) */
   /** months to keep logs (0 = all); visitors' contact details erased after visitor_contact_months; records archived after archive_years */
-  retention: { change_log_months: number; mcp_audit_months: number; visitor_contact_months: number; archive_years: number };
+  retention: {
+    change_log_months: number; mcp_audit_months: number; visitor_contact_months: number; archive_years: number;
+    /** log entries (change log, AI activity, record views) archived after this many years; unset = as records, 0 = never */
+    log_archive_years?: number | null;
+  };
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
   trust_proxy: boolean;
   smtp: SmtpSettings;
