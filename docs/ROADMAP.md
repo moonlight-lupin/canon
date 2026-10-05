@@ -8,16 +8,17 @@ What is planned for Canon after v0.12.0. Plans change: each release is scoped in
 | 0.11.0 | Hardening: archiving, storage, privacy; custom member fields — done |
 | 0.12.0 | Meetings, Sunday school and the church calendar — done |
 | 0.13.0 | Roles and permissions, optional modules, second hardening round |
-| 0.14.0 | Lending library and asset register (two optional modules, one release) |
-| 0.15.0 | Book-keeping: double-entry accounts (optional module) |
-| 0.15.1 | Claim forms |
-| 0.16.0 | UI/UX audit |
+| 0.14.0 | UI/UX audit of the core (worship and records) |
+| 0.15.0 | Lending library and asset register (two optional modules, one release) |
+| 0.16.0 | Book-keeping: double-entry accounts (optional module) |
+| 0.16.1 | Claim forms |
+| 0.17.0 | Third hardening round |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
 **Optional modules:** the lending library, the asset register and book-keeping (with claim forms) are optional. A church turns each on or off during onboarding or later in Settings. A module that is off is hidden from the sidebar, refused by the server and absent from AI agents' tools. Turning it off keeps its data, so turning it on again brings everything back.
 
-**Order:** roles and permissions come before the new modules, so that each module (librarian, equipment keeper, treasurer, claims approver) plugs into one permission model instead of adding its own on/off switch to be reworked later.
+**Order:** roles and permissions come before the new modules, so that each module (librarian, equipment keeper, treasurer, claims approver) plugs into one permission model instead of adding its own on/off switch to be reworked later. The UI/UX audit follows straight after, while the core (worship and records) is complete and before the optional modules add more screens; those modules are built to the audited patterns. After book-keeping comes a third round of hardening rather than another audit.
 
 ## 0.10.0 — Reporting (done)
 
@@ -75,7 +76,7 @@ Roles reorganised around what churches actually do (for example treasurer, libra
 - deciding whether congregations should also limit what people can see (today they are filters, not walls);
 - for signatures and approvals, telling apart "two people signed on one device" from "two people each approved from their own account" before claims rely on it;
 - approved, dated versions of a service's bulletin and slides;
-- **optional modules**: turning modules on and off in onboarding and Settings, ready for 0.14 and 0.15.
+- **optional modules**: turning modules on and off in onboarding and Settings, ready for 0.15 and 0.16.
 
 The second round of hardening includes:
 - **encrypted backups**;
@@ -87,7 +88,11 @@ Candidates to decide when the round is scoped:
 - limits on repeated sign-in attempts;
 - letting a member's own data be exported or erased on request (PDPA).
 
-## 0.14.0 — Lending library and asset register
+## 0.14.0 — UI/UX audit
+
+A review of the core — services, the library, members and groups, meetings, records and reports, settings — for clarity, consistency, accessibility and use on phones and tablets, while it is complete and before the optional modules add more screens. The patterns it settles (forms, lists, dialogs, phone layouts, wording in both languages) are what the lending library, asset register and book-keeping are then built with.
+
+## 0.15.0 — Lending library and asset register
 
 Two separate optional modules, released together because they share item numbers and QR labels.
 
@@ -101,7 +106,7 @@ Two separate optional modules, released together because they share item numbers
   - When it was bought and for how much.
   - Its condition, and maintenance due.
 
-## 0.15.0 — Book-keeping
+## 0.16.0 — Book-keeping
 
 An optional module of proper **double-entry** accounts, the kind charity accounts and auditors expect:
 - **Chart of accounts:** assets, liabilities, funds, income and expenses, starting from a simple church template that the treasurer can adjust.
@@ -112,13 +117,13 @@ An optional module of proper **double-entry** accounts, the kind charity account
 - **Period close:** a closed month or year can't be changed.
 - **Reports:** trial balance, income and expenditure, balance sheet, and fund and project statements, printable and exportable to Excel.
 
-## 0.15.1 — Claim forms
+## 0.16.1 — Claim forms
 
 Part of the book-keeping module: expense claims with receipts, approval and on-screen signatures; approved claims become expenses in the main or a project account.
 
-## 0.16.0 — UI/UX audit
+## 0.17.0 — Third hardening round
 
-A review of the whole app for clarity, consistency, accessibility and use on phones and tablets.
+After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals).
 
 ## Later
 
