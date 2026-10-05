@@ -518,3 +518,6 @@ table.t tr.click:hover td { background: var(--sunk); }
 
 /* figures side by side: two per row on phones and tablets, not one tall column */
 @media (max-width: 860px) { .grid.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* dashboard: the Bible versions the church has, one line per language */
+.dash-bible { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; margin-top: 4px; }

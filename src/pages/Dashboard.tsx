@@ -6,13 +6,15 @@ import { Bi, ErrorBox, Loading, PageHead, fmtDate, useSession } from '../compone
 import { Icon } from '../components/icons.tsx';
 import { SeasonChip } from '../components/brand.tsx';
 import type { RosterWarning, ServiceListRow } from '../types-client.ts';
+import { langInfo } from '../../shared/languages.ts';
+import { greetingFor } from '../../shared/greeting.ts';
 
 interface Dash {
   upcoming: (ServiceListRow & { warnings: RosterWarning[] })[];
   members: { status: string; n: number }[];
   birthdays: { in_days: number; date: string; name: string; person_id: number }[];
   coworkers: number;
-  library: { songs: number; texts: number; verses: number; bibles?: string[] };
+  library: { songs: number; texts: number; bibles?: { code: string; lang: string; name: string }[] };
 }
 
 export default function Dashboard() {
@@ -24,7 +26,9 @@ export default function Dashboard() {
   if (!data) return <Loading />;
   const next = data.upcoming[0];
   const count = (s: string) => data.members.find((m) => m.status === s)?.n ?? 0;
-  const greeting = lang === 'zh' ? `平安，${user.display_name}` : `Grace and peace, ${user.display_name}`;
+  const bibleLangs = [...new Set((data.library.bibles ?? []).map((b) => b.lang))].map((l) => [l, (data.library.bibles ?? []).filter((b) => b.lang === l)] as const);
+  // follows the time of day and the church year, a different one each day (shared/greeting.ts)
+  const greeting = `${t(greetingFor(new Date()))}${lang === 'en' ? ', ' : '，'}${user.display_name}`;
 
   return (
     <div className="page">
@@ -115,14 +119,22 @@ export default function Dashboard() {
       </div>
 
       <div className="grid cols-3 mt">
-        <Link to="/library" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
+        <Link to="/library?tab=songs" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
           <div className="stat"><span className="n">{data.library.songs}</span><span className="l">{t('Hymns & songs')}</span></div>
         </Link>
-        <Link to="/library" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
+        <Link to="/library?tab=texts" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
           <div className="stat"><span className="n">{data.library.texts}</span><span className="l">{t('Liturgical texts')}</span></div>
         </Link>
-        <Link to="/library" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
-          <div className="stat"><span className="n">{data.library.verses.toLocaleString()}</span><span className="l">{t('Bible')}{data.library.bibles?.length ? ` · ${data.library.bibles.join(' · ')}` : ''}</span></div>
+        <Link to="/library?tab=bible" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
+          {/* the versions the church has, by language */}
+          <div className="stat">
+            <span className="l" style={{ fontWeight: 600, color: 'var(--ink)' }}>{t('Bible')}</span>
+            {bibleLangs.length ? bibleLangs.map(([l, vs]) => (
+              <span key={l} className="dash-bible">
+                <span className="muted">{langInfo(l).native}</span> {vs.map((v) => <span key={v.code} className="badge" title={v.name}>{v.code}</span>)}
+              </span>
+            )) : <span className="muted small">{t('No Bible installed yet')}</span>}
+          </div>
         </Link>
       </div>
     </div>

@@ -4,6 +4,20 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.14.1 — the dashboard
+
+- **The greeting follows the day.** Good morning, afternoon or evening, or a greeting of the church year, a different one each day:
+  - Advent: "Come, Lord Jesus";
+  - Christmastide: "Glory to God in the highest";
+  - Epiphany: "The Light has come";
+  - Eastertide: "Christ is risen";
+  - and "Grace and peace", "The Lord be with you" and "Peace be with you".
+
+  Sundays, Christmas Day, Easter Day and Pentecost have their own. Every greeting is in each interface language.
+- **The Bible card** lists the installed versions by language, instead of a verse count.
+- **The library cards** open their own Library tab: Hymns & songs, Liturgical texts or Bible.
+- No database change.
+
 ## 0.14.0 — UI/UX audit of the core
 
 A review of the core screens (`docs/UI-AUDIT-0.14.md`), and what came out of it.

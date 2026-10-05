@@ -282,8 +282,8 @@ api.get('/dashboard', h(() => {
     library: {
       songs: get<{ n: number }>('SELECT COUNT(*) n FROM songs')!.n,
       texts: get<{ n: number }>('SELECT COUNT(*) n FROM texts')!.n,
-      verses: get<{ n: number }>('SELECT COUNT(*) n FROM bible_verses')!.n,
-      bibles: all<{ code: string }>('SELECT code FROM bible_translations WHERE code IN (SELECT DISTINCT translation FROM bible_verses) ORDER BY lang, code').map((b) => b.code),
+      // the installed versions, by language (a verse count says little)
+      bibles: all<{ code: string; lang: string; name: string }>('SELECT code, lang, name FROM bible_translations WHERE code IN (SELECT DISTINCT translation FROM bible_verses) ORDER BY lang, code'),
     },
   };
 }));
