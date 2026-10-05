@@ -728,6 +728,7 @@ const zhHant: Record<string, string> = {
  "Change reference…": "更改參考代碼…",
  "Set reference…": "設定參考代碼…",
  "Your own short code for it, e.g. EN-001, so people and AI assistants can name it.": "你自己定的簡短代碼，例如 EN-001，方便同工和 AI 助手指明它。",
+ "This link points at this computer only (“localhost”), so phones cannot open it. Set a public address in Settings → AI / MCP, or open Canon by its network address (as other computers do) and switch the form off and on again.": "這個鏈接只指向本機（“localhost”），手機無法打開。請在“設置 → AI / MCP”設定公開網址，或用 Canon 的網絡地址（其他電腦使用的地址）打開 Canon，再把表格關閉後重新開啟。",
  "Visitor form": "新朋友表格",
  "Visitors can fill in a short form on their phone from a QR code on the bulletin, a slide or a card; the entries wait for you to accept them into the service record.": "新朋友可用手機掃描次序單、投影或卡片上的二維碼，填寫一份簡短表格；提交的資料會等你確認後才加入聚會記錄。",
  "The visitor form is off for the church.": "教會尚未開啟新朋友表格。",

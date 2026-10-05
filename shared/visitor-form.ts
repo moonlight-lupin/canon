@@ -35,6 +35,8 @@ export interface ServiceVisitorForm {
   bulletin?: boolean;
   /** show the QR code on a slide after the Announcements item (else after the last item) */
   slides?: boolean;
+  /** the address Canon was opened at when the form was switched on (used when no public address is set) */
+  base?: string;
 }
 
 /** A visitor's entry waiting for review. */

@@ -41,21 +41,27 @@ export function formUrl(token: string, origin?: string): string {
   const base = publicUrl() || (origin ?? '').replace(/\/+$/, '');
   return `${base}/v/${token}`;
 }
+/** "localhost" and the like only work on the computer itself: a phone cannot open them. */
+const isLocalOnly = (url: string) => /^https?:\/\/(localhost|127\.|\[::1\]|0\.0\.0\.0)/i.test(url);
 
 export interface ServiceFormInfo extends ServiceVisitorForm {
   enabled_church: boolean;
   url: string | null;
   public_address: boolean;
+  /** the link points at this computer only (localhost): phones cannot open it */
+  local_only: boolean;
   pending: number;
 }
 
 export function serviceFormInfo(serviceId: number, origin?: string): ServiceFormInfo {
   const f = serviceForm(serviceId);
+  const url = f.token ? formUrl(f.token, f.base ?? origin) : null;
   return {
     ...f,
     enabled_church: formSettings().enabled,
-    url: f.token ? formUrl(f.token, origin) : null,
+    url,
     public_address: !!publicUrl(),
+    local_only: !!url && isLocalOnly(url),
     pending: get<{ n: number }>('SELECT COUNT(*) AS n FROM visitor_cards WHERE service_id = ?', serviceId)?.n ?? 0,
   };
 }
@@ -65,7 +71,11 @@ export function setServiceForm(serviceId: number, p: { enabled: boolean; bulleti
   services.get(serviceId);
   const cur = serviceForm(serviceId);
   const next: ServiceVisitorForm = p.enabled
-    ? { token: cur.token ?? crypto.randomBytes(18).toString('base64url'), bulletin: p.bulletin ?? cur.bulletin ?? false, slides: p.slides ?? cur.slides ?? false }
+    ? {
+        token: cur.token ?? crypto.randomBytes(18).toString('base64url'), bulletin: p.bulletin ?? cur.bulletin ?? false, slides: p.slides ?? cur.slides ?? false,
+        // remember where Canon was opened, for the printed QR codes when no public address is set
+        ...(origin && (!cur.base || isLocalOnly(cur.base)) ? { base: origin.replace(/\/+$/, '') } : cur.base ? { base: cur.base } : {}),
+      }
     : {};
   services.update(serviceId, { visitor_form: next });
   return serviceFormInfo(serviceId, origin);
@@ -163,7 +173,7 @@ export function visitorQrBlock(serviceId: number) {
   if (!f.token || (!f.bulletin && !f.slides)) return null;
   return {
     id: VISITOR_QR_BLOCK_ID,
-    value: formUrl(f.token),
+    value: formUrl(f.token, f.base),
     caption: { en: 'New here? Scan to say hello', zh: '初次来访？请扫码留下资料' } as L10n,
     bulletin: !!f.bulletin,
     slides: !!f.slides,

@@ -600,6 +600,7 @@ const zh: Record<string, string> = {
   "Set reference…": "设定参考代码…",
   "Your own short code for it, e.g. EN-001, so people and AI assistants can name it.": "你自己定的简短代码，例如 EN-001，方便同工和 AI 助手指明它。",
   // v0.10.6 — visitor form
+  "This link points at this computer only (“localhost”), so phones cannot open it. Set a public address in Settings → AI / MCP, or open Canon by its network address (as other computers do) and switch the form off and on again.": "这个链接只指向本机（“localhost”），手机无法打开。请在“设置 → AI / MCP”设定公开网址，或用 Canon 的网络地址（其他电脑使用的地址）打开 Canon，再把表格关闭后重新开启。",
   "Visitor form": "新朋友表格",
   "Visitors can fill in a short form on their phone from a QR code on the bulletin, a slide or a card; the entries wait for you to accept them into the service record.": "新朋友可用手机扫描次序单、投影或卡片上的二维码，填写一份简短表格；提交的资料会等你确认后才加入聚会记录。",
   "The visitor form is off for the church.": "教会尚未开启新朋友表格。",

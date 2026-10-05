@@ -11,7 +11,7 @@ import type { VisitorCard } from '../../shared/visitor-form.ts';
 import type { ServiceFull } from '../types-client.ts';
 import './records.css';
 
-interface FormInfo { token?: string; bulletin?: boolean; slides?: boolean; enabled_church: boolean; url: string | null; public_address: boolean; pending: number }
+interface FormInfo { token?: string; bulletin?: boolean; slides?: boolean; enabled_church: boolean; url: string | null; public_address: boolean; local_only: boolean; pending: number }
 
 /** The service's Visitor form tab. */
 export function VisitorFormPanel({ serviceId, canEdit }: { serviceId: number; canEdit: boolean }) {
@@ -55,7 +55,9 @@ export function VisitorFormPanel({ serviceId, canEdit }: { serviceId: number; ca
             <img className="vf-qr" src={qrPreviewUrl(data.url)} alt={t('QR code of the visitor form')} />
             <div className="stack">
               <div className="endpoint"><span className="code">{data.url}</span><button className="btn sm" onClick={copy}><Icon name="copy" />{t('Copy')}</button></div>
-              {!data.public_address && <div className="callout warn small">{t('No public address is set (Settings → AI / MCP), so phones can only open this link on the church’s own network.')}</div>}
+              {data.local_only
+                ? <div className="callout warn small">{t('This link points at this computer only (“localhost”), so phones cannot open it. Set a public address in Settings → AI / MCP, or open Canon by its network address (as other computers do) and switch the form off and on again.')}</div>
+                : !data.public_address && <div className="callout warn small">{t('No public address is set (Settings → AI / MCP), so phones can only open this link on the church’s own network.')}</div>}
               <fieldset disabled={!canEdit || busy} className="bare stack">
                 <label className="check"><input type="checkbox" checked={!!data.bulletin} onChange={(e) => save({ enabled: true, bulletin: e.target.checked })} />{t('Print the QR code on the bulletin’s back page')}</label>
                 <label className="check"><input type="checkbox" checked={!!data.slides} onChange={(e) => save({ enabled: true, slides: e.target.checked })} />{t('Show the QR code on a slide after the Announcements')}</label>
