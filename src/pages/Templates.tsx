@@ -15,6 +15,7 @@ import type { ItemKind, LiturgyText, Song, TeamWithRoles, Template, TemplateItem
 import type { BulletinBlock } from '../../shared/presentation.ts';
 import { SlideBlocksPicker } from './Blocks.tsx';
 import { BulletinTemplateField, SlideThemeField } from './presentation-pickers.tsx';
+import { CardMenu, type CardAction } from './template-ui.tsx';
 
 const KINDS = Object.keys(KIND_LABEL) as ItemKind[];
 
@@ -40,6 +41,20 @@ export default function Templates() {
       await api.del(`/templates/${tp.id}`);
       reload();
     }, t('Deleted.'));
+  };
+  // the "⋯" menu, as on the slide and bulletin template pages
+  const menuFor = (tp: Template): CardAction[] => {
+    const isDefault = tp.id === defaultId;
+    const out: CardAction[] = [];
+    if (isAdmin && !isDefault && !tp.hidden) out.push({ label: t('Set as church default'), onClick: () => makeDefault(tp.id), title: t('New service starts from this template.') });
+    if (canEdit) {
+      out.push(tp.hidden
+        ? { label: t('Restore'), onClick: () => setHidden(tp, false) }
+        : { label: t('Archive'), onClick: () => setHidden(tp, true), disabled: isDefault, title: isDefault ? t('The church default cannot be archived.') : t('Move it to Archived templates, out of the template lists. Services already using it keep it.') });
+    }
+    // deleting: administrators, archived templates only, never Canon's built-in ones
+    if (isAdmin && tp.hidden && !tp.builtin) out.push({ label: t('Delete'), onClick: () => remove(tp), danger: true });
+    return out;
   };
   const shown = (data ?? []).filter((x) => !x.hidden);
   const archived = (data ?? []).filter((x) => x.hidden);
@@ -67,19 +82,9 @@ export default function Templates() {
       <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
         <span className="small muted">{tp.items.length} · {tp.items.reduce((a, i) => a + i.duration_min, 0)} {t('min')}</span>
         <div className="grow" />
-        {tp.hidden ? (
-          <>
-            {canEdit && <button className="btn sm" onClick={() => setHidden(tp, false)}>{t('Restore')}</button>}
-            {isAdmin && !tp.builtin && <button className="btn sm ghost danger" onClick={() => remove(tp)}><Icon name="trash" />{t('Delete')}</button>}
-          </>
-        ) : (
-          <>
-            {isAdmin && tp.id !== defaultId && <button className="btn sm ghost" onClick={() => makeDefault(tp.id)} title={t('New service starts from this template.')}><Icon name="check" />{t('Set as church default')}</button>}
-            {canEdit && tp.id !== defaultId && <button className="btn sm ghost" onClick={() => setHidden(tp, true)} title={t('Move it to Archived templates, out of the template lists. Services already using it keep it.')}>{t('Archive')}</button>}
-            {canEdit && <button className="btn sm" onClick={() => setEdit(tp)}><Icon name="edit" />{t('Edit')}</button>}
-            {canEdit && <Link className="btn sm primary" to={`/services?new&template=${tp.id}`}>{t('Use template')}</Link>}
-          </>
-        )}
+        {canEdit && <button className="btn sm" onClick={() => setEdit(tp)}><Icon name="edit" />{t('Edit')}</button>}
+        {canEdit && !tp.hidden && <Link className="btn sm primary" to={`/services?new&template=${tp.id}`}>{t('Use template')}</Link>}
+        {menuFor(tp).length > 0 && <CardMenu label={t('More actions')} actions={menuFor(tp)} />}
       </div>
     </div>
   );

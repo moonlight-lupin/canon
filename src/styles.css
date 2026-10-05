@@ -462,3 +462,21 @@ table.t tr.click:hover td { background: var(--sunk); }
 
 /* an approved version of the bulletin or slides (outputs/approved.tsx) */
 .out-approved { background: var(--ok-wash); color: var(--ok); font-size: 13px; padding: 6px 12px; text-align: center; }
+
+/* the "⋯" menu on template cards (service, slide and bulletin templates) */
+.tp-menu { position: relative; }
+.tp-more {
+  display: inline-grid; place-items: center; width: 36px; height: 32px; padding: 0; cursor: pointer;
+  border: 1px solid var(--rule-strong); border-radius: var(--r); background: var(--paper-3); color: var(--ink-2);
+}
+.tp-more:hover, .tp-more.on { color: var(--lapis); border-color: var(--lapis); background: var(--lapis-wash); }
+.tp-more:focus-visible { outline: 2px solid var(--lapis); outline-offset: 1px; }
+.tp-menu-list {
+  position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 30; min-width: 220px; padding: 4px;
+  background: var(--paper-3); border: 1px solid var(--rule-strong); border-radius: 10px; box-shadow: 0 8px 28px rgb(20 24 32 / 0.18);
+  display: flex; flex-direction: column;
+}
+.tp-menu-list button { text-align: left; border: 0; background: none; padding: 9px 10px; border-radius: 6px; font: 13px var(--sans); color: var(--ink); cursor: pointer; }
+.tp-menu-list button:hover:not(:disabled), .tp-menu-list button:focus-visible { background: var(--paper-2); outline: none; }
+.tp-menu-list button:disabled { color: var(--ink-3); cursor: not-allowed; }
+.tp-menu-list button.danger { color: var(--danger); }

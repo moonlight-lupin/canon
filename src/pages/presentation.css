@@ -109,17 +109,6 @@
 .tp-new:hover { color: var(--lapis); border-color: var(--lapis); }
 .tp-new svg { width: 22px; height: 22px; }
 
-.tp-menu { position: relative; }
-.tp-menu-list {
-  position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 30; min-width: 220px; padding: 4px;
-  background: var(--paper-3); border: 1px solid var(--rule-strong); border-radius: 10px; box-shadow: 0 8px 28px rgb(20 24 32 / 0.18);
-  display: flex; flex-direction: column;
-}
-.tp-menu-list button { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px; font: 13px var(--sans); color: var(--ink); cursor: pointer; }
-.tp-menu-list button:hover:not(:disabled) { background: var(--paper-2); }
-.tp-menu-list button:disabled { color: var(--ink-3); cursor: not-allowed; }
-.tp-menu-list button.danger { color: var(--danger, #a33); }
-
 .tp-hidden { margin-top: 22px; }
 .tp-hidden > summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); margin-bottom: 12px; }
 

@@ -111,7 +111,8 @@ export function TemplateCard({ thumb, name, desc, badges, primary, actions, mute
   );
 }
 
-function CardMenu({ label, actions }: { label: string; actions: CardAction[] }) {
+/** The "⋯" button with a template's other actions (archive, restore, church default, delete …). */
+export function CardMenu({ label, actions }: { label: string; actions: CardAction[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -128,7 +129,9 @@ function CardMenu({ label, actions }: { label: string; actions: CardAction[] }) 
   }, [open]);
   return (
     <div className="tp-menu" ref={ref}>
-      <button type="button" className="btn sm ghost icon" aria-label={label} title={label} aria-expanded={open} onClick={() => setOpen((o) => !o)}><Icon name="dots" /></button>
+      <button type="button" className={`tp-more${open ? ' on' : ''}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" /></svg>
+      </button>
       {open && (
         <div className="tp-menu-list" role="menu">
           {actions.map((a) => (
