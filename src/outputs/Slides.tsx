@@ -6,6 +6,7 @@ import { useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg, useLatest } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { RenderedService } from '../types-client.ts';
+import { useApproved } from './approved.tsx';
 import type { SlideTheme } from '../../shared/slide-theme.ts';
 import { Bi, biText, langOptions, langsFor, modeFor, type LangMode } from './content.tsx';
 import { buildSlides, mapSlideIndex, slideText, type SlideDef } from './slideModel.ts';
@@ -19,8 +20,14 @@ export default function Slides() {
   const [sp] = useSearchParams();
   const presenter = sp.get('presenter') === '1';
   const { t, lt } = useI18n();
-  const { data: r, error } = useApi<RenderedService>(`/services/${id}/render`);
-  const { data: themes, error: themesError } = useApi<SlideTheme[]>('/slide-themes');
+  // an approved version (?approved=…) is drawn from the copy kept when it was approved, its template's CSS too
+  const { approvedId, approval, error: apError } = useApproved(id);
+  const live = useApi<RenderedService>(approvedId ? null : `/services/${id}/render`);
+  const liveThemes = useApi<SlideTheme[]>(approvedId ? null : '/slide-themes');
+  const r = approvedId ? approval?.snapshot.render : live.data;
+  const error = apError ?? live.error;
+  const themes = approvedId ? (approval ? (approval.snapshot.slide_theme ? [approval.snapshot.slide_theme] : []) : undefined) : liveThemes.data;
+  const themesError = approvedId ? null : liveThemes.error;
 
   const [state, setState] = useState<SyncState>({ idx: 0, blank: 'none', mode: 'both', split: false, theme: null });
   const [modeInit, setModeInit] = useState(false);
@@ -32,6 +39,10 @@ export default function Slides() {
   const [css, setCss] = useState<{ id: number; css: string } | null>(null);
   useEffect(() => {
     if (themeId == null) return;
+    if (approval && themeId === approval.snapshot.render.slide_theme_id) {
+      setCss({ id: themeId, css: approval.snapshot.slide_css });
+      return;
+    }
     let live = true;
     fetch(`/api/slide-themes/${themeId}/css`, { credentials: 'same-origin' })
       .then((res) => (res.ok ? res.text() : ''))
@@ -40,7 +51,7 @@ export default function Slides() {
     return () => {
       live = false;
     };
-  }, [themeId, theme?.updated_at]);
+  }, [themeId, theme?.updated_at, approval]);
   const themeCss = css && css.id === themeId ? css.css : null;
   const themeCtx = useMemo(() => ({ id: themeId ? String(themeId) : '', sig: sigOf(themeCss ?? ''), aspect: theme?.vars.aspect }), [themeId, themeCss, theme?.vars.aspect]);
 

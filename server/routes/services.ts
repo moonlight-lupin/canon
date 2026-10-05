@@ -7,6 +7,7 @@ import { MAX_SERVICE_LANGS } from '../../shared/languages.ts';
 import { requireAdmin } from '../auth.ts';
 import * as svc from '../repo/services.ts';
 import * as rec from '../repo/records.ts';
+import * as appr from '../repo/approvals.ts';
 import { Conflict } from '../lib/table.ts';
 import { assertFresh } from '../lib/versions.ts';
 import { cleanRef } from '../repo/refs.ts';
@@ -83,6 +84,10 @@ serviceRoutes.post('/services/:id/duplicate', h((req) => {
 }));
 serviceRoutes.post('/services/:id/save-as-template', h((req) => svc.saveAsTemplate(id(req), S.L10nSchema.parse(req.body.name))));
 serviceRoutes.get('/services/:id/render', h((req) => renderService(id(req))));
+// approved, dated versions of the bulletin and slides (approving needs edit access to the service or meeting)
+serviceRoutes.get('/services/:id/approvals', h((req) => appr.listApprovals(id(req))));
+serviceRoutes.post('/services/:id/approvals', h((req) => appr.approve(id(req), { user_id: req.user?.id ?? null, name: req.user?.display_name ?? '' }, z.object({ note: z.string().max(300).nullable().optional() }).parse(req.body ?? {}).note)));
+serviceRoutes.get('/services/:id/approvals/:approval', h((req) => appr.getApproval(id(req), id(req, 'approval'))));
 serviceRoutes.post('/services/:id/share', h((req) => ({ token: svc.setShare(id(req), !!req.body.enabled) })));
 serviceRoutes.get('/services/:id/export.docx', h(async (req, res) => {
   const r = renderService(id(req));

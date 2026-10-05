@@ -229,3 +229,25 @@ test('approvals from counters\' own accounts are told apart from signatures on o
   assert.equal((await call(as.secretary, 'POST', `/services/${sid2}/record/approve`, {})).status, 403);
   await call(as.admin, 'PUT', '/offering-settings', { currency: 'SGD', funds: ['General'], signing: 'paper', min_counters: 2, own_accounts: false });
 });
+
+test('approved, dated versions of the bulletin and slides: kept exactly, and Canon says when the service changed', async () => {
+  const sid = svc.createService({ date: '2036-05-03', title: { en: 'Test Approved Service' } }).service.id;
+  await call(as.planner, 'PATCH', `/services/${sid}`, { theme: { en: 'Grace before' } });
+  assert.equal((await call(as.viewer, 'POST', `/services/${sid}/approvals`, {})).status, 403);
+  const a = await call(as.pastor, 'POST', `/services/${sid}/approvals`, { note: 'checked' });
+  assert.equal(a.status, 200, JSON.stringify(a.body));
+  assert.equal(a.body.current, true);
+  assert.equal(a.body.approved_by, 'Test pastor');
+  // the service changes: the approval is no longer current, and still shows what was approved
+  await call(as.planner, 'PATCH', `/services/${sid}`, { theme: { en: 'Grace after' } });
+  const list = (await call(as.viewer, 'GET', `/services/${sid}/approvals`)).body as Json[];
+  assert.equal(list.length, 1);
+  assert.equal(list[0].current, false);
+  const kept = (await call(as.viewer, 'GET', `/services/${sid}/approvals/${list[0].id}`)).body;
+  assert.equal(kept.snapshot.render.theme.en, 'Grace before');
+  assert.ok(kept.snapshot.render.bulletin && 'slide_css' in kept.snapshot);
+  assert.equal((await call(as.viewer, 'GET', `/services/${sid}/approvals/999999`)).status, 404);
+  // approving again makes the newest current
+  await call(as.planner, 'POST', `/services/${sid}/approvals`, {});
+  assert.equal(((await call(as.viewer, 'GET', `/services/${sid}/approvals`)).body as Json[])[0].current, true);
+});

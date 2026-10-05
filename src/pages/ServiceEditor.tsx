@@ -25,6 +25,7 @@ import { ItemEditor } from './service/ItemEditor.tsx';
 import { LibraryPanel, QuickAdd } from './service/LibraryPanel.tsx';
 import { DuplicateDialog, SaveTemplateDialog } from './service/ServiceDialogs.tsx';
 import { TeamTab } from './service/TeamTab.tsx';
+import { ApprovalsButton } from './service/Approvals.tsx';
 import { type Assignment, fmtMin, KIND_ICON, KIND_LABEL, toMin } from './service/common.ts';
 
 export default function ServiceEditor() {
@@ -275,6 +276,7 @@ export default function ServiceEditor() {
           <a className="btn sm" href={`/api/services/${sid}/freeshow.project`}><Icon name="download" />{t('FreeShow project')}</a>
           <button className="btn sm" onClick={emailTeam}><Icon name="mail" />{t('Email the team')}</button>
           <div className="grow" />
+          <ApprovalsButton sid={sid} canEdit={canEdit} />
           {canEdit && <ShareButton serviceId={sid} shareToken={svc.share_token} onChange={(token) => setSvc({ ...svc, share_token: token })} />}
           {canEdit && (
             <>

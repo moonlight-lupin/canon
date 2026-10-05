@@ -459,3 +459,6 @@ table.t tr.click:hover td { background: var(--sunk); }
 .sec-item:first-child { border-top: 0; }
 .sec-mark { min-width: 22px; justify-content: center; font-weight: 700; }
 .sec-item.todo .sec-mark, .sec-item.warn .sec-mark { background: var(--warn-wash); color: var(--warn); }
+
+/* an approved version of the bulletin or slides (outputs/approved.tsx) */
+.out-approved { background: var(--ok-wash); color: var(--ok); font-size: 13px; padding: 6px 12px; text-align: center; }

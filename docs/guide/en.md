@@ -152,6 +152,8 @@ Open the **Team & roster** tab.
 
 **PowerPoint** in the **Outputs** bar downloads the slides as a PowerPoint file, for a computer without Canon or to send to the AV team. It uses the service's slide template (colours, background picture, fonts, text size, lines per slide, footer and screen shape); **Custom CSS** is not carried over. Open it in PowerPoint and press **F5**.
 
+**Approve** (in the **Outputs** bar; anyone who may edit the service): keeps a copy of the bulletin and slides as they are now — the words, order, people, bulletin template and slide template — with the date and who approved it, and an optional note. The button then shows **Approved**, or **Changed since approved** once the service changes. **Approved versions** lists them; **Bulletin** or **Slides** next to one opens that version exactly as it was approved (a green line at the top says so), even after the service has changed. Pictures are referred to, not copied.
+
 ### 5. Share with the team
 
 - **Run sheet**: a printable timed list with leaders and AV cues for the team.

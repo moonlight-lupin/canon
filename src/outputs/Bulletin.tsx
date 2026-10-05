@@ -12,6 +12,7 @@ import { useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { Lang, PaperSize, RenderedItem, RenderedService } from '../types-client.ts';
+import { ApprovedBanner, useApproved } from './approved.tsx';
 import { Bi, langOptions, langsFor, modeFor, type LangMode, type Layout } from './content.tsx';
 import {
   DEFAULT_BULLETIN_OPTIONS, bulletinDecision, padBooklet, type BulletinBlock, type BulletinFull, type BulletinOptions,
@@ -28,9 +29,15 @@ import { type Block, FOOT_MM, impose, type PageSpec, paginate, PAPER_ORDER, PAPE
 export default function Bulletin() {
   const { id } = useParams();
   const { t, lt } = useI18n();
-  const { data: r, error } = useApi<RenderedService>(`/services/${id}/render`);
-  const { data: templates } = useApi<BulletinTemplate[]>('/bulletin-templates');
-  const { data: blockList } = useApi<BulletinBlock[]>('/bulletin-blocks');
+  // an approved version (?approved=…) is drawn from the copy kept when it was approved
+  const { approvedId, approval, error: apError } = useApproved(id);
+  const live = useApi<RenderedService>(approvedId ? null : `/services/${id}/render`);
+  const liveTemplates = useApi<BulletinTemplate[]>(approvedId ? null : '/bulletin-templates');
+  const liveBlocks = useApi<BulletinBlock[]>(approvedId ? null : '/bulletin-blocks');
+  const r = approvedId ? approval?.snapshot.render : live.data;
+  const error = apError ?? live.error;
+  const templates = approvedId ? (approval ? (approval.snapshot.bulletin_template ? [approval.snapshot.bulletin_template] : []) : undefined) : liveTemplates.data;
+  const blockList = approvedId ? approval?.snapshot.blocks : liveBlocks.data;
 
   // The bulletin template sets everything below (service → church default → "Full words booklet"). Another template
   // can be picked here for this printout, and each toolbar control is a one-off override on top of it.
@@ -72,6 +79,7 @@ export default function Bulletin() {
   const currentTpl = tplSel ?? r.bulletin.template_id;
   return (
     <div className="out bl">
+      {approval && <ApprovedBanner approval={approval} />}
       <div className="out-bar no-print">
         <Link to={`/services/${id}`} className="btn ghost sm"><Icon name="chevronLeft" />{t('Back')}</Link>
         <div className="out-bar-title"><Bi v={r.title} langs={langs} /> <span className="muted">· {t('Bulletin')}</span></div>

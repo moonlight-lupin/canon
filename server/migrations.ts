@@ -712,6 +712,19 @@ export const MIGRATIONS: (string | Migration)[] = [
       SELECT id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id FROM users;
     DROP TABLE users;
     ALTER TABLE users_v13 RENAME TO users;
+
+    -- approved, dated versions of a service's bulletin and slides (repo/approvals.ts)
+    CREATE TABLE output_approvals (
+      id INTEGER PRIMARY KEY,
+      service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+      approved_at TEXT NOT NULL DEFAULT (datetime('now')),
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      approved_by TEXT NOT NULL,
+      note TEXT,
+      snapshot TEXT NOT NULL,
+      hash TEXT NOT NULL
+    );
+    CREATE INDEX output_approvals_service ON output_approvals(service_id, id);
     `,
     run: (d) => {
       const put = d.prepare(`INSERT OR IGNORE INTO access_roles (key, name, description, builtin, admin, access, member_details, sensitive_fields, reopen_counts, sort)
