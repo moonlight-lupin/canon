@@ -42,10 +42,13 @@ export const toDraft = (p: Person): Draft => {
 
 export function PersonEditor({ id, households, onClose, onSaved }: { id: number | null; households: HouseholdWithMembers[]; onClose: () => void; onSaved: () => void }) {
   const { t, lang, lt } = useI18n();
-  const { canEdit, isAdmin, settings } = useSession();
+  const { canEdit: mayEdit, isAdmin, settings } = useSession();
   // the church's own fields; read-only accounts are not sent the sensitive ones, so leave those out
   const fieldDefs = (settings?.member_fields ?? []).filter((d) => canEdit || !d.sensitive);
   const detail = useApi<PersonDetail>(id ? `/people/${id}` : null);
+  // a member whose personal data was erased (PDPA) stays only as a placeholder: nothing to edit
+  const erased = !!detail.data?.erased_at;
+  const canEdit = mayEdit && !erased;
   const teams = useApi<TeamWithRoles[]>('/teams');
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [honorific, setHonorific] = useState<L10n>({});
@@ -104,7 +107,25 @@ export function PersonEditor({ id, households, onClose, onSaved }: { id: number 
     }
   };
 
-  const title = id ? (detail.data ? fullName(detail.data) : t('Person')) : t('Add person');
+  // PDPA: the member asks what Canon holds about them, or asks for it to be erased (administrators)
+  const erase = async () => {
+    if (!id || !detail.data) return;
+    const name = fullName(detail.data);
+    const typed = window.prompt(`${t('Erase this member’s personal data? Their name, contact details, dates, notes and church fields are cleared for good; qualifications, team places, time away, staff records and future duties are removed, and the change log forgets them. Past rotas and group histories keep an anonymous “(erased)” so counts stay right. Names typed on services and offering records (preacher, counters, signatures) are kept as church records. Export their personal data first if they asked for it.')}
+
+${t('Type the member’s name to confirm:')} ${name}`);
+    if (typed === null) return;
+    const r = await run(() => api.post<{ kept: { services: number; records: number; items: number } }>(`/people/${id}/erase`, { confirm: typed }));
+    if (r) {
+      const kept = r.kept.services + r.kept.records + r.kept.items;
+      window.alert(`${t('Personal data erased.')}${kept ? `
+${t('Their name is still typed on {n} services or records (kept as church records; listed in the export).').replace('{n}', String(kept))}` : ''}`);
+      onSaved();
+      onClose();
+    }
+  };
+
+  const title = id ? (detail.data ? (erased ? t('Erased member') : fullName(detail.data)) : t('Person')) : t('Add person');
   const pdpa = <span className="pdpa left">Personal data is used only for church administration (PDPA). / 个人资料仅用于教会行政用途。</span>;
 
   return (
@@ -116,13 +137,22 @@ export function PersonEditor({ id, households, onClose, onSaved }: { id: number 
         <>
           {pdpa}
           {isAdmin && id && <HistoryButton entity="people" id={id} />}
-          {canEdit && id && <button className="btn danger" onClick={remove} disabled={busy}><Icon name="trash" />{t('Delete')}</button>}
+          {isAdmin && id && detail.data && !erased && (
+            <a className="btn" href={`/api/people/${id}/personal-data`} download title={t('Everything Canon holds about this person, as a file for them (PDPA access request)')}><Icon name="download" />{t('Personal data')}</a>
+          )}
+          {isAdmin && id && detail.data && !erased && <button className="btn danger ghost" onClick={erase} disabled={busy} title={t('Erase this member’s personal data (PDPA)')}>{t('Erase…')}</button>}
+          {mayEdit && id && <button className="btn danger" onClick={remove} disabled={busy}><Icon name="trash" />{t('Delete')}</button>}
           <button className="btn" onClick={onClose}>{canEdit ? t('Cancel') : t('Close')}</button>
           {canEdit && <button className="btn primary" onClick={save} disabled={busy || (!!id && !detail.data)}>{t('Save')}</button>}
         </>
       }
     >
       {id && detail.error && <ErrorBox error={detail.error} />}
+      {erased && (
+        <div className="callout small">
+          {t('This member’s personal data was erased on {date} (PDPA). The record stays, anonymous, so past rotas and group histories still count.').replace('{date}', fmtDate(detail.data!.erased_at!.slice(0, 10), lang))}
+        </div>
+      )}
       {id && !detail.data ? <Loading /> : (
         <div className="stack person-form">
           <fieldset disabled={!canEdit} className="bare stack">

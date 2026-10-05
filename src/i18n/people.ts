@@ -918,5 +918,16 @@ const zh: Record<string, string> = {
   "A new password applies to new backups; older ones keep the password they were made with.": "新密码只用于之后的备份；较早的备份仍使用当时的密码。",
   "this backup is encrypted with another backup password. Enter that password to restore it.": "这份备份是用另一个备份密码加密的。请输入该密码来还原。",
   "An encrypted backup (.db.enc) is decrypted first: npm run decrypt-backup -- <file> (see docs/ADMINISTRATION.md).": "加密的备份（.db.enc）要先解密：npm run decrypt-backup -- <文件>（见 docs/ADMINISTRATION.md）。",
+  // a member's personal data (PDPA, 0.13)
+  "Erase this member’s personal data? Their name, contact details, dates, notes and church fields are cleared for good; qualifications, team places, time away, staff records and future duties are removed, and the change log forgets them. Past rotas and group histories keep an anonymous “(erased)” so counts stay right. Names typed on services and offering records (preacher, counters, signatures) are kept as church records. Export their personal data first if they asked for it.": "删除这位会友的个人资料？姓名、联系方式、日期、备注和教会栏位会永久清除；资格、团队名额、不在期间、同工记录和日后的事奉会被移除，修改记录也不再保留其资料。过去的轮值表和小组记录保留匿名的“(erased)”，统计仍然准确。聚会和奉献记录上打字写下的姓名（讲员、点算人、签名）作为教会记录保留。若本人要求取得资料，请先导出。",
+  "Type the member’s name to confirm:": "请输入会友的姓名以确认：",
+  "Personal data erased.": "个人资料已删除。",
+  "Their name is still typed on {n} services or records (kept as church records; listed in the export).": "其姓名仍出现在 {n} 个聚会或记录上（作为教会记录保留；导出文件中有列出）。",
+  "Erased member": "已删除资料的会友",
+  "Everything Canon holds about this person, as a file for them (PDPA access request)": "Canon 保存的此人所有资料，可交给本人的文件（PDPA 查阅要求）",
+  "Personal data": "个人资料",
+  "Erase this member’s personal data (PDPA)": "删除这位会友的个人资料（PDPA）",
+  "Erase…": "删除…",
+  "This member’s personal data was erased on {date} (PDPA). The record stays, anonymous, so past rotas and group histories still count.": "这位会友的个人资料已于 {date} 删除（PDPA）。记录以匿名方式保留，过去的轮值表和小组记录仍可统计。",
 };
 export default zh;

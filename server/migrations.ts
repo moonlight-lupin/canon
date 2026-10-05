@@ -732,6 +732,9 @@ export const MIGRATIONS: (string | Migration)[] = [
       hash TEXT NOT NULL
     );
     CREATE INDEX output_approvals_service ON output_approvals(service_id, id);
+
+    -- a member whose personal data was erased (repo/pdpa.ts): the row stays, anonymised, so history still counts
+    ALTER TABLE people ADD COLUMN erased_at TEXT;
     `,
     run: (d) => {
       const put = d.prepare(`INSERT OR IGNORE INTO access_roles (key, name, description, builtin, admin, access, member_details, sensitive_fields, reopen_counts, sort)

@@ -133,6 +133,11 @@ function withArchive<T>(year: number, fn: () => T): T {
   }
 }
 
+/** Run fn with each archive file attached as `arc` (erasing a member's details from every copy). */
+export function forEachArchive(fn: () => void) {
+  for (const year of archiveYears()) withArchive(year, fn);
+}
+
 const COPIED = ['services', 'service_records', 'change_log', 'mcp_audit', 'member_views'] as const;
 const columnsOf = (schema: string, t: string) => (db.prepare(`PRAGMA ${schema}.table_info(${t})`).all() as { name: string; type: string; dflt_value: string | null }[]);
 

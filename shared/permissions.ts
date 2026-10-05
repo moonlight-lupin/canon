@@ -84,6 +84,7 @@ export const allows = (r: Pick<RoleDef, 'admin' | 'access'> | null | undefined, 
 type Rule = [RegExp, PermModule | 'signed_in' | 'admin' | 'csv'];
 const RULES: Rule[] = [
   [/^\/congregations\/\d+$/, 'admin'],
+  [/^\/people\/\d+\/(personal-data|erase)$/, 'admin'],
   [/^\/me\//, 'signed_in'],
   [/^\/(me|settings|dashboard|calendar|about|congregations|presentation\/defaults|reports\/archived-years)$/, 'signed_in'],
   [/^\/(users|access-roles|modules|backups|archives|security|member-views|storage|change-log|log-retention|mcp|email\/(settings|test)|offering-settings)(\/|\.|$)/, 'admin'],

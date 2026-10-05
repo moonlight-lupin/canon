@@ -70,6 +70,8 @@ export function listPeople(f: PeopleQuery = {}) {
     where.push(wall.sql.replace(/^ AND /, ''));
     params.push(...wall.params);
   }
+  // members whose personal data was erased are placeholders for history, not members
+  where.push('p.erased_at IS NULL');
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const total = (all<{ n: number }>(`SELECT COUNT(*) n FROM people p ${w}`, ...params)[0]).n;
   const rows = all<Person & { household_name: string | null }>(
@@ -115,7 +117,7 @@ export function upcomingBirthdays(days = 14, from = new Date()) {
 }
 
 export function memberStats() {
-  return all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM people GROUP BY status');
+  return all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM people WHERE erased_at IS NULL GROUP BY status');
 }
 
 export function listCoworkers(opts: { active?: boolean } = {}) {

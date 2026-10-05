@@ -55,6 +55,8 @@ export interface Person {
   updated_at: string;
   /** how many times it was saved (edit conflicts) */
   revision?: number;
+  /** when the member's personal data was erased (PDPA): the row is an anonymous placeholder */
+  erased_at?: string | null;
 }
 
 export type CoworkerCategory = 'pastor' | 'elder' | 'deacon' | 'ministry_staff' | 'admin_staff' | 'lay_leader';

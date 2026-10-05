@@ -11,6 +11,7 @@ import * as vol from '../repo/volunteers.ts';
 import { assertFresh } from '../lib/versions.ts';
 import { cleanFieldDefs, type MemberField } from '../../shared/member-fields.ts';
 import * as sec from '../repo/security.ts';
+import * as pdpa from '../repo/pdpa.ts';
 import * as grp from '../repo/groups.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
@@ -49,6 +50,7 @@ peopleRoutes.post('/people', h((req) => {
 }));
 peopleRoutes.patch('/people/:id', h((req) => {
   const pid = id(req);
+  if (reg.people.get(pid).erased_at) throw Object.assign(new Error('This member’s personal data was erased: the record can’t be edited.'), { status: 400 });
   assertFresh(req, reg.people.get(pid), 'people', pid);
   const b = S.PersonInput.partial().parse(req.body);
   const custom = reg.customFor(reg.people.get(pid).custom, b.custom);
@@ -85,6 +87,16 @@ peopleRoutes.put('/member-fields', requireAdmin, h((req) => {
   return updateSettings({ member_fields: cleanFieldDefs(b as MemberField[], getSettings().member_fields ?? []) }).member_fields;
 }));
 peopleRoutes.delete('/people/:id', h((req) => reg.people.remove(id(req))));
+// PDPA (administrators): everything held about a member, as a file for them; erasing it
+peopleRoutes.get('/people/:id/personal-data', requireAdmin, h((req, res) => {
+  const pid = id(req);
+  const data = pdpa.personalData(pid);
+  sec.logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: pid, via: 'export', detail: 'Personal data export (PDPA)' });
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Disposition', `attachment; filename="canon-personal-data-${pid}-${new Date().toISOString().slice(0, 10)}.json"`);
+  return data;
+}));
+peopleRoutes.post('/people/:id/erase', requireAdmin, h((req) => pdpa.erasePerson(id(req), z.object({ confirm: z.string().max(300) }).parse(req.body).confirm)));
 peopleRoutes.put('/people/:id/roles', h((req) => {
   const pid = id(req);
   const roleIds = z.array(z.number().int()).parse(req.body.role_ids);
