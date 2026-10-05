@@ -8,6 +8,7 @@ import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
 import { copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
+import { createAllMeetingsAhead } from './services.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
@@ -205,6 +206,8 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       if (a || b || c) log(`logs: removed ${a} change-log, ${b} AI-activity and ${c} member-view entries past the keep period`);
       const v = eraseVisitorContacts(getSettings().retention.visitor_contact_months);
       if (v.visitors || v.log) log(`records: erased the details of ${v.visitors} visitors (and ${v.log} change-log copies) past the keep period`);
+      const m = createAllMeetingsAhead();
+      if (m) log(`meetings: created ${m} meetings ahead from the groups' meeting patterns`);
       recordSizeSnapshot();
     } catch (e) {
       log(`logs: tidy failed — ${(e as Error).message}`);

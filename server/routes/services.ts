@@ -56,6 +56,8 @@ serviceRoutes.get('/services', h((req) => svc.listServices({ from: str(req.query
 // meetings of groups (fellowships, cell groups, Sunday school classes …): a lighter kind of service
 serviceRoutes.get('/meetings', h((req) => svc.listServices({ kind: 'meeting', from: str(req.query.from), to: str(req.query.to), limit: Number(req.query.limit) || undefined, congregation_id: Number(req.query.congregation) || undefined, group_id: req.query.group === 'none' ? 'none' : Number(req.query.group) || undefined })));
 serviceRoutes.post('/meetings', h((req) => svc.createMeeting(S.MeetingInput.parse(req.body))));
+// a group's meetings for the coming weeks, from its meeting pattern (editors; also done daily for groups that ask)
+serviceRoutes.post('/groups/:id/meetings-ahead', h((req) => ({ created: svc.createMeetingsAhead(id(req), z.object({ weeks: z.number().int().min(1).max(26).optional() }).parse(req.body ?? {}).weeks).length })));
 serviceRoutes.post('/services', h((req) => {
   const b = S.ServiceInput.extend({ template_id: z.number().int().nullable().optional() }).parse(req.body);
   const { template_id, ...input } = b;

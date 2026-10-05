@@ -1,6 +1,7 @@
 // Services (orders of worship), their items, templates and sharing.
 import crypto from 'node:crypto';
-import type { ItemKind, L10n, Service, ServiceFull, ServiceItem, Template, TemplateItem } from '../../shared/types.ts';
+import type { ItemKind, L10n, MeetingPattern, Service, ServiceFull, ServiceItem, Template, TemplateItem } from '../../shared/types.ts';
+import { meetingDates, patternReady } from '../../shared/meeting-pattern.ts';
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { SEED_TEMPLATES } from '../seed/templates.ts';
@@ -313,6 +314,36 @@ export function createMeeting(input: Partial<Service> & { date: string }) {
     status: 'final',
   });
   return getServiceFull(svc.id);
+}
+
+/**
+ * Create a group's meetings ahead from its meeting pattern: every date in the next `weeks` weeks (the group's
+ * setting, else 4) that has no meeting of the group yet. Each copies the group's previous meeting, with the time and
+ * place of the pattern when it gives them. Returns the meetings made.
+ */
+export function createMeetingsAhead(groupId: number, weeks?: number, today = new Date().toISOString().slice(0, 10)) {
+  const g = get<{ id: number; active: number; pattern: string }>('SELECT id, active, pattern FROM groups WHERE id = ?', groupId);
+  if (!g) throw new NotFound('That group does not exist.');
+  const pattern = JSON.parse(g.pattern || '{}') as MeetingPattern;
+  if (!g.active || !patternReady(pattern)) return [];
+  const span = weeks ?? (pattern.ahead_weeks || 4);
+  const to = new Date(`${today}T12:00:00Z`);
+  to.setUTCDate(to.getUTCDate() + span * 7);
+  const last = get<{ date: string }>("SELECT MAX(date) AS date FROM services WHERE kind = 'meeting' AND group_id = ?", g.id)?.date ?? null;
+  const have = new Set(all<{ date: string }>("SELECT date FROM services WHERE kind = 'meeting' AND group_id = ? AND date >= ?", g.id, today).map((r) => r.date));
+  const made: ServiceFull[] = [];
+  for (const date of meetingDates(pattern, today, to.toISOString().slice(0, 10), last)) {
+    if (have.has(date)) continue;
+    made.push(createMeeting({ group_id: g.id, date, ...(pattern.time ? { start_time: pattern.time } : {}), ...(pattern.place ? { place: pattern.place } : {}) }));
+  }
+  return made;
+}
+
+/** Every active group that creates its meetings ahead (daily). Returns how many meetings were made. */
+export function createAllMeetingsAhead(today?: string): number {
+  const ids = all<{ id: number; pattern: string }>("SELECT id, pattern FROM groups WHERE active = 1 AND kind != 'serving_team'")
+    .filter((g) => ((JSON.parse(g.pattern || '{}') as MeetingPattern).ahead_weeks ?? 0) > 0).map((g) => g.id);
+  return ids.reduce((n, id) => n + createMeetingsAhead(id, undefined, today).length, 0);
 }
 
 /** Copy a service (items and optionally the roster) to a new date. */

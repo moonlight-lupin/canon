@@ -5,11 +5,12 @@ import { hasAnyText } from '../../shared/labels.ts';
 import { isChinese } from '../../shared/languages.ts';
 import { api, useApi } from '../api.ts';
 import { tr, useContentLangs, useI18n } from '../i18n.tsx';
-import { Bi, ErrorBox, Field, L10nInput, Loading, Modal, confirmAction, fmtDate, useAction, useSession } from '../components/ui.tsx';
+import { Bi, ErrorBox, Field, L10nInput, Loading, Modal, confirmAction, fmtDate, useAction, useSession, useToast } from '../components/ui.tsx';
 import { CongregationField } from '../components/Congregations.tsx';
 import { Link } from 'react-router-dom';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { Icon } from '../components/icons.tsx';
+import type { MeetingPattern } from '../../shared/types.ts';
 import type { Group, GroupKind, GroupMember, L10n, PersonRow, TeamWithRoles } from '../types-client.ts';
 import { PeopleMultiSelect, PersonName } from './people-common.tsx';
 import './groups.css';
@@ -119,6 +120,7 @@ export function GroupFormModal({
   const [color, setColor] = useState(group?.color ?? (k === 'committee' ? '#7a2f2f' : '#2f4a7a'));
   const [active, setActive] = useState(group?.active ?? true);
   const [sort, setSort] = useState(group?.sort ?? nextSort);
+  const [pattern, setPattern] = useState<MeetingPattern>(group?.pattern ?? {});
   const [ageMin, setAgeMin] = useState<number | null>(group?.age_min ?? null);
   const [ageMax, setAgeMax] = useState<number | null>(group?.age_max ?? null);
   const save = async () => {
@@ -127,6 +129,7 @@ export function GroupFormModal({
       const body = {
         name, kind: k, meeting: meeting.trim() || null, description: description.trim() || null, color, active, sort, congregation_id: congregationId,
         ...(k === 'sunday_school' ? { age_min: ageMin, age_max: ageMax } : {}),
+        ...(k !== 'serving_team' ? { pattern: cleanPattern(pattern) } : {}),
       };
       return group ? api.patch<Group>(`/groups/${group.id}`, body) : api.post<Group>('/groups', body);
     }, t('Saved.'));
@@ -163,8 +166,59 @@ export function GroupFormModal({
           <Field label={t('Description')} className="span-all"><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
           <label className="check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{t('Active')}</label>
         </div>
+        {k !== 'serving_team' && <PatternFields value={pattern} onChange={setPattern} />}
       </div>
     </Modal>
+  );
+}
+
+/** Only what makes sense together: no weekday without a rhythm, no "which week" except monthly. */
+const cleanPattern = (p: MeetingPattern): MeetingPattern => (!p.every ? { ...(p.time ? { time: p.time } : {}), ...(p.place ? { place: p.place } : {}) } : {
+  every: p.every, weekday: p.weekday ?? 0, ...(p.every === 'month' ? { nth: p.nth ?? 1 } : {}),
+  ...(p.time ? { time: p.time } : {}), ...(p.place?.trim() ? { place: p.place.trim() } : {}), ahead_weeks: p.ahead_weeks ?? 0,
+});
+export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const NTH = ['', 'first', 'second', 'third', 'fourth', 'last'];
+
+/** When the group meets: the rhythm, day, time and place its meetings are created with. */
+function PatternFields({ value: p, onChange }: { value: MeetingPattern; onChange: (p: MeetingPattern) => void }) {
+  const { t } = useI18n();
+  const set = (x: Partial<MeetingPattern>) => onChange({ ...p, ...x });
+  return (
+    <div className="stack tight">
+      <h3 className="sect" style={{ margin: 0 }}>{t('Meeting pattern')} <InfoTip text={t('How often and when the group meets. New meetings take this time and place, and Canon can create the meetings for the coming weeks so the leader just opens tonight’s.')} /></h3>
+      <div className="form-grid">
+        <Field label={t('Meets')}>
+          <select value={p.every ?? ''} onChange={(e) => set({ every: (e.target.value || undefined) as MeetingPattern['every'] })}>
+            <option value="">{t('No fixed pattern')}</option>
+            <option value="week">{t('Every week')}</option>
+            <option value="2weeks">{t('Every two weeks')}</option>
+            <option value="month">{t('Once a month')}</option>
+          </select>
+        </Field>
+        {p.every === 'month' && (
+          <Field label={t('Which')}>
+            <select value={p.nth ?? 1} onChange={(e) => set({ nth: Number(e.target.value) })}>
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t(`Week · ${NTH[n]}`)}</option>)}
+            </select>
+          </Field>
+        )}
+        {p.every && (
+          <Field label={t('Day')}>
+            <select value={p.weekday ?? 0} onChange={(e) => set({ weekday: Number(e.target.value) })}>
+              {WEEKDAYS.map((d, i) => <option key={d} value={i}>{t(d)}</option>)}
+            </select>
+          </Field>
+        )}
+        <Field label={t('Start time')}><input type="time" value={p.time ?? ''} onChange={(e) => set({ time: e.target.value || undefined })} /></Field>
+        <Field label={t('Place')}><input value={p.place ?? ''} onChange={(e) => set({ place: e.target.value })} /></Field>
+        {p.every && (
+          <Field label={t('Create meetings ahead')} hint={t('weeks; 0 = only when you choose')}>
+            <input type="number" min={0} max={26} value={p.ahead_weeks ?? 0} onChange={(e) => set({ ahead_weeks: Math.max(0, Math.min(26, Number(e.target.value) || 0)) })} style={{ width: 90 }} />
+          </Field>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -178,6 +232,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
   const { canEdit } = useSession();
   const { data, error, reload } = useApi<GroupDetail>(`/groups/${groupId}`);
   const people = usePeople();
+  const toast = useToast();
   const { run, busy } = useAction();
   const [editing, setEditing] = useState(false);
   const [showPast, setShowPast] = useState(false);
@@ -212,6 +267,10 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
       setAddRole('');
       changed();
     }
+  };
+  const ahead = async () => {
+    const r = await run(() => api.post<{ created: number }>(`/groups/${groupId}/meetings-ahead`, {}));
+    if (r) toast(r.created ? t('{n} meetings created.').replace('{n}', String(r.created)) : t('The coming meetings already exist.'));
   };
   const delGroup = async () => {
     if (!data || !confirmAction(t('Delete this group and all its memberships? To keep the history, mark it inactive instead.'))) return;
@@ -253,6 +312,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
             </div>
             <div className="row" style={{ gap: 6 }}>
               {data.kind !== 'serving_team' && <Link className="btn sm" to={`/meetings?group=${data.id}`}><Icon name="clock" />{t('Meetings')}</Link>}
+              {canEdit && data.pattern?.every && <button className="btn sm" onClick={ahead} disabled={busy} title={t('Create this group’s meetings for the coming weeks from its meeting pattern')}><Icon name="plus" />{t('Create meetings ahead')}</button>}
               {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
             </div>
           </div>

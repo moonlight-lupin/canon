@@ -209,3 +209,27 @@ test('a read-only account linked to a leader records the meetings they lead — 
   assert.equal((await call(lead, 'PUT', `/services/${groupOnly.id}/record`, { attendance: 16 })).status, 403, 'term ended');
   assert.equal((await call(lead, 'PUT', `/services/${own.id}/record`, { attendance: 7 })).status, 200, 'still leads their own meeting');
 });
+
+test('meeting patterns give the right dates: weekly, fortnightly (keeping the rhythm), nth and last weekday of the month', async () => {
+  const { meetingDates } = await import('../shared/meeting-pattern.ts');
+  assert.deepEqual(meetingDates({ every: 'week', weekday: 5 }, '2026-10-05', '2026-10-31'), ['2026-10-09', '2026-10-16', '2026-10-23', '2026-10-30']);
+  assert.deepEqual(meetingDates({ every: '2weeks', weekday: 5 }, '2026-10-12', '2026-11-30', '2026-10-09'), ['2026-10-23', '2026-11-06', '2026-11-20']);
+  assert.deepEqual(meetingDates({ every: 'month', weekday: 0, nth: 1 }, '2026-10-05', '2027-01-31'), ['2026-11-01', '2026-12-06', '2027-01-03']);
+  assert.deepEqual(meetingDates({ every: 'month', weekday: 5, nth: 5 }, '2026-10-01', '2026-12-31'), ['2026-10-30', '2026-11-27', '2026-12-25']);
+  assert.deepEqual(meetingDates({ every: 'month', weekday: 6 }, '2026-10-01', '2026-12-31'), [], 'monthly needs which week');
+  assert.deepEqual(meetingDates({}, '2026-10-01', '2026-12-31'), []);
+});
+
+test('a group with a meeting pattern gets its meetings created ahead, once, with the pattern\'s time and place', async () => {
+  const g = await call(as.editor, 'POST', '/groups', { name: { en: 'Test Thursday Cell' }, kind: 'cell_group', pattern: { every: 'week', weekday: 4, time: '20:15', place: 'Block 12 #03-04', ahead_weeks: 3 } });
+  assert.equal(g.status, 200, JSON.stringify(g.body));
+  const made = svc.createAllMeetingsAhead('2036-01-05');
+  const list = (await call(as.editor, 'GET', `/meetings?from=2036-01-01&group=${g.body.id}`)).body as Json[];
+  assert.deepEqual(list.map((m) => m.date), ['2036-01-10', '2036-01-17', '2036-01-24']);
+  assert.ok(made >= 3);
+  assert.deepEqual([list[0].start_time, list[0].place, list[0].offering], ['20:15', 'Block 12 #03-04', false]);
+  assert.equal(svc.createMeetingsAhead(g.body.id, undefined, '2036-01-05').length, 0, 'nothing twice');
+  // the button: editors only; groups without a pattern make nothing
+  assert.equal((await call(as.viewer, 'POST', `/groups/${g.body.id}/meetings-ahead`, {})).status, 403);
+  assert.equal((await call(as.editor, 'POST', `/groups/${ids.group}/meetings-ahead`, {})).body.created, 0);
+});
