@@ -285,6 +285,8 @@ export type Posture = 'stand' | 'sit' | 'kneel';
 export interface Service {
   /** the congregation it belongs to (English / Chinese / … services of one church); null = the whole church */
   congregation_id?: number | null;
+  /** a reference people choose, e.g. "EN-2026-12-25" (unique among services) */
+  ref?: string | null;
   id: number;
   date: string; // YYYY-MM-DD
   start_time: string; // HH:MM
@@ -364,6 +366,11 @@ export interface Template {
   items: TemplateItem[];
   /** archived: left out of the pickers; services already using it keep it */
   hidden?: boolean;
+  /** a reference people choose, e.g. "CN-10pmService" (unique among service templates) */
+  ref?: string | null;
+  /** the slide / bulletin template its new services start with (null = the church default) */
+  slide_theme_id?: number | null;
+  bulletin_template_id?: number | null;
   /** one of Canon's own templates (seeded): it can be archived, not deleted */
   builtin?: boolean;
 }

@@ -15,7 +15,7 @@ export const services = table<Service>({
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
     'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
-    'congregation_id',
+    'congregation_id', 'ref',
   ],
   json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content'],
   touch: true,
@@ -35,7 +35,7 @@ export const items = table<ServiceItem>({
 export const templates = table<Template>({
   name: 'templates',
   bool: ['hidden'],
-  cols: ['key', 'name', 'description', 'service_type', 'start_time', 'items', 'congregation_id', 'hidden'],
+  cols: ['key', 'name', 'description', 'service_type', 'start_time', 'items', 'congregation_id', 'hidden', 'ref', 'slide_theme_id', 'bulletin_template_id'],
   json: ['name', 'description', 'items'],
 });
 
@@ -243,6 +243,9 @@ export function createService(input: Partial<Service> & { date: string }, templa
       congregation_id: congregationId,
       sermon_title: {},
       theme: {},
+      // the template's slide and bulletin templates, unless the service chooses its own
+      slide_theme_id: tpl?.slide_theme_id ?? null,
+      bulletin_template_id: tpl?.bulletin_template_id ?? null,
       ...input,
       template_id: tpl?.id ?? null,
     });
@@ -316,6 +319,9 @@ export function saveAsTemplate(serviceId: number, name: L10n) {
     service_type: svc.service_type,
     start_time: svc.start_time,
     items: tItems,
+    congregation_id: svc.congregation_id ?? null,
+    slide_theme_id: svc.slide_theme_id ?? null,
+    bulletin_template_id: svc.bulletin_template_id ?? null,
   });
 }
 

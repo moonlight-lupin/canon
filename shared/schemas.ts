@@ -186,6 +186,7 @@ export const ServiceInput = z.object({
   bulletin_content: z.record(z.string().regex(/^[a-z0-9_-]{1,40}$/), L10nSchema).optional(),
   bulletin_template_id: z.number().int().nullable().optional(),
   congregation_id: z.number().int().nullable().optional(),
+  ref: z.string().max(40).nullable().optional(),
 });
 
 export const TemplateItemSchema = z.object({
@@ -208,6 +209,9 @@ export const TemplateItemSchema = z.object({
 });
 export const TemplateInput = z.object({
   key: z.string().max(100).nullable().optional(),
+  ref: z.string().max(40).nullable().optional(),
+  slide_theme_id: z.number().int().nullable().optional(),
+  bulletin_template_id: z.number().int().nullable().optional(),
   name: L10nSchema,
   description: L10nSchema.optional(),
   service_type: z.string().max(50).optional(),

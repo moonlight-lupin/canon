@@ -1,5 +1,6 @@
 // Slide themes and bulletin templates: CRUD, built-in protection, background pictures, compiled theme CSS,
 // and resolving which theme / template a service uses.
+import { cleanRef } from './refs.ts';
 import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import type { L10n, Service } from '../../shared/types.ts';
@@ -13,7 +14,7 @@ import { getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const slideThemes = table<SlideTheme>({
   name: 'slide_themes',
-  cols: ['name', 'base', 'vars', 'css', 'sort', 'hidden'],
+  cols: ['name', 'base', 'vars', 'css', 'sort', 'hidden', 'ref'],
   json: ['name', 'vars'],
   bool: ['hidden'],
   touch: true,
@@ -21,7 +22,7 @@ export const slideThemes = table<SlideTheme>({
 
 export const bulletinTemplates = table<BulletinTemplate>({
   name: 'bulletin_templates',
-  cols: ['name', 'description', 'options', 'sort', 'hidden'],
+  cols: ['name', 'description', 'options', 'sort', 'hidden', 'ref'],
   json: ['name', 'description', 'options'],
   bool: ['hidden'],
   touch: true,
@@ -366,4 +367,16 @@ export async function qrPng(text: string, width = 600): Promise<Buffer> {
   if (!text) throw new BadRequest('Type a web address or some text for the QR code');
   if (text.length > MAX_QR_TEXT) throw new BadRequest(`The QR text is too long (${MAX_QR_TEXT} characters at most)`);
   return QRCode.toBuffer(text, { type: 'png', errorCorrectionLevel: 'M', margin: 2, width });
+}
+
+/** Set or clear a slide / bulletin template's reference (also on built-in templates: it is only a name). */
+export function setThemeRef(id: number, ref: unknown): SlideTheme {
+  slideThemes.get(id);
+  slideThemes.update(id, { ref: cleanRef('slide_template', ref, id) ?? null });
+  return getTheme(id);
+}
+export function setTemplateRef(id: number, ref: unknown): BulletinTemplate {
+  bulletinTemplates.get(id);
+  bulletinTemplates.update(id, { ref: cleanRef('bulletin_template', ref, id) ?? null });
+  return getTemplate(id);
 }

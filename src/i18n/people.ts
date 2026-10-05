@@ -589,5 +589,15 @@ const zh: Record<string, string> = {
   "Archived templates are left out of the lists in the service planner; services already made from one keep their order of service. Restore one to use it again; administrators can delete archived templates (not Canon’s built-in ones).": "已归档的模板不会出现在聚会策划的列表中；已用它建立的聚会仍保留原有程序。恢复后即可再用；管理员可删除已归档的模板（Canon 内置的除外）。",
   "One of Canon’s own templates: it can be archived, not deleted.": "Canon 内置的模板：可以归档，不能删除。",
   "Built-in": "内置",
+  // v0.10.5 — references
+  "Reference": "参考代码",
+  "Your own short code for it, e.g. EN-001 or CN-10pmService: letters, digits and - _ . without spaces. People and AI assistants can then name it, e.g. “create Sunday’s service from template CN-10pmService”.": "你自己定的简短代码，例如 EN-001 或 CN-10pmService：字母、数字和 - _ .，不可有空格。同工和 AI 助手可用它指明模板，例如“用模板 CN-10pmService 建立主日聚会”。",
+  "Your own short code for this service, e.g. EN-2026-12-25: letters, digits and - _ . without spaces. People and AI assistants can then name it.": "你自己为这次聚会定的简短代码，例如 EN-2026-12-25：字母、数字和 - _ .，不可有空格。同工和 AI 助手可用它指明这次聚会。",
+  "Slide template": "投影模板",
+  "New services from this template start with these; each service can still choose others.": "用这个模板建立的新聚会会先用这些模板；每次聚会仍可另选。",
+  "Reference for this template, e.g. EN-001 (leave empty to remove):": "这个模板的参考代码，例如 EN-001（留空即删除）：",
+  "Change reference…": "更改参考代码…",
+  "Set reference…": "设定参考代码…",
+  "Your own short code for it, e.g. EN-001, so people and AI assistants can name it.": "你自己定的简短代码，例如 EN-001，方便同工和 AI 助手指明它。",
 };
 export default zh;

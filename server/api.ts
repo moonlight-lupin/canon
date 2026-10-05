@@ -33,6 +33,7 @@ import * as cong from './repo/congregations.ts';
 import * as rec from './repo/records.ts';
 import * as reports from './repo/reports.ts';
 import { Forbidden } from './lib/table.ts';
+import { cleanRef } from './repo/refs.ts';
 import * as bg from './repo/backgrounds.ts';
 import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
@@ -443,8 +444,15 @@ api.delete('/congregations/:id', requireAdmin, h((req) => cong.deleteCongregatio
 
 api.get('/templates', h(() => svc.templates.list('', [], 'id').map(svc.withBuiltin)));
 api.get('/templates/:id', h((req) => svc.withBuiltin(svc.templates.get(id(req)))));
-api.post('/templates', h((req) => svc.templates.insert({ description: {}, items: [], ...S.TemplateInput.parse(req.body) })));
-api.patch('/templates/:id', h((req) => svc.templates.update(id(req), S.TemplateInput.partial().parse(req.body))));
+api.post('/templates', h((req) => {
+  const b = S.TemplateInput.parse(req.body);
+  return svc.withBuiltin(svc.templates.insert({ description: {}, items: [], ...b, ref: cleanRef('service_template', b.ref) ?? null }));
+}));
+api.patch('/templates/:id', h((req) => {
+  const tid = id(req);
+  const b = S.TemplateInput.partial().parse(req.body);
+  return svc.withBuiltin(svc.templates.update(tid, { ...b, ...(b.ref !== undefined ? { ref: cleanRef('service_template', b.ref, tid) } : {}) }));
+}));
 /** Archive / restore (editors). The church default can't be archived. */
 api.put('/templates/:id/hidden', h((req) => svc.setServiceTemplateHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden, getSettings().default_service_template_id ?? null)));
 /** Delete an archived template (administrators; never a built-in one). */
@@ -469,10 +477,14 @@ api.get('/services', h((req) => svc.listServices({ from: str(req.query.from), to
 api.post('/services', h((req) => {
   const b = S.ServiceInput.extend({ template_id: z.number().int().nullable().optional() }).parse(req.body);
   const { template_id, ...input } = b;
-  return svc.createService(input, template_id);
+  return svc.createService({ ...input, ref: cleanRef('service', input.ref) ?? null }, template_id);
 }));
 api.get('/services/:id', h((req) => svc.getServiceFull(id(req))));
-api.patch('/services/:id', h((req) => svc.services.update(id(req), S.ServiceInput.partial().parse(req.body))));
+api.patch('/services/:id', h((req) => {
+  const sid = id(req);
+  const b = S.ServiceInput.partial().parse(req.body);
+  return svc.services.update(sid, { ...b, ...(b.ref !== undefined ? { ref: cleanRef('service', b.ref, sid) } : {}) });
+}));
 api.delete('/services/:id', h((req) => {
   rec.assertServiceDeletable(id(req));
   return svc.services.remove(id(req));

@@ -49,7 +49,7 @@ export default function Services() {
                     {seasons && <SeasonChip dotOnly date={s.date} season={s.season} className="svc-season" />}
                     <Link to={`/services/${s.id}`} onClick={(e) => e.stopPropagation()}><strong>{fmtDate(s.date, lang)}</strong></Link> <span className="muted">{s.start_time}</span>
                   </td>
-                  <td><CongregationBadge id={s.congregation_id} list={congs} /> <Bi v={s.title} />{hasAnyText(s.sermon_title) && <div className="small muted serif">“{s.sermon_title[lang] || s.sermon_title.en || s.sermon_title.zh}”{s.sermon_ref ? ` · ${s.sermon_ref}` : ''}</div>}</td>
+                  <td><CongregationBadge id={s.congregation_id} list={congs} /> {s.ref && <span className="badge lapis ref-badge">{s.ref}</span>} <Bi v={s.title} />{hasAnyText(s.sermon_title) && <div className="small muted serif">“{s.sermon_title[lang] || s.sermon_title.en || s.sermon_title.zh}”{s.sermon_ref ? ` · ${s.sermon_ref}` : ''}</div>}</td>
                   <td>{s.preacher}</td>
                   <td className="right">{s.item_count}</td>
                   <td className="right">{s.assigned_count}</td>
@@ -113,7 +113,7 @@ export function NewServiceDialog({ onClose, initialTemplate, initialCongregation
           {(templates ?? []).filter((tp) => !tp.hidden || tp.id === tid).map((tp) => (
             <button key={tp.id} type="button" className="card" onClick={() => setTemplateId(tp.id)}
               style={{ textAlign: 'left', cursor: 'pointer', padding: '12px 14px', borderColor: tid === tp.id ? 'var(--reed)' : undefined, background: tid === tp.id ? 'var(--reed-wash)' : undefined, font: 'inherit', color: 'inherit' }}>
-              <div className="row between"><strong className="serif"><Bi v={tp.name} /></strong><span className="small muted">{tp.id === churchDefault && <span className="badge reed" style={{ marginRight: 6 }}>{t('Church default')}</span>}{tp.start_time}</span></div>
+              <div className="row between"><strong className="serif"><Bi v={tp.name} /></strong><span className="small muted">{tp.ref && <span className="badge lapis ref-badge" style={{ marginRight: 6 }}>{tp.ref}</span>}{tp.id === churchDefault && <span className="badge reed" style={{ marginRight: 6 }}>{t('Church default')}</span>}{tp.start_time}</span></div>
               <div className="small muted">{lt(tp.description)}</div>
               <div className="small muted" style={{ marginTop: 4 }}>{tp.items.length} {t('Items').toLowerCase()} · {tp.items.reduce((a, i) => a + i.duration_min, 0)} {t('min')}</div>
             </button>

@@ -13,6 +13,7 @@ import { KIND_ICON, KIND_LABEL, PostureField } from './ServiceEditor.tsx';
 import type { ItemKind, LiturgyText, Song, TeamWithRoles, Template, TemplateItem } from '../types-client.ts';
 import type { BulletinBlock } from '../../shared/presentation.ts';
 import { SlideBlocksPicker } from './Blocks.tsx';
+import { BulletinTemplateField, SlideThemeField } from './presentation-pickers.tsx';
 
 const KINDS = Object.keys(KIND_LABEL) as ItemKind[];
 
@@ -47,6 +48,7 @@ export default function Templates() {
         <h2><Bi v={tp.name} /></h2>
         <span className="row" style={{ gap: 6 }}>
           {tp.id === defaultId && <span className="badge reed" title={t('New service starts from this template.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
+          {tp.ref && <span className="badge lapis ref-badge" title={t('Reference')}>{tp.ref}</span>}
           {tp.builtin && <span className="badge" title={t('One of Canon’s own templates: it can be archived, not deleted.')}>{t('Built-in')}</span>}
           {tp.hidden && <span className="badge">{t('Archived')}</span>}
           <CongregationBadge id={tp.congregation_id} list={congs} />
@@ -122,7 +124,7 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
     setItems(a);
   };
   const save = async () => {
-    const { id, ...body } = x;
+    const { id, builtin: _b, hidden: _h, ...body } = x;
     const r = id ? await run(() => api.patch(`/templates/${id}`, body), t('Saved.')) : await run(() => api.post('/templates', body), t('Saved.'));
     if (r) onSaved();
   };
@@ -135,6 +137,13 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
     }>
       <div className="stack">
         <Field label={t('Name')}><L10nInput value={x.name} onChange={(v) => setX({ ...x, name: v })} /></Field>
+        <div className="form-grid">
+          <Field label={<>{t('Reference')} <InfoTip text={t('Your own short code for it, e.g. EN-001 or CN-10pmService: letters, digits and - _ . without spaces. People and AI assistants can then name it, e.g. “create Sunday’s service from template CN-10pmService”.')} /></>}>
+            <input value={x.ref ?? ''} maxLength={40} placeholder="EN-001" onChange={(e) => setX({ ...x, ref: e.target.value.replace(/\s+/g, '') || null })} style={{ maxWidth: 220 }} />
+          </Field>
+          <SlideThemeField label={t('Slide template')} value={x.slide_theme_id ?? null} onChange={(v) => setX({ ...x, slide_theme_id: v })} />
+          <BulletinTemplateField value={x.bulletin_template_id ?? null} hint={t('New services from this template start with these; each service can still choose others.')} onChange={(v) => setX({ ...x, bulletin_template_id: v })} />
+        </div>
         <Field label={t('Description')}><L10nInput value={x.description} onChange={(v) => setX({ ...x, description: v })} /></Field>
         <div className="form-grid">
           <Field label={t('Start time')}><input type="time" value={x.start_time} onChange={(e) => setX({ ...x, start_time: e.target.value })} /></Field>

@@ -528,6 +528,20 @@ const MIGRATIONS: (string | Migration)[] = [
   `ALTER TABLE service_records ADD COLUMN counted_on TEXT;`,
   // v0.10.4 — service templates can be archived like slide and bulletin templates ("hidden" = archived)
   `ALTER TABLE templates ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;`,
+  // v0.10.5 — references people choose (EN-001, CN-10pmService), unique per kind ignoring case; a service template
+  // chooses the slide and bulletin templates its services start with
+  `
+  ALTER TABLE services ADD COLUMN ref TEXT;
+  ALTER TABLE templates ADD COLUMN ref TEXT;
+  ALTER TABLE slide_themes ADD COLUMN ref TEXT;
+  ALTER TABLE bulletin_templates ADD COLUMN ref TEXT;
+  CREATE UNIQUE INDEX services_ref ON services(ref COLLATE NOCASE) WHERE ref IS NOT NULL;
+  CREATE UNIQUE INDEX templates_ref ON templates(ref COLLATE NOCASE) WHERE ref IS NOT NULL;
+  CREATE UNIQUE INDEX slide_themes_ref ON slide_themes(ref COLLATE NOCASE) WHERE ref IS NOT NULL;
+  CREATE UNIQUE INDEX bulletin_templates_ref ON bulletin_templates(ref COLLATE NOCASE) WHERE ref IS NOT NULL;
+  ALTER TABLE templates ADD COLUMN slide_theme_id INTEGER REFERENCES slide_themes(id) ON DELETE SET NULL;
+  ALTER TABLE templates ADD COLUMN bulletin_template_id INTEGER REFERENCES bulletin_templates(id) ON DELETE SET NULL;
+  `,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

@@ -459,6 +459,9 @@ function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave: (p: P
           <Field label={t('Start time')}><input type="time" value={d.start_time} onChange={(e) => set('start_time', e.target.value)} /></Field>
           <Field label={t('Preacher')}><input value={d.preacher ?? ''} onChange={(e) => set('preacher', e.target.value)} /></Field>
           <Field label={t('Sermon text')}><input value={d.sermon_ref ?? ''} placeholder="Isaiah 6:1-8" onChange={(e) => set('sermon_ref', e.target.value)} /></Field>
+          <Field label={<>{t('Reference')} <InfoTip text={t('Your own short code for this service, e.g. EN-2026-12-25: letters, digits and - _ . without spaces. People and AI assistants can then name it.')} /></>}>
+            <input value={d.ref ?? ''} maxLength={40} onChange={(e) => set('ref', e.target.value.replace(/\s+/g, '') || null)} />
+          </Field>
           <Field label={t('Languages')}>
             <div className="row">
               {churchLangs.map((l) => (
@@ -507,7 +510,7 @@ function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave: (p: P
             date: d.date, start_time: d.start_time, preacher: d.preacher || null, sermon_ref: d.sermon_ref || null,
             languages: d.languages, title: d.title, sermon_title: d.sermon_title, theme: d.theme, notes: d.notes || null,
             season: d.season ?? null, cover: { style: d.cover?.style, verse_ref: d.cover?.verse_ref?.trim() || undefined },
-            slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null, congregation_id: d.congregation_id ?? null,
+            slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null, congregation_id: d.congregation_id ?? null, ref: d.ref || null,
             bibles: Object.fromEntries(Object.entries(d.bibles ?? {}).filter(([l, c]) => c && d.languages.includes(l))),
           })}>{t('Save')}</button>
         </div>

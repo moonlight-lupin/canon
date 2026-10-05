@@ -67,6 +67,8 @@ export const ASPECT_WIDTH: Record<SlideAspect, number> = { '16:9': 1920, '4:3': 
 
 export interface SlideTheme {
   id: number;
+  /** a reference people choose, e.g. "EN-WIDE" */
+  ref?: string | null;
   name: L10n;
   base: 'dark' | 'light';
   vars: SlideThemeVars;
@@ -560,6 +562,8 @@ export interface BulletinOptions {
 
 export interface BulletinTemplate {
   id: number;
+  /** a reference people choose, e.g. "CN-A5" */
+  ref?: string | null;
   name: L10n;
   description: L10n;
   options: BulletinOptions;

@@ -91,7 +91,9 @@ The [Dashboard](/) is the home page: the next service and its status, open roste
 - **QR codes & notes on slides** adds a QR code or a short note to the item's slides.
 - **Slide background** puts a picture behind this item's slides only (for example bread and cup for the Lord's Supper), instead of the slide template's background. Choose from **Library → Slide backgrounds** (type to search). The picture is faded with the template's background colour so the words stay readable, and it is used in the PowerPoint download too.
 
-**Service details** — press **Edit…** above the order to change the date, time, languages (up to 3), **Bible versions**, **Liturgical season**, **Bulletin cover**, **Bulletin template** and **Slide theme**. Press **Save** in that card.
+**Service details** — press **Edit…** above the order to change the date, time, languages (up to 3), **Bible versions**, **Liturgical season**, **Bulletin cover**, **Bulletin template**, **Slide theme** and a **Reference** — your own short code for the service, e.g. `EN-2026-12-25`. Press **Save** in that card.
+
+**References.** Services and all three kinds of template can carry a **Reference**: a short code you choose (letters, digits and - _ . without spaces, e.g. `EN-001` or `CN-10pmService`), unique within its kind. It shows as a small code badge and can be used instead of the name — by people, and by AI assistants: “create next Sunday’s service from template CN-10pmService”. Set it in the service details, in the service template editor, or with **Set reference…** in the **⋯** menu of a slide or bulletin template.
 
 When the service is ready, switch **Draft** to **Final** at the top.
 
@@ -181,7 +183,7 @@ Open [Library](/library).
 
 ## Templates
 
-- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**. **Set as church default** (administrators) picks the template **New service** starts from; it shows a **Church default** badge. **Archive** moves a template you no longer use to **Archived templates** at the bottom of the page — see the archive rules below; they are the same for all three kinds of template.
+- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**. **Set as church default** (administrators) picks the template **New service** starts from; it shows a **Church default** badge. In the editor, a service template can also choose its **Slide template** and **Bulletin template**: new services made from it start with these (each service can still choose others), so an evening Chinese service template brings its own bulletin and slides. **Saving a service as a template** keeps its slide and bulletin templates and congregation. **Archive** moves a template you no longer use to **Archived templates** at the bottom of the page — see the archive rules below; they are the same for all three kinds of template.
 
 Bulletin templates and slide templates both open on a gallery. Each card has a main button (**Edit** for your own templates, **Preview** for built-in ones) and a **⋯** menu:
 

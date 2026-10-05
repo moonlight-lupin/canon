@@ -8,33 +8,33 @@ import type { BulletinTemplate, SlideTheme } from '../../shared/presentation.ts'
 import './presentation.css';
 
 /** Slide theme for a service; '' = the church default (named). */
-export function SlideThemeField({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+export function SlideThemeField({ value, onChange, label }: { value: number | null; onChange: (v: number | null) => void; label?: string }) {
   const { t, lt } = useI18n();
   const { settings } = useSession();
   const { data: themes } = useApi<SlideTheme[]>('/slide-themes');
   const legacy = settings?.slide_theme === 'light' ? 'papyrus' : 'ink';
   const def = themes?.find((x) => x.id === settings?.default_slide_theme_id) ?? themes?.find((x) => x.builtin === legacy);
   return (
-    <Field label={t('Slide theme')}>
+    <Field label={label ?? t('Slide theme')}>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
         <option value="">{t('Church default')}{def ? ` — ${lt(def.name)}` : ''}</option>
-        {themes?.filter((x) => !x.hidden || x.id === value).map((x) => <option key={x.id} value={x.id}>{lt(x.name)}</option>)}
+        {themes?.filter((x) => !x.hidden || x.id === value).map((x) => <option key={x.id} value={x.id}>{x.ref ? `${x.ref} · ` : ''}{lt(x.name)}</option>)}
       </select>
     </Field>
   );
 }
 
 /** Bulletin template for a service; '' = the church default (named). */
-export function BulletinTemplateField({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+export function BulletinTemplateField({ value, onChange, hint }: { value: number | null; onChange: (v: number | null) => void; hint?: string | null }) {
   const { t, lt } = useI18n();
   const { settings } = useSession();
   const { data: list } = useApi<BulletinTemplate[]>('/bulletin-templates');
   const def = list?.find((x) => x.id === settings?.default_bulletin_template_id) ?? list?.find((x) => x.builtin === 'full');
   return (
-    <Field label={t('Bulletin template')} hint={t('Decides which items print their full words.')}>
+    <Field label={t('Bulletin template')} hint={hint === null ? undefined : hint ?? t('Decides which items print their full words.')}>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
         <option value="">{t('Church default')}{def ? ` — ${lt(def.name)}` : ''}</option>
-        {list?.filter((x) => !x.hidden || x.id === value).map((x) => <option key={x.id} value={x.id}>{lt(x.name)}</option>)}
+        {list?.filter((x) => !x.hidden || x.id === value).map((x) => <option key={x.id} value={x.id}>{x.ref ? `${x.ref} · ` : ''}{lt(x.name)}</option>)}
       </select>
     </Field>
   );

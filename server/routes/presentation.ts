@@ -47,6 +47,7 @@ presentationRoutes.post('/slide-themes', h((req) => P.createTheme(ThemeInput.par
 presentationRoutes.patch('/slide-themes/:id', h((req) => P.updateTheme(id(req), ThemeInput.parse(req.body) as P.ThemeInput)));
 presentationRoutes.delete('/slide-themes/:id', requireAdmin, h((req) => P.deleteTheme(id(req))));
 presentationRoutes.post('/slide-themes/:id/duplicate', h((req) => P.duplicateTheme(id(req))));
+presentationRoutes.put('/slide-themes/:id/ref', h((req) => P.setThemeRef(id(req), z.object({ ref: z.string().max(40).nullable() }).parse(req.body).ref)));
 presentationRoutes.put('/slide-themes/:id/hidden', h((req) => P.setThemeHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden)));
 
 /** Compiled, scoped CSS for one theme (custom properties + the admin's CSS). */
@@ -109,6 +110,7 @@ presentationRoutes.post('/bulletin-templates', h((req) => P.createTemplate(Templ
 presentationRoutes.patch('/bulletin-templates/:id', h((req) => P.updateTemplate(id(req), TemplateInput.parse(req.body))));
 presentationRoutes.delete('/bulletin-templates/:id', requireAdmin, h((req) => P.deleteTemplate(id(req))));
 presentationRoutes.post('/bulletin-templates/:id/duplicate', h((req) => P.duplicateTemplate(id(req))));
+presentationRoutes.put('/bulletin-templates/:id/ref', h((req) => P.setTemplateRef(id(req), z.object({ ref: z.string().max(40).nullable() }).parse(req.body).ref)));
 presentationRoutes.put('/bulletin-templates/:id/hidden', h((req) => P.setTemplateHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden)));
 
 // ---------------------------------------------------------------- bulletin blocks (QR codes, pictures, notes)

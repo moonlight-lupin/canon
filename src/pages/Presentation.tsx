@@ -33,14 +33,15 @@ export default function Presentation() {
   return <Navigate to={q === 'bulletin' ? '/bulletin-templates' : q === 'blocks' ? '/library?tab=blocks' : '/slide-templates'} replace />;
 }
 
-function Badges({ builtin, isDefault, hidden }: { builtin: boolean; isDefault: boolean; hidden?: boolean }) {
+function Badges({ builtin, isDefault, hidden, refCode }: { builtin: boolean; isDefault: boolean; hidden?: boolean; refCode?: string | null }) {
   const { t } = useI18n();
-  if (!builtin && !isDefault && !hidden) return null;
+  if (!builtin && !isDefault && !hidden && !refCode) return null;
   return (
     <div className="pr-badges">
       {isDefault && <span className="badge reed" title={t('Services use this template unless they choose another.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
       {builtin && <span className="badge" title={t("Comes with Canon. It can't be changed or deleted, but you can copy it or hide it.")}>{t('Built-in')}</span>}
       {hidden && <span className="badge">{t('Archived')}</span>}
+      {refCode && <span className="badge lapis ref-badge" title={t('Reference')}>{refCode}</span>}
     </div>
   );
 }
@@ -77,6 +78,11 @@ function useGalleryActions(kind: 'slide' | 'bulletin', reload: () => Promise<unk
     setHidden: async (id: number, hidden: boolean) => {
       if (await run(() => api.put(`${base}/${id}/hidden`, { hidden }), hidden ? t('Archived. Find it under Archived templates.') : t('Restored.'))) await reload();
     },
+    setRef: async (id: number, current: string | null | undefined) => {
+      const v = window.prompt(t('Reference for this template, e.g. EN-001 (leave empty to remove):'), current ?? '');
+      if (v === null) return;
+      if (await run(() => api.put(`${base}/${id}/ref`, { ref: v.trim() || null }), t('Saved.'))) await reload();
+    },
     exportFile: (id: number) => {
       window.location.href = `/api${base}/${id}/export`;
     },
@@ -94,7 +100,7 @@ function useGalleryActions(kind: 'slide' | 'bulletin', reload: () => Promise<unk
 
 /** The gallery's menu for one template. */
 function cardActions(
-  x: { id: number; builtin?: string | null; hidden?: boolean },
+  x: { id: number; builtin?: string | null; hidden?: boolean; ref?: string | null },
   isDefault: boolean,
   can: { edit: boolean; admin: boolean },
   a: ReturnType<typeof useGalleryActions>,
@@ -108,6 +114,7 @@ function cardActions(
       ? { label: t('Restore'), onClick: () => a.setHidden(x.id, false) }
       : { label: t('Archive'), onClick: () => a.setHidden(x.id, true), disabled: isDefault, title: isDefault ? t('The church default cannot be archived.') : t('Move it to Archived templates, out of the template lists. Services already using it keep it.') });
   }
+  if (can.edit) out.push({ label: x.ref ? t('Change reference…') : t('Set reference…'), onClick: () => a.setRef(x.id, x.ref), title: t('Your own short code for it, e.g. EN-001, so people and AI assistants can name it.') });
   out.push({ label: t('Export to a file'), onClick: () => a.exportFile(x.id), title: t('Save this template as one file, to use on another computer or share with another church.') });
   // deleting: administrators, archived templates only, never Canon's built-in ones
   if (can.admin && x.hidden && !x.builtin) out.push({ label: t('Delete'), onClick: () => a.remove(x.id), danger: true });
@@ -255,7 +262,7 @@ export function SlideTemplatesPage() {
                 )}
                 name={<Bi v={x.name} />}
                 desc={x.vars.aspect === '4:3' ? t('4:3 screen') : undefined}
-                badges={<Badges builtin={!!x.builtin} isDefault={x.id === defaultId} hidden={x.hidden} />}
+                badges={<Badges builtin={!!x.builtin} isDefault={x.id === defaultId} hidden={x.hidden} refCode={x.ref} />}
                 primary={x.builtin || !canEdit ? { label: t('Preview'), onClick: () => setEditId(x.id), icon: 'eye' } : { label: t('Edit'), onClick: () => setEditId(x.id), icon: 'edit' }}
                 actions={cardActions(x, x.id === defaultId, { edit: canEdit, admin: isAdmin }, acts, t)}
               />
@@ -405,7 +412,7 @@ function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved }: {
     <div className="tp-edit-head">
       <button type="button" className="btn sm ghost" onClick={back}><Icon name="chevronLeft" />{t('All slide templates')}</button>
       <h1><Bi v={draft.name} /></h1>
-      <Badges builtin={!!theme.builtin} isDefault={isDefault} hidden={theme.hidden} />
+      <Badges builtin={!!theme.builtin} isDefault={isDefault} hidden={theme.hidden} refCode={theme.ref} />
       <div className="grow" />
       <GuideLink anchor="slide-templates" />
       {isAdmin && !isDefault && <button className="btn sm" disabled={busy || dirty} title={dirty ? t('Save your changes first') : t('Services use this template unless they choose another.')} onClick={() => acts.makeDefault(theme.id)}><Icon name="check" />{t('Set as church default')}</button>}
@@ -713,7 +720,7 @@ export function BulletinTemplatesPage() {
             thumb={<BulletinThumb o={x.options} />}
             name={<Bi v={x.name} />}
             desc={lt(x.description) || facts(x.options).join(' · ')}
-            badges={<Badges builtin={!!x.builtin} isDefault={x.id === defaultId} hidden={x.hidden} />}
+            badges={<Badges builtin={!!x.builtin} isDefault={x.id === defaultId} hidden={x.hidden} refCode={x.ref} />}
             primary={x.builtin || !canEdit ? { label: t('Preview'), onClick: () => setEditId(x.id), icon: 'eye' } : { label: t('Edit'), onClick: () => setEditId(x.id), icon: 'edit' }}
             actions={cardActions(x, x.id === defaultId, { edit: canEdit, admin: isAdmin }, acts, t)}
           />
@@ -787,7 +794,7 @@ function TemplateEditor({ tpl, isDefault, onBack, acts, onSaved }: {
     <div className="tp-edit-head">
       <button type="button" className="btn sm ghost" onClick={back}><Icon name="chevronLeft" />{t('All bulletin templates')}</button>
       <h1><Bi v={draft.name} /></h1>
-      <Badges builtin={!!tpl.builtin} isDefault={isDefault} hidden={tpl.hidden} />
+      <Badges builtin={!!tpl.builtin} isDefault={isDefault} hidden={tpl.hidden} refCode={tpl.ref} />
       <div className="grow" />
       <GuideLink anchor="bulletin-templates" />
       {isAdmin && !isDefault && <button className="btn sm" disabled={busy || dirty} title={dirty ? t('Save your changes first') : t('Services use this template unless they choose another.')} onClick={() => acts.makeDefault(tpl.id)}><Icon name="check" />{t('Set as church default')}</button>}

@@ -1,4 +1,6 @@
 // MCP tools for services (orders of worship) and service templates.
+import { cleanRef, resolveRef } from '../repo/refs.ts';
+import * as P from '../repo/presentation.ts';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { hasAnyText } from '../../shared/labels.ts';
@@ -41,7 +43,10 @@ export function serviceSummary(s: Service & { item_count?: number; assigned_coun
     sermon_ref: s.sermon_ref,
     theme: l10n(s.theme),
     languages: s.languages,
+    ref: s.ref ?? undefined,
     template_id: s.template_id,
+    slide_template_id: s.slide_theme_id ?? undefined,
+    bulletin_template_id: s.bulletin_template_id ?? undefined,
     item_count: s.item_count,
     assigned_count: s.assigned_count,
   };
@@ -138,14 +143,24 @@ function serviceDetail(id: number, includeText: boolean) {
 }
 
 const templateSummary = (t: ReturnType<typeof svc.templates.get>) => ({
-  id: t.id, key: t.key, name: t.name, description: l10n(t.description),
+  id: t.id, ref: t.ref ?? undefined, key: t.key, name: t.name, description: l10n(t.description),
   service_type: t.service_type, start_time: t.start_time, item_count: t.items.length,
+  congregation: t.congregation_id ? congregationLabel(t.congregation_id) : undefined,
+  slide_template_id: t.slide_theme_id ?? undefined, bulletin_template_id: t.bulletin_template_id ?? undefined,
   church_default: getSettings().default_service_template_id === t.id || undefined,
 });
 
+/** An id or a reference ("EN-001"): agents may name services and templates either way. */
+const IdOrRef = z.union([Id, z.string().min(1).max(40)]);
+const presentationSummary = (kind: 'slide' | 'bulletin') => {
+  const list = kind === 'slide' ? P.listThemes() : P.listTemplates();
+  const def = kind === 'slide' ? P.resolveSlideThemeId(null) : P.resolveBulletinTemplate(null).template_id;
+  return list.filter((x) => !x.hidden).map((x) => ({ id: x.id, ref: x.ref ?? undefined, name: x.name, built_in: !!x.builtin || undefined, church_default: x.id === def || undefined }));
+};
+
 /** Text search over the fields people remember a service by. */
 const serviceMatches = (s: Service, q: string) =>
-  JSON.stringify([s.title, s.sermon_title, s.theme, s.preacher, s.sermon_ref, s.date]).toLowerCase().includes(q);
+  JSON.stringify([s.ref, s.title, s.sermon_title, s.theme, s.preacher, s.sermon_ref, s.date]).toLowerCase().includes(q);
 
 // ---------------------------------------------------------------- precedent
 
@@ -279,7 +294,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
     name: 'canon_get_service', module: 'services', access: 'read', title: 'Get a service', annotations: RO,
     description: 'One service in full: items (id, position, kind, title, start time, duration, song / text / scripture refs, stanzas, leader, slide_blocks = QR codes / notes by id and name), bulletin_content (weekly bulletin sections such as announcements, by key), the roster (names only) and roster warnings (unavailable, double-booked, unfilled roles). Hymn words, Bible text and liturgy only with include_text=true. include_similar=true adds similar_past: the 3 most similar earlier services with reasons and short outlines (the church\'s precedent). format "text" returns a plain-text run sheet in lang instead. format "downloads" returns short-lived links to the service\'s files instead: files slides_pptx (projector slides as PowerPoint, styled by the slide template, 16:9 or 4:3), bulletin_docx (bulletin / order of service as Word), freeshow (FreeShow project), run_sheet (text); each link works for hours (default 24, max ' + MAX_LINK_HOURS + ') WITHOUT signing in, so give links only to the user who asked; open_in_canon has the pages for a signed-in user (print-ready bulletin → Print → PDF, slide show, run sheet); langs limits slides / run sheet to some of the service languages. Examples: {"id":12,"include_similar":true}; {"id":12,"format":"downloads","files":["slides_pptx","bulletin_docx"]}.',
     input: {
-      id: Id,
+      id: IdOrRef.describe('service id or its reference'),
       format: z.enum(['structured', 'text', 'downloads']).default('structured'),
       include_text: z.boolean().default(false),
       include_similar: z.boolean().default(false),
@@ -289,6 +304,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
       langs: z.array(S.LangSchema).max(3).optional().describe('format "downloads": languages for slides / run sheet'),
     },
     handler: (a, ctx) => {
+      a = { ...a, id: resolveRef('service', a.id) };
       if (a.format === 'downloads') return downloads(a.id, ctx.base ?? '', ctx.auth.user.id, a.files ?? ['slides_pptx', 'bulletin_docx'], a.hours ?? 24, a.langs);
       const warnings = vol.rosterWarnings(a.id);
       const similar_past = a.include_similar ? shortSimilar(a.id) : undefined;
@@ -301,15 +317,23 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_create_service', module: 'services', access: 'write', title: 'Create a service', annotations: WRITE,
-    description: 'Create a service on a date, either from a template (template_id, see canon_get_templates) or as a copy of an existing service (copy_from; with_roster=true also copies the volunteer assignments). Other fields (title, preacher, sermon_title, sermon_ref, theme, languages…) override; L10n fields are {lang: text}. Returns the summary, items and any library items the template referenced but are missing. Example: {"date":"2026-10-11","template_id":1,"preacher":"Rev. Tan"}.',
+    description: 'Create a service on a date, either from a template (template: its id or reference, e.g. "CN-10pmService"; see canon_get_templates) or as a copy of an existing service (copy_from: id or reference; with_roster=true also copies the volunteer assignments). A template brings its order, congregation and its slide and bulletin templates; slide_template / bulletin_template (id or reference) choose others. ref gives the new service its own reference. Other fields (title, preacher, sermon_title, sermon_ref, theme, languages…) override; L10n fields are {lang: text}. Returns the summary, items and any library items the template referenced but are missing. Example: {"date":"2026-10-11","template":"EN-001","preacher":"Rev. Tan"}.',
     input: {
       ...S.ServiceInput.shape,
-      template_id: Id.optional(),
-      copy_from: Id.optional().describe('service id to duplicate'),
+      template: IdOrRef.optional().describe('service template id or reference'),
+      template_id: Id.optional().describe('the same as template (older name)'),
+      slide_template: IdOrRef.optional().describe('slide template id or reference (default: the template\'s, else the church default)'),
+      bulletin_template: IdOrRef.optional().describe('bulletin template id or reference'),
+      copy_from: IdOrRef.optional().describe('service id or reference to duplicate'),
       with_roster: z.boolean().optional(),
     },
     handler: (a) => {
-      const { template_id, copy_from, with_roster, ...input } = a;
+      const { template: tplRef, template_id: tplId, slide_template, bulletin_template, copy_from: copyRef, with_roster, ...input } = a;
+      const template_id = tplRef != null ? resolveRef('service_template', tplRef) : tplId;
+      const copy_from = copyRef != null ? resolveRef('service', copyRef) : undefined;
+      if (slide_template != null) input.slide_theme_id = resolveRef('slide_template', slide_template);
+      if (bulletin_template != null) input.bulletin_template_id = resolveRef('bulletin_template', bulletin_template);
+      if (input.ref !== undefined) input.ref = cleanRef('service', input.ref);
       if (template_id && copy_from) throw new InputError('give template_id or copy_from, not both');
       if (copy_from) {
         return tx(() => {
@@ -326,8 +350,20 @@ export const SERVICE_TOOLS: ToolDef[] = [
   {
     name: 'canon_update_service', module: 'services', access: 'write', title: 'Update a service', annotations: { ...WRITE, idempotentHint: true },
     description: 'Change service details: date, start_time, title, preacher, sermon_title, sermon_ref, theme, languages, season, notes, and status ("draft" or "final" = ready to print / project). Only fields in patch change. bibles {lang: code} picks the Bible version per language for every reading (codes from canon_bible with no ref; {} = church default). bulletin_content {section_key: {lang: text}} sets the weekly bulletin sections, e.g. {"announcements":{"zh":"1. …"},"pastor_note":{"en":"…"}} (keys from the page layout of the bulletin template). ' + L10N_MERGE_NOTE + ' bulletin_content merges per section and language; a section set to {} is cleared. Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
-    input: { id: Id, patch: S.ServiceInput.partial() },
-    handler: (a) => serviceSummary(svc.services.update(a.id, servicePatch(a.id, a.patch))),
+    input: {
+      id: IdOrRef.describe('service id or its reference'),
+      patch: S.ServiceInput.partial(),
+      slide_template: IdOrRef.nullable().optional().describe('slide template id or reference; null = the church default'),
+      bulletin_template: IdOrRef.nullable().optional().describe('bulletin template id or reference; null = the church default'),
+    },
+    handler: (a) => {
+      const sid = resolveRef('service', a.id);
+      const patch = { ...a.patch };
+      if (a.slide_template !== undefined) patch.slide_theme_id = a.slide_template === null ? null : resolveRef('slide_template', a.slide_template);
+      if (a.bulletin_template !== undefined) patch.bulletin_template_id = a.bulletin_template === null ? null : resolveRef('bulletin_template', a.bulletin_template);
+      if (patch.ref !== undefined) patch.ref = cleanRef('service', patch.ref, sid);
+      return serviceSummary(svc.services.update(sid, servicePatch(sid, patch)));
+    },
   },
   {
     name: 'canon_edit_order', module: 'services', access: 'write', title: 'Edit the order of service', annotations: DESTRUCTIVE,
@@ -345,9 +381,17 @@ export const SERVICE_TOOLS: ToolDef[] = [
   // ======================================================== templates
   {
     name: 'canon_get_templates', module: 'templates', access: 'read', title: 'Get service templates', annotations: RO,
-    description: 'Service templates (standard orders of worship, e.g. Lord\'s Day morning, Lord\'s Supper). Without id: summaries (church_default marks the one the church normally starts from); with id: the template with its items (kind, title, song_key / text_key, scripture_ref, duration, role). Pass a template id to canon_create_service.',
-    input: { id: Id.optional() },
-    handler: (a) => (a.id ? svc.templates.get(a.id) : svc.templates.list('hidden = 0', [], 'id').map(templateSummary)),
+    description: 'Templates, by kind: "service" (default: standard orders of worship, e.g. Lord\'s Day morning, Lord\'s Supper), "slide" (projector slide templates) or "bulletin" (bulletin / order-of-service templates). Without id: the active ones with id, ref (the church\'s own reference, e.g. "EN-001"), name, church_default; a service template also shows its congregation and the slide / bulletin templates its services start with. With id (an id or a reference) and kind "service": the template with its items (kind, title, song_key / text_key, scripture_ref, duration, role). Pass a template id or reference to canon_create_service; slide / bulletin templates to canon_create_service or canon_update_service. Example: {"kind":"service","id":"CN-10pmService"}.',
+    input: { kind: z.enum(['service', 'slide', 'bulletin']).default('service'), id: IdOrRef.optional().describe('template id or reference') },
+    handler: (a) => {
+      if (a.kind !== 'service') {
+        const list = presentationSummary(a.kind);
+        if (a.id == null) return list;
+        const tid = resolveRef(a.kind === 'slide' ? 'slide_template' : 'bulletin_template', a.id);
+        return (a.kind === 'slide' ? P.listThemes() : P.listTemplates()).filter((x) => x.id === tid).map((x) => ({ id: x.id, ref: x.ref ?? undefined, name: x.name, archived: x.hidden || undefined, built_in: !!x.builtin || undefined }))[0];
+      }
+      return a.id != null ? svc.templates.get(resolveRef('service_template', a.id)) : svc.templates.list('hidden = 0', [], 'id').map(templateSummary);
+    },
   },
   {
     name: 'canon_save_service_as_template', module: 'templates', access: 'write', title: 'Save service as template', annotations: WRITE,
