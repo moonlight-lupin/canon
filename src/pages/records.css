@@ -44,7 +44,11 @@ input.invalid { border-color: var(--danger, #a33); }
   .decl { background: none; padding: 0; }
   .decl-page { box-shadow: none; margin: 0; }
 }
-.rec-settings { margin-bottom: 14px; padding: 10px 16px; } .rec-settings summary { cursor: pointer; font-weight: 600; }
+.rec-settings-link { margin: 0 0 12px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rec-off-head { align-items: center; flex-wrap: wrap; gap: 10px; }
+.rec-off-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-inline { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; margin: 0; }
+.rec-inline select { width: auto; margin: 0; }
 .rec-page fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
 .rec-lines select.rec-cur { width: auto; }
 .rec-lines td:nth-child(1) select { min-width: 120px; }

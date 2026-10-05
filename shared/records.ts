@@ -124,9 +124,20 @@ export function countProblems(r: Pick<ServiceRecord, 'offerings' | 'cash' | 'cur
   return out;
 }
 
-/** Money fingerprint: signatures belong to this exact count. */
-export const moneyKey = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) =>
-  JSON.stringify([r.currency, r.offerings.map((l) => [l.fund, l.method, l.amount, l.currency ?? '']), Object.entries(r.cash).filter(([, n]) => n).sort(), r.foreign_cash ?? {}]);
+/**
+ * Cash fingerprint: what a verified count and its signatures attest — the cash lines (in any order), the notes and
+ * coins counted and foreign cash. Offerings by other methods are not part of it: a transfer received later can be
+ * added without touching the count.
+ */
+export const cashKey = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) =>
+  JSON.stringify([
+    r.currency,
+    r.offerings.filter((l) => l.method === 'cash').map((l) => [l.fund, l.amount, l.currency ?? '']).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    Object.entries(r.cash).filter(([, n]) => n).sort(),
+    r.foreign_cash ?? {},
+  ]);
+/** @deprecated the cash fingerprint (kept for callers of v0.9) */
+export const moneyKey = cashKey;
 
 /** 12345 → "123.45" (with thousands separators). */
 export function money(minor: number, currency = 'SGD', withCode = false): string {

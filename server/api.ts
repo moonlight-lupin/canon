@@ -406,11 +406,13 @@ api.get('/services/:id/record', h((req) => {
 api.delete('/services/:id/record', requireAdmin, h((req) => rec.deleteRecord(id(req), recWho(req))));
 api.put('/services/:id/record', h((req) => rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req))));
 api.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));
+api.post('/services/:id/record/finish', h((req) => rec.finishSigning(id(req), recWho(req))));
 api.post('/services/:id/record/unsign', h((req) => rec.unsign(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name, recWho(req))));
 api.post('/services/:id/record/verify', h((req) => rec.setVerified(id(req), z.object({ verified: z.boolean() }).parse(req.body).verified, recWho(req))));
 api.put('/offering-settings', requireAdmin, h((req) => {
-  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30), signing: z.enum(['paper', 'screen']).optional() }).parse(req.body);
-  return updateSettings({ offering: { currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))], signing: b.signing ?? getSettings().offering.signing ?? 'paper' } }).offering;
+  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30), signing: z.enum(['paper', 'screen']).optional(), min_counters: z.number().int().min(2).max(6).optional() }).parse(req.body);
+  const cur = getSettings().offering;
+  return updateSettings({ offering: { currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))], signing: b.signing ?? cur.signing ?? 'paper', min_counters: b.min_counters ?? cur.min_counters ?? 2 } }).offering;
 }));
 
 // ---------------------------------------------------------------- library check (languages that drift apart, duplicates)

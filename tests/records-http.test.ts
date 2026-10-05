@@ -79,6 +79,17 @@ test('verified money cannot change without reopening, for editors (403) and admi
   assert.ok(r.body.verified_at);
 });
 
+test('after verification other offerings can still be added (the cash stays locked)', async () => {
+  const withTransfer = [...MONEY.offerings, { fund: 'Missions', method: 'transfer', amount: 3000 }];
+  const r = await call(as.editor, 'PUT', `/services/${sid}/record`, { attendance: 61, offerings: withTransfer });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.offerings.length, 3);
+  assert.ok(r.body.verified_at);
+  // turning that transfer into cash is a cash change
+  const asCash = [...MONEY.offerings, { fund: 'Missions', method: 'cash', amount: 3000 }];
+  assert.equal((await call(as.editor, 'PUT', `/services/${sid}/record`, { offerings: asCash })).status, 403);
+});
+
 test('viewers get no money of any currency, no contact details, no offerings report', async () => {
   const list = await call(as.viewer, 'GET', '/records?from=2034-02-01&to=2034-02-28');
   assert.equal(list.status, 200);

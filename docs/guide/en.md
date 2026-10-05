@@ -57,7 +57,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 | Import CSV; export personal data | ✓ | ✓ | — |
 | Send reminder e-mails | ✓ | ✓ | — |
 | Church defaults (slide, bulletin and service templates) | ✓ | — | — |
-| Settings: church, congregations, languages, users, e-mail, backups and restore, change log, AI / MCP | ✓ | — | — |
+| Settings: church, congregations, languages, users, offerings, e-mail, backups and restore, change log, AI / MCP | ✓ | — | — |
 | Add or delete Bibles | ✓ | — | — |
 
 An AI assistant always works as the person who connected it and never gets more than their role allows (see [AI assistants](#ai-assistants)).
@@ -245,14 +245,14 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 - **Attendance**: **People present** (adults and children), **of whom children**, and **Online** if you stream.
 - **New visitors**: name, contact, **How they came**, **Follow-up by**, **Follow-up** (New, Contacted, Came back, Joined the church) and notes. Visitors' details are personal data: record only what the church needs to follow up.
 - **Notes for the team**: what went well, what to fix, prayer needs.
-- **Offerings**: one line per fund and method (cash, cheque, bank transfer, PayNow, card), with totals per method. Administrators set the **Currency and funds** at the top of the list.
+- **Offerings**: one line per fund and method (cash, cheque, bank transfer, PayNow, card), with totals per method. Administrators set the currency and the funds in **Settings → Offerings**.
 - **Another currency**: when a gift comes in another currency (say a USD note in an SGD church), set that line's **Currency** (pick **Other…** to type any three-letter code, e.g. THB). Each currency is totalled on its own and never converted: the list and the totals show the church's currency, with the others listed underneath (“+ USD 20.00”).
 - **Cash count**: the number of each note and coin; Canon adds them up and shows any difference from the cash lines. Cash in another currency gets its own count under **Cash in USD** (or just a **Counted total** for currencies Canon has no notes and coins for), and an optional **Value once exchanged** in the church's currency for the treasurer (not added to the totals). Every currency's count must match its cash lines.
-- **Signing the count**: administrators choose under **Currency and funds** how counters sign:
-  - **On paper** (the default): enter at least two **Counted by** names and the **Date counted** (pick it from the calendar; left empty, the service date is used), print the declaration for them to sign — their names and the date are already filled in — then **Mark as counted and verified**.
-  - **On screen**: once every count matches, each counter types their name and signs on the record with a finger, pen or mouse (**Sign the count**). When two have signed, the count is verified. The signatures belong to that exact count: if an administrator reopens the count, or the money changes before the second signature, the signatures are removed and the counters sign again.
+- **Signing the count**: administrators choose in **Settings → Offerings** how counters sign, and the **Minimum counters** (2 by default; more may always count and sign):
+  - **On paper** (the default): enter at least the minimum number of **Counted by** names and the **Date counted** (pick it from the calendar; left empty, the service date is used), print the declaration for them to sign — their names and the date are already filled in — then **Mark as counted and verified**.
+  - **On screen**: once every count matches, each counter types their name and signs on the record with a finger, pen or mouse (**Sign the count**). Any number may sign. When everyone has signed — at least the minimum — press **Finish – all counters have signed**: that verifies the count. The signatures belong to that exact cash: if an administrator reopens the count, or the cash changes before finishing, the signatures are removed and the counters sign again.
 
-  After verification the money is locked for everyone. To correct it, an administrator presses **Reopen cash count**, changes it, and the count is verified (or signed) again. Attendance, visitors and notes can still be updated.
+  After verification the cash is locked for everyone: cash lines, the notes and coins counted, the counters and the date. Offerings by other methods can still be added — for example a bank transfer that arrives later. To correct the cash, an administrator presses **Reopen cash count**, changes it, and the count is verified (or signed) again. Attendance, visitors and notes can still be updated.
 - **Deleting**: a service that has a record cannot be deleted, so its attendance and offerings are never lost by accident. If a record was entered by mistake, an administrator can **Delete record** on the record page (a verified count must be reopened first); the change log keeps a copy, offerings in full.
 - **Print cash-count declaration** prints an A4 page with the count (each currency separately), the totals by method, a short declaration, and the counters' signatures — drawn on screen, or blank name, signature and date lines to sign on paper. Churches that sign on screen can still print blank lines as a fallback before anyone has signed.
 
@@ -276,6 +276,7 @@ Open [Settings](/settings).
 
 - **My profile** (everyone): display name, interface language, **Change password**.
 - **Church**, **Languages**, **Users & access**: see [Getting started](#getting-started).
+- **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).
 - **E-mail**: choose the **Provider** (Gmail, Microsoft 365 or other), fill in the SMTP details and **Save**, then **Send test**. Gmail needs an app password.
 - **Change log** (administrators): every change made in Canon, by an AI agent or by a CSV import — who, when, how, and each field's old → new value. Filter by what (members, services, songs…), who, how, added / changed / deleted, dates or words, and page through older entries. **Keep** sets how many months are kept (older entries are deleted once a day). Passwords are never recorded. A member's **History** button shows the changes to that person.
 - **AI / MCP**: see below.

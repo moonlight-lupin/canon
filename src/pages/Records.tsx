@@ -75,7 +75,7 @@ export default function Records() {
             <div className="card"><div className="small muted">{t('New visitors')}</div><div className="rec-big">{visitors}</div></div>
             {seeMoney && <div className="card"><div className="small muted">{t('Offerings')}</div><div className="rec-big">{money(offerings, currency, true)}</div>{[...others].map(([c, v]) => <div key={c} className="small muted">+ {money(v, c, true)}</div>)}{unverified > 0 && <div className="small warn-text">{t('{n} cash counts not yet verified').replace('{n}', String(unverified))}</div>}</div>}
           </div>
-          {isAdmin && <OfferingSettings />}
+          {isAdmin && <div className="small muted rec-settings-link"><Icon name="settings" width={13} height={13} /> {t('Currency, funds and how counters sign are set in')} <Link to="/settings?tab=offerings">{t('Settings → Offerings')}</Link></div>}
           {!rows.length ? <div className="card"><Empty title={t('No services in this period')} /></div> : (
             <div className="card flush table-wrap">
               <table className="t">
@@ -107,38 +107,6 @@ export default function Records() {
   );
 }
 
-/** Administrators: the currency counted and the funds offerings can go to. */
-function OfferingSettings() {
-  const { t } = useI18n();
-  const { settings, reloadSettings } = useSession();
-  const { run, busy } = useAction();
-  const cur = settings?.offering ?? { currency: 'SGD', funds: ['General'], signing: 'paper' as const };
-  const [currency, setCurrency] = useState(cur.currency);
-  const [funds, setFunds] = useState(cur.funds.join('\n'));
-  const [signing, setSigning] = useState<'paper' | 'screen'>(cur.signing ?? 'paper');
-  const save = () => run(async () => {
-    await api.put('/offering-settings', { currency, funds: funds.split('\n').map((f) => f.trim()).filter(Boolean), signing });
-    reloadSettings();
-  }, t('Saved.'));
-  return (
-    <details className="card rec-settings">
-      <summary>{t('Currency and funds')}</summary>
-      <div className="row" style={{ gap: 16, alignItems: 'flex-start', marginTop: 10, flexWrap: 'wrap' }}>
-        <Field label={t('Currency')}>
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-        </Field>
-        <Field label={<>{t('Funds')} <InfoTip text={t('One per line, e.g. General, Missions, Building. They appear in the offerings list of every record.')} /></>}>
-          <textarea rows={4} value={funds} onChange={(e) => setFunds(e.target.value)} style={{ width: 240 }} />
-        </Field>
-        <Field label={<>{t('Signing the count')} <InfoTip text={t('On paper: print the declaration, the counters sign it, then mark the count as verified. On screen: each counter signs on the record with a finger, pen or mouse; when two have signed, the count is verified and their signatures are printed on the declaration.')} /></>}>
-          <Seg value={signing} onChange={setSigning} options={[{ value: 'paper', label: t('On paper') }, { value: 'screen', label: t('On screen') }]} />
-        </Field>
-        <button className="btn primary" style={{ alignSelf: 'flex-end' }} onClick={save} disabled={busy}>{t('Save')}</button>
-      </div>
-    </details>
-  );
-}
-
 // ================================================================= one service's record
 
 type Rec = ServiceRecord & { saved: boolean; hidden?: string[] };
@@ -159,6 +127,7 @@ export function RecordEditor() {
   }, [rec.data]);
   const funds = settings?.offering?.funds ?? ['General'];
   const onScreen = settings?.offering?.signing === 'screen';
+  const minCount = Math.min(6, Math.max(2, settings?.offering?.min_counters ?? 2));
   const [signer, setSigner] = useState('');
   const [ink, setInk] = useState<string | null>(null);
   const [padKey, setPadKey] = useState(0);
@@ -182,7 +151,7 @@ export function RecordEditor() {
   const body = () => restricted
     ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes }
     : locked
-      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors }
+      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings }
       : {
         attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency, counted_on: d.counted_on ?? null,
         // counts of currencies no longer in the offerings are dropped
@@ -200,6 +169,11 @@ export function RecordEditor() {
       rec.setData({ ...r, saved: true });
     }, v ? t('Marked as counted and verified.') : t('Reopened.'));
   };
+  const finish = () => run(async () => {
+    if (dirty) await api.put(`/services/${sid}/record`, body());
+    const r = await api.post<Rec>(`/services/${sid}/record/finish`, {});
+    rec.setData({ ...r, saved: true });
+  }, t('Signing finished: the count is verified.'));
   const sign = () => run(async () => {
     if (dirty || !d.saved) await api.put(`/services/${sid}/record`, body());
     const r = await api.post<Rec>(`/services/${sid}/record/sign`, { name: signer, image: ink });
@@ -286,23 +260,24 @@ export function RecordEditor() {
         </section>
 
         {!restricted && (
-          <fieldset disabled={locked} className="bare stack">
+          <div className="stack">
             <section className="card stack">
-              <div className="row between">
+              <div className="row between rec-off-head">
                 <h3>{t('Offerings')} <InfoTip text={t('One line per fund and payment method, e.g. General · Cash, Missions · Bank transfer.')} /></h3>
-                <div className="row">
-                  <label className="small muted row" style={{ gap: 6 }}>{t('Currency')}
-                    <select className="mini" value={cur} onChange={(e) => set({ currency: e.target.value, cash: {} })}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+                <div className="rec-off-tools">
+                  <label className="rec-inline small muted">{t('Currency')}
+                    <select className="mini" value={cur} disabled={locked} onChange={(e) => set({ currency: e.target.value, cash: {} })}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
                   </label>
-                  <button className="btn sm" onClick={() => set({ offerings: [...d.offerings, { fund: funds[0] ?? 'General', method: 'cash', amount: 0 }] })}><Icon name="plus" />{t('Add line')}</button>
+                  <button className="btn sm" onClick={() => set({ offerings: [...d.offerings, { fund: funds[0] ?? 'General', method: locked ? 'transfer' : 'cash', amount: 0 }] })}><Icon name="plus" />{t('Add line')}</button>
                 </div>
               </div>
+              {locked && <div className="small muted">{t('The cash is verified and locked. Offerings by other methods (e.g. a bank transfer received later) can still be added.')}</div>}
               {d.offerings.length === 0 ? <div className="small muted">{t('No offerings entered yet.')}</div> : (
                 <div className="table-wrap"><table className="t rec-lines">
                   <thead><tr><th>{t('Fund')}</th><th>{t('Method')}</th><th>{t('Currency')} <InfoTip text={t('For the odd gift in another currency, e.g. a USD note. Each currency is counted and totalled on its own; nothing is converted.')} /></th><th className="right">{t('Amount')}</th><th>{t('Note')}</th><th /></tr></thead>
                   <tbody>
                     {d.offerings.map((l, i) => (
-                      <OfferingRow key={i} line={l} funds={funds} currency={cur}
+                      <OfferingRow key={i} line={l} funds={funds} currency={cur} cashLocked={locked}
                         onChange={(p) => set({ offerings: d.offerings.map((x, j) => (j === i ? { ...x, ...p } : x)) })}
                         onRemove={() => set({ offerings: d.offerings.filter((_, j) => j !== i) })} />
                     ))}
@@ -320,6 +295,7 @@ export function RecordEditor() {
               )}
             </section>
 
+            <fieldset disabled={locked} className="bare stack">
             <section className="card stack">
               <div className="row between">
                 <h3>{t('Cash count')} <InfoTip text={t('Count the notes and coins; Canon adds them up. The count must match the cash lines above before it can be verified.')} /></h3>
@@ -354,24 +330,25 @@ export function RecordEditor() {
                 <input type="date" value={d.counted_on ?? ''} max={today()} onChange={(e) => set({ counted_on: e.target.value || null })} style={{ width: 170 }} />
               </Field>
               {!onScreen && (
-                <Field label={<>{t('Counted by')} <InfoTip text={t('At least two people count the cash together and sign the declaration.')} /></>}>
+                <Field label={<>{t('Counted by')} <InfoTip text={t('At least {n} people count the cash together and sign the declaration.').replace('{n}', String(minCount))} /></>}>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                    {[...d.counters, ...Array(Math.max(0, 2 - d.counters.length)).fill('')].map((c: string, i: number) => (
+                    {[...d.counters, ...Array(Math.max(0, minCount - d.counters.length)).fill('')].map((c: string, i: number) => (
                       <input key={i} value={c} placeholder={`${t('Counter')} ${i + 1}`} style={{ width: 200 }}
-                        onChange={(e) => { const next = [...d.counters, ...Array(Math.max(0, 2 - d.counters.length)).fill('')]; next[i] = e.target.value; set({ counters: next }); }} />
+                        onChange={(e) => { const next = [...d.counters, ...Array(Math.max(0, minCount - d.counters.length)).fill('')]; next[i] = e.target.value; set({ counters: next }); }} />
                     ))}
-                    {d.counters.length >= 2 && d.counters.length < 6 && <button className="btn sm ghost" onClick={() => set({ counters: [...d.counters, ''] })}><Icon name="plus" />{t('Add counter')}</button>}
+                    {d.counters.length >= minCount && d.counters.length < 6 && <button className="btn sm ghost" onClick={() => set({ counters: [...d.counters, ''] })}><Icon name="plus" />{t('Add counter')}</button>}
                   </div>
                 </Field>
               )}
             </section>
-          </fieldset>
+            </fieldset>
+          </div>
         )}
       </fieldset>
 
       {!restricted && onScreen && (
         <section className="card stack rec-signing">
-          <h3>{t('Counters’ signatures')} <InfoTip text={t('Each counter signs here with a finger, pen or mouse once the count matches. When two have signed, the count is verified. Changing the money afterwards removes the signatures.')} /></h3>
+          <h3>{t('Counters’ signatures')} <InfoTip text={t('Each counter signs here with a finger, pen or mouse once the count matches. When everyone has signed (at least the church’s minimum), press Finish signing to verify the count. Changing the cash before that removes the signatures.')} /></h3>
           {sigs.length > 0 && (
             <div className="rec-sigs">
               {sigs.map((g) => (
@@ -390,10 +367,17 @@ export function RecordEditor() {
             <div className="small muted">{t('Signing opens when the offerings are entered and every cash count matches its cash lines.')}</div>
           ) : (
             <div className="stack">
-              <div className="small muted">{sigs.length === 0 ? t('First counter: type your name and sign below.') : t('Second counter: type your name and sign below.')}</div>
+              <div className="small muted">
+                {sigs.length === 0 ? t('First counter: type your name and sign below.') : t('Next counter: type your name and sign below.')}
+                {' '}{t('{n} signed · at least {m} needed').replace('{n}', String(sigs.length)).replace('{m}', String(minCount))}
+              </div>
               <input value={signer} onChange={(e) => setSigner(e.target.value)} placeholder={t('Your name')} style={{ maxWidth: 320 }} />
               <SignaturePad key={padKey} onChange={setInk} />
-              <div><button className="btn primary" onClick={sign} disabled={busy || !signer.trim() || !ink}><Icon name="check" />{t('Sign the count')}</button></div>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn" onClick={sign} disabled={busy || !signer.trim() || !ink}><Icon name="edit" />{t('Sign the count')}</button>
+                {sigs.length >= minCount && <button className="btn primary" onClick={finish} disabled={busy || !!signer.trim() || !!ink}><Icon name="check" />{t('Finish – all counters have signed')}</button>}
+              </div>
+              {sigs.length >= minCount && (!!signer.trim() || !!ink) && <div className="small muted">{t('Sign or clear the pad before finishing.')}</div>}
             </div>
           )}
         </section>
@@ -408,13 +392,15 @@ export function RecordEditor() {
           : !onScreen && <button className="btn" onClick={() => verify(true)} disabled={busy || !d.offerings.length}><Icon name="check" />{t('Mark as counted and verified')}</button>)}
         {canEdit && <button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button>}
       </div>
-      {locked && !restricted && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified, so the offerings are locked. To correct them, an administrator reopens the count; it is then verified again.')}</div>}
+      {locked && !restricted && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified, so the cash is locked. To correct it, an administrator reopens the count; it is then verified again.')}</div>}
     </div>
   );
 }
 
-function OfferingRow({ line, funds, currency: main, onChange, onRemove }: { line: OfferingLine; funds: string[]; currency: string; onChange: (p: Partial<OfferingLine>) => void; onRemove: () => void }) {
+function OfferingRow({ line, funds, currency: main, cashLocked, onChange, onRemove }: { line: OfferingLine; funds: string[]; currency: string; cashLocked?: boolean; onChange: (p: Partial<OfferingLine>) => void; onRemove: () => void }) {
   const { t } = useI18n();
+  // once the count is verified, cash lines are fixed and other lines cannot become cash
+  const frozen = !!cashLocked && line.method === 'cash';
   const currency = line.currency ?? main;
   const [text, setText] = useState(line.amount ? money(line.amount, currency).replace(/,/g, '') : '');
   const bad = parseMoney(text, currency) === null;
@@ -429,27 +415,27 @@ function OfferingRow({ line, funds, currency: main, onChange, onRemove }: { line
   return (
     <tr>
       <td>
-        <select value={line.fund} onChange={(e) => onChange({ fund: e.target.value })}>
+        <select value={line.fund} disabled={frozen} onChange={(e) => onChange({ fund: e.target.value })}>
           {[...new Set([...funds, line.fund])].map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
       </td>
       <td>
-        <select value={line.method} onChange={(e) => onChange({ method: e.target.value as OfferingMethod })}>
-          {OFFERING_METHODS.map((m) => <option key={m} value={m}>{t(METHOD_LABEL[m])}</option>)}
+        <select value={line.method} disabled={frozen} onChange={(e) => onChange({ method: e.target.value as OfferingMethod })}>
+          {OFFERING_METHODS.filter((m) => !cashLocked || frozen || m !== 'cash').map((m) => <option key={m} value={m}>{t(METHOD_LABEL[m])}</option>)}
         </select>
       </td>
       <td>
-        <select className="rec-cur" value={currency} onChange={(e) => pickCurrency(e.target.value)}>
+        <select className="rec-cur" value={currency} disabled={frozen} onChange={(e) => pickCurrency(e.target.value)}>
           {[...new Set([main, ...CURRENCIES, currency])].map((c) => <option key={c} value={c}>{c}</option>)}
           <option value="…">{t('Other…')}</option>
         </select>
       </td>
       <td className="right">
-        <input inputMode="decimal" className={bad ? 'invalid' : ''} style={{ width: 130, textAlign: 'right' }} value={text}
+        <input inputMode="decimal" disabled={frozen} className={bad ? 'invalid' : ''} style={{ width: 130, textAlign: 'right' }} value={text}
           onChange={(e) => { setText(e.target.value); const v = parseMoney(e.target.value, currency); if (v !== null) onChange({ amount: v }); }} />
       </td>
       <td><input value={line.note ?? ''} onChange={(e) => onChange({ note: e.target.value || undefined })} /></td>
-      <td><button className="btn sm ghost icon danger" onClick={onRemove} aria-label={t('Remove')}><Icon name="trash" /></button></td>
+      <td>{!frozen && <button className="btn sm ghost icon danger" onClick={onRemove} aria-label={t('Remove')}><Icon name="trash" /></button>}</td>
     </tr>
   );
 }

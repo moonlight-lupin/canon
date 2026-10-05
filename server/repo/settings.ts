@@ -50,7 +50,7 @@ export interface Settings {
   /** the service template New service starts from; null = the first one */
   default_service_template_id: number | null;
   /** service records: the currency counted and the funds offerings go to */
-  offering: { currency: string; funds: string[]; signing?: 'paper' | 'screen' };
+  offering: { currency: string; funds: string[]; signing?: 'paper' | 'screen'; min_counters?: number };
   /** how many months the change log and the AI activity log keep (0 = everything) */
   retention: { change_log_months: number; mcp_audit_months: number };
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
@@ -80,7 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   default_bulletin_template_id: null,
   default_service_template_id: null,
   retention: { change_log_months: 24, mcp_audit_months: 12 },
-  offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper' },
+  offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {

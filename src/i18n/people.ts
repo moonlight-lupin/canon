@@ -559,5 +559,21 @@ const zh: Record<string, string> = {
   // v0.10.2 — date counted
   "Date counted": "点算日期",
   "The day the cash was counted. It is printed on the declaration; left empty, the service date is used.": "点算现金的日期，会印在声明上；留空则使用聚会日期。",
+  // v0.10.3 — Settings → Offerings, minimum counters, finish signing, cash-only lock
+  "How offerings are recorded and the cash is counted on each service record (Records → Service records).": "每次聚会记录中如何记录奉献和点算现金（记录 → 聚会记录）。",
+  "On paper: print the declaration, the counters sign it, then mark the count as verified. On screen: each counter signs on the record with a finger, pen or mouse; when everyone has signed, Finish signing verifies the count and the signatures are printed on the declaration.": "纸本签名：打印声明，由点算同工签名，然后标记为已确认。屏幕签名：每位点算同工用手指、触控笔或鼠标在记录上签名；全部签好后按“完成签名”确认点算，签名会印在声明上。",
+  "Minimum counters": "最少点算人数",
+  "How many people at least must count the cash together: their names (on paper) or signatures (on screen) are needed before the count can be verified. More may always count and sign.": "至少要几个人一同点算现金：确认点算前须有他们的姓名（纸本）或签名（屏幕）。更多人一起点算和签名也可以。",
+  "Currency, funds and how counters sign are set in": "货币、奉献项目和点算签名方式在此设定：",
+  "Settings → Offerings": "设置 → 奉献",
+  "Signing finished: the count is verified.": "签名完成：点算已确认。",
+  "The cash is verified and locked. Offerings by other methods (e.g. a bank transfer received later) can still be added.": "现金已确认并锁定。其他方式的奉献（例如之后收到的银行转账）仍可加入。",
+  "At least {n} people count the cash together and sign the declaration.": "至少 {n} 人一同点算现金并在声明上签名。",
+  "Each counter signs here with a finger, pen or mouse once the count matches. When everyone has signed (at least the church’s minimum), press Finish signing to verify the count. Changing the cash before that removes the signatures.": "点算无误后，每位点算同工在此用手指、触控笔或鼠标签名。全部签好（至少达到教会规定的人数）后，按“完成签名”确认点算。在此之前若现金有改动，签名会被清除。",
+  "Next counter: type your name and sign below.": "下一位点算同工：请输入姓名并在下方签名。",
+  "{n} signed · at least {m} needed": "已签 {n} 人 · 至少需要 {m} 人",
+  "Finish – all counters have signed": "完成——所有点算同工已签名",
+  "Sign or clear the pad before finishing.": "完成前请先签名或清除签名板。",
+  "The cash count is verified, so the cash is locked. To correct it, an administrator reopens the count; it is then verified again.": "现金点算已确认，现金已锁定。如需更正，由管理员重新开启点算，之后须再次确认。",
 };
 export default zh;

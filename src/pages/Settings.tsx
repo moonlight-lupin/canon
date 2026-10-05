@@ -17,9 +17,10 @@ import { ChangeList, FilterBar, Pager, useLogQuery, type ChangeRow, type Paged }
 import type { Lang, McpConfig, ModuleAccess, ModuleKey, PaperSize, Role, Settings as SettingsT } from '../types-client.ts';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../types-client.ts';
 import { InfoTip } from '../components/InfoTip.tsx';
+import { OfferingsTab } from './settings/OfferingsTab.tsx';
 import './people.css';
 
-type Tab = 'church' | 'languages' | 'users' | 'email' | 'backups' | 'mcp' | 'changelog';
+type Tab = 'church' | 'languages' | 'users' | 'offerings' | 'email' | 'backups' | 'mcp' | 'changelog';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -27,7 +28,7 @@ export default function Settings() {
   // ?tab=email etc. opens a specific tab (used by links from other screens)
   const [tab, setTab] = useState<Tab>(() => {
     const q = new URLSearchParams(location.search).get('tab');
-    return q && ['church', 'languages', 'users', 'email', 'backups', 'changelog', 'mcp'].includes(q) ? (q as Tab) : 'church';
+    return q && ['church', 'languages', 'users', 'offerings', 'email', 'backups', 'changelog', 'mcp'].includes(q) ? (q as Tab) : 'church';
   });
   return (
     <div className="page people-page">
@@ -37,7 +38,7 @@ export default function Settings() {
         {isAdmin && (
           <div>
             <div className="tabs mt" role="tablist">
-              {([['church', 'Church'], ['languages', 'Languages'], ['users', 'Users & access'], ['email', 'E-mail'], ['backups', 'Backups'], ['changelog', 'Change log'], ['mcp', 'AI / MCP']] as [Tab, string][]).map(([k, l]) => (
+              {([['church', 'Church'], ['languages', 'Languages'], ['users', 'Users & access'], ['offerings', 'Offerings'], ['email', 'E-mail'], ['backups', 'Backups'], ['changelog', 'Change log'], ['mcp', 'AI / MCP']] as [Tab, string][]).map(([k, l]) => (
                 <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>
               ))}
             </div>
@@ -45,6 +46,7 @@ export default function Settings() {
             {tab === 'changelog' && <ChangeLogTab />}
             {tab === 'languages' && settings && <LanguagesPanel settings={settings} onSaved={reloadSettings} />}
             {tab === 'users' && <UsersTab />}
+            {tab === 'offerings' && <OfferingsTab />}
             {tab === 'email' && <EmailTab />}
             {tab === 'backups' && <BackupsTab />}
             {tab === 'mcp' && <McpTab />}

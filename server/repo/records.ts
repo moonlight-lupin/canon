@@ -1,9 +1,10 @@
 // Service records: one per service held — attendance, new visitors, notes for the team, offerings and the cash
-// count. Once the cash count is verified, the money is locked for everyone: an administrator reopens the count to
-// correct it, and it is verified again. A service with a record cannot be deleted (the record would go with it).
+// count. Once the cash count is verified, the cash is locked for everyone (offerings by other methods can still be
+// added, e.g. a transfer received later): an administrator reopens the count to correct the cash, and it is verified
+// again. A service with a record cannot be deleted (the record would go with it).
 // Every change goes to the change log (table() logs it with the person who made it).
 import type { ServiceRecord } from '../../shared/records.ts';
-import { DENOMINATIONS, OFFERING_METHODS, cashTotal, countProblems, foreignCurrencies, methodTotal, money, moneyKey } from '../../shared/records.ts';
+import { DENOMINATIONS, OFFERING_METHODS, cashKey, cashTotal, countProblems, foreignCurrencies, methodTotal, money } from '../../shared/records.ts';
 import type { Signature } from '../../shared/records.ts';
 import crypto from 'node:crypto';
 import { all, get, type SqlValue } from '../db.ts';
@@ -34,7 +35,9 @@ export function recordFor(serviceId: number): ServiceRecord & { saved: boolean }
 
 /** Fields locked once the count is verified (what the declaration attests). */
 const MONEY_FIELDS = ['offerings', 'cash', 'counters', 'currency', 'foreign_cash', 'counted_on'] as const;
-const hashOf = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) => crypto.createHash('sha256').update(moneyKey(r)).digest('base64url').slice(0, 16);
+const hashOf = (r: Pick<ServiceRecord, 'offerings' | 'cash' | 'currency' | 'foreign_cash'>) => crypto.createHash('sha256').update(cashKey(r)).digest('base64url').slice(0, 16);
+/** How many counters at least must count (names on paper, signatures on screen); 2–6, default 2. */
+export const minCounters = () => Math.min(6, Math.max(2, Math.floor(getSettings().offering.min_counters ?? 2)));
 /** How the church signs the cash count: on paper (default) or on screen. */
 export const signingMode = () => (getSettings().offering.signing === 'screen' ? 'screen' : 'paper');
 
@@ -44,11 +47,12 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
   // compare what is sent with what is stored: an unchanged copy of the money (the editor sends the whole record) is fine
   const sentMoney = Object.fromEntries(MONEY_FIELDS.filter((k) => patch[k] !== undefined).map((k) => [k, patch[k]]));
   const nextMoney = { ...cur, ...sentMoney } as ServiceRecord;
-  const moneyChanged = hashOf(nextMoney) !== hashOf(cur) || JSON.stringify(nextMoney.counters ?? []) !== JSON.stringify(cur.counters ?? [])
+  // what the verified count attests: the cash, its counters and date. Other offering lines may still change.
+  const cashChanged = hashOf(nextMoney) !== hashOf(cur) || JSON.stringify(nextMoney.counters ?? []) !== JSON.stringify(cur.counters ?? [])
     || (nextMoney.counted_on ?? null) !== (cur.counted_on ?? null);
-  if (cur.verified_at && moneyChanged) {
-    if (!who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can reopen it to change the offerings.');
-    throw new Conflict('The cash count has been verified. Reopen the cash count first (Reopen cash count), then change the offerings and verify it again.');
+  if (cur.verified_at && cashChanged) {
+    if (!who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can reopen it to change the cash.');
+    throw new Conflict('The cash count has been verified. Reopen the cash count first (Reopen cash count), then change the cash and verify it again.');
   }
   if (patch.offerings) {
     for (const l of patch.offerings) {
@@ -62,10 +66,10 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
     if (l.currency && !/^[A-Z]{3}$/.test(l.currency)) throw new BadRequest(`"${l.currency}" is not a currency code (three capital letters, e.g. USD)`);
   }
   const { id: _i, service_id: _s, saved: _v, updated_at: _u, verified_at: _va, verified_by: _vb, signatures: _sg, ...rest } = patch as ServiceRecord & { saved?: boolean };
-  if (!moneyChanged) for (const k of MONEY_FIELDS) delete (rest as Record<string, unknown>)[k];
-  // signatures belong to one exact count: when the money changes they no longer apply (the count is not verified here:
-  // a verified count cannot change, above)
-  if (cur.saved && moneyChanged && (cur.signatures?.length ?? 0) > 0) Object.assign(rest, { signatures: [] });
+  // drop fields sent unchanged (an editor's screen sends the whole record)
+  for (const k of MONEY_FIELDS) if (k in rest && JSON.stringify((rest as Record<string, unknown>)[k]) === JSON.stringify(cur[k] ?? null)) delete (rest as Record<string, unknown>)[k];
+  // signatures belong to one exact count: when the cash changes they no longer apply (a verified count cannot change, above)
+  if (cur.saved && cashChanged && (cur.signatures?.length ?? 0) > 0) Object.assign(rest, { signatures: [] });
   return cur.saved ? records.update(cur.id, rest) : records.insert({ ...blank(serviceId), ...rest });
 }
 
@@ -78,8 +82,9 @@ export function setVerified(serviceId: number, verified: boolean, who: { name: s
     // signatures confirmed the count being reopened: the counters sign again
     return records.update(cur.id, { verified_at: null, verified_by: null, ...(cur.signatures?.length ? { signatures: [] } : {}) });
   }
-  if (signingMode() === 'screen') throw new BadRequest('This church signs on screen: the count is verified when the counters have signed.');
-  if (cur.counters.filter((c) => c.trim()).length < 2) throw new BadRequest('Enter the names of at least two counters.');
+  if (signingMode() === 'screen') throw new BadRequest('This church signs on screen: the count is verified with Finish signing once the counters have signed.');
+  const min = minCounters();
+  if (cur.counters.filter((c) => c.trim()).length < min) throw new BadRequest(`Enter the names of at least ${min} counters.`);
   checkCount(cur);
   return records.update(cur.id, { verified_at: new Date().toISOString(), verified_by: who.name });
 }
@@ -94,7 +99,7 @@ function checkCount(r: ServiceRecord) {
 
 /**
  * A counter signs on screen (churches that sign on screen). The count must add up; the signature is tied to this
- * count. With two or more signatures the count is verified (and their names become the counters).
+ * count. Signing does not verify: any number of counters may sign, then Finish signing (finishSigning) verifies.
  */
 export function sign(serviceId: number, input: { name: string; image: string }, who: { name: string; admin: boolean }): ServiceRecord {
   if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper (Currency and funds → Signing).');
@@ -108,12 +113,22 @@ export function sign(serviceId: number, input: { name: string; image: string }, 
   const hash = hashOf(cur);
   const sigs = (cur.signatures ?? []).filter((s) => s.hash === hash && s.name.toLowerCase() !== name.toLowerCase());
   const next: Signature[] = [...sigs, { name: name.slice(0, 120), image: input.image, signed_at: new Date().toISOString(), by: who.name, hash }];
-  const done = next.length >= 2;
-  return records.update(cur.id, {
-    signatures: next,
-    counters: next.map((s) => s.name),
-    ...(done ? { verified_at: new Date().toISOString(), verified_by: next.map((s) => s.name).join(', ') } : {}),
-  });
+  return records.update(cur.id, { signatures: next, counters: next.map((s) => s.name) });
+}
+
+/** Everyone has signed: verify the count (at least the church's minimum number of signatures, for this exact count). */
+export function finishSigning(serviceId: number, who: { name: string; admin: boolean }): ServiceRecord {
+  if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper.');
+  const cur = recordFor(serviceId);
+  if (!cur.saved) throw new BadRequest('Enter the offerings first.');
+  if (cur.verified_at) throw new BadRequest('The cash count is already verified.');
+  checkCount(cur);
+  const hash = hashOf(cur);
+  const sigs = (cur.signatures ?? []).filter((s) => s.hash === hash);
+  const min = minCounters();
+  if (sigs.length < min) throw new BadRequest(`At least ${min} counters must sign before the count can be finished (${sigs.length} so far).`);
+  void who;
+  return records.update(cur.id, { signatures: sigs, counters: sigs.map((s) => s.name), verified_at: new Date().toISOString(), verified_by: sigs.map((s) => s.name).join(', ') });
 }
 
 /** Remove a signature (before the count is verified, or by an administrator — which reopens the count). */
@@ -121,7 +136,8 @@ export function unsign(serviceId: number, name: string, who: { name: string; adm
   const cur = recordFor(serviceId);
   if (cur.verified_at && !who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can remove a signature.');
   const next = (cur.signatures ?? []).filter((s) => s.name !== name);
-  return records.update(cur.id, { signatures: next, ...(next.length < 2 ? { verified_at: null, verified_by: null } : {}) });
+  // removing a signature from a verified count (administrators) reopens it
+  return records.update(cur.id, { signatures: next, counters: next.map((s) => s.name), ...(cur.verified_at ? { verified_at: null, verified_by: null } : {}) });
 }
 
 /** Refuse to delete a service that has a record: deleting the service would take its attendance and money with it. */
