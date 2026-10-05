@@ -14,6 +14,7 @@ process.env.CANON_DB = path.join(tmp, 'live', 'canon.db');
 
 const { MIGRATIONS, applyMigrations, preUpgradeDir, get, db } = await import('../server/db.ts');
 const B = await import('../server/repo/backups.ts');
+const S = await import('../server/repo/settings.ts');
 const LATEST = MIGRATIONS.length;
 const root = path.resolve(import.meta.dirname, '..');
 
@@ -126,6 +127,8 @@ test('a database from a newer Canon is refused and left untouched', () => {
 });
 
 test('an older backup can be restored: it is upgraded, and the data from before is kept as a backup', async () => {
+  // the safety copy a restore makes goes to this test's own folder, never the project's backups/
+  S.updateSettings({ backup: { dir: path.join(tmp, 'backups'), auto: 'off', keep: 5 } });
   const file = path.join(tmp, 'backup-from-v8.db');
   oldDatabase(file, 8);
   assert.equal(B.checkBackupFile(file), null);
@@ -133,7 +136,7 @@ test('an older backup can be restored: it is upgraded, and the data from before 
   assert.equal(r.restored_schema, 8);
   assert.equal(get<{ user_version: number }>('PRAGMA user_version')!.user_version, LATEST);
   assert.equal(get<{ last_name: string }>("SELECT last_name FROM people WHERE first_name = 'Tobias'")!.last_name, 'Fernleigh');
-  assert.ok(fs.existsSync(path.join(B.backupDir(), r.safety)), 'the data before the restore was saved');
+  assert.ok(fs.existsSync(path.join(tmp, 'backups', r.safety)), 'the data before the restore was saved');
   assert.ok(fs.readdirSync(preUpgradeDir()).some((n) => n.startsWith('canon-v8-before-')), 'the restored backup was copied before upgrading');
 
   const newer = path.join(tmp, 'backup-from-newer.db');
