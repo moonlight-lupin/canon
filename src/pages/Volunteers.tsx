@@ -7,6 +7,8 @@ import { useI18n } from '../i18n.tsx';
 import {
   Bi, Empty, ErrorBox, Field, L10nInput, Loading, Modal, PageHead, addDays, confirmAction, fmtDate, today, useAction, useSession, useToast,
 } from '../components/ui.tsx';
+import { CongregationFilter, useCongregationFilter } from '../components/Congregations.tsx';
+import { Combo } from '../components/Combo.tsx';
 import { Icon } from '../components/icons.tsx';
 import { CsvTools } from '../components/CsvTools.tsx';
 import type {
@@ -47,7 +49,8 @@ function RotaTab({ people }: { people: PersonRow[] }) {
   const { canEdit } = useSession();
   const [from, setFrom] = useState(today());
   const [to, setTo] = useState(addDays(today(), 56));
-  const { data, error, loading, reload, setData } = useApi<Rota>(`/rota${qs({ from, to })}`);
+  const [cong, setCong, congs] = useCongregationFilter('rota');
+  const { data, error, loading, reload, setData } = useApi<Rota>(`/rota${qs({ from, to, congregation: cong })}`);
   const { run, busy } = useAction();
 
   const away = (personId: number, date: string) =>
@@ -117,6 +120,7 @@ function RotaTab({ people }: { people: PersonRow[] }) {
         <div className="row">
           <Field label={t('From')}><input type="date" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} /></Field>
           <Field label={t('To')}><input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} /></Field>
+          <div style={{ alignSelf: 'flex-end' }}><CongregationFilter value={cong} onChange={setCong} list={congs} /></div>
           <div className="seg" role="group" style={{ alignSelf: 'flex-end' }}>
             {[4, 8, 12].map((n) => (
               <button key={n} type="button" className={to === addDays(from, n * 7) ? 'on' : ''} onClick={() => setWeeks(n)}>{n} {t('Weeks')}</button>
@@ -551,10 +555,9 @@ function AwayTab({ people }: { people: PersonRow[] }) {
           <h3 className="sect">{t('Add unavailability')}</h3>
           <div className="form-grid">
             <Field label={t('Person')}>
-              <select value={pid} onChange={(e) => setPid(e.target.value)}>
-                <option value="">—</option>
-                {sorted.filter(isActive).map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
-              </select>
+              <Combo value={pid} noneLabel="—" ariaLabel={t('Person')}
+                options={sorted.filter(isActive).map((p) => ({ value: String(p.id), label: fullName(p), search: [p.first_name, p.last_name, p.native_name, p.preferred_name].filter(Boolean).join(' ') }))}
+                onChange={setPid} />
             </Field>
             <Field label={t('From')}><input type="date" value={from} onChange={(e) => { setFrom(e.target.value); if (to < e.target.value) setTo(e.target.value); }} /></Field>
             <Field label={t('To')}><input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} /></Field>

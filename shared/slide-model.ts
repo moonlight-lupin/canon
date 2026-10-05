@@ -43,7 +43,7 @@ export interface SlideDef {
   posture?: Posture;
   /** 'blocks' slides: the QR codes, pictures and notes to show (1–4, in a row) */
   blocks?: RenderedSlideBlock[];
-  /** the item's own background picture (a picture block), instead of the template's */
+  /** the item's own background picture (Library → Slide backgrounds), instead of the template's */
   bg?: { id: number; v: string };
 }
 

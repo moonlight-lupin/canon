@@ -162,18 +162,6 @@
 .tp-savebar-msg { flex: 1; font-size: 13px; }
 .tp-savebar .btn.ghost { color: var(--paper); }
 
-/* the small "?" tooltips */
-.tp-tip {
-  position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 4px; vertical-align: 1px;
-  border-radius: 999px; border: 1px solid var(--rule-strong); color: var(--ink-3); font: 600 10.5px/1 var(--sans); cursor: help; text-transform: none; letter-spacing: 0;
-}
-.tp-tip:hover, .tp-tip:focus-visible { color: var(--lapis); border-color: var(--lapis); outline: none; }
-.tp-tip:hover::after, .tp-tip:focus-visible::after {
-  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 40;
-  width: max-content; max-width: 280px; padding: 8px 10px; border-radius: 8px; background: var(--ink); color: var(--paper);
-  font: 400 12.5px/1.45 var(--sans); white-space: normal; text-align: left; box-shadow: 0 6px 20px rgb(20 24 32 / 0.25); pointer-events: none;
-}
-
 @media (max-width: 1100px) {
   .tp-editor { grid-template-columns: minmax(0, 1fr); }
   .tp-preview { position: static; max-height: none; order: -1; }
@@ -181,5 +169,4 @@
 @media (max-width: 640px) {
   .tp-step-body { padding-left: 16px; }
   .tp-preview-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tp-tip:hover::after, .tp-tip:focus-visible::after { left: auto; right: -10px; transform: none; }
 }

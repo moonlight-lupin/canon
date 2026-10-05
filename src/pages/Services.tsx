@@ -6,6 +6,7 @@ import { useI18n } from '../i18n.tsx';
 import { Bi, Empty, ErrorBox, Field, L10nInput, Loading, Modal, PageHead, Seg, fmtDate, nextSunday, today, useAction, useSession } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import { SeasonChip } from '../components/brand.tsx';
+import { CongregationBadge, CongregationField, CongregationFilter, useCongregationFilter } from '../components/Congregations.tsx';
 import type { L10n, ServiceFull, ServiceListRow, Template } from '../types-client.ts';
 
 export default function Services() {
@@ -14,7 +15,8 @@ export default function Services() {
   const seasons = settings?.season_colours !== false;
   const [params, setParams] = useSearchParams();
   const [when, setWhen] = useState<'upcoming' | 'past'>('upcoming');
-  const path = when === 'upcoming' ? `/services${qs({ from: today() })}` : `/services${qs({ to: today(), limit: 100 })}`;
+  const [cong, setCong, congs] = useCongregationFilter('services');
+  const path = when === 'upcoming' ? `/services${qs({ from: today(), congregation: cong })}` : `/services${qs({ to: today(), limit: 100, congregation: cong })}`;
   const { data, error } = useApi<ServiceListRow[]>(path);
   const creating = params.get('new') !== null;
   const nav = useNavigate();
@@ -22,6 +24,7 @@ export default function Services() {
   return (
     <div className="page">
       <PageHead eyebrow={t('Service Planner')} title={t('Services')}>
+        <CongregationFilter value={cong} onChange={setCong} list={congs} />
         <Seg value={when} onChange={setWhen} options={[{ value: 'upcoming', label: t('Upcoming') }, { value: 'past', label: t('Past') }]} />
         {canEdit && <button className="btn primary" onClick={() => setParams({ new: '' })}><Icon name="plus" />{t('New service')}</button>}
       </PageHead>
@@ -46,7 +49,7 @@ export default function Services() {
                     {seasons && <SeasonChip dotOnly date={s.date} season={s.season} className="svc-season" />}
                     <Link to={`/services/${s.id}`} onClick={(e) => e.stopPropagation()}><strong>{fmtDate(s.date, lang)}</strong></Link> <span className="muted">{s.start_time}</span>
                   </td>
-                  <td><Bi v={s.title} />{hasAnyText(s.sermon_title) && <div className="small muted serif">“{s.sermon_title[lang] || s.sermon_title.en || s.sermon_title.zh}”{s.sermon_ref ? ` · ${s.sermon_ref}` : ''}</div>}</td>
+                  <td><CongregationBadge id={s.congregation_id} list={congs} /> <Bi v={s.title} />{hasAnyText(s.sermon_title) && <div className="small muted serif">“{s.sermon_title[lang] || s.sermon_title.en || s.sermon_title.zh}”{s.sermon_ref ? ` · ${s.sermon_ref}` : ''}</div>}</td>
                   <td>{s.preacher}</td>
                   <td className="right">{s.item_count}</td>
                   <td className="right">{s.assigned_count}</td>
@@ -57,12 +60,12 @@ export default function Services() {
           </table>
         </div>
       )}
-      {creating && <NewServiceDialog initialTemplate={Number(params.get('template')) || null} onClose={() => setParams({})} />}
+      {creating && <NewServiceDialog initialTemplate={Number(params.get('template')) || null} initialCongregation={cong} onClose={() => setParams({})} />}
     </div>
   );
 }
 
-export function NewServiceDialog({ onClose, initialTemplate }: { onClose: () => void; initialTemplate?: number | null }) {
+export function NewServiceDialog({ onClose, initialTemplate, initialCongregation }: { onClose: () => void; initialTemplate?: number | null; initialCongregation?: number | null }) {
   const { t, lt } = useI18n();
   const nav = useNavigate();
   const { run, busy } = useAction();
@@ -75,10 +78,14 @@ export function NewServiceDialog({ onClose, initialTemplate }: { onClose: () => 
   const { settings } = useSession();
   const churchDefault = templates?.find((x) => x.id === settings?.default_service_template_id)?.id ?? templates?.[0]?.id ?? null;
   const tid = templateId ?? churchDefault;
+  // congregation: chosen here, else the filter's, else the template's
+  const [congPick, setCongPick] = useState<number | null | undefined>(undefined);
+  const tplCong = templates?.find((x) => x.id === tid)?.congregation_id ?? null;
+  const congregation = congPick !== undefined ? congPick : initialCongregation ?? tplCong;
 
   const create = async () => {
     const r = await run(() => api.post<{ service: ServiceFull; missing: string[] }>('/services', {
-      date, template_id: tid === -1 ? null : tid, preacher: preacher || null, sermon_title: sermonTitle, sermon_ref: sermonRef || null,
+      date, template_id: tid === -1 ? null : tid, preacher: preacher || null, sermon_title: sermonTitle, sermon_ref: sermonRef || null, congregation_id: congregation ?? null,
     }));
     if (r) {
       onClose();
@@ -96,6 +103,7 @@ export function NewServiceDialog({ onClose, initialTemplate }: { onClose: () => 
       <div className="stack">
         <div className="form-grid">
           <Field label={t('Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+          <CongregationField value={congregation} onChange={setCongPick} hint={t('New services start with this congregation’s languages.')} />
           <Field label={t('Preacher')}><input value={preacher} onChange={(e) => setPreacher(e.target.value)} placeholder="Rev. Tan" /></Field>
           <Field label={t('Sermon text')}><input value={sermonRef} onChange={(e) => setSermonRef(e.target.value)} placeholder="Isaiah 6:1-8" /></Field>
         </div>

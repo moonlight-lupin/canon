@@ -2,6 +2,7 @@
 import type { Assignment, AssignmentStatus, ServiceRole, Team, Unavailability } from '../../shared/types.ts';
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
+import { ensureOnRoleTeam, isLeaderRole, teamGroupId } from './groups.ts';
 
 export const teams = table<Team>({ name: 'teams', cols: ['name', 'description', 'color', 'sort'], json: ['name'] });
 export const roles = table<ServiceRole>({ name: 'roles', cols: ['team_id', 'name', 'needed', 'sort'], json: ['name'] });
@@ -24,10 +25,12 @@ export function teamsWithRoles() {
   const members = all<{ role_id: number; person_id: number; name: string }>(
     `SELECT rm.role_id, rm.person_id, ${personName} AS name FROM role_members rm JOIN people p ON p.id = rm.person_id ORDER BY name`,
   );
-  // team roster (team_members): leaders first, then by name
-  const roster = all<{ team_id: number; person_id: number; name: string; is_leader: number }>(
-    `SELECT tm.team_id, tm.person_id, ${personName} AS name, tm.is_leader FROM team_members tm JOIN people p ON p.id = tm.person_id ORDER BY tm.is_leader DESC, name`,
-  );
+  // team roster: the current members of each team's "Serving team" group, leaders first, then by name
+  for (const t of ts) teamGroupId(t.id);
+  const roster = all<{ team_id: number; person_id: number; name: string; role: string | null }>(
+    `SELECT t.id AS team_id, gm.person_id, ${personName} AS name, gm.role FROM group_members gm JOIN teams t ON t.group_id = gm.group_id
+     JOIN people p ON p.id = gm.person_id WHERE gm.end_date IS NULL OR gm.end_date >= date('now') ORDER BY name`,
+  ).map((m) => ({ ...m, is_leader: isLeaderRole(m.role) ? 1 : 0 })).sort((a, b) => b.is_leader - a.is_leader);
   return ts.map((t) => ({
     ...t,
     roles: rs
@@ -44,7 +47,7 @@ export function setRoleMembers(roleId: number, personIds: number[]) {
     for (const pid of new Set(personIds)) {
       run('INSERT INTO role_members (role_id, person_id) VALUES (?, ?)', roleId, pid);
       // qualifying for a role puts the person on that role's team roster
-      run('INSERT OR IGNORE INTO team_members (team_id, person_id) SELECT team_id, ? FROM roles WHERE id = ?', pid, roleId);
+      ensureOnRoleTeam(roleId, pid);
     }
   });
 }
@@ -118,10 +121,10 @@ export function rosterWarnings(serviceId: number) {
 }
 
 /** Rota grid for services between two dates. */
-export function rota(from: string, to: string) {
-  const services = all<{ id: number; date: string; start_time: string; title: string; status: string }>(
-    'SELECT id, date, start_time, title, status FROM services WHERE date BETWEEN ? AND ? ORDER BY date, start_time',
-    from, to,
+export function rota(from: string, to: string, congregationId?: number) {
+  const services = all<{ id: number; date: string; start_time: string; title: string; status: string; congregation_id: number | null }>(
+    'SELECT id, date, start_time, title, status, congregation_id FROM services WHERE date BETWEEN ? AND ? AND (? IS NULL OR congregation_id = ?) ORDER BY date, start_time',
+    from, to, congregationId ?? null, congregationId ?? null,
   ).map((s) => ({ ...s, title: JSON.parse(s.title) }));
   const ids = services.map((s) => s.id);
   const cells = ids.length

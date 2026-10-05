@@ -34,6 +34,8 @@ export interface ToolDef {
   annotations: ToolAnnotations;
   /** only offered when the admin exposes member PII */
   requiresPii?: boolean;
+  /** offered on every connection, whatever the module settings (canon_whoami) */
+  always?: boolean;
   handler: (args: Args, ctx: Ctx) => unknown;
 }
 

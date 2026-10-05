@@ -15,6 +15,7 @@ Canon is a local-first church system (services → bulletins and slides, library
 
 ## Golden rules
 
+- **Know your access.** Call `canon_whoami` first when unsure: role, module access with reasons, contact-detail policy, congregations, tools and limits.
 - **Precedent first.** Before proposing or writing any plan, look at similar past services — `canon_find_services {"similar_to": <service id>}` or `{"like": {"date": …, "sermon_ref": …}}`, or `canon_get_service {"include_similar": true}` — and at hymn history (`canon_search_library` gives `last_used` / `times_12m` per song; pass `"before": <service date>`). Follow the church's usual order, hymns, durations and who serves; avoid hymns sung in the last ~4 weeks unless the church clearly repeats them; continue catechism series from `next_suggested_label` (`canon_get_library_item`). Say which past services your proposal is based on.
 - **Read freely, write only after a clear yes.** Summarise intended changes (a short table) and ask. Never bulk-delete; remove things only when the user asked for that specific removal.
 - **Batch writes are all-or-nothing** (`canon_edit_order`, `canon_update_rota`, `canon_update_team_members`, `canon_update_group_members`): if one op fails nothing is applied; fix the listed ops and resend the whole batch. Prefer one batch per service.
@@ -37,11 +38,12 @@ Each has an MCP prompt of the same name when your access allows it — use the p
 | Proofread before printing | `proofread_service` |
 | Catechism series over coming weeks | `catechism_series` |
 | Bring in an existing bulletin or slide deck | `convert_existing` |
+| Check for drift between languages and duplicates | `check_library` |
 | Fill missing translations | `translate_library` |
 | Birthdays and visitors to follow up | `member_care` |
 | Groups and committees overview | `group_overview` |
 
 ## References
 
-- `references/playbooks.md` — the nine playbooks step by step.
+- `references/playbooks.md` — the ten playbooks step by step.
 - `references/tools.md` — the tool catalogue by module, precedent lookups, item kinds, the Reformed order of worship and troubleshooting.

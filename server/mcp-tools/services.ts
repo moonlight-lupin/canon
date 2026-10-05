@@ -11,6 +11,16 @@ import { renderService, serviceAsText } from '../repo/render.ts';
 import { getSettings } from '../repo/settings.ts';
 import { listBlocks } from '../repo/presentation.ts';
 import { similarServices } from '../repo/history.ts';
+import { findCongregation, listCongregations } from '../repo/congregations.ts';
+import { get as dbGet } from '../db.ts';
+
+const bgName = (id: number) => dbGet<{ name: string }>('SELECT name FROM slide_backgrounds WHERE id = ?', id)?.name ?? '';
+
+/** "EN" / "English service" for a congregation id (undefined when none). */
+export const congregationLabel = (id: number | null | undefined) => {
+  const c = id ? listCongregations().find((x) => x.id === id) : undefined;
+  return c ? { id: c.id, code: c.code, name: c.name } : undefined;
+};
 import { DOWNLOAD_KINDS, MAX_LINK_HOURS, createLinks, type DownloadKind } from '../repo/downloads.ts';
 import { DESTRUCTIVE, DateStr, Id, InputError, L10N_MERGE_NOTE, Limit, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
@@ -25,6 +35,7 @@ export function serviceSummary(s: Service & { item_count?: number; assigned_coun
     start_time: s.start_time,
     title: s.title,
     status: s.status,
+    congregation: congregationLabel(s.congregation_id),
     preacher: s.preacher,
     sermon_title: l10n(s.sermon_title),
     sermon_ref: s.sermon_ref,
@@ -55,7 +66,7 @@ const parasToText = (paras: { who: string | null; text: string }[][]) =>
 function serviceDetail(id: number, includeText: boolean) {
   const full = svc.getServiceFull(id);
   const r = renderService(full);
-  const blockName = full.items.some((it) => it.slide_blocks?.length || it.slide_bg) ? new Map(listBlocks().map((b) => [b.id, b.name])) : new Map<number, string>();
+  const blockName = full.items.some((it) => it.slide_blocks?.length) ? new Map(listBlocks().map((b) => [b.id, b.name])) : new Map<number, string>();
   return {
     ...serviceSummary(full),
     end_time: r.end_time,
@@ -86,7 +97,7 @@ function serviceDetail(id: number, includeText: boolean) {
         // QR codes / notes projected after the item (deleted blocks are left out)
         slide_blocks: ri.slide_blocks.length ? ri.slide_blocks.map((b) => ({ id: b.id, name: blockName.get(b.id) ?? '', kind: b.kind })) : undefined,
         // the item's own slide background picture (a picture block), when it has one
-        slide_bg: ri.slide_bg ? { id: ri.slide_bg.id, name: blockName.get(ri.slide_bg.id) ?? '' } : undefined,
+        slide_background: ri.slide_bg ? { id: ri.slide_bg.id, name: bgName(ri.slide_bg.id) } : undefined,
       };
       if (ri.song) {
         out.song = {
@@ -247,6 +258,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
       q: z.string().max(200).optional(),
       similar_to: Id.optional().describe('service id: return similar earlier services'),
       like: Like.optional().describe('criteria for a service not created yet; date defaults to today'),
+      congregation: z.union([Id, z.string().max(40)]).optional().describe('congregation id, code or name (churches with several congregations)'),
       limit: z.number().int().min(1).max(200).optional().describe('default 30 (5 with similar_to / like, max 20)'),
     },
     handler: (a) => {
@@ -257,7 +269,9 @@ export const SERVICE_TOOLS: ToolDef[] = [
       }
       const limit = a.limit ?? 30;
       const q = a.q?.trim().toLowerCase();
-      const rows = svc.listServices({ from: a.from, to: a.to, limit: q ? 2000 : limit });
+      const c = a.congregation != null ? findCongregation(a.congregation) : undefined;
+      if (a.congregation != null && !c) throw new InputError(`unknown congregation ${JSON.stringify(a.congregation)} — canon_whoami lists them`);
+      const rows = svc.listServices({ from: a.from, to: a.to, limit: q ? 2000 : limit, congregation_id: c?.id });
       return (q ? rows.filter((s) => serviceMatches(s, q)).slice(0, limit) : rows).map(serviceSummary);
     },
   },
@@ -318,7 +332,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   {
     name: 'canon_edit_order', module: 'services', access: 'write', title: 'Edit the order of service', annotations: DESTRUCTIVE,
     description: 'Apply a batch of item operations to one service in a single transaction, in order: add {item, position?}, update {item_id, item: fields to change; title / body merge by language}, move {item_id, position}, remove {item_id}. All or nothing: if any op fails, nothing changes and per-op errors are returned. Returns the new order. ' +
-      'Item kinds: section|song|scripture|text|sermon|prayer|sacrament|offering|announcements|music|other. A song: ref_id = song id (canon_search_library), stanzas ["1","2","R"], hymnal_id picks which hymnal number shows. Liturgy: kind "text", ref_id = text id; for a catechism / confession in parts ALWAYS set stanzas to part labels, e.g. ["1","2","3"]. A reading: kind "scripture", scripture_ref "Psalm 23"; optional bibles {"en":"ESV"} overrides the service Bible version for that reading. posture "stand"|"sit"|"kneel" (null clears) prints 众立 / All stand etc. slide_blocks [block ids] projects QR codes / notes (Library → QR codes & notes, e.g. PayNow, Instagram) on one slide after the item, even when on_slides is false; canon_get_service lists the ids and names already in use; [] clears. slide_bg = the id of a picture block (kind image, from the same Library list) shown behind this item’s slides instead of the template’s background, e.g. bread and cup for the Lord’s Supper; null = the template’s. Ask the user before removing items. ' +
+      'Item kinds: section|song|scripture|text|sermon|prayer|sacrament|offering|announcements|music|other. A song: ref_id = song id (canon_search_library), stanzas ["1","2","R"], hymnal_id picks which hymnal number shows. Liturgy: kind "text", ref_id = text id; for a catechism / confession in parts ALWAYS set stanzas to part labels, e.g. ["1","2","3"]. A reading: kind "scripture", scripture_ref "Psalm 23"; optional bibles {"en":"ESV"} overrides the service Bible version for that reading. posture "stand"|"sit"|"kneel" (null clears) prints 众立 / All stand etc. slide_blocks [block ids] projects QR codes / notes (Library → QR codes & notes, e.g. PayNow, Instagram) on one slide after the item, even when on_slides is false; canon_get_service lists the ids and names already in use; [] clears. slide_background_id = a picture from Library → Slide backgrounds shown behind this item’s slides instead of the template’s background, e.g. bread and cup for the Lord’s Supper (canon_get_service lists the ones in use; ask the user for others); null = the template’s. Ask the user before removing items. ' +
       'Example: {"service_id":12,"ops":[{"op":"add","item":{"kind":"song","ref_id":40,"stanzas":["1","3"]},"position":2},{"op":"move","item_id":88,"position":0},{"op":"remove","item_id":91}]}.',
     input: { service_id: Id, ops: z.array(OrderOp).min(1).max(50) },
     handler: (a) => {

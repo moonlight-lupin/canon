@@ -1,8 +1,8 @@
-// CSV: volunteer team rosters (team_members, with role qualifications) and unavailability (away dates).
+// CSV: volunteer team rosters (each team's serving-team group, with role qualifications) and unavailability (away dates).
 import type { L10n, ServiceRole, Team, Unavailability } from '../../shared/types.ts';
 import { all, run } from '../db.ts';
 import { displayName } from '../repo/registers.ts';
-import { addTeamMember, setTeamLeader } from '../repo/groups.ts';
+import { addTeamMember, setTeamLeader, teamRoster } from '../repo/groups.ts';
 import { roles as roleTable, teams as teamTable, unavailability as unavTable } from '../repo/volunteers.ts';
 import { M, type Change, type Entity, type Msg, type RowPlan } from './engine.ts';
 import {
@@ -38,9 +38,7 @@ export const teamMembersCsv: Entity = {
     const rs = roleTable.list('', [], 'sort, id');
     const quals = all<{ role_id: number; person_id: number }>('SELECT role_id, person_id FROM role_members');
     const people = new Map(all<Parameters<typeof displayName>[0] & { id: number }>('SELECT * FROM people').map((p) => [p.id, p]));
-    return all<{ team_id: number; person_id: number; is_leader: number }>(
-      'SELECT tm.* FROM team_members tm JOIN teams t ON t.id = tm.team_id ORDER BY t.sort, t.id, tm.is_leader DESC, tm.person_id',
-    ).map((m) => ({
+    return teamRoster().sort((a, b) => (a.team_id === b.team_id ? b.is_leader - a.is_leader : 0)).map((m) => ({
       team: pickName(ts.get(m.team_id)!.name, ctx.langs),
       person_id: m.person_id,
       person: people.get(m.person_id) ? displayName(people.get(m.person_id)!) : '',
@@ -54,7 +52,7 @@ export const teamMembersCsv: Entity = {
     const rs = roleTable.list('', [], 'sort, id');
     const teamBy = new Map<string, Team>();
     for (const t of ts) for (const v of Object.values(t.name)) if (v) teamBy.set(nameKey(v), t);
-    const roster = all<{ team_id: number; person_id: number; is_leader: number }>('SELECT * FROM team_members');
+    const roster = teamRoster();
     const quals = all<{ role_id: number; person_id: number }>('SELECT role_id, person_id FROM role_members');
     const seen = new Map<string, number>();
     const roleName = (r: ServiceRole) => pickName(r.name, ctx.langs);

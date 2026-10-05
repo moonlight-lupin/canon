@@ -6,12 +6,15 @@ import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { songs, texts } from './library.ts';
 import { roleByName, roles, serviceAssignments } from './volunteers.ts';
 import { getSettings } from './settings.ts';
+import { listCongregations } from './congregations.ts';
+import { backgroundByName } from './backgrounds.ts';
 
 export const services = table<Service>({
   name: 'services',
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
     'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
+    'congregation_id',
   ],
   json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content'],
   touch: true,
@@ -21,15 +24,16 @@ export const items = table<ServiceItem>({
   name: 'service_items',
   cols: [
     'service_id', 'position', 'kind', 'title', 'ref_id', 'scripture_ref', 'stanzas', 'hymnal_id', 'bulletin_text', 'posture', 'bibles', 'slide_blocks', 'body', 'duration_min', 'role_id',
-    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_bg',
+    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id',
   ],
   json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks'],
   bool: ['in_bulletin', 'on_slides'],
+  log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
 });
 
 export const templates = table<Template>({
   name: 'templates',
-  cols: ['key', 'name', 'description', 'service_type', 'start_time', 'items'],
+  cols: ['key', 'name', 'description', 'service_type', 'start_time', 'items', 'congregation_id'],
   json: ['name', 'description', 'items'],
 });
 
@@ -54,15 +58,17 @@ export interface ServiceQuery {
   from?: string;
   to?: string;
   limit?: number;
+  /** only this congregation's services */
+  congregation_id?: number | null;
 }
 
 export function listServices(q: ServiceQuery = {}) {
   const rows = all<Record<string, unknown>>(
     `SELECT s.*, (SELECT COUNT(*) FROM service_items i WHERE i.service_id = s.id) AS item_count,
             (SELECT COUNT(*) FROM assignments a WHERE a.service_id = s.id AND a.status != 'declined') AS assigned_count
-     FROM services s WHERE (? IS NULL OR s.date >= ?) AND (? IS NULL OR s.date <= ?)
+     FROM services s WHERE (? IS NULL OR s.date >= ?) AND (? IS NULL OR s.date <= ?) AND (? IS NULL OR s.congregation_id = ?)
      ORDER BY s.date ${q.from && !q.to ? 'ASC' : 'DESC'}, s.start_time LIMIT ?`,
-    q.from ?? null, q.from ?? null, q.to ?? null, q.to ?? null, q.limit ?? 200,
+    q.from ?? null, q.from ?? null, q.to ?? null, q.to ?? null, q.congregation_id ?? null, q.congregation_id ?? null, q.limit ?? 200,
   );
   return rows.map((r) => ({ ...services.decode(r)!, item_count: r.item_count as number, assigned_count: r.assigned_count as number }));
 }
@@ -119,11 +125,12 @@ function validateRefs(input: Partial<ServiceItem>) {
   if (input.role_id != null && !roles.find(input.role_id)) throw new BadRequest(`role ${input.role_id} not found`);
 }
 
-/** A slide background must be a picture from Library → QR codes & notes that has an image uploaded. */
+/** A slide background must be a picture in Library → Slide backgrounds. */
 function validateBackground(input: Partial<ServiceItem>) {
-  if (input.slide_bg == null) return;
-  const ok = get<{ n: number }>("SELECT COUNT(*) AS n FROM bulletin_blocks b JOIN assets a ON a.key = 'bulletin-block-' || b.id WHERE b.id = ? AND b.kind = 'image'", input.slide_bg);
-  if (!ok?.n) throw new BadRequest(`slide_bg ${input.slide_bg} is not a picture in Library → QR codes & notes (upload one there first)`);
+  if (input.slide_background_id == null) return;
+  if (!get('SELECT 1 FROM slide_backgrounds WHERE id = ?', input.slide_background_id)) {
+    throw new BadRequest(`slide_background_id ${input.slide_background_id} is not in Library → Slide backgrounds (add the picture there first)`);
+  }
 }
 
 export function addItem(serviceId: number, input: Partial<ServiceItem>, position?: number): ServiceItem {
@@ -143,7 +150,7 @@ export function addItem(serviceId: number, input: Partial<ServiceItem>, position
 export function updateItem(itemId: number, patch: Partial<ServiceItem>): ServiceItem {
   const cur = items.get(itemId);
   validateRefs({ ...cur, ...patch });
-  if (patch.slide_bg !== undefined) validateBackground(patch);
+  if (patch.slide_background_id !== undefined) validateBackground(patch);
   const { service_id: _s, position: _p, id: _i, ...rest } = patch as ServiceItem;
   const out = items.update(itemId, rest);
   touch(cur.service_id);
@@ -175,7 +182,7 @@ export function reorderItems(serviceId: number, itemIds: number[]) {
 export function materialise(tItems: TemplateItem[]) {
   const missing: string[] = [];
   // QR codes / notes on slides are stored by block name in a template; a name that no longer exists is skipped
-  const blockIds = tItems.some((t) => t.slide_blocks?.length || t.slide_bg) ? blockIdsByName() : new Map<string, number>();
+  const blockIds = tItems.some((t) => t.slide_blocks?.length) ? blockIdsByName() : new Map<string, number>();
   const out = tItems.map((t) => {
     let ref_id: number | null = null;
     if (t.song_key) {
@@ -202,7 +209,7 @@ export function materialise(tItems: TemplateItem[]) {
       ...(t.posture ? { posture: t.posture } : {}),
       ...(t.bulletin_text ? { bulletin_text: t.bulletin_text } : {}),
       ...(t.slide_blocks?.length ? { slide_blocks: [...new Set(t.slide_blocks.map((n) => blockIds.get(n.trim().toLowerCase())).filter((x): x is number => !!x))] } : {}),
-      ...(t.slide_bg && blockIds.get(t.slide_bg.trim().toLowerCase()) ? { slide_bg: blockIds.get(t.slide_bg.trim().toLowerCase())! } : {}),
+      ...(t.slide_bg && backgroundByName(t.slide_bg) ? { slide_background_id: backgroundByName(t.slide_bg)! } : {}),
     });
   });
   return { items: out, missing };
@@ -221,12 +228,17 @@ function blockIdsByName(): Map<string, number> {
 export function createService(input: Partial<Service> & { date: string }, templateId?: number | null) {
   const settings = getSettings();
   const tpl = templateId ? templates.get(templateId) : undefined;
+  // the congregation: as given, else the template's; its languages are the starting point
+  const congregationId = input.congregation_id !== undefined ? input.congregation_id : (tpl?.congregation_id ?? null);
+  const cong = congregationId ? listCongregations().find((c) => c.id === congregationId) : undefined;
+  const langs = cong?.languages.filter((l) => settings.languages.includes(l)) ?? [];
   return tx(() => {
     const svc = services.insert({
       start_time: tpl?.start_time ?? settings.default_start_time,
       title: tpl?.name ?? { en: "Lord's Day Worship", zh: '主日崇拜' },
       service_type: tpl?.service_type ?? 'lords_day',
-      languages: settings.default_languages,
+      languages: langs.length ? langs : settings.default_languages,
+      congregation_id: congregationId,
       sermon_title: {},
       theme: {},
       ...input,
@@ -290,7 +302,10 @@ export function saveAsTemplate(serviceId: number, name: L10n) {
     if (it.bulletin_text) t.bulletin_text = it.bulletin_text;
     const blocks = (it.slide_blocks ?? []).map((id) => blockNames.get(id)).filter((n): n is string => !!n);
     if (blocks.length) t.slide_blocks = blocks;
-    if (it.slide_bg && blockNames.get(it.slide_bg)) t.slide_bg = blockNames.get(it.slide_bg);
+    if (it.slide_background_id) {
+      const bg = get<{ name: string }>('SELECT name FROM slide_backgrounds WHERE id = ?', it.slide_background_id);
+      if (bg) t.slide_bg = bg.name;
+    }
     return t;
   });
   return templates.insert({

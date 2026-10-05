@@ -5,6 +5,7 @@ import path from 'node:path';
 import { DatabaseSync, backup as sqliteBackup } from 'node:sqlite';
 import { db, migrate, schemaVersion } from '../db.ts';
 import { config } from '../config.ts';
+import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
@@ -134,6 +135,7 @@ export async function restoreBackup(file: string): Promise<{ safety: string; res
   updateSettings(keep);
   setMeta('last_backup_at', safety.created);
   setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: path.basename(file), safety: safety.name }));
+  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${path.basename(file)} (the data before it was saved as ${safety.name})` });
   return { safety: safety.name, restored_schema: restored };
 }
 
@@ -179,6 +181,19 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       log(`backup: automatic backup failed — ${(e as Error).message}`);
     }
   };
+  // the change log and AI activity log keep only as many months as Settings says
+  const tidy = () => {
+    try {
+      const { change_log_months, mcp_audit_months } = getSettings().retention;
+      const a = pruneChanges(change_log_months);
+      const b = pruneAudit(mcp_audit_months);
+      if (a || b) log(`logs: removed ${a} change-log and ${b} AI-activity entries past the keep period`);
+    } catch (e) {
+      log(`logs: tidy failed — ${(e as Error).message}`);
+    }
+  };
+  setTimeout(tidy, 90_000).unref();
+  setInterval(tidy, 24 * 3600_000).unref();
   setTimeout(tick, 60_000).unref();
   timer = setInterval(tick, 30 * 60_000);
   timer.unref();

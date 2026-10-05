@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { qs, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { Bi, Empty, ErrorBox, Loading, PageHead, useSession } from '../components/ui.tsx';
+import { CongregationFilter, useCongregationFilter } from '../components/Congregations.tsx';
 import { Icon } from '../components/icons.tsx';
 import { CsvTools } from '../components/CsvTools.tsx';
 import type { GroupKind } from '../types-client.ts';
@@ -16,7 +17,8 @@ export default function Groups() {
   const { canEdit } = useSession();
   const [inactive, setInactive] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
-  const { data, error, loading, reload } = useApi<GroupRow[]>(`/groups${qs({ inactive: inactive ? 1 : undefined })}`);
+  const [cong, setCong, congs] = useCongregationFilter('groups');
+  const { data, error, loading, reload } = useApi<GroupRow[]>(`/groups${qs({ inactive: inactive ? 1 : undefined, congregation: cong })}`);
   const [open, setOpen] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -34,6 +36,7 @@ export default function Groups() {
   return (
     <div className="page people-page">
       <PageHead eyebrow={t('Congregation')} title={t('Groups')} sub={data ? `${activeCount} ${t('active groups')}` : undefined}>
+        <CongregationFilter value={cong} onChange={setCong} list={congs} />
         <label className="check">
           <input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} />
           {t('Show inactive')}

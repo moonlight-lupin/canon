@@ -4,15 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n.tsx';
 import { Icon } from '../components/icons.tsx';
+import { InfoTip } from '../components/InfoTip.tsx';
 
-/** A small "?" that shows `text` on hover or keyboard focus (and to screen readers). */
-export function InfoTip({ text }: { text: string }) {
-  return (
-    <span className="tp-tip" tabIndex={0} role="note" aria-label={text} data-tip={text} onClick={(e) => e.preventDefault()}>
-      ?
-    </span>
-  );
-}
+export { InfoTip };
 
 /** A field label with an optional "?" tooltip. */
 export const TipLabel = ({ label, tip }: { label: string; tip?: string }) => (

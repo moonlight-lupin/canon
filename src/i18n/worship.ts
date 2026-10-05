@@ -131,5 +131,19 @@ const zh: Record<string, string> = {
   'last sung': '上次',
   'never sung': '未唱过',
   'in the 12 months before this service': '次（本堂聚会之前 12 个月内）',
+  // v0.9 library check
+  'Check library': '检查资料库',
+  'Missing languages': '缺少语言',
+  'A verse or part has words in one language but not in another.': '某一节或某部分只有一种语言有内容，另一种语言没有。',
+  'Lines that do not line up': '行数不一致',
+  'Different numbers of lines or paragraphs, or Leader / People lines in a different order. A translation can rightly differ; these are worth a look.': '行数或段落数不同，或领会／会众的行次序不同。译文有时本来就不同，值得看一看。',
+  'Possible duplicates': '可能重复',
+  'Two songs or texts with the same title, or a hymnal number used twice. Keep one and move anything useful (numbers, words) across.': '两首诗歌或两篇礼文标题相同，或同一诗本编号用了两次。保留一个，并把有用的内容（编号、歌词）移过去。',
+  'Chapters where a version has fewer verses than another: usually different verse numbering, sometimes a missing book.': '某译本的章节经文比另一译本少：通常是节数编排不同，有时是缺少整卷书。',
+  'Nothing to report: the languages line up and there are no duplicates.': '没有问题：各语言一致，也没有重复。',
+  'Checked {s} songs, {x} liturgical texts and {c} Bible chapters.': '已检查 {s} 首诗歌、{x} 篇礼文和 {c} 章圣经。',
+  'An AI assistant can go through this with you: the check_library playbook.': 'AI 助手可以和你一起处理：使用 check_library 工作步骤。',
+  'Liturgical text': '礼文',
+  '{n} more not shown.': '还有 {n} 项未显示。',
 };
 export default zh;

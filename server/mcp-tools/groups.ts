@@ -8,9 +8,10 @@ import type { GroupKind } from '../../shared/types.ts';
 import { get } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
 import * as grp from '../repo/groups.ts';
+import { findCongregation } from '../repo/congregations.ts';
 import { DESTRUCTIVE, DateStr, Id, L10N_MERGE_NOTE, RO, WRITE, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
-const KIND_TEXT = 'kind: committee (Session 堂会, Board of Deacons 执事会, missions committee…) | fellowship 团契 | cell_group 小组 | ministry | other';
+const KIND_TEXT = 'kind: committee (Session 堂会, Board of Deacons 执事会, missions committee…) | fellowship 团契 | cell_group 小组 | ministry | serving_team (a volunteer team: its members are the team roster; teams themselves are made in Volunteers) | other';
 const ROLE_TEXT = 'role is free text, e.g. Moderator, Chair 主席, Secretary 书记, Clerk, Treasurer 财务, Leader 组长, Member 组员';
 
 const groupSummary = (g: ReturnType<typeof grp.listGroups>[number]) => ({
@@ -92,10 +93,10 @@ export const GROUP_TOOLS: ToolDef[] = [
   {
     name: 'canon_find_groups', module: 'groups', access: 'read', title: 'Find groups', annotations: RO,
     description: `Committees, fellowships, cell groups and ministries. Without id: each with its current member count and leaders (names only), filtered by ${KIND_TEXT}; inactive groups only with include_inactive. With id: that group with all members (member_id, person_id, name, role, term dates; current=false for ended terms). Example: {"kind":"committee"}.`,
-    input: { id: Id.optional(), kind: S.GroupKindSchema.optional(), include_inactive: z.boolean().optional() },
+    input: { id: Id.optional(), kind: S.GroupKindSchema.optional(), include_inactive: z.boolean().optional(), congregation: z.union([Id, z.string().max(40)]).optional().describe('congregation id, code or name (churches with several congregations)') },
     handler: (a, ctx) => (a.id
       ? groupDetail(a.id, ctx.pii)
-      : grp.listGroups({ kind: a.kind as GroupKind | undefined, inactive: !!a.include_inactive }).map(groupSummary)),
+      : grp.listGroups({ kind: a.kind as GroupKind | undefined, inactive: !!a.include_inactive, congregation_id: a.congregation != null ? findCongregation(a.congregation)?.id ?? -1 : undefined }).map(groupSummary)),
   },
   {
     name: 'canon_save_group', module: 'groups', access: 'write', title: 'Save a group', annotations: { ...WRITE, idempotentHint: true },

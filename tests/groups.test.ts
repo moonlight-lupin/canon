@@ -235,7 +235,7 @@ test('team members: auto-join on qualification, cascade, leaders, team without r
   // set_leader on someone not in the team fails the whole batch
   const bad = await call('canon_update_team_members', { team_id: choir.id, ops: [{ op: 'remove', person_id: tan.id }, { op: 'set_leader', person_id: 999999 }] });
   assert.equal(bad.isError, true);
-  assert.equal(all('SELECT 1 FROM team_members WHERE team_id = ? AND person_id = ?', choir.id, tan.id).length, 1, 'remove rolled back');
+  assert.equal(all('SELECT 1 FROM group_members gm JOIN teams t ON t.group_id = gm.group_id WHERE t.id = ? AND gm.person_id = ?', choir.id, tan.id).length, 1, 'remove rolled back');
   const plain = await call('canon_update_team_members', { team_id: choir.id, ops: [{ op: 'remove', person_id: tan.id }] });
   assert.equal(plain.isError, false, plain.text);
 });
@@ -258,4 +258,28 @@ test('audit stores argument keys and op types only for groups, values for volunt
   const team = rows.filter((r) => r.tool === 'canon_update_team_members');
   assert.equal(team[0].module, 'volunteers');
   assert.match(team.map((r) => r.args).join(), /"cascade":true/, 'non-register modules keep argument values');
+});
+
+test('serving teams: a team is a group; names stay in step; made and deleted only from Volunteers', async () => {
+  const grp = await import('../server/repo/groups.ts');
+  const vol = await import('../server/repo/volunteers.ts');
+  const tid = grp.createTeam({ name: { en: 'Ushers Zt' }, color: '#123456' });
+  const gid = grp.teamGroupId(tid);
+  const g = grp.groups.get(gid);
+  assert.equal(g.kind, 'serving_team');
+  assert.deepEqual(g.name, { en: 'Ushers Zt' });
+  grp.updateTeam(tid, { name: { en: 'Ushers & Welcome Zt' } });
+  assert.deepEqual(grp.groups.get(gid).name, { en: 'Ushers & Welcome Zt' }, 'renaming the team renames its group');
+  grp.updateGroup(gid, { name: { en: 'Welcome Team Zt' } });
+  assert.deepEqual(vol.teams.get(tid).name, { en: 'Welcome Team Zt' }, 'renaming the group renames its team');
+  assert.throws(() => grp.createGroup({ name: { en: 'X' }, kind: 'serving_team' }), /Volunteers/);
+  assert.throws(() => grp.updateGroup(gid, { kind: 'committee' }), /serving team/);
+  assert.throws(() => grp.deleteGroup(gid), /Volunteers/);
+  // the roster is the group's members; a leader role makes a team leader
+  const p = reg.people.insert({ first_name: 'Roster', last_name: 'Zt', status: 'member' });
+  grp.addTeamMember(tid, p.id, true);
+  assert.equal(grp.membersOf(gid)[0].role, 'Leader');
+  assert.equal(grp.teamMembers(tid)[0].is_leader, true);
+  grp.deleteTeam(tid);
+  assert.equal(grp.groups.find(gid), undefined, 'deleting the team deletes its group');
 });

@@ -7,6 +7,7 @@ import { LANG_CODE_RE } from '../../shared/languages.ts';
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { config } from '../config.ts';
 import { table, likeTerm, BadRequest } from '../lib/table.ts';
+import { logChange } from './changelog.ts';
 import { toSimplified } from '../lib/chinese.ts';
 
 // ---------------------------------------------------------------- songs
@@ -143,11 +144,15 @@ export function setSongHymnals(songId: number, refs: { hymnal_id: number; number
     if (!hymnals.find(r.hymnal_id)) throw new BadRequest(`hymnal ${r.hymnal_id} not found`);
     if (!r.number.trim()) throw new BadRequest('number is required');
   }
+  const before = songs.get(songId);
   tx(() => {
     run('DELETE FROM song_hymnals WHERE song_id = ?', songId);
     for (const r of refs) run('INSERT INTO song_hymnals (song_id, hymnal_id, number) VALUES (?, ?, ?)', songId, r.hymnal_id, r.number.trim());
   });
-  return songs.get(songId).hymnals ?? [];
+  const after = songs.get(songId);
+  const nums = (s: Song) => (s.hymnals ?? []).map((h) => `${h.abbr} ${h.number}`).join(', ');
+  logChange({ entity: 'songs', entity_id: songId, action: 'update', before: { title: before.title, hymnal_numbers: nums(before) }, after: { title: after.title, hymnal_numbers: nums(after) } });
+  return after.hymnals ?? [];
 }
 
 /** Songs in a hymnal, ordered by number (2 < 10 < 10a). */

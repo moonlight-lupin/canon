@@ -597,30 +597,34 @@ test('downloads: short-lived links for PowerPoint, Word, FreeShow and run sheet'
   assert.equal(tooLong.isError, true);
 });
 
-test('an item can have its own slide background picture (a picture block)', async () => {
+test('an item can have its own slide background (Library → Slide backgrounds)', async () => {
   const at = tokens.access_token;
   const svcRepo = await import('../server/repo/services.ts');
+  const bgRepo = await import('../server/repo/backgrounds.ts');
   const { run, get } = await import('../server/db.ts');
   const sv = svcRepo.createService({ date: '2031-05-04', title: { en: 'Background Wqz' } }).service;
   const item = svcRepo.addItem(sv.id, { kind: 'prayer', title: { en: 'Prayer' }, body: { en: 'Lord, hear us.' } });
-  run("INSERT INTO bulletin_blocks (kind, name, data) VALUES ('text', 'A note Wqz', '{}')");
-  const note = get<{ id: number }>("SELECT id FROM bulletin_blocks WHERE name = 'A note Wqz'")!.id;
-  run("INSERT INTO bulletin_blocks (kind, name, data) VALUES ('image', 'Bread Wqz', '{\"image\":\"v1\"}')");
-  const pic = get<{ id: number }>("SELECT id FROM bulletin_blocks WHERE name = 'Bread Wqz'")!.id;
-  run("INSERT INTO assets (key, mime, data) VALUES (?, 'image/png', ?)", `bulletin-block-${pic}`, Buffer.from('89504e47', 'hex'));
-  const bad = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_bg: note } }] });
-  assert.equal(bad.isError, true, 'a note is not a picture');
-  const ok = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_bg: pic } }] });
+  // a 2×1 PNG
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000020000000108020000007b40e8dd0000000c4944415478da63f8cfc0f01f00050001ff5c1e3a1d0000000049454e44ae426082', 'hex');
+  const pic = bgRepo.saveBackground(null, 'Bread Wqz', 'image/png', png);
+  assert.equal(pic.width, 2);
+  assert.throws(() => bgRepo.saveBackground(null, 'Bad', 'image/png', Buffer.from('not a picture')), /does not look like/);
+  const bad = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_background_id: 999999 } }] });
+  assert.equal(bad.isError, true, 'unknown background refused');
+  const ok = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_background_id: pic.id } }] });
   assert.equal(ok.isError, false, ok.text);
   const got = await call(at, 'canon_get_service', { id: sv.id });
-  assert.deepEqual(got.json!.data.items.find((x: Json) => x.id === item.id).slide_bg, { id: pic, name: 'Bread Wqz' });
+  assert.deepEqual(got.json!.data.items.find((x: Json) => x.id === item.id).slide_background, { id: pic.id, name: 'Bread Wqz' });
   const { renderService } = await import('../server/repo/render.ts');
   const { buildSlides } = await import('../shared/slide-model.ts');
   const slides = buildSlides(renderService(sv.id), ['en']);
-  assert.ok(slides.filter((s) => s.itemId === item.id).every((s) => s.bg?.id === pic), 'every slide of the item carries it');
+  assert.ok(slides.filter((s) => s.itemId === item.id).every((s) => s.bg?.id === pic.id), 'every slide of the item carries it');
   assert.ok(!slides.find((s) => s.type === 'title')?.bg, 'other slides keep the template background');
-  run('DELETE FROM bulletin_blocks WHERE id = ?', pic);
-  assert.equal(svcRepo.items.get(item.id).slide_bg ?? null, null, 'deleting the picture clears the choice');
+  assert.equal(bgRepo.listBackgrounds().find((b) => b.id === pic.id)?.uses, 1);
+  bgRepo.deleteBackground(pic.id);
+  assert.equal(svcRepo.items.get(item.id).slide_background_id ?? null, null, 'deleting the picture clears the choice');
+  assert.equal(get('SELECT 1 FROM assets WHERE key = ?', `slide-bg-${pic.id}`), undefined, 'and its file');
+  void run;
 });
 
 test('service templates: the church default is marked for agents', async () => {
@@ -633,6 +637,101 @@ test('service templates: the church default is marked for agents', async () => {
   assert.equal(mine.church_default, true);
   assert.equal(r.json!.data.filter((x: Json) => x.church_default).length, 1);
   updateSettings({ default_service_template_id: null });
+});
+
+test('change log: who changed what, how (web, AI agent), without passwords; filters and paging', async () => {
+  const at = tokens.access_token;
+  const web = async (method: string, path: string, body?: Json) => {
+    const r = await fetch(`${base}/api${path}`, { method, headers: { 'Content-Type': 'application/json', Cookie: admin.cookie, 'X-CSRF-Token': admin.csrf }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, json: (await r.json()) as Json };
+  };
+  const p = await web('POST', '/people', { first_name: 'Logged', last_name: 'Person Qv', status: 'member' });
+  assert.equal(p.status, 200, JSON.stringify(p.json));
+  await web('PATCH', `/people/${p.json.id}`, { phone: '9123 4567' });
+  const hist = await web('GET', `/change-log?entity=people&entity_id=${p.json.id}`);
+  assert.equal(hist.json.total, 2);
+  const [upd, created] = hist.json.rows;
+  assert.equal(created.action, 'create');
+  assert.equal(created.via, 'web');
+  assert.equal(created.name, 'Logged Person Qv');
+  assert.equal(upd.action, 'update');
+  assert.deepEqual(upd.changes.phone, [null, '9123 4567']);
+  assert.ok(upd.user_name, 'who made the change');
+
+  // an AI agent's change is marked as such, with the client's name
+  const song = await call(at, 'canon_save_song', { fields: { title: { en: 'Logged Song Qv' } } });
+  const viaMcp = await web('GET', `/change-log?entity=songs&entity_id=${song.json!.data.id}`);
+  assert.equal(viaMcp.json.rows[0].via, 'mcp');
+  assert.ok(viaMcp.json.rows[0].client);
+
+  // a password change is recorded without the password
+  const u = await web('POST', '/users', { username: 'logq', display_name: 'Log Q', password: 'long-enough-1', role: 'viewer' });
+  await web('PATCH', `/users/${u.json.id}`, { password: 'long-enough-2' });
+  const users = await web('GET', '/change-log?entity=users');
+  assert.ok(!JSON.stringify(users.json.rows).includes('long-enough'), 'no password in the log');
+  assert.ok(users.json.rows.some((r: Json) => r.summary === 'Password changed'));
+
+  // filters and paging
+  const page = await web('GET', '/change-log?size=10&page=1&via=web');
+  assert.ok(page.json.rows.every((r: Json) => r.via === 'web'));
+  assert.equal(page.json.size, 10);
+  const search = await web('GET', '/change-log?q=Logged%20Song');
+  assert.ok(search.json.rows.length >= 1);
+  const audit = await web('GET', '/mcp/audit?size=10&tool=canon_save_song');
+  assert.ok(audit.json.rows.every((r: Json) => r.tool === 'canon_save_song'));
+  assert.ok(audit.json.facets.tools.includes('canon_save_song'));
+});
+
+test('congregations: tag services, members, groups; filter lists (web and agents); new services use its languages', async () => {
+  const at = tokens.access_token;
+  const cong = await import('../server/repo/congregations.ts');
+  const svcRepo = await import('../server/repo/services.ts');
+  const grpRepo = await import('../server/repo/groups.ts');
+  const en = cong.saveCongregation(null, { name: { en: 'English Qc' }, code: 'EQ', languages: ['en'] });
+  const zh = cong.saveCongregation(null, { name: { en: 'Chinese Qc', zh: '华文堂' }, code: '华Q', languages: ['zh', 'en'] });
+  const a = svcRepo.createService({ date: '2032-01-04', congregation_id: en.id }).service;
+  const b = svcRepo.createService({ date: '2032-01-04', congregation_id: zh.id }).service;
+  assert.deepEqual(a.languages, ['en'], 'the congregation decides the languages');
+  assert.deepEqual(b.languages, ['zh', 'en']);
+  const onlyZh = svcRepo.listServices({ from: '2032-01-01', to: '2032-01-31', congregation_id: zh.id });
+  assert.deepEqual(onlyZh.map((s) => s.id), [b.id]);
+  // agents: by code or name
+  const viaMcp = await call(at, 'canon_find_services', { from: '2032-01-01', to: '2032-01-31', congregation: '华文堂' });
+  assert.deepEqual(viaMcp.json!.data.map((s: Json) => s.id), [b.id]);
+  assert.equal(viaMcp.json!.data[0].congregation.code, '华Q');
+  const bad = await call(at, 'canon_find_services', { congregation: 'Nowhere' });
+  assert.equal(bad.isError, true);
+  const g = grpRepo.createGroup({ name: { en: 'Choir Qc' }, kind: 'ministry', congregation_id: zh.id });
+  assert.deepEqual(grpRepo.listGroups({ congregation_id: zh.id }).map((x) => x.id), [g.id]);
+  // a template's congregation carries over to services made from it
+  const tpl = svcRepo.templates.insert({ name: { en: 'Tpl Qc' }, description: {}, service_type: 'lords_day', start_time: '10:00', items: [], congregation_id: en.id });
+  const c = svcRepo.createService({ date: '2032-01-11' }, tpl.id).service;
+  assert.equal(c.congregation_id, en.id);
+  // deleting a congregation keeps its services, untagged
+  cong.deleteCongregation(en.id);
+  assert.equal(svcRepo.services.get(a.id).congregation_id ?? null, null);
+});
+
+test('canon_whoami: always offered; role, access per module with reasons, limits', async () => {
+  const at = tokens.access_token;
+  const r = await call(at, 'canon_whoami', {});
+  assert.equal(r.isError, false, r.text);
+  const d = r.json!.data;
+  assert.equal(d.user.role, 'admin');
+  assert.ok(d.modules.services.access);
+  assert.match(d.modules.services.why, /administrator/);
+  assert.ok(d.tools.includes('canon_whoami'));
+  assert.ok(d.never.length > 3);
+  assert.match(d.instructions, /Canon is a local-first/);
+  // still there when every module is off
+  setMcp({ modules: { members: 'off', coworkers: 'off', volunteers: 'off', services: 'off', library: 'off', templates: 'off' } });
+  const list = await mcp(at, 'tools/list');
+  const names = list.body.result.tools.map((x: Json) => x.name);
+  assert.deepEqual(names.filter((n: string) => n !== 'canon_whoami' && !n.startsWith('canon_find_groups') && !n.startsWith('canon_update_group') && !n.startsWith('canon_save_group')), []);
+  const off = await call(at, 'canon_whoami', {});
+  assert.equal(off.json!.data.modules.services.access, 'off');
+  assert.match(off.json!.data.modules.services.why, /not shared/);
+  setMcp({ modules: { ...ALL_ON } });
 });
 
 test('401 carries WWW-Authenticate with resource_metadata', async () => {

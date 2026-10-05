@@ -8,7 +8,7 @@ export const people = table<Person>({
   cols: [
     'first_name', 'last_name', 'native_name', 'preferred_name', 'gender', 'birth_date', 'phone', 'email', 'address',
     'household_id', 'household_role', 'status', 'membership_date', 'baptism_date', 'baptism_type', 'profession_date',
-    'preferred_lang', 'honorific', 'notes',
+    'preferred_lang', 'honorific', 'notes', 'congregation_id',
   ],
   json: ['honorific'],
   touch: true,
@@ -33,6 +33,7 @@ export interface PeopleQuery {
   household_id?: number;
   limit?: number;
   offset?: number;
+  congregation_id?: number;
 }
 
 export function listPeople(f: PeopleQuery = {}) {
@@ -47,6 +48,10 @@ export function listPeople(f: PeopleQuery = {}) {
   if (f.status) {
     where.push(`p.status IN (${f.status.split(',').map(() => '?').join(',')})`);
     params.push(...f.status.split(','));
+  }
+  if (f.congregation_id) {
+    where.push('p.congregation_id = ?');
+    params.push(f.congregation_id);
   }
   if (f.household_id) {
     where.push('p.household_id = ?');

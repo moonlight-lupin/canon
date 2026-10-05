@@ -7,6 +7,8 @@ import { BlocksTab } from './Blocks.tsx';
 import { useContentLangs, useI18n } from '../i18n.tsx';
 import { langInfo } from '../../shared/languages.ts';
 import { Bi, Empty, Field, L10nInput, Loading, Modal, PageHead, SearchBox, confirmAction, useAction, useDebounced, useSession } from '../components/ui.tsx';
+import { BackgroundsTab } from './Backgrounds.tsx';
+import { LibraryCheckButton } from './LibraryCheck.tsx';
 import { Icon } from '../components/icons.tsx';
 import { CsvTools } from '../components/CsvTools.tsx';
 import { CopyrightNote, useBibles, useChurchBible } from '../components/BibleTools.tsx';
@@ -40,9 +42,9 @@ export function songMatches(s: Song, q: string): boolean {
   return JSON.stringify([s.title, s.author, s.tune, s.tags, s.psalm, s.stanzas[0]]).toLowerCase().includes(ql);
 }
 
-type LibTab = 'songs' | 'hymnals' | 'texts' | 'bible' | 'blocks';
-const LIB_TABS: LibTab[] = ['songs', 'hymnals', 'texts', 'bible', 'blocks'];
-const LIB_TAB_LABEL: Record<LibTab, string> = { songs: 'Hymns & songs', hymnals: 'Hymnals', texts: 'Liturgical texts', bible: 'Bible', blocks: 'QR codes & notes' };
+type LibTab = 'songs' | 'hymnals' | 'texts' | 'bible' | 'blocks' | 'backgrounds';
+const LIB_TABS: LibTab[] = ['songs', 'hymnals', 'texts', 'bible', 'blocks', 'backgrounds'];
+const LIB_TAB_LABEL: Record<LibTab, string> = { songs: 'Hymns & songs', hymnals: 'Hymnals', texts: 'Liturgical texts', bible: 'Bible', blocks: 'QR codes & notes', backgrounds: 'Slide backgrounds' };
 
 export default function Library() {
   const { t } = useI18n();
@@ -53,7 +55,9 @@ export default function Library() {
   const setTab = (k: LibTab) => setSp(k === 'songs' ? {} : { tab: k }, { replace: true });
   return (
     <div className="page">
-      <PageHead eyebrow={`${t('Service Planner')} · ${t('Library')}`} title={t(LIB_TAB_LABEL[tab])} />
+      <PageHead eyebrow={`${t('Service Planner')} · ${t('Library')}`} title={t(LIB_TAB_LABEL[tab])}>
+        {(tab === 'songs' || tab === 'texts' || tab === 'bible') && <LibraryCheckButton />}
+      </PageHead>
       <div className="tabs">
         {LIB_TABS.map((k) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(LIB_TAB_LABEL[k])}</button>)}
       </div>
@@ -62,6 +66,7 @@ export default function Library() {
       {tab === 'texts' && <Texts />}
       {tab === 'bible' && <Bible />}
       {tab === 'blocks' && <BlocksTab />}
+      {tab === 'backgrounds' && <BackgroundsTab />}
     </div>
   );
 }

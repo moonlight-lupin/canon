@@ -9,7 +9,10 @@ import {
   Bi, Empty, ErrorBox, Field, Loading, Modal, PageHead, SearchBox, addDays, confirmAction, fmtDate, today, useAction,
   useDebounced, useSession,
 } from '../components/ui.tsx';
+import { Combo } from '../components/Combo.tsx';
 import { Icon } from '../components/icons.tsx';
+import { HistoryButton } from '../components/LogTools.tsx';
+import { CongregationBadge, CongregationField, CongregationFilter, useCongregationFilter } from '../components/Congregations.tsx';
 import { CsvTools } from '../components/CsvTools.tsx';
 import type {
   Coworker, Household, L10n, MemberStatus, Person, PersonRow, TeamWithRoles, Unavailability,
@@ -104,7 +107,8 @@ function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) 
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
   const [status, setStatus] = useState<MemberStatus | 'all'>('all');
-  const { data, error, loading, reload } = useApi<{ total: number; rows: PersonRow[] }>(`/people${qs({ q: dq, limit: 5000 })}`);
+  const [cong, setCong, congs] = useCongregationFilter('members');
+  const { data, error, loading, reload } = useApi<{ total: number; rows: PersonRow[] }>(`/people${qs({ q: dq, limit: 5000, congregation: cong })}`);
   useEffect(() => {
     if (version) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,6 +128,7 @@ function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) 
         <div className="grow" style={{ minWidth: 220, maxWidth: 380 }}>
           <SearchBox value={q} onChange={setQ} placeholder={t('Name, 中文名, email or phone…')} />
         </div>
+        <CongregationFilter value={cong} onChange={setCong} list={congs} />
         <div className="fchips" role="group" aria-label={t('Status')}>
           <button className={`fchip${status === 'all' ? ' on' : ''}`} onClick={() => setStatus('all')}>
             {t('All')} <span className="n">{data?.rows.length ?? 0}</span>
@@ -154,7 +159,7 @@ function PeopleTab({ version, onOpen }: { version: number; onOpen: (id: number) 
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} className="click" onClick={() => onOpen(p.id)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpen(p.id)}>
-                  <td className="nowrap"><PersonName p={p} /></td>
+                  <td className="nowrap"><PersonName p={p} /> <CongregationBadge id={p.congregation_id} list={congs} /></td>
                   <td><StatusBadge status={p.status} /></td>
                   <td className="muted">{p.household_name ?? ''}</td>
                   <td className="nowrap">{p.phone ?? ''}</td>
@@ -180,11 +185,12 @@ type Draft = {
   first_name: string; last_name: string; native_name: string; preferred_name: string; gender: string; birth_date: string;
   phone: string; email: string; address: string; household_id: string; household_role: string; status: MemberStatus;
   membership_date: string; baptism_date: string; baptism_type: string; profession_date: string; preferred_lang: string; notes: string;
+  congregation_id: string;
 };
 const EMPTY: Draft = {
   first_name: '', last_name: '', native_name: '', preferred_name: '', gender: '', birth_date: '', phone: '', email: '', address: '',
   household_id: '', household_role: '', status: 'member', membership_date: '', baptism_date: '', baptism_type: '', profession_date: '',
-  preferred_lang: '', notes: '',
+  preferred_lang: '', notes: '', congregation_id: '',
 };
 const toDraft = (p: Person): Draft => {
   const d = { ...EMPTY };
@@ -197,7 +203,7 @@ const toDraft = (p: Person): Draft => {
 
 function PersonEditor({ id, households, onClose, onSaved }: { id: number | null; households: HouseholdWithMembers[]; onClose: () => void; onSaved: () => void }) {
   const { t, lang, lt } = useI18n();
-  const { canEdit } = useSession();
+  const { canEdit, isAdmin } = useSession();
   const detail = useApi<PersonDetail>(id ? `/people/${id}` : null);
   const teams = useApi<TeamWithRoles[]>('/teams');
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -230,6 +236,7 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
     if (!body.household_id) body.household_role = null;
     body.last_name = draft.last_name.trim();
     body.status = draft.status;
+    body.congregation_id = draft.congregation_id ? Number(draft.congregation_id) : null;
     const h = Object.fromEntries(Object.entries(honorific).map(([k, v]) => [k, v?.trim()]).filter(([, v]) => v));
     body.honorific = Object.keys(h).length ? h : null;
     const ok = await run(async () => {
@@ -263,6 +270,7 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
       footer={
         <>
           {pdpa}
+          {isAdmin && id && <HistoryButton entity="people" id={id} />}
           {canEdit && id && <button className="btn danger" onClick={remove} disabled={busy}><Icon name="trash" />{t('Delete')}</button>}
           <button className="btn" onClick={onClose}>{canEdit ? t('Cancel') : t('Close')}</button>
           {canEdit && <button className="btn primary" onClick={save} disabled={busy || (!!id && !detail.data)}>{t('Save')}</button>}
@@ -311,6 +319,7 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
             <section>
               <h3 className="sect">{t('Church')}</h3>
               <div className="form-grid">
+                <CongregationField value={draft.congregation_id ? Number(draft.congregation_id) : null} onChange={(v) => set('congregation_id', v ? String(v) : '')} wholeChurchLabel="—" />
                 <Field label={t('Status')}>
                   <select value={draft.status} onChange={(e) => set('status', e.target.value as MemberStatus)}>
                     {STATUSES.map((s) => <option key={s} value={s}>{t(STATUS_LABEL[s])}</option>)}
@@ -327,10 +336,9 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
                 </Field>
                 <Field label={t('Profession of faith')}>{inp('profession_date', 'date')}</Field>
                 <Field label={t('Household')}>
-                  <select value={draft.household_id} onChange={(e) => set('household_id', e.target.value)}>
-                    <option value="">—</option>
-                    {households.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
-                  </select>
+                  <Combo value={draft.household_id} noneLabel="—" ariaLabel={t('Household')}
+                    options={households.map((h) => ({ value: String(h.id), label: h.name, search: h.members.map((m) => [m.first_name, m.last_name, m.native_name].filter(Boolean).join(' ')).join(' ') }))}
+                    onChange={(v) => set('household_id', v)} />
                 </Field>
                 {draft.household_id && (
                   <Field label={t('Household role')}>

@@ -199,7 +199,7 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[] } =
   const itemBgs = new Map<number, { data: string; size: { w: number; h: number } | null } | null>();
   const itemBg = (id: number) => {
     if (!itemBgs.has(id)) {
-      const a = assetRow(blockImageKey(id));
+      const a = assetRow(`slide-bg-${id}`);
       itemBgs.set(id, a?.data?.length ? { data: dataUri(a.mime, a.data), size: imageSize(Buffer.from(a.data)) } : null);
     }
     return itemBgs.get(id)!;

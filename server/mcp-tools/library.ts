@@ -11,6 +11,7 @@ import * as lib from '../repo/library.ts';
 import * as bible from '../repo/bible.ts';
 import { getSettings } from '../repo/settings.ts';
 import { songUsage, textPartsHistory } from '../repo/history.ts';
+import { libraryChecks } from '../repo/checks.ts';
 import { DateStr, Id, L10N_MERGE_NOTE, Limit, RO, WRITE, canRead, mergeL10n, mergeL10nFields, mergeLabelled, type Ctx, type ToolDef } from './common.ts';
 
 const SONG_CATEGORIES = ['hymn', 'psalm', 'song', 'doxology', 'response'] as const;
@@ -115,10 +116,10 @@ function textItem(id: number, selection: string | undefined, ctx: Ctx) {
 export const LIBRARY_TOOLS: ToolDef[] = [
   {
     name: 'canon_search_library', module: 'library', access: 'read', title: 'Search the library', annotations: RO,
-    description: 'Search songs (hymns, psalms) and liturgical texts (calls to worship, confessions, creeds, catechisms, prayers, benedictions…) by words in any language, or songs by hymnal number ("HP 123", "#123"). type: all (default) | songs | texts | hymnals (the hymnbooks, with ids and song counts). category narrows to one song or text category. Returns summaries {songs, texts, hymnals}; songs carry stanza labels, hymnal numbers [{hymnal_id, abbr, number}] and usage {last_used, times_12m} (services before `before`, default today; usage=false omits it) — avoid hymns sung in the last ~4 weeks. sort "least_recent" (sung before, longest ago first; never-sung last) or "most_used" (12 months). Example: {"q":"grace","type":"songs","before":"2026-10-11"}.',
+    description: 'Search songs (hymns, psalms) and liturgical texts (calls to worship, confessions, creeds, catechisms, prayers, benedictions…) by words in any language, or songs by hymnal number ("HP 123", "#123"). type: all (default) | songs | texts | hymnals (the hymnbooks, with ids and song counts) | checks (a report of languages that drift apart and likely duplicates: verses or parts missing a language, different line or paragraph counts, Leader / People lines that do not match, same titles, a hymnal number used twice, Bible chapters with fewer verses — level "check" probably needs fixing, "note" may be fine; use the check_library playbook). category narrows to one song or text category. Returns summaries {songs, texts, hymnals}; songs carry stanza labels, hymnal numbers [{hymnal_id, abbr, number}] and usage {last_used, times_12m} (services before `before`, default today; usage=false omits it) — avoid hymns sung in the last ~4 weeks. sort "least_recent" (sung before, longest ago first; never-sung last) or "most_used" (12 months). Example: {"q":"grace","type":"songs","before":"2026-10-11"}.',
     input: {
       q: z.string().max(200).optional(),
-      type: z.enum(['all', 'songs', 'texts', 'hymnals']).default('all'),
+      type: z.enum(['all', 'songs', 'texts', 'hymnals', 'checks']).default('all'),
       category: z.enum([...SONG_CATEGORIES, ...TEXT_CATEGORIES]).optional(),
       usage: z.boolean().default(true).describe('songs: add last_used and times_12m'),
       sort: z.enum(['least_recent', 'most_used']).optional().describe('songs, by usage'),
@@ -127,6 +128,11 @@ export const LIBRARY_TOOLS: ToolDef[] = [
     },
     handler: (a, ctx) => {
       const q: string = a.q?.trim() ?? '';
+      if (a.type === 'checks') {
+        const r = libraryChecks();
+        const issues = r.issues.filter((i) => !q || JSON.stringify(i).toLowerCase().includes(q.toLowerCase()));
+        return { checked: r.checked, counts: r.counts, total: issues.length, issues: issues.slice(0, Math.max(a.limit, 100)) };
+      }
       if (a.type === 'hymnals') {
         const ql = q.toLowerCase();
         return { hymnals: lib.listHymnals().filter((h) => !ql || JSON.stringify([h.abbr, h.name]).toLowerCase().includes(ql)).map(hymnalSummary) };

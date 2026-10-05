@@ -1,6 +1,7 @@
 // REST routes for CSV templates, exports and imports of every entity (members, co-workers, groups, team
 // members, unavailability, songs, texts, templates, hymnal index). Mounted inside /api after authentication.
 // Not exposed over MCP: bulk imports are for staff in the web app only.
+import { asActor } from '../lib/actor.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type { Lang } from '../../shared/types.ts';
 import { LANG_CODE_RE } from '../../shared/languages.ts';
@@ -88,7 +89,9 @@ csvRoutes.post('/csv/:entity/import', rawBody, h((req) => {
   const e = entity(req);
   if (req.user?.role === 'viewer') throw Object.assign(new Error('Read-only account'), { status: 403 });
   const flag = (v: unknown) => v === '1' || v === 'true';
-  return runImport(e, bodyBytes(req), { dryRun: flag(req.query.dry_run), skipErrors: flag(req.query.skip_errors), lang: uiLang(req), query: query(req) });
+  // logged as a CSV import by this person
+  return asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () =>
+    runImport(e, bodyBytes(req), { dryRun: flag(req.query.dry_run), skipErrors: flag(req.query.skip_errors), lang: uiLang(req), query: query(req) }));
 }));
 
 /**
@@ -98,7 +101,8 @@ csvRoutes.post('/csv/:entity/import', rawBody, h((req) => {
 export function legacyImport(entityKey: string, req: Request, extraQuery: Record<string, string> = {}) {
   const e = CSV_ENTITIES[entityKey];
   const lang = uiLang(req);
-  const p = runImport(e, bodyBytes(req), { dryRun: false, skipErrors: true, lang, query: { ...query(req), ...extraQuery } });
+  const p = asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () =>
+    runImport(e, bodyBytes(req), { dryRun: false, skipErrors: true, lang, query: { ...query(req), ...extraQuery } }));
   const errors = [
     ...(p.fatal ? [p.fatal] : []),
     ...p.rows.filter((r) => r.action === 'error').map((r) => `Row ${r.row}: ${(r.errors ?? []).join(' ')}`),

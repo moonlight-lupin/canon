@@ -64,6 +64,16 @@ Inputs: date (default next Sunday), template, sermon_ref, sermon_title, preacher
 6. No tool edits bulletin / slide templates: write a settings sheet following the editor steps (bulletin: paper & languages, what to print, cover & order, page layout; slides: colours & background as hex, fonts & size, lines per slide, 16:9 or 4:3, footer). Per-item pictures: user uploads to Library → QR codes & notes, then `slide_bg` via `canon_edit_order`.
 7. Report what was created, what needs a person, and the sheet. Roster names only match existing people — never create people from a bulletin.
 
+## check_library — languages that drift apart, duplicates
+
+1. `canon_search_library {"type":"checks"}` (optional `q`): issues with kind, level (`check` / `note`), item, detail.
+2. Group: missing languages, lines / paragraphs / speakers that don't line up, duplicates, Bible versions; explain each in plain words.
+3. Look closer with `canon_get_library_item`; a translation may rightly have a different line count.
+4. Duplicates: compare, suggest which to keep; merging needs the user's yes, deleting is done by a person.
+5. Missing words: only public-domain or church-owned texts (as translate_library); never copyrighted hymn words.
+6. Bible: fewer verses usually means different numbering or a missing book.
+7. End with a short to-do list.
+
 ## translate_library — fill missing languages
 
 1. Eligible: public-domain texts, or texts the church wrote (confirm). Never copyrighted hymns; never fabricate a translation of a hymn that has an established one — point to the hymnal. Quote scripture from the church's Bible via `canon_bible`. Prefer official wordings of creeds and catechisms.

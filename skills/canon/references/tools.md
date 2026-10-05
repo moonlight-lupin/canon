@@ -1,5 +1,7 @@
 # Canon tools, data and conventions
 
+`canon_whoami` (always available): who you act for, role, each module's access and why, contact-detail policy, languages, congregations, tools, playbooks, limits and instructions — call it first when unsure.
+
 ## Tools by module
 
 Whether a tool appears depends on the administrator's module settings (off / read / read & write), the connection's scope and the user's role.
@@ -20,6 +22,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - `canon_search_library` finds songs by hymnal number (`"HP 123"`), and `type: "hymnals"` lists hymnbooks.
 - `canon_get_library_item` `parts`: `"index"` or a selection such as `"1-3"`, `"1,4,7-9"`, `"I.1-3"` (WCF chapter.section).
 - `canon_get_service` with `format: "downloads"`: short-lived links (24 h default, max 72) for `slides_pptx` (PowerPoint, styled by the slide template), `bulletin_docx` (Word), `freeshow`, `run_sheet`; `open_in_canon` links the print-ready bulletin (Print → PDF), slide show and run sheet for a signed-in user. Links work without signing in — give them only to the user who asked.
+- Congregations: `congregation` (id / short label / name) filters `canon_find_services`, `canon_find_people`, `canon_find_groups`; `congregation_id` on create / update service (its languages are the default).
 - `canon_get_templates`: `church_default: true` marks the template the church normally starts from.
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
 
@@ -40,7 +43,7 @@ Look at precedent before proposing or writing any plan, and name the services yo
 - song: `ref_id` (song id), `stanzas` `["1","3","R"]`, `hymnal_id`.
 - scripture: `scripture_ref` `"Romans 8:28-39"`; optional `bibles` `{"en":"ESV"}` for this reading.
 - text: `ref_id` (liturgical text id); catechism / confession parts in `stanzas` `["1","2","3"]`.
-- all: `title` (L10n), `duration_min`, `role_id` / `leader`, `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `notes`, `slide_blocks` [block ids], `slide_bg` (picture block id behind this item's slides; `null` = template background).
+- all: `title` (L10n), `duration_min`, `role_id` / `leader`, `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `notes`, `slide_blocks` [block ids], `slide_background_id` (picture from Library → Slide backgrounds behind this item's slides; `null` = template background).
 
 ## Weekly bulletin sections
 

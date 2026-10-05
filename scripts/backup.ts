@@ -2,9 +2,27 @@
 //   npm run backup                -> the folder set in Settings → Backups (default: backups/)
 //   npm run backup -- D:\Backups  -> another folder (e.g. a USB drive or synced folder)
 // The same backups can be made, listed, downloaded and scheduled in Settings → Backups.
+//
+// This script opens the database directly and never loads the rest of Canon: loading Canon upgrades the database
+// to the newest version, and a backup taken just before installing an update must be of the data as it is.
+import fs from 'node:fs';
 import path from 'node:path';
-import { backupDir, createBackup } from '../server/repo/backups.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { config } from '../server/config.ts';
 
-const dir = process.argv[2] ? path.resolve(process.argv[2]) : backupDir();
-const b = createBackup(dir);
-console.log(`Backup written: ${b.path} (${(b.size / 1e6).toFixed(1)} MB)`);
+const db = new DatabaseSync(config.dbPath);
+db.exec('PRAGMA busy_timeout = 5000');
+const setting = db.prepare("SELECT value FROM settings WHERE key = 'backup'").get() as { value: string } | undefined;
+const configured = setting ? (JSON.parse(setting.value) as { dir?: string }).dir : '';
+const dir = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(configured || path.join(config.root, 'backups'));
+fs.mkdirSync(dir, { recursive: true });
+
+const d = new Date();
+const p2 = (n: number) => String(n).padStart(2, '0');
+const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`;
+let file = path.join(dir, `canon-${stamp}.db`);
+for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp}-${i}.db`);
+db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+db.prepare("INSERT INTO settings (key, value) VALUES ('_last_backup_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(new Date().toISOString());
+const version = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+console.log(`Backup written: ${file} (${(fs.statSync(file).size / 1e6).toFixed(1)} MB, database version ${version})`);

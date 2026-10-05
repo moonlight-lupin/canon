@@ -294,6 +294,35 @@ export const PROMPTS: PromptDef[] = [
   },
 
   {
+    name: 'check_library',
+    title: 'Check the library for drift and duplicates',
+    description: 'Find songs and liturgical texts whose languages have drifted apart (a verse or part missing in one language, different line counts, Leader / People lines that do not match), likely duplicates, and Bible versions with missing chapters — then explain and propose fixes.',
+    needs: { library: 'read' },
+    args: { focus: 'Optional: "songs", "texts", "duplicates" or "bibles" (default everything)' },
+    build: (a, c) => {
+      const focus = (a.focus ?? '').trim().toLowerCase();
+      const write = can(c, 'library', 'write');
+      return lines(
+        ...header('check the library for languages that drift apart and duplicates', c),
+        '',
+        focus ? `Focus: ${focus}.` : 'Look at everything.',
+        '',
+        '## Steps',
+        '1. Get the report: canon_search_library {"type":"checks"} (add "q" to narrow, e.g. a title). Each issue has kind, level ("check" = probably needs fixing, "note" = may be fine), the item and a detail.',
+        '2. Group what you found: missing languages (song_verses, text_parts), lines or paragraphs that do not line up (song_lines, text_paragraphs, text_speakers), duplicates (duplicate_title, duplicate_number) and Bible versions (bible_verses). Explain each group in plain words and how many there are.',
+        '3. Look closer before suggesting anything: canon_get_library_item {"type":"song"|"text","id":…} for the items. A translation can rightly have a different number of lines; say so when that is likely.',
+        '4. Duplicates: compare both items (titles in every language, hymnal numbers, words, usage via canon_search_library last_used). Suggest which one to keep; merging (moving numbers or words across) needs the user to agree, and deleting is done by a person in the Library.',
+        write
+          ? '5. Missing words: only for public-domain or church-owned texts (or songs the church is licensed for), offer to fill them as the translate_library playbook describes — updates merge by language, so send only the missing language. Never type copyrighted hymn words.'
+          : `5. ${readOnlyNote('the library')}`,
+        '6. Bible versions with fewer verses usually number verses differently (e.g. Malachi 4, Joel 2–3) or leave a book out (say which); an uploaded Bible missing a book can be uploaded again with it.',
+        '7. Finish with a short to-do list for the staff, most important first.',
+        ...ETIQUETTE,
+      );
+    },
+  },
+
+  {
     name: 'translate_library',
     title: 'Fill missing translations',
     description: 'Fill missing languages in songs or liturgical texts — only public-domain or church-owned texts, as drafts marked for human review.',

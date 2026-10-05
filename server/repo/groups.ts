@@ -1,8 +1,9 @@
-// Groups (committees, fellowships 团契, cell groups 小组, ministries) with their members and terms,
-// and the member roster of volunteer teams (team_members: the AV team, the choir, …).
+// Groups (committees, fellowships 团契, cell groups 小组, ministries, serving teams) with their members and terms.
+// A volunteer team (the AV team, the choir …) is a "Serving team" group: its roster is the group's members, and the
+// team (teams.group_id) adds the rota roles. A leader is a member whose role is a leader role (Leader, 组长 …).
 import type { Group, GroupKind, GroupMember, L10n } from '../../shared/types.ts';
 import { all, get, run, tx, type SqlValue } from '../db.ts';
-import { table, NotFound } from '../lib/table.ts';
+import { table, BadRequest, NotFound } from '../lib/table.ts';
 
 export class Conflict extends Error {
   status = 409;
@@ -10,7 +11,7 @@ export class Conflict extends Error {
 
 export const groups = table<Group>({
   name: 'groups',
-  cols: ['name', 'kind', 'description', 'color', 'meeting', 'active', 'sort'],
+  cols: ['name', 'kind', 'description', 'color', 'meeting', 'active', 'sort', 'congregation_id'],
   json: ['name'],
   bool: ['active'],
 });
@@ -74,6 +75,7 @@ export function membersOf(groupId: number, includePast = true): MemberRow[] {
 
 export interface GroupFilter {
   kind?: GroupKind;
+  congregation_id?: number;
   /** include inactive groups (default false) */
   inactive?: boolean;
 }
@@ -85,6 +87,10 @@ export function listGroups(f: GroupFilter = {}) {
   if (f.kind) {
     where.push('kind = ?');
     params.push(f.kind);
+  }
+  if (f.congregation_id) {
+    where.push('congregation_id = ?');
+    params.push(f.congregation_id);
   }
   if (!f.inactive) where.push('active = 1');
   const gs = groups.list(where.join(' AND '), params, 'sort, id');
@@ -111,14 +117,28 @@ export function groupDetail(id: number) {
 }
 
 export function createGroup(input: Record<string, unknown>) {
+  if (input.kind === 'serving_team') throw new BadRequest('Serving teams are added in Volunteers (Add team), where their rota roles are set.');
   return groups.insert(input);
 }
 
 export function updateGroup(id: number, patch: Record<string, unknown>) {
-  return groups.update(id, patch);
+  const cur = groups.get(id);
+  if (patch.kind !== undefined && patch.kind !== cur.kind && (patch.kind === 'serving_team' || cur.kind === 'serving_team')) {
+    throw new BadRequest('A serving team stays a serving team (and other groups cannot become one): teams are managed in Volunteers.');
+  }
+  const g = groups.update(id, patch);
+  // the team's name, description and colour follow its group
+  if (g.kind === 'serving_team') {
+    run('UPDATE teams SET name = ?, description = ?, color = ? WHERE group_id = ?', JSON.stringify(g.name), g.description ?? null, g.color, id);
+  }
+  return g;
 }
 
 export function deleteGroup(id: number) {
+  const g = groups.get(id);
+  if (g.kind === 'serving_team' && get('SELECT 1 FROM teams WHERE group_id = ?', id)) {
+    throw new BadRequest('This is a volunteer team: delete it in Volunteers (its rota roles go with it).');
+  }
   groups.remove(id);
 }
 
@@ -202,38 +222,56 @@ export interface TeamMemberRow {
   roles: number[];
 }
 
-function teamExists(teamId: number) {
-  if (!get('SELECT 1 FROM teams WHERE id = ?', teamId)) throw new NotFound(`team ${teamId} not found`);
+/**
+ * The team's "Serving team" group (made on first use for a team that has none, e.g. one added before v0.9 or by
+ * the first start-up's defaults).
+ */
+export function teamGroupId(teamId: number): number {
+  const t = get<{ group_id: number | null; name: string; description: string | null; color: string; sort: number }>(
+    'SELECT group_id, name, description, color, sort FROM teams WHERE id = ?', teamId,
+  );
+  if (!t) throw new NotFound(`team ${teamId} not found`);
+  if (t.group_id && get('SELECT 1 FROM groups WHERE id = ?', t.group_id)) return t.group_id;
+  const g = groups.insert({ name: JSON.parse(t.name), kind: 'serving_team', description: t.description, color: t.color, active: true, sort: 1000 + t.sort });
+  run('UPDATE teams SET group_id = ? WHERE id = ?', g.id, teamId);
+  return g.id;
 }
 
 export function teamMembers(teamId: number): TeamMemberRow[] {
-  teamExists(teamId);
+  const gid = teamGroupId(teamId);
   const quals = all<{ person_id: number; role_id: number }>(
     'SELECT rm.person_id, rm.role_id FROM role_members rm JOIN roles r ON r.id = rm.role_id WHERE r.team_id = ? ORDER BY r.sort, r.id', teamId,
   );
-  return all<{ team_id: number; person_id: number; name: string; is_leader: number; status: string }>(
-    `SELECT tm.team_id, tm.person_id, ${personName} AS name, tm.is_leader, p.status
-     FROM team_members tm JOIN people p ON p.id = tm.person_id WHERE tm.team_id = ? ORDER BY tm.is_leader DESC, name`,
-    teamId,
-  ).map((m) => ({ ...m, is_leader: !!m.is_leader, roles: quals.filter((q) => q.person_id === m.person_id).map((q) => q.role_id) }));
+  return all<{ person_id: number; name: string; role: string | null; status: string }>(
+    `SELECT gm.person_id, ${personName} AS name, gm.role, p.status
+     FROM group_members gm JOIN people p ON p.id = gm.person_id WHERE gm.group_id = ? AND ${CURRENT}`,
+    gid, today(),
+  )
+    .map((m) => ({ team_id: teamId, person_id: m.person_id, name: m.name, status: m.status, is_leader: isLeaderRole(m.role), roles: quals.filter((q) => q.person_id === m.person_id).map((q) => q.role_id) }))
+    .sort((a, b) => Number(b.is_leader) - Number(a.is_leader) || a.name.localeCompare(b.name));
 }
 
-/** Add a person to a team (or just change is_leader if they are already in it). */
+/**
+ * Put a person on a team's roster (the team's group). Someone whose term had ended joins again; `isLeader` true
+ * makes their role "Leader", false clears a leader role, undefined leaves the role as it is.
+ */
 export function addTeamMember(teamId: number, personId: number, isLeader?: boolean) {
-  teamExists(teamId);
+  const gid = teamGroupId(teamId);
   if (!get('SELECT 1 FROM people WHERE id = ?', personId)) throw new NotFound(`person ${personId} not found`);
-  run(
-    `INSERT INTO team_members (team_id, person_id, is_leader) VALUES (?, ?, ?)
-     ON CONFLICT(team_id, person_id) DO UPDATE SET is_leader = CASE WHEN ? IS NULL THEN is_leader ELSE excluded.is_leader END`,
-    teamId, personId, isLeader ? 1 : 0, isLeader === undefined ? null : 1,
-  );
-  return teamMembers(teamId).find((m) => m.person_id === personId)!;
+  const m = get<{ id: number; role: string | null; end_date: string | null }>('SELECT id, role, end_date FROM group_members WHERE group_id = ? AND person_id = ?', gid, personId);
+  const role = (cur: string | null) => (isLeader === undefined ? cur : isLeader ? (isLeaderRole(cur) ? cur : 'Leader') : isLeaderRole(cur) ? null : cur);
+  if (!m) groupMembers.insert({ group_id: gid, person_id: personId, role: role(null) });
+  else if (m.end_date && m.end_date < today()) groupMembers.update(m.id, { end_date: null, role: role(m.role) });
+  else if (role(m.role) !== m.role) groupMembers.update(m.id, { role: role(m.role) });
+  return teamMembers(teamId).find((x) => x.person_id === personId)!;
 }
 
 export function setTeamLeader(teamId: number, personId: number, isLeader: boolean) {
-  const r = run('UPDATE team_members SET is_leader = ? WHERE team_id = ? AND person_id = ?', isLeader ? 1 : 0, teamId, personId);
-  if (!r.changes) throw new NotFound(`person ${personId} is not in team ${teamId}`);
-  return teamMembers(teamId).find((m) => m.person_id === personId)!;
+  const gid = teamGroupId(teamId);
+  if (!get(`SELECT 1 FROM group_members gm WHERE gm.group_id = ? AND gm.person_id = ? AND ${CURRENT}`, gid, personId, today())) {
+    throw new NotFound(`person ${personId} is not in team ${teamId}`);
+  }
+  return addTeamMember(teamId, personId, isLeader);
 }
 
 /**
@@ -241,7 +279,7 @@ export function setTeamLeader(teamId: number, personId: number, isLeader: boolea
  * unless cascade is set, which also removes those qualifications (rota history is kept).
  */
 export function removeTeamMember(teamId: number, personId: number, cascade = false) {
-  teamExists(teamId);
+  const gid = teamGroupId(teamId);
   const held = all<{ role_id: number; name: string }>(
     'SELECT rm.role_id, r.name FROM role_members rm JOIN roles r ON r.id = rm.role_id WHERE r.team_id = ? AND rm.person_id = ? ORDER BY r.sort, r.id',
     teamId, personId,
@@ -257,16 +295,67 @@ export function removeTeamMember(teamId: number, personId: number, cascade = fal
   }
   tx(() => {
     if (held.length) run(`DELETE FROM role_members WHERE person_id = ? AND role_id IN (SELECT id FROM roles WHERE team_id = ?)`, personId, teamId);
-    const r = run('DELETE FROM team_members WHERE team_id = ? AND person_id = ?', teamId, personId);
-    if (!r.changes && !held.length) throw new NotFound(`person ${personId} is not in team ${teamId}`);
+    const m = get<{ id: number }>('SELECT id FROM group_members WHERE group_id = ? AND person_id = ?', gid, personId);
+    if (m) groupMembers.remove(m.id);
+    else if (!held.length) throw new NotFound(`person ${personId} is not in team ${teamId}`);
   });
   return { removed_qualifications: held.map((h) => h.role_id) };
 }
 
 /** The teams a person is on (with leader flag). */
 export function personTeams(personId: number) {
-  return all<{ team_id: number; name: string; color: string; is_leader: number }>(
-    'SELECT tm.team_id, t.name, t.color, tm.is_leader FROM team_members tm JOIN teams t ON t.id = tm.team_id WHERE tm.person_id = ? ORDER BY t.sort, t.id',
-    personId,
-  ).map((r) => ({ ...r, name: JSON.parse(r.name) as L10n, is_leader: !!r.is_leader }));
+  return all<{ team_id: number; name: string; color: string; role: string | null }>(
+    `SELECT t.id AS team_id, t.name, t.color, gm.role FROM group_members gm JOIN teams t ON t.group_id = gm.group_id
+     WHERE gm.person_id = ? AND ${CURRENT} ORDER BY t.sort, t.id`,
+    personId, today(),
+  ).map((r) => ({ team_id: r.team_id, name: JSON.parse(r.name) as L10n, color: r.color, is_leader: isLeaderRole(r.role) }));
+}
+
+/** Every team's current roster (team id, person id, leader), ordered by team. */
+export function teamRoster() {
+  for (const t of all<{ id: number }>('SELECT id FROM teams')) teamGroupId(t.id);
+  return all<{ team_id: number; person_id: number; role: string | null }>(
+    `SELECT t.id AS team_id, gm.person_id, gm.role FROM group_members gm JOIN teams t ON t.group_id = gm.group_id
+     WHERE ${CURRENT} ORDER BY t.sort, t.id, gm.person_id`,
+    today(),
+  ).map((m) => ({ team_id: m.team_id, person_id: m.person_id, is_leader: isLeaderRole(m.role) ? 1 : 0 }));
+}
+
+/** Qualifying for a role puts the person on that role's team roster (if they are not on it yet). */
+export function ensureOnRoleTeam(roleId: number, personId: number) {
+  const r = get<{ team_id: number }>('SELECT team_id FROM roles WHERE id = ?', roleId);
+  if (!r) return;
+  const gid = teamGroupId(r.team_id);
+  const m = get<{ id: number; end_date: string | null }>('SELECT id, end_date FROM group_members WHERE group_id = ? AND person_id = ?', gid, personId);
+  if (!m) groupMembers.insert({ group_id: gid, person_id: personId });
+  else if (m.end_date && m.end_date < today()) groupMembers.update(m.id, { end_date: null });
+}
+
+/** A new volunteer team, with its "Serving team" group. */
+export function createTeam(input: { name: L10n; description?: string | null; color?: string; sort?: number }) {
+  const g = groups.insert({ name: input.name, kind: 'serving_team', description: input.description ?? null, color: input.color ?? '#64748b', active: true, sort: 1000 + (input.sort ?? 0) });
+  const id = Number(run('INSERT INTO teams (name, description, color, sort, group_id) VALUES (?, ?, ?, ?, ?)', JSON.stringify(input.name), input.description ?? null, input.color ?? '#64748b', input.sort ?? 0, g.id).lastInsertRowid);
+  return id;
+}
+
+/** Change a team (its group follows). */
+export function updateTeam(teamId: number, patch: { name?: L10n; description?: string | null; color?: string; sort?: number }) {
+  const gid = teamGroupId(teamId);
+  const sets: string[] = [];
+  const params: SqlValue[] = [];
+  if (patch.name !== undefined) { sets.push('name = ?'); params.push(JSON.stringify(patch.name)); }
+  if (patch.description !== undefined) { sets.push('description = ?'); params.push(patch.description); }
+  if (patch.color !== undefined) { sets.push('color = ?'); params.push(patch.color); }
+  if (patch.sort !== undefined) { sets.push('sort = ?'); params.push(patch.sort); }
+  if (sets.length) run(`UPDATE teams SET ${sets.join(', ')} WHERE id = ?`, ...params, teamId);
+  groups.update(gid, { name: patch.name, description: patch.description, color: patch.color });
+}
+
+/** Delete a team: its rota roles and assignments (database cascade) and its serving-team group. */
+export function deleteTeam(teamId: number) {
+  const gid = teamGroupId(teamId);
+  tx(() => {
+    run('DELETE FROM teams WHERE id = ?', teamId);
+    groups.remove(gid);
+  });
 }

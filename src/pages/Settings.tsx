@@ -12,11 +12,13 @@ import {
   Empty, ErrorBox, Field, L10nInput, Loading, Modal, PageHead, Seg, confirmAction, useAction, useSession, useToast,
 } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
+import { CongregationsCard } from '../components/Congregations.tsx';
+import { ChangeList, FilterBar, Pager, useLogQuery, type ChangeRow, type Paged } from '../components/LogTools.tsx';
 import type { Lang, McpConfig, ModuleAccess, ModuleKey, PaperSize, Role, Settings as SettingsT } from '../types-client.ts';
 import { MODULES } from '../types-client.ts';
 import './people.css';
 
-type Tab = 'church' | 'languages' | 'users' | 'email' | 'backups' | 'mcp';
+type Tab = 'church' | 'languages' | 'users' | 'email' | 'backups' | 'mcp' | 'changelog';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -24,7 +26,7 @@ export default function Settings() {
   // ?tab=email etc. opens a specific tab (used by links from other screens)
   const [tab, setTab] = useState<Tab>(() => {
     const q = new URLSearchParams(location.search).get('tab');
-    return q && ['church', 'languages', 'users', 'email', 'backups', 'mcp'].includes(q) ? (q as Tab) : 'church';
+    return q && ['church', 'languages', 'users', 'email', 'backups', 'changelog', 'mcp'].includes(q) ? (q as Tab) : 'church';
   });
   return (
     <div className="page people-page">
@@ -34,11 +36,12 @@ export default function Settings() {
         {isAdmin && (
           <div>
             <div className="tabs mt" role="tablist">
-              {([['church', 'Church'], ['languages', 'Languages'], ['users', 'Users & access'], ['email', 'E-mail'], ['backups', 'Backups'], ['mcp', 'AI / MCP']] as [Tab, string][]).map(([k, l]) => (
+              {([['church', 'Church'], ['languages', 'Languages'], ['users', 'Users & access'], ['email', 'E-mail'], ['backups', 'Backups'], ['changelog', 'Change log'], ['mcp', 'AI / MCP']] as [Tab, string][]).map(([k, l]) => (
                 <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>
               ))}
             </div>
             {tab === 'church' && <ChurchTab />}
+            {tab === 'changelog' && <ChangeLogTab />}
             {tab === 'languages' && settings && <LanguagesPanel settings={settings} onSaved={reloadSettings} />}
             {tab === 'users' && <UsersTab />}
             {tab === 'email' && <EmailTab />}
@@ -165,6 +168,7 @@ function ChurchTab() {
   };
 
   return (
+    <div className="stack">
     <div className="card stack">
       <Field label={t('Church name')}><L10nInput value={d.church_name} onChange={(v) => set('church_name', v)} /></Field>
       <Field label={t('Church logo')}><LogoField /></Field>
@@ -199,6 +203,8 @@ function ChurchTab() {
         </Field>
       </div>
       <div className="row end"><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></div>
+    </div>
+    <CongregationsCard churchLangs={d.languages} />
     </div>
   );
 }
@@ -522,25 +528,51 @@ function GrantsCard() {
   );
 }
 
+type AuditFilters = { module: string; user: string; client: string; tool: string; result: string; from: string; to: string; q: string };
+type AuditPage = Paged<Audit> & { facets: { users: { id: number; name: string }[]; clients: { id: string; name: string }[]; tools: string[] } };
+
 function AuditCard() {
   const { t, lang } = useI18n();
-  const { data, error, loading, reload } = useApi<Audit[]>('/mcp/audit?limit=200');
-  const [mod, setMod] = useState('');
-  const rows = (data ?? []).filter((a) => !mod || a.module === mod);
+  const log = useLogQuery<Audit, AuditFilters>('/mcp/audit', { module: '', user: '', client: '', tool: '', result: '', from: '', to: '', q: '' });
+  const { error, loading, reload, filters: f, set } = log;
+  const data = log.data as AuditPage | undefined;
+  const rows = data?.rows ?? [];
   return (
     <div className="card flush">
       <div className="card-head" style={{ padding: '14px 16px 0' }}>
         <h2>{t('Activity log')}</h2>
         <div className="row">
-          <select className="mini" value={mod} onChange={(e) => setMod(e.target.value)} aria-label={t('Module')}>
-            <option value="">{t('All modules')}</option>
-            {MODULES.map((m) => <option key={m} value={m}>{t(MOD_LABEL[m])}</option>)}
-          </select>
+          <KeepMonths which="mcp_audit_months" />
           <button className="btn ghost sm icon" onClick={reload} aria-label={t('Refresh')} title={t('Refresh')}><Icon name="refresh" /></button>
         </div>
       </div>
+      <FilterBar active={log.active} onClear={log.clear}>
+        <select className="mini" value={f.module} onChange={(e) => set('module', e.target.value)} aria-label={t('Module')}>
+          <option value="">{t('All modules')}</option>
+          {MODULES.map((m) => <option key={m} value={m}>{t(MOD_LABEL[m])}</option>)}
+        </select>
+        <select className="mini" value={f.user} onChange={(e) => set('user', e.target.value)} aria-label={t('User')}>
+          <option value="">{t('All users')}</option>
+          {data?.facets.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <select className="mini" value={f.client} onChange={(e) => set('client', e.target.value)} aria-label={t('Client')}>
+          <option value="">{t('All clients')}</option>
+          {data?.facets.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select className="mini" value={f.tool} onChange={(e) => set('tool', e.target.value)} aria-label={t('Tool')}>
+          <option value="">{t('All tools')}</option>
+          {data?.facets.tools.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
+        <select className="mini" value={f.result} onChange={(e) => set('result', e.target.value)} aria-label={t('Result')}>
+          <option value="">{t('OK and errors')}</option>
+          <option value="ok">{t('OK')}</option>
+          <option value="error">{t('Errors only')}</option>
+        </select>
+        <DateRange from={f.from} to={f.to} onFrom={(v) => set('from', v)} onTo={(v) => set('to', v)} />
+        <input className="mini" type="search" placeholder={t('Search arguments…')} value={f.q} onChange={(e) => set('q', e.target.value)} style={{ width: 170 }} />
+      </FilterBar>
       {error && <ErrorBox error={error} />}
-      {loading && !data ? <Loading /> : !rows.length ? <Empty title={t('No AI activity yet.')} /> : (
+      {loading && !data ? <Loading /> : !rows.length ? <Empty title={log.active ? t('Nothing matches these filters.') : t('No AI activity yet.')} /> : (
         <div className="table-wrap">
           <table className="t">
             <thead><tr><th>{t('Time')}</th><th>{t('User')}</th><th>{t('Client')}</th><th>{t('Tool')}</th><th>{t('Module')}</th><th>{t('Result')}</th><th>{t('Arguments')}</th></tr></thead>
@@ -561,6 +593,97 @@ function AuditCard() {
             </tbody>
           </table>
         </div>
+      )}
+      {data && data.total > 0 && <div style={{ padding: '0 16px 12px' }}><Pager page={data.page} size={data.size} total={data.total} onPage={log.setPage} /></div>}
+    </div>
+  );
+}
+
+/** From / to dates for a log filter. */
+function DateRange({ from, to, onFrom, onTo }: { from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
+  const { t } = useI18n();
+  return (
+    <span className="row" style={{ gap: 4 }}>
+      <input className="mini" type="date" value={from} onChange={(e) => onFrom(e.target.value)} aria-label={t('From')} title={t('From')} />
+      <span className="small muted">–</span>
+      <input className="mini" type="date" value={to} onChange={(e) => onTo(e.target.value)} aria-label={t('To')} title={t('To')} />
+    </span>
+  );
+}
+
+/** "Keep: 12 months" — how long a log is kept (administrators). */
+function KeepMonths({ which }: { which: 'change_log_months' | 'mcp_audit_months' }) {
+  const { t } = useI18n();
+  const { settings, reloadSettings } = useSession();
+  const { run } = useAction();
+  const cur = settings?.retention ?? { change_log_months: 24, mcp_audit_months: 12 };
+  const save = (n: number) => run(async () => {
+    await api.put('/log-retention', { ...cur, [which]: n });
+    reloadSettings();
+  }, t('Saved.'));
+  return (
+    <label className="small muted row" style={{ gap: 6 }} title={t('Older entries are deleted once a day.')}>
+      {t('Keep')}
+      <select className="mini" value={cur[which]} onChange={(e) => save(Number(e.target.value))}>
+        {[3, 6, 12, 24, 36, 60].map((n) => <option key={n} value={n}>{t('{n} months').replace('{n}', String(n))}</option>)}
+        <option value={0}>{t('Everything')}</option>
+      </select>
+    </label>
+  );
+}
+
+// ---------------------------------------------------------------- change log
+
+type ChangeFilters = { entity: string; user: string; via: string; action: string; from: string; to: string; q: string };
+
+/** Settings → Change log: every change by a person, an AI agent or a CSV import. */
+function ChangeLogTab() {
+  const { t, lang } = useI18n();
+  const log = useLogQuery<ChangeRow, ChangeFilters>('/change-log', { entity: '', user: '', via: '', action: '', from: '', to: '', q: '' });
+  const { filters: f, set } = log;
+  const data = log.data as (Paged<ChangeRow> & { users: { id: number | null; name: string }[]; entities: Record<string, { en: string; zh: string }> }) | undefined;
+  return (
+    <div className="card flush">
+      <div className="card-head" style={{ padding: '14px 16px 0' }}>
+        <div>
+          <h2>{t('Change log')}</h2>
+          <div className="small muted">{t('Who changed what and when: in Canon, through an AI agent, or by CSV import. Only administrators can see it.')}</div>
+        </div>
+        <div className="row">
+          <KeepMonths which="change_log_months" />
+          <button className="btn ghost sm icon" onClick={log.reload} aria-label={t('Refresh')} title={t('Refresh')}><Icon name="refresh" /></button>
+        </div>
+      </div>
+      <FilterBar active={log.active} onClear={log.clear}>
+        <select className="mini" value={f.entity} onChange={(e) => set('entity', e.target.value)} aria-label={t('What')}>
+          <option value="">{t('Everything')}</option>
+          {data && Object.entries(data.entities).map(([k, v]) => <option key={k} value={k}>{lang === 'en' ? v.en : v.zh}</option>)}
+        </select>
+        <select className="mini" value={f.user} onChange={(e) => set('user', e.target.value)} aria-label={t('Who')}>
+          <option value="">{t('Everyone')}</option>
+          {data?.users.filter((u) => u.id != null).map((u) => <option key={u.id!} value={u.id!}>{u.name}</option>)}
+        </select>
+        <select className="mini" value={f.via} onChange={(e) => set('via', e.target.value)} aria-label={t('How')}>
+          <option value="">{t('Any way')}</option>
+          <option value="web">{t('In Canon')}</option>
+          <option value="mcp">{t('AI agent')}</option>
+          <option value="import">{t('CSV import')}</option>
+        </select>
+        <select className="mini" value={f.action} onChange={(e) => set('action', e.target.value)} aria-label={t('Action')}>
+          <option value="">{t('Added, changed, deleted')}</option>
+          <option value="create">{t('Added')}</option>
+          <option value="update">{t('Changed')}</option>
+          <option value="delete">{t('Deleted')}</option>
+        </select>
+        <DateRange from={f.from} to={f.to} onFrom={(v) => set('from', v)} onTo={(v) => set('to', v)} />
+        <input className="mini" type="search" placeholder={t('Search names and values…')} value={f.q} onChange={(e) => set('q', e.target.value)} style={{ width: 190 }} />
+      </FilterBar>
+      {log.error && <ErrorBox error={log.error} />}
+      {!data ? <Loading /> : !data.rows.length ? <Empty title={log.active ? t('Nothing matches these filters.') : t('No changes recorded yet.')} /> : (
+        <>
+          <ChangeList rows={data.rows} entities={data.entities} />
+          <div style={{ padding: '0 16px 12px' }}><Pager page={data.page} size={data.size} total={data.total} onPage={log.setPage} /></div>
+        </>
       )}
     </div>
   );

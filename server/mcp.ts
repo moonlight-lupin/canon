@@ -17,6 +17,12 @@ import { MODULES } from '../shared/types.ts';
 import type { McpConfig, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
 import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
+import { asActor } from './lib/actor.ts';
+import { listCongregations } from './repo/congregations.ts';
+import { get as dbGet } from './db.ts';
+
+/** The name an MCP client registered with ("Claude", "Hermes Agent"…), for the change log. */
+const clientName = (clientId: string) => dbGet<{ client_name: string | null }>('SELECT client_name FROM oauth_clients WHERE client_id = ?', clientId)?.client_name ?? clientId;
 import { run } from './db.ts';
 import { getSettings } from './repo/settings.ts';
 import { BatchError, errorMessage, type Args, type Ctx, type ToolDef } from './mcp-tools/common.ts';
@@ -31,7 +37,59 @@ export type { ToolDef } from './mcp-tools/common.ts';
 const VERSION = '0.1.0';
 
 /** The full tool table: core tools plus feature modules. */
-export const TOOLS: ToolDef[] = [...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS];
+const ROLE_TEXT: Record<Role, string> = {
+  admin: 'administrator — may change everything the modules allow, including settings in Canon itself',
+  editor: 'editor — may plan services and edit the registers, library and rota where the modules allow',
+  viewer: 'read-only — can look things up but never change anything',
+};
+const MODULE_TEXT: Record<ModuleKey, string> = {
+  services: 'services, the order of service and downloads', templates: 'service templates', library: 'songs, liturgy, hymnals and Bibles',
+  volunteers: 'teams, roles, rota and away dates', members: 'the member register', coworkers: 'co-workers', groups: 'groups, committees and serving teams',
+};
+
+/** Why a module is at this level on this connection (admin setting ∩ connection scope ∩ the person's role). */
+function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): string {
+  const setting = cfg.modules[module] ?? 'off';
+  if (setting === 'off') return 'the administrator has not shared this module with AI agents';
+  const lvl = effectiveAccess(module, cfg, scopes, role);
+  if (lvl === 'write') return 'the administrator allows read & write, this connection may write, and your role may write';
+  if (setting === 'read') return 'the administrator shares it read-only';
+  if (role === 'viewer') return 'the administrator allows read & write, but your account is read-only';
+  if (!scopes.has('canon:write')) return 'the administrator allows read & write, but this connection was approved for reading only';
+  return 'read only';
+}
+
+/** canon_whoami: always offered; built here because it needs the connection's settings. */
+const WHOAMI: ToolDef = {
+  name: 'canon_whoami', module: 'services', access: 'read', always: true, title: 'Who am I connected as', annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  description: 'Who this connection acts for and what it may do: the person and their role, access to each module (off / read / write) with the reason, whether member contact details are shown, the church, its languages and congregations, the tools and playbooks available, what agents may never do, and the working instructions. Call it first when unsure what you can do, or when a tool you expected is missing.',
+  input: {},
+  handler: (_a, ctx) => {
+    const settings = getSettings();
+    const cfg = settings.mcp;
+    const { auth } = ctx;
+    const levels = ctx.levels ?? (Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>);
+    return {
+      user: { name: auth.user.display_name, role: auth.user.role, meaning: ROLE_TEXT[auth.user.role] },
+      connection: { scopes: [...auth.scopes], write_allowed: auth.scopes.has('canon:write') && auth.user.role !== 'viewer' },
+      church: { name: settings.church_name, languages: settings.languages.map((l) => ({ code: l, name: langInfo(l).name })) },
+      congregations: listCongregations().filter((c) => c.active).map((c) => ({ id: c.id, code: c.code, name: c.name, languages: c.languages })),
+      modules: Object.fromEntries(MODULES.map((m) => [m, { access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role) }])),
+      member_contact_details: cfg.expose_member_pii ? 'shown where relevant — handle with care (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
+      tools: allowedTools(cfg, auth.scopes, auth.user.role).map((t) => t.name),
+      playbooks: allowedPrompts(levels, cfg.expose_member_pii).map((p) => p.name),
+      never: [
+        'send e-mail or messages', 'delete people', 'see user accounts, passwords, settings or connection data',
+        'see service records (attendance, offerings, visitors)', 'type hymn words that are under copyright unless the church holds a licence',
+        'remove or overwrite anything without asking the user first',
+      ],
+      instructions: instructions(levels, cfg.expose_member_pii, settings.languages),
+      handbook: 'canon://guide/agents',
+    };
+  },
+};
+
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
@@ -60,6 +118,7 @@ export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<s
 
 export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): ToolDef[] {
   return TOOLS.filter((t) => {
+    if (t.always) return cfg.enabled;
     const lvl = effectiveAccess(t.module, cfg, scopes, role);
     if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
     return !t.requiresPii || cfg.expose_member_pii;
@@ -246,7 +305,7 @@ export function buildServer(auth: McpAuth, base = '') {
       async (args: Args) => {
         let r: CallToolResult;
         try {
-          r = ok(await t.handler(args ?? {}, ctx));
+          r = ok(await asActor({ user_id: auth.user.id, user_name: auth.user.display_name, via: 'mcp', client: clientName(auth.clientId) }, () => t.handler(args ?? {}, ctx)));
         } catch (e) {
           r = fail(errorMessage(e), e instanceof BatchError ? e.errors : undefined);
         }

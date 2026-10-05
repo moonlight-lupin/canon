@@ -7,6 +7,7 @@ import type { Person } from '../../shared/types.ts';
 import { tx } from '../db.ts';
 import * as reg from '../repo/registers.ts';
 import * as grp from '../repo/groups.ts';
+import { findCongregation } from '../repo/congregations.ts';
 import { COWORKER_PII, HOUSEHOLD_PII, Id, InputError, Limit, PERSON_PII, RO, WRITE, mergeL10nFields, redact, type ToolDef } from './common.ts';
 
 const MemberStatus = z.enum(['member', 'regular', 'visitor', 'inactive', 'transferred', 'deceased']);
@@ -45,6 +46,7 @@ export const PEOPLE_TOOLS: ToolDef[] = [
       q: z.string().max(200).optional(),
       status: z.array(MemberStatus).optional(),
       household_id: Id.optional(),
+      congregation: z.union([Id, z.string().max(40)]).optional().describe('congregation id, code or name (churches with several congregations)'),
       days: z.number().int().min(1).max(60).default(14).describe('birthdays'),
       limit: Limit(50, 100),
       offset: z.number().int().min(0).default(0),
@@ -68,7 +70,9 @@ export const PEOPLE_TOOLS: ToolDef[] = [
           .filter((h) => !q || [h.name, ...h.members.map((m) => m.name)].join(' ').toLowerCase().includes(q))
           .slice(a.offset, a.offset + a.limit);
       }
-      const r = reg.listPeople({ q: a.q, status: a.status?.join(','), household_id: a.household_id, limit: a.limit, offset: a.offset });
+      const c = a.congregation != null ? findCongregation(a.congregation) : undefined;
+      if (a.congregation != null && !c) throw new InputError(`unknown congregation ${JSON.stringify(a.congregation)}`);
+      const r = reg.listPeople({ q: a.q, status: a.status?.join(','), household_id: a.household_id, congregation_id: c?.id, limit: a.limit, offset: a.offset });
       let rows = r.rows;
       // When contact details are hidden, don't let a search on phone / e-mail reveal who owns them.
       if (!ctx.pii && q) {

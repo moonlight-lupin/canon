@@ -24,20 +24,27 @@ The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3;
   - **Bibles:** KJV and the Chinese Union Version 和合本 are built in, and other public-domain Bibles download in one click. You can also upload Bibles you hold a licence for, and choose the version per service or per reading.
 - **Outputs, all from one plan:**
   - **Printed bulletin.** A4 landscape folded into an A5 booklet, with the pages arranged for folding automatically; other paper sizes too. **Bulletin templates** decide what prints for each kind of item (full words, first verse, or title only), plus covers, rosters, announcements and QR codes.
-  - **Projector slides** with a presenter view. **Slide themes** cover colours, background, fonts per script and custom CSS, with a live preview.
+  - **Projector slides** with a presenter view, and a **PowerPoint** download. **Slide templates** cover colours, background, fonts per script, text size, 16:9 or 4:3 and custom CSS, with a live preview; any item can have its own background picture from the **Slide backgrounds** library.
   - **Timed run sheet** for the team, a **read-only share link**, a **Word document**, and a **FreeShow** project.
 - **Liturgical calendar:** season colours (optional) and the four styles of bulletin cover.
+- **Library check:** finds songs and texts whose languages have drifted apart, likely duplicates, and Bible versions with missing chapters.
 
 **People**
-- **Groups:** committees (with roles and terms), fellowships, cell groups and ministries.
+- **Congregations:** one church with several congregations (e.g. English, Chinese and Indonesian services): services, templates, members and groups can belong to one, and lists filter by it.
+- **Groups:** committees (with roles and terms), fellowships, cell groups, ministries and serving teams (every volunteer team is a group).
 - **Members:** households, membership, baptism, profession of faith, and titles such as 弟兄 / 姐妹 / Bro. / Sis.
 - **Co-workers:** pastors, elders, deacons and staff, tagged with their committees.
 - **Volunteer rota:** teams and members, roles, away dates, fair auto-fill, warnings, and manual e-mail reminders through your own SMTP server.
 
+**Records**
+- **Service records:** attendance, new visitors, notes for the team and offerings for each service, with a cash count by denomination and a printable cash-count declaration for the counters to sign. Once verified, only an administrator can change the money.
+
 **Everywhere**
 - **Languages.** The church chooses its worship languages, primary first: English, 简体中文, 繁體中文, Bahasa Melayu, Bahasa Indonesia, Tamil and more. Each service shows up to three side by side. Simplified and Traditional Chinese convert automatically, and the interface is in English, 简体 and 繁體.
 - **Excel import and export** (CSV) for every register and library section. It comes with downloadable templates, a preview before saving, and automatic handling of files Excel saved in a Chinese encoding.
-- **AI / MCP.** An OAuth 2.1 MCP server that claude.ai can connect to. Administrators set each module to *off / read / read & write*, for example hiding the member register for PDPA. Every call is audit-logged.
+- **Change log.** Who changed what and when — in Canon, by an AI agent or by CSV import — with each field's old and new value, filters and paging; a record's **History**.
+- **Backups** on a schedule, and **restore** from Settings (a copy of the current data is saved first).
+- **AI / MCP.** An OAuth 2.1 MCP server that claude.ai can connect to. Administrators set each module to *off / read / read & write*, for example hiding the member register for PDPA. Every call is audit-logged, and `canon_whoami` tells an agent who it acts for and what it may do.
 
 ## Quick start
 
@@ -99,7 +106,7 @@ For each module, access is the most restrictive of three things:
 - the token's scope (`canon:read` or `canon:write`);
 - the user's current role (a viewer only ever gets read access).
 
-Tools an agent isn't allowed never appear in its tool list. There are 25 tools in all. Batch tools (`canon_edit_order`, `canon_update_rota`, …) apply all-or-nothing. Agents can't send e-mail, delete people, or see accounts, settings or OAuth data.
+Tools an agent isn't allowed never appear in its tool list. There are 26 tools in all; `canon_whoami` tells an agent who it acts for and what it may do. Batch tools (`canon_edit_order`, `canon_update_rota`, …) apply all-or-nothing. Agents can't send e-mail, delete people, or see accounts, settings or OAuth data.
 
 ## Configuration
 

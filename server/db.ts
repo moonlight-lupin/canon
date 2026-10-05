@@ -10,8 +10,19 @@ export const db = new DatabaseSync(config.dbPath);
 export const schemaVersion = () => MIGRATIONS.length;
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
 
+/**
+ * A migration is SQL, or SQL plus a step in code. `noForeignKeys` runs it with foreign-key checks off (needed to
+ * rebuild a table that others refer to — SQLite's documented way to change a CHECK constraint); the checks are
+ * verified afterwards.
+ */
+interface Migration {
+  sql: string;
+  run?: (d: DatabaseSync) => void;
+  noForeignKeys?: boolean;
+}
+
 /** Ordered migrations. Append only; never edit a shipped migration. */
-const MIGRATIONS: string[] = [
+const MIGRATIONS: (string | Migration)[] = [
   `
   CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
@@ -385,20 +396,152 @@ const MIGRATIONS: string[] = [
   UPDATE bulletin_templates SET options = replace(replace(options, '"Worship Leader"', '"Liturgist"'), '"Worship leader"', '"Liturgist"')
     WHERE options LIKE '%Worship Leader%' OR options LIKE '%Worship leader%';
   `,
+  // v0.9 — change log: who changed what, when and how (web, AI agent, CSV import)
+  `
+  CREATE TABLE change_log (
+    id INTEGER PRIMARY KEY,
+    at TEXT NOT NULL DEFAULT (datetime('now')),
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    user_name TEXT,                       -- kept when the account is deleted
+    via TEXT NOT NULL,                    -- web | mcp | import | system
+    client TEXT,                          -- MCP client name
+    entity TEXT NOT NULL,                 -- table, e.g. people, services, songs
+    entity_id INTEGER,
+    action TEXT NOT NULL CHECK (action IN ('create','update','delete')),
+    name TEXT NOT NULL DEFAULT '',        -- readable name of the record at the time
+    summary TEXT,
+    changes TEXT NOT NULL DEFAULT '{}',   -- JSON {field: [old, new]} (long values shortened)
+    parent_entity TEXT,                   -- e.g. the service an item belongs to
+    parent_id INTEGER
+  );
+  CREATE INDEX change_log_at ON change_log(at);
+  CREATE INDEX change_log_entity ON change_log(entity, entity_id);
+  CREATE INDEX change_log_parent ON change_log(parent_entity, parent_id);
+  CREATE INDEX mcp_audit_at ON mcp_audit(at);
+  -- congregations of one church (English / Chinese / Indonesian services …); services, templates, members, groups
+  CREATE TABLE congregations (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,                   -- L10n JSON
+    code TEXT NOT NULL DEFAULT '',        -- short badge label, e.g. EN, 华, ID
+    languages TEXT NOT NULL DEFAULT '[]', -- JSON [lang]: new services start with these
+    color TEXT NOT NULL DEFAULT '#64748b',
+    sort INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1
+  );
+  ALTER TABLE services ADD COLUMN congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL;
+  ALTER TABLE templates ADD COLUMN congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL;
+  ALTER TABLE people ADD COLUMN congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL;
+  ALTER TABLE groups ADD COLUMN congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL;
+  CREATE INDEX services_congregation ON services(congregation_id, date);
+  `,
+  // v0.9 — service records: attendance, new visitors, notes, offerings and the cash count (one per service)
+  `
+  CREATE TABLE service_records (
+    id INTEGER PRIMARY KEY,
+    service_id INTEGER NOT NULL UNIQUE REFERENCES services(id) ON DELETE CASCADE,
+    attendance INTEGER,
+    children INTEGER,
+    online INTEGER,
+    visitors TEXT NOT NULL DEFAULT '[]',   -- JSON [{name, contact, source, follow_up_by, notes}]
+    notes TEXT,                            -- notes for the team
+    offerings TEXT NOT NULL DEFAULT '[]',  -- JSON [{fund, method, amount (minor units), note}]
+    cash TEXT NOT NULL DEFAULT '{}',       -- JSON {denomination (minor units): count}
+    counters TEXT NOT NULL DEFAULT '[]',   -- JSON [name]
+    currency TEXT NOT NULL DEFAULT 'SGD',
+    verified_at TEXT,
+    verified_by TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  `,
+  // v0.9 — volunteer teams are "Serving team" groups: one membership list (with roles and terms) per team
+  {
+    noForeignKeys: true,
+    sql: `
+    CREATE TABLE groups_v09 (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,          -- L10n JSON
+      kind TEXT NOT NULL CHECK (kind IN ('committee','fellowship','cell_group','ministry','serving_team','other')),
+      description TEXT,
+      color TEXT NOT NULL DEFAULT '#64748b',
+      meeting TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      sort INTEGER NOT NULL DEFAULT 0,
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL
+    );
+    INSERT INTO groups_v09 (id, name, kind, description, color, meeting, active, sort, congregation_id)
+      SELECT id, name, kind, description, color, meeting, active, sort, congregation_id FROM groups;
+    DROP TABLE groups;
+    ALTER TABLE groups_v09 RENAME TO groups;
+    ALTER TABLE teams ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL;
+    `,
+    run: (d) => {
+      const teamRows = d.prepare('SELECT id, name, description, color, sort FROM teams ORDER BY sort, id').all() as {
+        id: number; name: string; description: string | null; color: string; sort: number;
+      }[];
+      const base = (d.prepare('SELECT COALESCE(MAX(sort), 0) AS s FROM groups').get() as { s: number }).s;
+      const addGroup = d.prepare("INSERT INTO groups (name, kind, description, color, active, sort) VALUES (?, 'serving_team', ?, ?, 1, ?)");
+      const link = d.prepare('UPDATE teams SET group_id = ? WHERE id = ?');
+      const addMember = d.prepare('INSERT OR IGNORE INTO group_members (group_id, person_id, role) VALUES (?, ?, ?)');
+      for (const t of teamRows) {
+        const g = Number(addGroup.run(t.name, t.description, t.color, base + 1 + t.sort).lastInsertRowid);
+        link.run(g, t.id);
+        const roster = d.prepare('SELECT person_id, is_leader FROM team_members WHERE team_id = ?').all(t.id) as { person_id: number; is_leader: number }[];
+        for (const m of roster) addMember.run(g, m.person_id, m.is_leader ? 'Leader' : null);
+      }
+      // the old roster table stays (renamed) as a safety copy; nothing reads it any more
+      d.exec('ALTER TABLE team_members RENAME TO team_members_v08');
+    },
+  },
+  // v0.9 — slide backgrounds: their own library of full-screen pictures (not QR codes & notes)
+  {
+    sql: `
+    CREATE TABLE slide_backgrounds (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      width INTEGER,
+      height INTEGER,
+      bytes INTEGER NOT NULL DEFAULT 0,
+      version TEXT NOT NULL DEFAULT '',   -- changes when the picture changes (cache key); asset slide-bg-<id>
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    ALTER TABLE service_items ADD COLUMN slide_background_id INTEGER REFERENCES slide_backgrounds(id) ON DELETE SET NULL;
+    `,
+    // pictures from QR codes & notes already used as item backgrounds (v0.8) move to the new library
+    run: (d) => {
+      const used = d.prepare(`SELECT DISTINCT b.id, b.name, a.mime, a.data FROM service_items i JOIN bulletin_blocks b ON b.id = i.slide_bg
+                              JOIN assets a ON a.key = 'bulletin-block-' || b.id WHERE i.slide_bg IS NOT NULL`).all() as { id: number; name: string; mime: string; data: Uint8Array }[];
+      for (const u of used) {
+        const data = Buffer.from(u.data);
+        const id = Number(d.prepare('INSERT INTO slide_backgrounds (name, mime, bytes, version) VALUES (?, ?, ?, ?)').run(u.name, u.mime, data.length, `m${u.id}`).lastInsertRowid);
+        d.prepare("INSERT OR REPLACE INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))").run(`slide-bg-${id}`, u.mime, data);
+        d.prepare('UPDATE service_items SET slide_background_id = ?, slide_bg = NULL WHERE slide_bg = ?').run(id, u.id);
+      }
+    },
+  },
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */
 export function migrate() {
   const current = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
   for (let v = current; v < MIGRATIONS.length; v++) {
+    const m: Migration = typeof MIGRATIONS[v] === 'string' ? { sql: MIGRATIONS[v] as string } : (MIGRATIONS[v] as Migration);
+    if (m.noForeignKeys) db.exec('PRAGMA foreign_keys = OFF');
     db.exec('BEGIN');
     try {
-      db.exec(MIGRATIONS[v]);
+      db.exec(m.sql);
+      m.run?.(db);
+      if (m.noForeignKeys) {
+        const broken = db.prepare('PRAGMA foreign_key_check').all();
+        if (broken.length) throw new Error(`migration ${v + 1}: foreign key check failed (${JSON.stringify(broken.slice(0, 3))})`);
+      }
       db.exec(`PRAGMA user_version = ${v + 1}`);
       db.exec('COMMIT');
     } catch (e) {
       db.exec('ROLLBACK');
       throw e;
+    } finally {
+      if (m.noForeignKeys) db.exec('PRAGMA foreign_keys = ON');
     }
   }
 }

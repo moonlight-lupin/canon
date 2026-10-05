@@ -1,6 +1,7 @@
 import type { L10n, Lang, McpConfig } from '../../shared/types.ts';
 import { langInfo } from '../../shared/languages.ts';
 import { all, run } from '../db.ts';
+import { logChange } from './changelog.ts';
 
 export type PaperSize = 'a4-booklet' | 'a4' | 'a5' | 'letter-booklet' | 'letter';
 export type CoverStyle = 'plain' | 'cross' | 'logo' | 'verse';
@@ -48,6 +49,10 @@ export interface Settings {
   default_bulletin_template_id: number | null;
   /** the service template New service starts from; null = the first one */
   default_service_template_id: number | null;
+  /** service records: the currency counted and the funds offerings go to */
+  offering: { currency: string; funds: string[] };
+  /** how many months the change log and the AI activity log keep (0 = everything) */
+  retention: { change_log_months: number; mcp_audit_months: number };
   /** Canon sits behind a tunnel / reverse proxy: honour X-Forwarded-* headers */
   trust_proxy: boolean;
   smtp: SmtpSettings;
@@ -74,6 +79,8 @@ export const DEFAULT_SETTINGS: Settings = {
   default_slide_theme_id: null,
   default_bulletin_template_id: null,
   default_service_template_id: null,
+  retention: { change_log_months: 24, mcp_audit_months: 12 },
+  offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'] },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {
@@ -119,13 +126,18 @@ export function clearSettingsCache() {
 }
 
 export function updateSettings(patch: Partial<Settings>): Settings {
+  const before = getSettings();
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in DEFAULT_SETTINGS) || v === undefined) continue;
     const value = k === 'smtp' ? { ...(v as SmtpSettings), has_password: undefined } : v;
     run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', k, JSON.stringify(value));
   }
   cache = null;
-  return getSettings();
+  const after = getSettings();
+  // change log (only when someone is making the change; never any password)
+  const pick = (s: Settings) => Object.fromEntries(Object.keys(patch).filter((k) => !/password/i.test(k)).map((k) => [k, k === 'smtp' ? { ...s.smtp, has_password: undefined } : s[k as keyof Settings]]));
+  logChange({ entity: 'settings', entity_id: null, action: 'update', before: pick(before), after: pick(after) });
+  return after;
 }
 
 /** Bible translation configured for a language (falls back to the catalog's first PD Bible). */

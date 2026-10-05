@@ -26,8 +26,11 @@ import type {
 } from '../types-client.ts';
 import type { Hymnal, TextPart } from '../types-client.ts';
 import { BulletinChoice, BulletinTemplateField, SlideThemeField } from './presentation-pickers.tsx';
-import { SlideBackgroundPicker, SlideBlocksPicker } from './Blocks.tsx';
-import { InfoTip } from './template-ui.tsx';
+import { SlideBlocksPicker } from './Blocks.tsx';
+import { SlideBackgroundPicker } from './Backgrounds.tsx';
+import { InfoTip } from '../components/InfoTip.tsx';
+import { Combo, type ComboOption } from '../components/Combo.tsx';
+import { CongregationField } from '../components/Congregations.tsx';
 import { ServiceBulletinTab } from './ServiceBulletinTab.tsx';
 import type { BulletinBlock } from '../../shared/presentation.ts';
 import { BibleSelect, useBibles, useChurchBible } from '../components/BibleTools.tsx';
@@ -474,6 +477,7 @@ function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave: (p: P
               ))}
             </div>
           </Field>
+          <CongregationField value={d.congregation_id} onChange={(v) => set('congregation_id', v)} />
           <Field label={t('Liturgical season')}>
             <select value={d.season ?? ''} onChange={(e) => set('season', (e.target.value || null) as ServiceFull['season'])}>
               <option value="">{t('Auto')} — {lt(SEASONS[seasonOf(d.date || svc.date)].name)}</option>
@@ -503,7 +507,7 @@ function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave: (p: P
             date: d.date, start_time: d.start_time, preacher: d.preacher || null, sermon_ref: d.sermon_ref || null,
             languages: d.languages, title: d.title, sermon_title: d.sermon_title, theme: d.theme, notes: d.notes || null,
             season: d.season ?? null, cover: { style: d.cover?.style, verse_ref: d.cover?.verse_ref?.trim() || undefined },
-            slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null,
+            slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null, congregation_id: d.congregation_id ?? null,
             bibles: Object.fromEntries(Object.entries(d.bibles ?? {}).filter(([l, c]) => c && d.languages.includes(l))),
           })}>{t('Save')}</button>
         </div>
@@ -539,14 +543,13 @@ function ItemEditor({
                 <input type="number" min={0} max={240} step={0.5} style={{ width: 90 }} value={item.duration_min} onChange={(e) => onPatch({ duration_min: Number(e.target.value) || 0 })} />
               </Field>
               <Field label={t('Role')}>
-                <select value={item.role_id ?? ''} onChange={(e) => onPatch({ role_id: e.target.value ? Number(e.target.value) : null }, true)}>
-                  <option value="">—</option>
-                  {teams.map((tm) => (
-                    <optgroup key={tm.id} label={lt(tm.name)}>
-                      {tm.roles.map((r) => <option key={r.id} value={r.id}>{both(r.name)}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
+                <Combo
+                  value={item.role_id ? String(item.role_id) : ''}
+                  noneLabel="—"
+                  ariaLabel={t('Role')}
+                  options={teams.flatMap((tm) => tm.roles.map((r) => ({ value: String(r.id), label: both(r.name), group: lt(tm.name), search: Object.values(r.name ?? {}).join(' ') })))}
+                  onChange={(v) => onPatch({ role_id: v ? Number(v) : null }, true)}
+                />
               </Field>
               <Field label={t('Leader')}>
                 <input value={item.leader ?? ''} placeholder={item.role_id ? '(from roster)' : ''} onChange={(e) => onPatch({ leader: e.target.value || null })} />
@@ -582,8 +585,8 @@ function ItemEditor({
         )}
         {(item.on_slides || !!item.slide_blocks?.length) && (
           <div className="field">
-            <span>{t('Slide background')} <InfoTip text={t('A picture behind this item’s slides only, e.g. bread and cup for the Lord’s Supper. It is faded with the slide template’s background colour so the words stay readable. Pictures live in Library → QR codes & notes.')} /></span>
-            <SlideBackgroundPicker value={item.slide_bg ?? null} blocks={blocks} onChange={(v) => onPatch({ slide_bg: v }, true)} />
+            <span>{t('Slide background')} <InfoTip text={t('A picture behind this item’s slides only, e.g. bread and cup for the Lord’s Supper. It is faded with the slide template’s background colour so the words stay readable. Pictures live in Library → Slide backgrounds.')} /></span>
+            <SlideBackgroundPicker value={item.slide_background_id ?? null} onChange={(v) => onPatch({ slide_background_id: v }, true)} />
           </div>
         )}
         <div className="row between">
@@ -622,6 +625,20 @@ function SongFields({ item, songs, langs, onPatch }: { item: ServiceItem; songs:
   const { t, lt } = useI18n();
   const song = item.ref_id ? songs.get(item.ref_id) : undefined;
   const sorted = useMemo(() => [...songs.values()].sort((a, b) => lt(a.title).localeCompare(lt(b.title))), [songs, lt]);
+  // search by title in any language, the first line of each verse, hymnal number ("HP 123", "123") or psalm number
+  const songOptions = useMemo((): ComboOption[] => sorted.map((s) => ({
+    value: String(s.id),
+    label: `${both(s.title)}${s.psalm ? ` (Ps ${s.psalm})` : ''}`,
+    hint: s.hymnals?.map((h) => `${h.abbr} ${h.number}`).join(', ') || undefined,
+    keys: (s.hymnals ?? []).flatMap((h) => [`${h.abbr} ${h.number}`, h.number, `#${h.number}`]).concat(s.psalm ? [`ps ${s.psalm}`, `psalm ${s.psalm}`] : []),
+    search: [
+      ...Object.values(s.title ?? {}),
+      ...(s.hymnals ?? []).flatMap((h) => [`${h.abbr} ${h.number}`, `${h.abbr}${h.number}`, `#${h.number}`, h.number]),
+      ...s.stanzas.flatMap((st) => Object.values(st.text ?? {}).map((x) => (x ?? '').split('\n')[0])),
+      s.psalm ? `psalm ${s.psalm} ps ${s.psalm} 诗篇 ${s.psalm}` : '',
+      ...(s.tags ?? []),
+    ].join(' '),
+  })), [sorted]);
   const { data: hymnals } = useApi<Hymnal[]>(song && (song.hymnals?.length ?? 0) > 1 ? '/hymnals' : null);
   const shownNumber = (item.hymnal_id && song?.hymnals?.find((h) => h.hymnal_id === item.hymnal_id)) || song?.hymnals?.[0];
   const verses = song?.stanzas.filter((s) => s.label !== 'R' && s.label !== 'C') ?? [];
@@ -634,10 +651,14 @@ function SongFields({ item, songs, langs, onPatch }: { item: ServiceItem; songs:
   return (
     <>
       <Field label={t('Hymn')}>
-        <select value={item.ref_id ?? ''} onChange={(e) => onPatch({ ref_id: e.target.value ? Number(e.target.value) : null, stanzas: null, hymnal_id: null }, true)}>
-          <option value="">— {t('Hymns & psalms')} —</option>
-          {sorted.map((s) => <option key={s.id} value={s.id}>{both(s.title)}{s.psalm ? ` (Ps ${s.psalm})` : ''}{s.hymnals?.length ? ` — ${s.hymnals.map((h) => `${h.abbr} ${h.number}`).join(', ')}` : ''}</option>)}
-        </select>
+        <Combo
+          value={item.ref_id ? String(item.ref_id) : ''}
+          options={songOptions}
+          noneLabel={`— ${t('Hymns & psalms')} —`}
+          placeholder={t('Type a title, first line or number (HP 123)…')}
+          ariaLabel={t('Hymn')}
+          onChange={(v) => onPatch({ ref_id: v ? Number(v) : null, stanzas: null, hymnal_id: null }, true)}
+        />
       </Field>
       {song && (song.hymnals?.length ?? 0) > 1 && (
         <Field label={t('Hymnal')} hint={t('Which hymnal number is printed and projected')}>
@@ -772,6 +793,13 @@ function TextFields({ item, texts, langs, onPatch }: { item: ServiceItem; texts:
     for (const x of texts.values()) g.set(x.category, [...(g.get(x.category) ?? []), x]);
     return [...g.entries()];
   }, [texts]);
+  const textOptions = useMemo((): ComboOption[] => grouped.flatMap(([cat, xs]) => xs.map((x) => ({
+    value: String(x.id),
+    label: both(x.title),
+    hint: x.parts?.length ? `${x.parts.length}` : undefined,
+    group: cat.replace(/_/g, ' '),
+    search: [...Object.values(x.title ?? {}), ...Object.values(x.body ?? {}).map((b) => (b ?? '').replace(/^[LCA]:\s*/, '').slice(0, 160)), ...(x.tags ?? [])].join(' '),
+  }))), [grouped]);
   const parts = text?.parts ?? [];
   const labels = useMemo(() => parts.map((p) => p.label), [parts]);
   const many = parts.length > MANY_PARTS;
@@ -823,14 +851,14 @@ function TextFields({ item, texts, langs, onPatch }: { item: ServiceItem; texts:
   return (
     <>
       <Field label={t('Liturgy')}>
-        <select value={item.ref_id ?? ''} onChange={(e) => chooseText(e.target.value ? texts.get(Number(e.target.value)) : undefined)}>
-          <option value="">— {t('Creeds & liturgy')} —</option>
-          {grouped.map(([cat, xs]) => (
-            <optgroup key={cat} label={cat.replace(/_/g, ' ')}>
-              {xs.map((x) => <option key={x.id} value={x.id}>{both(x.title)}{x.parts?.length ? ` (${x.parts.length})` : ''}</option>)}
-            </optgroup>
-          ))}
-        </select>
+        <Combo
+          value={item.ref_id ? String(item.ref_id) : ''}
+          options={textOptions}
+          noneLabel={`— ${t('Creeds & liturgy')} —`}
+          placeholder={t('Type a title or the first words…')}
+          ariaLabel={t('Liturgy')}
+          onChange={(v) => chooseText(v ? texts.get(Number(v)) : undefined)}
+        />
       </Field>
       {text?.key === WSC_SEED_KEY && (
         <div className="callout small row">
@@ -1199,21 +1227,19 @@ function TeamTab({ svc, teams, canEdit, onChange }: { svc: ServiceFull; teams: T
                           </span>
                         ))}
                         {canEdit && (
-                          <select className="cell-add" style={{ width: 160, marginLeft: 4 }} value="" onChange={(e) => e.target.value && assign(r.id, Number(e.target.value))}>
-                            <option value="">+ {t('Add')}</option>
-                            {r.members.length > 0 && (
-                              <optgroup label={t('Qualified for')}>
-                                {r.members.filter((m) => !as.some((a) => a.person_id === m.person_id)).map((m) => (
-                                  <option key={m.person_id} value={m.person_id}>{m.name}{awaySet.has(m.person_id) ? ' — away' : ''}</option>
-                                ))}
-                              </optgroup>
-                            )}
-                            <optgroup label={t('All')}>
-                              {(people?.rows ?? []).filter((p) => !qualified.has(p.id) && !as.some((a) => a.person_id === p.id)).map((p) => (
-                                <option key={p.id} value={p.id}>{nameOf(p)}{awaySet.has(p.id) ? ' — away' : ''}</option>
-                              ))}
-                            </optgroup>
-                          </select>
+                          <span style={{ display: 'inline-block', width: 170, marginLeft: 4 }}>
+                            <Combo
+                              className="cell-add"
+                              value=""
+                              placeholder={`+ ${t('Add')}`}
+                              ariaLabel={t('Add')}
+                              options={[
+                                ...r.members.filter((m) => !as.some((a) => a.person_id === m.person_id)).map((m) => ({ value: String(m.person_id), label: m.name, hint: awaySet.has(m.person_id) ? t('away') : undefined, group: t('Qualified for') })),
+                                ...(people?.rows ?? []).filter((p) => !qualified.has(p.id) && !as.some((a) => a.person_id === p.id)).map((p) => ({ value: String(p.id), label: nameOf(p), hint: awaySet.has(p.id) ? t('away') : undefined, group: t('All') })),
+                              ]}
+                              onChange={(v) => v && assign(r.id, Number(v))}
+                            />
+                          </span>
                         )}
                       </td>
                     </tr>

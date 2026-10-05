@@ -220,27 +220,6 @@ function BlockEditor({ block, canEdit, onChanged, onDeleted }: { block: Bulletin
  * "QR codes & notes on slides" for a service item (block ids) or a template item (block names): chips with a small
  * thumbnail, a select to add one (up to MAX_SLIDE_BLOCKS) and a link to make a new one in the Library.
  */
-/**
- * A background picture for one item's slides, chosen from the pictures in Library → QR codes & notes;
- * '' = the slide template's background.
- */
-export function SlideBackgroundPicker({ value, blocks, onChange, newTab }: { value: number | null; blocks: BulletinBlock[] | undefined; onChange: (v: number | null) => void; newTab?: boolean }) {
-  const { t } = useI18n();
-  const pictures = (blocks ?? []).filter((b) => b.kind === 'image' && b.data.image);
-  const cur = pictures.find((b) => b.id === value);
-  return (
-    <div className="pr-chips">
-      {cur && <BlockThumb b={cur} small />}
-      <select value={value ?? ''} aria-label={t('Slide background')} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
-        <option value="">{t('Slide template background')}</option>
-        {value != null && !cur && <option value={value}>{t('Not found in the Library')}</option>}
-        {pictures.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-      </select>
-      <Link className="small" to="/library?tab=blocks" target={newTab ? '_blank' : undefined}>{blocks && !pictures.length ? t('Add a picture in Library → QR codes & notes') : t('New…')}</Link>
-    </div>
-  );
-}
-
 export function SlideBlocksPicker<T extends number | string>({ value, blocks, keyOf, onChange, newTab }: {
   value: T[]; blocks: BulletinBlock[] | undefined; keyOf: (b: BulletinBlock) => T; onChange: (v: T[]) => void;
   /** open the Library in a new tab (inside a dialog with unsaved changes) */

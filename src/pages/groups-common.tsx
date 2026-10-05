@@ -6,6 +6,8 @@ import { isChinese } from '../../shared/languages.ts';
 import { api, useApi } from '../api.ts';
 import { tr, useContentLangs, useI18n } from '../i18n.tsx';
 import { Bi, ErrorBox, Field, L10nInput, Loading, Modal, confirmAction, fmtDate, useAction, useSession } from '../components/ui.tsx';
+import { CongregationField } from '../components/Congregations.tsx';
+import { Link } from 'react-router-dom';
 import { Icon } from '../components/icons.tsx';
 import type { Group, GroupKind, GroupMember, L10n, PersonRow, TeamWithRoles } from '../types-client.ts';
 import { PeopleMultiSelect, PersonName } from './people-common.tsx';
@@ -34,12 +36,14 @@ export type TeamFull = TeamWithRoles & { members: TeamMemberRef[] };
 
 // ---------------------------------------------------------------- labels
 
-export const KINDS: GroupKind[] = ['committee', 'fellowship', 'cell_group', 'ministry', 'other'];
+export const KINDS: GroupKind[] = ['committee', 'fellowship', 'cell_group', 'ministry', 'serving_team', 'other'];
+/** Kinds a group can be given here (serving teams are added in Volunteers, where their rota roles are). */
+export const FORM_KINDS: GroupKind[] = KINDS.filter((k) => k !== 'serving_team');
 export const KIND_LABEL: Record<GroupKind, string> = {
-  committee: 'Committee', fellowship: 'Fellowship', cell_group: 'Cell group', ministry: 'Ministry', other: 'Other group',
+  committee: 'Committee', fellowship: 'Fellowship', cell_group: 'Cell group', ministry: 'Ministry', serving_team: 'Serving team', other: 'Other group',
 };
 export const KIND_PLURAL: Record<GroupKind, string> = {
-  committee: 'Committees', fellowship: 'Fellowships', cell_group: 'Cell groups', ministry: 'Ministries', other: 'Other groups',
+  committee: 'Committees', fellowship: 'Fellowships', cell_group: 'Cell groups', ministry: 'Ministries', serving_team: 'Serving teams', other: 'Other groups',
 };
 
 /** Suggested member roles. Stored as typed; these English values have translations. Free text is allowed. */
@@ -106,6 +110,7 @@ export function GroupFormModal({
   const [name, setName] = useState<L10n>(group?.name ?? {});
   const [k, setK] = useState<GroupKind>(group?.kind ?? kind ?? 'fellowship');
   const [meeting, setMeeting] = useState(group?.meeting ?? '');
+  const [congregationId, setCongregationId] = useState<number | null>(group?.congregation_id ?? null);
   const [description, setDescription] = useState(group?.description ?? '');
   const [color, setColor] = useState(group?.color ?? (k === 'committee' ? '#7a2f2f' : '#2f4a7a'));
   const [active, setActive] = useState(group?.active ?? true);
@@ -113,7 +118,7 @@ export function GroupFormModal({
   const save = async () => {
     const g = await run(async () => {
       if (!hasAnyText(name)) throw new Error(t('Name is required.'));
-      const body = { name, kind: k, meeting: meeting.trim() || null, description: description.trim() || null, color, active, sort };
+      const body = { name, kind: k, meeting: meeting.trim() || null, description: description.trim() || null, color, active, sort, congregation_id: congregationId };
       return group ? api.patch<Group>(`/groups/${group.id}`, body) : api.post<Group>('/groups', body);
     }, t('Saved.'));
     if (g) {
@@ -129,11 +134,12 @@ export function GroupFormModal({
         <Field label={t('Group name')}><L10nInput value={name} onChange={setName} placeholder={placeholder} /></Field>
         <div className="form-grid">
           <Field label={t('Kind')}>
-            <select value={k} onChange={(e) => setK(e.target.value as GroupKind)} disabled={!!kind && !group}>
-              {KINDS.map((x) => <option key={x} value={x}>{t(KIND_LABEL[x])}</option>)}
+            <select value={k} onChange={(e) => setK(e.target.value as GroupKind)} disabled={(!!kind && !group) || k === 'serving_team'}>
+              {(k === 'serving_team' ? KINDS : FORM_KINDS).map((x) => <option key={x} value={x}>{t(KIND_LABEL[x])}</option>)}
             </select>
           </Field>
           <Field label={t('Meeting')} hint={t('e.g. Fridays 8pm, church hall')}><input value={meeting} onChange={(e) => setMeeting(e.target.value)} /></Field>
+          <CongregationField value={congregationId} onChange={setCongregationId} />
           <Field label={t('Colour')}><input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></Field>
           <Field label={t('Order')}><input type="number" value={sort} onChange={(e) => setSort(Number(e.target.value) || 0)} /></Field>
           <Field label={t('Description')} className="span-all"><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
@@ -203,7 +209,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
       onClose={onClose} size="lg"
       footer={
         <>
-          {canEdit && data && <button className="btn danger" onClick={delGroup} disabled={busy} style={{ marginRight: 'auto' }}><Icon name="trash" />{t('Delete')}</button>}
+          {canEdit && data && data.kind !== 'serving_team' && <button className="btn danger" onClick={delGroup} disabled={busy} style={{ marginRight: 'auto' }}><Icon name="trash" />{t('Delete')}</button>}
           <button className="btn" onClick={onClose}>{t('Close')}</button>
         </>
       }
@@ -219,6 +225,12 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
                 {data.meeting && <span className="small muted row" style={{ gap: 4 }}><Icon name="clock" width={13} height={13} />{data.meeting}</span>}
               </div>
               {data.description && <p className="small" style={{ margin: 0 }}>{data.description}</p>}
+              {data.kind === 'serving_team' && (
+                <p className="small muted" style={{ margin: 0 }}>
+                  {t('A volunteer team: its members are the team roster. Rota roles, qualifications and the team itself are managed in Volunteers.')}{' '}
+                  <Link to="/volunteers?tab=teams">{t('Open Volunteers')} →</Link>
+                </p>
+              )}
             </div>
             {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
           </div>

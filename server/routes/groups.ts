@@ -28,6 +28,7 @@ const flag = (v: unknown) => v === '1' || v === 'true';
 groupRoutes.get('/groups', h((req) => grp.listGroups({
   kind: req.query.kind ? (S.GroupKindSchema.parse(req.query.kind) as GroupKind) : undefined,
   inactive: flag(req.query.inactive),
+  congregation_id: Number(req.query.congregation) || undefined,
 })));
 groupRoutes.get('/groups/committees', h(() => grp.committeesView()));
 groupRoutes.get('/groups/:id', h((req) => grp.groupDetail(id(req))));

@@ -38,6 +38,7 @@ export const PersonInput = z.object({
   preferred_lang: LangSchema.nullable().optional(),
   honorific: L10nSchema.nullable().optional(),
   notes: optStr,
+  congregation_id: z.number().int().nullable().optional(),
 });
 
 export const CoworkerInput = z.object({
@@ -122,7 +123,7 @@ export const HymnalInput = z.object({
 /** Where a song appears: [{ hymnal_id, number }] */
 export const SongHymnalsInput = z.array(z.object({ hymnal_id: z.number().int(), number: z.string().min(1).max(12) })).max(50);
 
-export const GroupKindSchema = z.enum(['committee', 'fellowship', 'cell_group', 'ministry', 'other']);
+export const GroupKindSchema = z.enum(['committee', 'fellowship', 'cell_group', 'ministry', 'serving_team', 'other']);
 export const GroupInput = z.object({
   name: L10nSchema,
   kind: GroupKindSchema,
@@ -131,6 +132,7 @@ export const GroupInput = z.object({
   meeting: optStr,
   active: z.boolean().optional(),
   sort: z.number().int().optional(),
+  congregation_id: z.number().int().nullable().optional(),
 });
 export const GroupMemberInput = z.object({
   person_id: z.number().int(),
@@ -155,7 +157,7 @@ export const ServiceItemInput = z.object({
   posture: z.enum(['stand', 'sit', 'kneel']).nullable().optional(),
   bibles: z.record(LangSchema, z.string().max(20)).optional(),
   slide_blocks: z.array(z.number().int()).max(6).optional(),
-  slide_bg: z.number().int().nullable().optional(),
+  slide_background_id: z.number().int().nullable().optional(),
   body: L10nSchema.optional(),
   duration_min: z.number().min(0).max(240).optional(),
   role_id: z.number().int().nullable().optional(),
@@ -183,6 +185,7 @@ export const ServiceInput = z.object({
   bibles: z.record(LangSchema, z.string().max(20)).optional(),
   bulletin_content: z.record(z.string().regex(/^[a-z0-9_-]{1,40}$/), L10nSchema).optional(),
   bulletin_template_id: z.number().int().nullable().optional(),
+  congregation_id: z.number().int().nullable().optional(),
 });
 
 export const TemplateItemSchema = z.object({
@@ -210,6 +213,7 @@ export const TemplateInput = z.object({
   service_type: z.string().max(50).optional(),
   start_time: time.optional(),
   items: z.array(TemplateItemSchema).optional(),
+  congregation_id: z.number().int().nullable().optional(),
 });
 
 export const McpConfigSchema = z.object({

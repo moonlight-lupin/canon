@@ -168,6 +168,7 @@ test('prompts/get returns a playbook that only names existing tools', async () =
     catechism_series: { standard: 'wsc', start_q: '4', weeks: '6' },
     translate_library: { type: 'texts', lang: 'zh' },
     convert_existing: { source: 'both', date: '2026-10-11', as_template: 'yes' },
+    check_library: { focus: 'songs' },
     member_care: { days: '30' },
     group_overview: { kind: 'committee' },
   };

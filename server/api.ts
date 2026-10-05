@@ -22,11 +22,19 @@ import {
 import { all, get, run } from './db.ts';
 import { config } from './config.ts';
 import { normalisePublicUrl, publicUrl } from './lib/public-url.ts';
+import { asActor } from './lib/actor.ts';
+import { ENTITY_LABEL, changeLogUsers, listAudit, listChanges, logChange } from './repo/changelog.ts';
 import * as reg from './repo/registers.ts';
 import * as vol from './repo/volunteers.ts';
 import * as lib from './repo/library.ts';
 import * as bible from './repo/bible.ts';
 import * as svc from './repo/services.ts';
+import * as cong from './repo/congregations.ts';
+import * as rec from './repo/records.ts';
+import * as bg from './repo/backgrounds.ts';
+import { libraryChecks } from './repo/checks.ts';
+import * as grp from './repo/groups.ts';
+import type { ServiceRecord } from '../shared/records.ts';
 import { renderService } from './repo/render.ts';
 import { songUsage } from './repo/history.ts';
 import { getSettings, updateSettings, type Settings } from './repo/settings.ts';
@@ -139,6 +147,8 @@ api.get('/about', (_req, res) => {
 // ---------------------------------------------------------------- everything below needs a session
 
 api.use(requireUser);
+// the change log records who is making each change
+api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web' }, next));
 
 api.patch('/me', h((req) => {
   const b = z.object({ lang: S.LangSchema.optional(), display_name: z.string().min(1).optional(), current_password: z.string().optional(), new_password: z.string().min(8).optional() }).parse(req.body);
@@ -160,23 +170,31 @@ api.patch('/me', h((req) => {
 api.get('/users', requireAdmin, h(() => listUsers()));
 api.post('/users', requireAdmin, h((req) => {
   const b = z.object({ username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8), role: z.enum(['admin', 'editor', 'viewer']) }).parse(req.body);
-  return createUser(b);
+  const u = createUser(b);
+  logChange({ entity: 'users', entity_id: u.id, action: 'create', after: { username: u.username, display_name: u.display_name, role: u.role } });
+  return u;
 }));
 api.patch('/users/:id', requireAdmin, h((req) => {
   const b = z.object({ role: z.enum(['admin', 'editor', 'viewer']).optional(), password: z.string().min(8).optional(), display_name: z.string().optional() }).parse(req.body);
   const uid = id(req);
   if (b.role && b.role !== 'admin' && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
+  const before = getUser(uid);
   if (b.role) run('UPDATE users SET role = ? WHERE id = ?', b.role, uid);
   if (b.password) {
     run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(b.password), uid);
     run('DELETE FROM sessions WHERE user_id = ?', uid);
   }
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
-  return getUser(uid);
+  const after = getUser(uid);
+  const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role } : null);
+  logChange({ entity: 'users', entity_id: uid, action: 'update', before: pick(before), after: pick(after), summary: b.password ? 'Password changed' : undefined });
+  return after;
 }));
 api.delete('/users/:id', requireAdmin, h((req) => {
   const uid = id(req);
   if (uid === req.user!.id) throw Object.assign(new Error('You cannot delete yourself'), { status: 400 });
+  const gone = getUser(uid);
+  if (gone) logChange({ entity: 'users', entity_id: uid, action: 'delete', before: { username: gone.username, display_name: gone.display_name, role: gone.role } });
   run('DELETE FROM users WHERE id = ?', uid);
 }));
 
@@ -230,6 +248,7 @@ api.get('/dashboard', h(() => {
 api.get('/people', h((req) => reg.listPeople({
   q: str(req.query.q), status: str(req.query.status),
   household_id: Number(req.query.household_id) || undefined,
+  congregation_id: Number(req.query.congregation) || undefined,
   limit: Number(req.query.limit) || undefined, offset: Number(req.query.offset) || undefined,
 })));
 // CSV import/export now goes through the CSV framework (server/routes/csv.ts); these older URLs remain as aliases.
@@ -251,11 +270,17 @@ api.delete('/people/:id', h((req) => reg.people.remove(id(req))));
 api.put('/people/:id/roles', h((req) => {
   const pid = id(req);
   const roleIds = z.array(z.number().int()).parse(req.body.role_ids);
+  const held = all<{ role_id: number }>('SELECT role_id FROM role_members WHERE person_id = ? ORDER BY role_id', pid).map((r) => r.role_id);
+  const roleName = (rid: number) => vol.roles.find(rid)?.name.en ?? `#${rid}`;
+  const next = [...new Set(roleIds)].sort((a, b) => a - b);
+  if (JSON.stringify(held) !== JSON.stringify(next)) {
+    logChange({ entity: 'people', entity_id: pid, action: 'update', before: { ...reg.people.get(pid), roles: held.map(roleName) }, after: { ...reg.people.get(pid), roles: next.map(roleName) } });
+  }
   run('DELETE FROM role_members WHERE person_id = ?', pid);
   for (const r of new Set(roleIds)) {
     run('INSERT INTO role_members (role_id, person_id) VALUES (?, ?)', r, pid);
     // qualifying for a role puts the person on that role's team roster
-    run('INSERT OR IGNORE INTO team_members (team_id, person_id) SELECT team_id, ? FROM roles WHERE id = ?', pid, r);
+    grp.ensureOnRoleTeam(r, pid);
   }
 }));
 
@@ -272,9 +297,13 @@ api.delete('/coworkers/:id', h((req) => reg.coworkers.remove(id(req))));
 // ---------------------------------------------------------------- volunteers
 
 api.get('/teams', h(() => vol.teamsWithRoles()));
-api.post('/teams', h((req) => vol.teams.insert(S.TeamInput.parse(req.body))));
-api.patch('/teams/:id', h((req) => vol.teams.update(id(req), S.TeamInput.partial().parse(req.body))));
-api.delete('/teams/:id', h((req) => vol.teams.remove(id(req))));
+// a team is also a "Serving team" group (its roster); the two stay in step
+api.post('/teams', h((req) => vol.teams.get(grp.createTeam(S.TeamInput.parse(req.body)))));
+api.patch('/teams/:id', h((req) => {
+  grp.updateTeam(id(req), S.TeamInput.partial().parse(req.body));
+  return vol.teams.get(id(req));
+}));
+api.delete('/teams/:id', h((req) => grp.deleteTeam(id(req))));
 api.post('/roles', h((req) => vol.roles.insert(S.RoleInput.parse(req.body))));
 api.patch('/roles/:id', h((req) => vol.roles.update(id(req), S.RoleInput.partial().parse(req.body))));
 api.delete('/roles/:id', h((req) => vol.roles.remove(id(req))));
@@ -287,7 +316,7 @@ api.delete('/unavailability/:id', h((req) => vol.unavailability.remove(id(req)))
 api.get('/rota', h((req) => {
   const from = str(req.query.from) ?? new Date().toISOString().slice(0, 10);
   const to = str(req.query.to) ?? new Date(Date.now() + 56 * 86400_000).toISOString().slice(0, 10);
-  return vol.rota(from, to);
+  return vol.rota(from, to, Number(req.query.congregation) || undefined);
 }));
 api.post('/rota/autofill', h((req) => vol.autofill(z.array(z.number().int()).min(1).parse(req.body.service_ids))));
 
@@ -333,6 +362,58 @@ api.get('/bible/passage', h((req) => {
 }));
 api.get('/bible/search', h((req) => bible.searchBible(z.string().min(2).parse(req.query.q), str(req.query.translation) ?? 'KJV')));
 
+// ---------------------------------------------------------------- service records (attendance, visitors, offerings)
+
+const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: req.user?.role === 'admin' });
+const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional() });
+const RecordInput = z.object({
+  attendance: z.number().int().min(0).max(100000).nullable().optional(),
+  children: z.number().int().min(0).max(100000).nullable().optional(),
+  online: z.number().int().min(0).max(1000000).nullable().optional(),
+  visitors: z.array(VisitorSchema).max(500).optional(),
+  notes: z.string().max(20000).nullable().optional(),
+  offerings: z.array(z.object({ fund: z.string().max(100), method: z.string().max(20), amount: z.number().int().min(0), note: z.string().max(300).optional() })).max(200).optional(),
+  cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(),
+  counters: z.array(z.string().max(120)).max(10).optional(),
+  currency: z.string().max(5).optional(),
+});
+api.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined })
+  .map((r) => (req.user?.role === 'viewer' ? { ...r, offering_total: null, cash_counted: null } : r))));
+api.get('/services/:id/record', h((req) => {
+  const r = rec.recordFor(id(req));
+  return req.user?.role === 'viewer' ? rec.forViewer(r) : r;
+}));
+api.put('/services/:id/record', h((req) => rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req))));
+api.post('/services/:id/record/verify', h((req) => rec.setVerified(id(req), z.object({ verified: z.boolean() }).parse(req.body).verified, recWho(req))));
+api.put('/offering-settings', requireAdmin, h((req) => {
+  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30) }).parse(req.body);
+  return updateSettings({ offering: { currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))] } }).offering;
+}));
+
+// ---------------------------------------------------------------- library check (languages that drift apart, duplicates)
+
+api.get('/library/checks', h((req) => libraryChecks({ bibles: req.query.bibles !== '0' })));
+
+// ---------------------------------------------------------------- slide backgrounds (Library)
+
+const rawPicture = express.raw({ type: ['image/png', 'image/jpeg', 'image/webp'], limit: '11mb' });
+api.get('/backgrounds', h(() => bg.listBackgrounds()));
+api.post('/backgrounds', rawPicture, h((req) => bg.saveBackground(null, str(req.query.name), req.get('content-type') ?? '', req.body as Buffer)));
+api.put('/backgrounds/:id', rawPicture, h((req) => bg.saveBackground(id(req), undefined, req.get('content-type') ?? '', req.body as Buffer)));
+api.patch('/backgrounds/:id', h((req) => bg.renameBackground(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name)));
+api.delete('/backgrounds/:id', h((req) => bg.deleteBackground(id(req))));
+
+// ---------------------------------------------------------------- congregations
+
+api.get('/congregations', h(() => cong.listCongregations()));
+const CongregationInput = z.object({
+  name: S.L10nSchema.optional(), code: z.string().max(8).optional(), languages: z.array(S.LangSchema).max(3).optional(),
+  color: z.string().max(20).optional(), active: z.boolean().optional(), sort: z.number().int().optional(),
+});
+api.post('/congregations', requireAdmin, h((req) => cong.saveCongregation(null, CongregationInput.parse(req.body) as Partial<cong.Congregation>)));
+api.patch('/congregations/:id', requireAdmin, h((req) => cong.saveCongregation(id(req), CongregationInput.parse(req.body) as Partial<cong.Congregation>)));
+api.delete('/congregations/:id', requireAdmin, h((req) => cong.deleteCongregation(id(req))));
+
 // ---------------------------------------------------------------- templates
 
 api.get('/templates', h(() => svc.templates.list('', [], 'id')));
@@ -353,7 +434,7 @@ api.put('/templates-default', requireAdmin, h((req) => {
 
 // ---------------------------------------------------------------- services
 
-api.get('/services', h((req) => svc.listServices({ from: str(req.query.from), to: str(req.query.to), limit: Number(req.query.limit) || undefined })));
+api.get('/services', h((req) => svc.listServices({ from: str(req.query.from), to: str(req.query.to), limit: Number(req.query.limit) || undefined, congregation_id: Number(req.query.congregation) || undefined })));
 api.post('/services', h((req) => {
   const b = S.ServiceInput.extend({ template_id: z.number().int().nullable().optional() }).parse(req.body);
   const { template_id, ...input } = b;
@@ -400,11 +481,30 @@ api.put('/services/:id/order', h((req) => svc.reorderItems(id(req), z.array(z.nu
 
 api.get('/mcp/config', requireAdmin, h(() => getSettings().mcp));
 api.put('/mcp/config', requireAdmin, h((req) => updateSettings({ mcp: S.McpConfigSchema.parse(req.body) }).mcp));
-api.get('/mcp/audit', requireAdmin, h((req) => all(
-  `SELECT a.*, u.display_name AS user_name, c.client_name FROM mcp_audit a
-   LEFT JOIN users u ON u.id = a.user_id LEFT JOIN oauth_clients c ON c.client_id = a.client_id
-   ORDER BY a.id DESC LIMIT ?`, Math.min(Number(req.query.limit) || 200, 1000),
-)));
+/** AI activity log, newest first, with filters and paging. */
+api.get('/mcp/audit', requireAdmin, h((req) => {
+  const q = req.query as Record<string, string | undefined>;
+  return listAudit({
+    user_id: Number(q.user) || undefined, client: q.client || undefined, tool: q.tool || undefined, module: q.module || undefined,
+    ok: q.result === 'ok' ? true : q.result === 'error' ? false : undefined, from: q.from, to: q.to, q: q.q,
+    page: Number(q.page) || 1, size: Number(q.size) || 50,
+  });
+}));
+
+/** The change log (administrators): who changed what and when; a record's history with entity + entity_id. */
+api.get('/change-log', requireAdmin, h((req) => {
+  const q = req.query as Record<string, string | undefined>;
+  const r = listChanges({
+    entity: q.entity || undefined, entity_id: Number(q.entity_id) || undefined, user_id: Number(q.user) || undefined,
+    via: (['web', 'mcp', 'import', 'system'].includes(q.via ?? '') ? q.via : undefined) as 'web' | undefined,
+    action: q.action || undefined, from: q.from, to: q.to, q: q.q, page: Number(q.page) || 1, size: Number(q.size) || 50,
+  });
+  return { ...r, users: changeLogUsers(), entities: ENTITY_LABEL };
+}));
+api.put('/log-retention', requireAdmin, h((req) => {
+  const b = z.object({ change_log_months: z.number().int().min(0).max(120), mcp_audit_months: z.number().int().min(0).max(120) }).parse(req.body);
+  return updateSettings({ retention: b }).retention;
+}));
 api.get('/mcp/tools', requireAdmin, h(() => toolCatalog()));
 api.get('/mcp/endpoint', requireAdmin, h((req) => ({
   url: `${externalBase(req)}/mcp`,

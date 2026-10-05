@@ -794,6 +794,8 @@ export function normaliseBlockData(kind: BulletinBlockKind, input: unknown, base
 }
 
 export const blockImageKey = (id: number) => `bulletin-block-${id}`;
+/** A slide background picture (Library → Slide backgrounds); `v` busts the cache when it changes. */
+export const backgroundUrl = (id: number, version: string) => `/api/assets/slide-bg-${id}?v=${encodeURIComponent(version)}`;
 export const blockImageUrl = (id: number, version: string) => `/api/assets/${blockImageKey(id)}?v=${encodeURIComponent(version)}`;
 /** The block's QR code as SVG (PNG with `.png`); `v` busts the cache when the block changes. */
 export const blockQrUrl = (id: number, version: string, ext: 'svg' | 'png' = 'svg') => `/api/bulletin-blocks/${id}/qr.${ext}?v=${encodeURIComponent(version)}`;

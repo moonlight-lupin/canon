@@ -27,12 +27,37 @@ Next comes **Getting started**, the same panel as [Settings → Languages](/sett
 
 Open [Settings](/settings) → **Church**: the church name, **Church logo** (**Upload logo**: PNG, JPEG, WebP or SVG, up to 2 MB), address, **Contact line** (printed on the bulletin), **CCLI licence number** and **Default start time**. Press **Save**.
 
+### Several congregations {#congregations}
+
+If one church has several congregations — for example English, Chinese and Indonesian services — add them under **Settings → Church → Congregations** (**Add congregation**): a name, a **Short label** for badges (EN, 华, ID), a colour and the **Languages of its services**. Then:
+
+- services, service templates, members and groups can each belong to a congregation (the **Congregation** field in their form);
+- **Services**, **Members**, **Groups** and the rota get **All · EN · 华 · ID** filter buttons, remembered on this computer;
+- a new service for a congregation starts with its languages, and a service template can belong to one so the services made from it do too.
+
+A church with one congregation leaves the list empty and sees none of this. Deleting a congregation keeps its services, members and groups; they just lose the tag.
+
 ### Adding colleagues
 
 **Settings → Users & access → Add user**. Choose a role:
 - **Admin**: everything, including settings.
 - **Editor**: plans services and edits the registers, library and rota.
 - **Viewer**: can view and print only.
+
+| What | Admin | Editor | Viewer |
+|---|---|---|---|
+| See services, library, registers, groups, rota | ✓ | ✓ | ✓ |
+| Plan services; edit library, members, co-workers, groups, rota, templates | ✓ | ✓ | — |
+| Service records: attendance and notes | ✓ | ✓ | see only |
+| Service records: offerings and visitors' contact details | ✓ | ✓ (until the cash count is verified) | — |
+| Reopen a verified cash count | ✓ | — | — |
+| Import CSV; export personal data | ✓ | ✓ | — |
+| Send reminder e-mails | ✓ | ✓ | — |
+| Church defaults (slide, bulletin and service templates) | ✓ | — | — |
+| Settings: church, congregations, languages, users, e-mail, backups and restore, change log, AI / MCP | ✓ | — | — |
+| Add or delete Bibles | ✓ | — | — |
+
+An AI assistant always works as the person who connected it and never gets more than their role allows (see [AI assistants](#ai-assistants)).
 
 ## Every week
 
@@ -61,7 +86,7 @@ The [Dashboard](/) is the home page: the next service and its status, open roste
 - **In bulletin**: **Template default**, **Full text**, **Title only** or **Hidden**. **On slides** includes or leaves out the item.
 - **Role** fills the leader from the roster; **Leader** is free text.
 - **QR codes & notes on slides** adds a QR code or a short note to the item's slides.
-- **Slide background** puts a picture behind this item's slides only (for example bread and cup for the Lord's Supper), instead of the slide template's background. Choose from the pictures in **Library → QR codes & notes** (add one there with **New picture**). The picture is faded with the template's background colour so the words stay readable, and it is used in the PowerPoint download too.
+- **Slide background** puts a picture behind this item's slides only (for example bread and cup for the Lord's Supper), instead of the slide template's background. Choose from **Library → Slide backgrounds** (type to search). The picture is faded with the template's background colour so the words stay readable, and it is used in the PowerPoint download too.
 
 **Service details** — press **Edit…** above the order to change the date, time, languages (up to 3), **Bible versions**, **Liturgical season**, **Bulletin cover**, **Bulletin template** and **Slide theme**. Press **Save** in that card.
 
@@ -137,10 +162,19 @@ Open [Library](/library).
 
 - Library → **Bible**: look up a **Reference** or **Search** words; **＋ Compare** shows up to 4 versions side by side.
 - To add a licensed Bible: **Settings → Languages → ＋ Add a Bible**. Download the CSV template (`book, chapter, verse, text`), save from Excel as **CSV UTF-8**, tick the permission box, check the preview, then **Import**.
+  - **Indonesian**: Canon does not include an Indonesian Bible. The usual versions (Terjemahan Baru, and the older Terjemahan Lama) are held by Lembaga Alkitab Indonesia, so a church uploads the one it uses with the Bible Society's permission.
 
 ### QR codes & notes
 
 **Library → QR codes & notes** holds **New QR code**, **New picture** and **New note** blocks, used on the bulletin's back cover and on slides (e.g. the giving link or the Wi-Fi).
+
+### Check the library
+
+**Check library** (on the Hymns & songs, Liturgical texts and Bible tabs) lists songs and texts whose languages have drifted apart — a verse or part with words in one language but not the other, different numbers of lines or paragraphs, Leader / People lines in a different order — and possible duplicates (the same title twice, a hymnal number used twice), and Bible versions with fewer verses in a chapter (usually different numbering, sometimes a missing book). **Check** items probably need fixing; **Note** items may be fine. An AI assistant can work through the list with you (the **check_library** playbook).
+
+### Slide backgrounds
+
+**Library → Slide backgrounds** keeps full-screen pictures for the slides of one service item. **Add background…** uploads a PNG, JPEG or WebP (up to 10 MB); each shows its size, with a warning when it is smaller than the screen (use 1920 × 1080 for widescreen projectors, 1440 × 1080 for 4:3), and how many items use it. **Rename**, **Replace** (every item using it gets the new picture) or delete one; items that used a deleted background go back to the template's.
 
 ## Templates
 
@@ -181,11 +215,12 @@ The editor shows the settings in numbered steps that fold open, with a large liv
 
 ## People
 
-- [Groups](/groups): committees, fellowships, cell groups and ministries. **Add group**, then **Add members** with a **Role in group** and term dates. To keep history, set an end date or untick **Active** instead of deleting.
+- [Groups](/groups): committees, fellowships, cell groups, ministries and **Serving teams**. **Add group**, then **Add members** with a **Role in group** and term dates. To keep history, set an end date or untick **Active** instead of deleting.
+  - Every volunteer team is also a **Serving team** group: its members are the team roster, with roles (a **Leader** role makes a team leader) and term dates like any group. Teams are added, renamed and deleted in **Volunteers**, where their rota roles are; renaming in either place renames both.
 - [Members](/members): **Add person** with names, **Chinese name**, **Honorific title** (弟兄, 姐妹, Bro., Sis., Rev.…), contact, status, baptism and membership dates, household. **Birthdays** lists the coming birthdays.
 - [Co-workers](/coworkers): pastors, elders, deacons and staff. **Add co-worker**, choose the person, **Position** and **Category**. **Add to committee…** tags them with their committees.
 - [Volunteers](/volunteers):
-  - **Teams & roles**: **Add team**, **Add role** with **Needed per service** and **Qualified people**.
+  - **Teams & roles**: **Add team**, **Add role** with **Needed per service** and **Qualified people**. Someone qualified for a role joins that team's roster (its Serving team group) automatically.
   - **Rota**: pick a period, press **Auto-fill** to fill empty slots fairly, click names to change status, **Print**.
   - **Unavailability**: **Add unavailability** for people who are away; auto-fill skips them.
 
@@ -200,6 +235,19 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 
 > **Tip:** Importing the same file twice is safe: existing records are matched and updated, not duplicated.
 
+## Service records {#service-records}
+
+[Service records](/records) (under **Records** in the sidebar) keeps what happened at each service held: attendance, new visitors, notes for the team and the offerings. The list shows the last 8 weeks, 6 months or 12 months (and a congregation, if your church has several), with the average attendance, the number of new visitors and the offering total. Click a service to open its record.
+
+- **Attendance**: **People present** (adults and children), **of whom children**, and **Online** if you stream.
+- **New visitors**: name, contact, **How they came**, **Follow-up by** and notes. Visitors' details are personal data: record only what the church needs to follow up.
+- **Notes for the team**: what went well, what to fix, prayer needs.
+- **Offerings**: one line per fund and method (cash, cheque, bank transfer, PayNow, card), with totals per method. Administrators set the **Currency and funds** at the top of the list.
+- **Cash count**: the number of each note and coin; Canon adds them up and shows any difference from the cash lines. Enter at least two **Counted by** names, then **Mark as counted and verified** (the count must match). After that only an administrator can change the money (**Reopen cash count**); attendance and notes can still be updated.
+- **Print cash-count declaration** prints an A4 page with the count, the totals by method, a short declaration, and name, signature and date lines for the counters to sign.
+
+Read-only users see attendance and notes only, without offerings or visitors' contact details. Every change is in **Settings → Change log** (an administrator's **History** button on the record shows just that service).
+
 ## Settings
 
 Open [Settings](/settings).
@@ -207,6 +255,7 @@ Open [Settings](/settings).
 - **My profile** (everyone): display name, interface language, **Change password**.
 - **Church**, **Languages**, **Users & access**: see [Getting started](#getting-started).
 - **E-mail**: choose the **Provider** (Gmail, Microsoft 365 or other), fill in the SMTP details and **Save**, then **Send test**. Gmail needs an app password.
+- **Change log** (administrators): every change made in Canon, by an AI agent or by a CSV import — who, when, how, and each field's old → new value. Filter by what (members, services, songs…), who, how, added / changed / deleted, dates or words, and page through older entries. **Keep** sets how many months are kept (older entries are deleted once a day). Passwords are never recorded. A member's **History** button shows the changes to that person.
 - **AI / MCP**: see below.
 
 ## AI assistants
@@ -229,7 +278,7 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - It sees only the modules you allow, and acts as the person who approved it. A viewer's connection is always read only.
 - Member contact details and birthdays stay hidden unless you turn on **Expose member contact details & birthdays**.
 - It cannot send e-mail, delete people, or see accounts or settings. It asks before changing things.
-- **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action.
+- **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages and its own **Keep** period.
 
 ## Backups and moving to Docker
 

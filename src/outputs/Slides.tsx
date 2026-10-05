@@ -6,7 +6,7 @@ import { useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg, useLatest } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { L10n, Lang, RenderedService } from '../types-client.ts';
-import { ASPECT_WIDTH, blockImageUrl, blockQrUrl, type SlideAspect, type SlideTheme } from '../../shared/presentation.ts';
+import { ASPECT_WIDTH, backgroundUrl, blockImageUrl, blockQrUrl, type SlideAspect, type SlideTheme } from '../../shared/presentation.ts';
 import type { RenderedSlideBlock } from '../../shared/render-types.ts';
 import { Bi, LANG_ATTR, biParts, biText, dateParts, hasAny, langOptions, langsFor, modeFor, speaker, timeRange, type LangMode } from './content.tsx';
 import { logoUrl, useLogo } from '../components/brand.tsx';
@@ -365,7 +365,7 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
   const style: Record<string, string> = {};
   if (r.season.color) style['--s-season'] = r.season.color;
   if (s.bg) {
-    style['--slide-bg-image'] = `url("${blockImageUrl(s.bg.id, s.bg.v)}")`;
+    style['--slide-bg-image'] = `url("${backgroundUrl(s.bg.id, s.bg.v)}")`;
     style['--slide-bg-size'] = 'cover';
     style['--slide-bg-repeat'] = 'no-repeat';
     style['--slide-bg-overlay'] = 'var(--slide-item-bg-overlay)';

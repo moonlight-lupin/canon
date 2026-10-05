@@ -1,10 +1,15 @@
 import { db, type SqlValue } from '../db.ts';
+import { currentActor } from './actor.ts';
+import { logChange } from '../repo/changelog.ts';
 
 export class NotFound extends Error {
   status = 404;
 }
 export class BadRequest extends Error {
   status = 400;
+}
+export class Forbidden extends Error {
+  status = 403;
 }
 
 interface Spec {
@@ -14,6 +19,8 @@ interface Spec {
   json?: string[];
   bool?: string[];
   touch?: boolean; // maintain updated_at
+  /** change log: false = not logged; parent = the record this one belongs to (shown in that record's history) */
+  log?: false | { parent?: (row: Record<string, unknown>) => { entity: string; id: number } | null };
 }
 
 /** Thin typed CRUD wrapper over one table with JSON / boolean column (de)serialisation. */
@@ -28,6 +35,9 @@ export function table<T extends { id: number }>(spec: Spec) {
     for (const k of bool) if (k in out) out[k] = !!out[k];
     return out as T;
   };
+
+  const logged = () => spec.log !== false && !!currentActor();
+  const parentOf = (row: T | undefined) => (row && spec.log ? spec.log.parent?.(row as Record<string, unknown>) ?? null : null);
 
   const encode = (data: Record<string, unknown>) => {
     const out: Record<string, SqlValue> = {};
@@ -63,22 +73,29 @@ export function table<T extends { id: number }>(spec: Spec) {
         ? `INSERT INTO ${spec.name} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`
         : `INSERT INTO ${spec.name} DEFAULT VALUES`;
       const r = db.prepare(sql).run(...keys.map((k) => e[k]));
-      return this.get(Number(r.lastInsertRowid));
+      const row = this.get(Number(r.lastInsertRowid));
+      if (logged()) logChange({ entity: spec.name, entity_id: row.id, action: 'create', after: row as Record<string, unknown>, parent: parentOf(row) });
+      return row;
     },
     update(id: number, patch: Record<string, unknown>): T {
       const e = encode(patch);
       const keys = Object.keys(e);
+      const before = keys.length && logged() ? this.find(id) : undefined;
       if (keys.length) {
         const sets = keys.map((k) => `${k} = ?`);
         if (spec.touch) sets.push(`updated_at = datetime('now')`);
         const r = db.prepare(`UPDATE ${spec.name} SET ${sets.join(', ')} WHERE id = ?`).run(...keys.map((k) => e[k]), id);
         if (!r.changes) throw new NotFound(`${spec.name} ${id} not found`);
       }
-      return this.get(id);
+      const after = this.get(id);
+      if (before) logChange({ entity: spec.name, entity_id: id, action: 'update', before: before as Record<string, unknown>, after: after as Record<string, unknown>, parent: parentOf(after) });
+      return after;
     },
     remove(id: number): void {
+      const before = logged() ? this.find(id) : undefined;
       const r = db.prepare(`DELETE FROM ${spec.name} WHERE id = ?`).run(id);
       if (!r.changes) throw new NotFound(`${spec.name} ${id} not found`);
+      if (before) logChange({ entity: spec.name, entity_id: id, action: 'delete', before: before as Record<string, unknown>, parent: parentOf(before) });
     },
   };
 }

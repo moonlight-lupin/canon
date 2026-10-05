@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { both, useContentLangs, useI18n } from '../i18n.tsx';
 import { Bi, Field, L10nInput, Loading, Modal, PageHead, confirmAction, useAction, useSession } from '../components/ui.tsx';
+import { CongregationBadge, CongregationField, useCongregations } from '../components/Congregations.tsx';
+import { Combo } from '../components/Combo.tsx';
 import { Icon } from '../components/icons.tsx';
 import { CsvTools } from '../components/CsvTools.tsx';
 import { KIND_ICON, KIND_LABEL, PostureField } from './ServiceEditor.tsx';
@@ -17,6 +19,7 @@ export default function Templates() {
   const { t, lt } = useI18n();
   const { canEdit, isAdmin, settings, reloadSettings } = useSession();
   const { data, reload } = useApi<Template[]>('/templates');
+  const congs = useCongregations();
   const { run } = useAction();
   const defaultId = data?.find((x) => x.id === settings?.default_service_template_id)?.id ?? data?.[0]?.id ?? null;
   const makeDefault = (tid: number) => run(async () => {
@@ -38,6 +41,7 @@ export default function Templates() {
                 <h2><Bi v={tp.name} /></h2>
                 <span className="row" style={{ gap: 6 }}>
                   {tp.id === defaultId && <span className="badge reed" title={t('New service starts from this template.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
+                  <CongregationBadge id={tp.congregation_id} list={congs} />
                   <span className="badge">{tp.start_time}</span>
                 </span>
               </div>
@@ -103,6 +107,7 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
         <div className="form-grid">
           <Field label={t('Start time')}><input type="time" value={x.start_time} onChange={(e) => setX({ ...x, start_time: e.target.value })} /></Field>
           <Field label="Type"><input value={x.service_type ?? ''} onChange={(e) => setX({ ...x, service_type: e.target.value })} /></Field>
+          <CongregationField value={x.congregation_id} onChange={(v) => setX({ ...x, congregation_id: v })} hint={t('Services made from this template belong to this congregation.')} />
         </div>
         <h3>{t('Items')}</h3>
         {items.map((it, i) => (
@@ -116,18 +121,20 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
               </Field>
               {it.kind === 'song' && (
                 <Field label={t('Hymn')} className="grow">
-                  <select value={it.song_key ?? ''} onChange={(e) => setItem(i, { song_key: e.target.value || undefined })}>
-                    <option value="">— ({lt({ en: 'fill each week', zh: '每周填写' })})</option>
-                    {(songs ?? []).filter((s) => s.key).map((s) => <option key={s.id} value={s.key!}>{both(s.title)}</option>)}
-                  </select>
+                  <Combo value={it.song_key ?? ''} noneLabel={`— (${lt({ en: 'fill each week', zh: '每周填写' })})`} ariaLabel={t('Hymn')}
+                    options={(songs ?? []).filter((s) => s.key).map((s) => ({
+                      value: s.key!, label: both(s.title), hint: s.hymnals?.map((h) => `${h.abbr} ${h.number}`).join(', ') || undefined,
+                      search: [...Object.values(s.title ?? {}), ...(s.hymnals ?? []).map((h) => `${h.abbr} ${h.number} ${h.number}`)].join(' '),
+                      keys: (s.hymnals ?? []).flatMap((h) => [`${h.abbr} ${h.number}`, h.number]),
+                    }))}
+                    onChange={(v) => setItem(i, { song_key: v || undefined })} />
                 </Field>
               )}
               {it.kind === 'text' && (
                 <Field label={t('Liturgy')} className="grow">
-                  <select value={it.text_key ?? ''} onChange={(e) => setItem(i, { text_key: e.target.value || undefined })}>
-                    <option value="">—</option>
-                    {(texts ?? []).filter((s) => s.key).map((s) => <option key={s.id} value={s.key!}>{both(s.title)}</option>)}
-                  </select>
+                  <Combo value={it.text_key ?? ''} noneLabel="—" ariaLabel={t('Liturgy')}
+                    options={(texts ?? []).filter((s) => s.key).map((s) => ({ value: s.key!, label: both(s.title), group: s.category.replace(/_/g, ' '), search: Object.values(s.title ?? {}).join(' ') }))}
+                    onChange={(v) => setItem(i, { text_key: v || undefined })} />
                 </Field>
               )}
               {it.kind === 'scripture' && (

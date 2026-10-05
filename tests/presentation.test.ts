@@ -638,3 +638,16 @@ test('template files: export and import a slide template (with picture) and a bu
   assert.throws(() => F.importTemplateFile({ hello: 1 }), /not a Canon template file/);
   assert.throws(() => F.importTemplateFile({ ...sf, version: 99 }), /newer version/);
 });
+
+test('library check: missing languages, misaligned speakers, duplicates', async () => {
+  const lib = await import('../server/repo/library.ts');
+  const { libraryChecks } = await import('../server/repo/checks.ts');
+  updateSettings({ languages: ['en', 'zh'] });
+  const a = lib.songs.insert({ title: { en: 'Drift Song Zk', zh: '漂移诗歌' }, stanzas: [{ label: '1', text: { en: 'One\nTwo', zh: '一\n二' } }, { label: '2', text: { en: 'Three\nFour' } }] });
+  lib.songs.insert({ title: { zh: '漂移诗歌' }, stanzas: [] });
+  const tx = lib.texts.insert({ category: 'liturgy', title: { en: 'Litany Zk' }, body: { en: 'L: Lord, have mercy.\nC: Christ, have mercy.', zh: 'C: 主啊，求你怜悯。\nL: 基督啊，求你怜悯。' } });
+  const r = libraryChecks({ bibles: false });
+  assert.ok(r.issues.some((i) => i.kind === 'song_verses' && i.item.id === a.id && /verse 2/.test(i.detail)));
+  assert.ok(r.issues.some((i) => i.kind === 'duplicate_title' && /漂移诗歌/.test(i.detail + i.item.title)));
+  assert.ok(r.issues.some((i) => i.kind === 'text_speakers' && i.item.id === tx.id));
+});

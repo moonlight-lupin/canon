@@ -24,6 +24,8 @@ export interface Household {
 }
 
 export interface Person {
+  /** home congregation */
+  congregation_id?: number | null;
   id: number;
   first_name: string;
   last_name: string;
@@ -200,10 +202,11 @@ export interface LiturgyText {
 
 // ---------------------------------------------------------------- groups
 
-export type GroupKind = 'committee' | 'fellowship' | 'cell_group' | 'ministry' | 'other';
+export type GroupKind = 'committee' | 'fellowship' | 'cell_group' | 'ministry' | 'other' | 'serving_team';
 
 /** Committees (Session, Board of Deacons, Missions), fellowships 团契, cell groups 小组, ministries. */
 export interface Group {
+  congregation_id?: number | null;
   id: number;
   name: L10n;
   kind: GroupKind;
@@ -262,8 +265,8 @@ export interface ServiceItem {
   bibles: Record<Lang, string>;
   /** QR codes / notes (bulletin blocks) projected on a slide after this item, e.g. PayNow during the offering */
   slide_blocks: number[];
-  /** background picture for this item's slides: a picture block id (Library → QR codes & notes); null = the template's */
-  slide_bg?: number | null;
+  /** background picture for this item's slides (Library → Slide backgrounds); null = the slide template's */
+  slide_background_id?: number | null;
   /** custom / pasted body text, overrides library text when set */
   body: L10n;
   duration_min: number;
@@ -280,6 +283,8 @@ export type ServiceStatus = 'draft' | 'final';
 export type Posture = 'stand' | 'sit' | 'kneel';
 
 export interface Service {
+  /** the congregation it belongs to (English / Chinese / … services of one church); null = the whole church */
+  congregation_id?: number | null;
   id: number;
   date: string; // YYYY-MM-DD
   start_time: string; // HH:MM
@@ -344,11 +349,12 @@ export interface TemplateItem {
   bulletin_text?: 'full' | 'title';
   /** block names (matched when the service is created), shown on a slide after this item */
   slide_blocks?: string[];
-  /** slide background picture, by block name */
+  /** slide background picture, by its name in Library → Slide backgrounds */
   slide_bg?: string;
 }
 
 export interface Template {
+  congregation_id?: number | null;
   id: number;
   key: string | null;
   name: L10n;

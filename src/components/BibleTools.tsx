@@ -22,18 +22,27 @@ export interface Translation {
   verses: number;
 }
 
-// One fetch of the installed list shared by every select on the page; refreshBibles() after a change.
+// One fetch of the installed list shared by every select on the page; refreshBibles() after a change. A Bible added
+// in another tab (or by someone else) shows up when this tab is used again: the list is re-read when the tab
+// regains focus or a version select is opened, if it is older than STALE_MS.
 let cache: Translation[] | null = null;
+let fetchedAt = 0;
 let pending: Promise<Translation[]> | null = null;
 const listeners = new Set<(t: Translation[]) => void>();
+const STALE_MS = 30_000;
 export function refreshBibles() {
   pending = api.get<Translation[]>('/bible/translations').then((t) => {
     cache = t;
+    fetchedAt = Date.now();
     pending = null;
     listeners.forEach((f) => f(t));
     return t;
   });
   return pending;
+}
+/** Re-read the list when it may be out of date (another tab or person may have added a Bible). */
+export function refreshBiblesIfStale() {
+  if (!pending && Date.now() - fetchedAt > STALE_MS) refreshBibles().catch(() => undefined);
 }
 
 /** Installed Bible versions (catalog and uploaded), with verse counts. */
@@ -42,8 +51,14 @@ export function useBibles(): Translation[] | undefined {
   useEffect(() => {
     listeners.add(setList);
     if (!cache && !pending) refreshBibles().catch(() => undefined);
+    else refreshBiblesIfStale();
+    const onVisible = () => document.visibilityState === 'visible' && refreshBiblesIfStale();
+    window.addEventListener('focus', refreshBiblesIfStale);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       listeners.delete(setList);
+      window.removeEventListener('focus', refreshBiblesIfStale);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
   return list ?? undefined;
@@ -69,7 +84,7 @@ export function BibleSelect({ lang, value, onChange, inheritLabel, className, ti
   const options = bibles.filter((b) => compatible(b.lang, lang));
   const missing = value && !options.some((o) => o.code === value);
   return (
-    <select className={className} title={title} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className={className} title={title} value={value} onFocus={refreshBiblesIfStale} onChange={(e) => onChange(e.target.value)}>
       <option value="">{inheritLabel}</option>
       {options.map((o) => (
         <option key={o.code} value={o.code}>{o.code} — {o.name}{o.lang !== lang ? ` (${langInfo(o.lang).short})` : ''}</option>

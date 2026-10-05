@@ -380,3 +380,60 @@ table.t tr.click:hover td { background: var(--sunk); }
 @media print {
   .no-print { display: none !important; }
 }
+
+/* "?" tooltips (components/InfoTip.tsx): the box is a portal on <body>, so nothing can clip it */
+.tp-tip {
+  position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 4px; vertical-align: 1px;
+  border-radius: 999px; border: 1px solid var(--rule-strong); color: var(--ink-3); font: 600 10.5px/1 var(--sans); cursor: help;
+  text-transform: none; letter-spacing: 0; user-select: none;
+}
+.tp-tip:hover, .tp-tip:focus-visible { color: var(--lapis); border-color: var(--lapis); outline: none; }
+.tp-tipbox {
+  position: fixed; z-index: 1000; width: max-content; max-width: min(300px, calc(100vw - 16px)); padding: 8px 10px; border-radius: 8px;
+  background: var(--ink); color: var(--paper); font: 400 12.5px/1.45 var(--sans); text-align: left; white-space: normal;
+  box-shadow: 0 6px 20px rgb(20 24 32 / 0.25); pointer-events: none;
+}
+
+/* searchable dropdowns (components/Combo.tsx): the list is a portal on <body> */
+.combo-input { cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 30px; text-overflow: ellipsis; }
+.combo-input:focus { cursor: text; }
+.combo-list {
+  position: fixed; z-index: 1000; overflow-y: auto; padding: 4px; background: var(--paper-3); border: 1px solid var(--rule-strong);
+  border-radius: 10px; box-shadow: 0 10px 30px rgb(20 24 32 / 0.18); font: 13.5px var(--sans); color: var(--ink);
+}
+.combo-group { padding: 8px 10px 4px; font: 600 11px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--reed-ink); }
+.combo-opt { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+.combo-opt.active { background: var(--lapis-wash); }
+.combo-opt.chosen .combo-label { font-weight: 600; }
+.combo-opt.disabled { color: var(--ink-3); cursor: not-allowed; }
+.combo-label { min-width: 0; }
+.combo-hint { flex: none; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.combo-empty { padding: 8px 10px; font-size: 12.5px; color: var(--ink-3); }
+.combo-foot { border-top: 1px solid var(--rule); margin-top: 4px; padding: 8px 10px 4px; font-size: 13px; }
+
+/* logs: filters, pager, field changes (components/LogTools.tsx) */
+.log-filters { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 10px 16px; }
+.log-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 10px; }
+.log-table td { vertical-align: top; }
+.log-changes { min-width: 260px; font-size: 13px; }
+.log-fields { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 4px 0 0; }
+.log-fields dt { color: var(--ink-3); text-transform: capitalize; }
+.log-fields dd { margin: 0; overflow-wrap: anywhere; }
+.log-old { color: var(--ink-3); text-decoration: line-through; }
+.log-new { color: var(--ink); }
+
+/* congregations (components/Congregations.tsx) */
+.cong-badge { background: transparent; border: 1px solid; font-weight: 600; font-size: 11px; padding: 1px 6px; vertical-align: 1px; }
+.cong-filter .seg button { min-width: 38px; }
+
+/* Library → Slide backgrounds (pages/Backgrounds.tsx) */
+.bg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.bg-card { display: flex; flex-direction: column; gap: 6px; padding: 10px; }
+.bg-thumb { aspect-ratio: 16 / 9; border-radius: 6px; background: var(--paper-3) center / cover no-repeat; box-shadow: 0 0 0 1px var(--rule); }
+.bg-name { font-weight: 600; }
+.bg-mini { width: 54px; height: 30px; border-radius: 4px; background: center / cover no-repeat; box-shadow: 0 0 0 1px var(--rule); flex: none; }
+.warn-text { color: var(--warn); }
+
+/* Library → Check (pages/LibraryCheck.tsx) */
+.check-group > summary { cursor: pointer; padding: 6px 0; }
+.check-group table { margin: 4px 0 10px; }

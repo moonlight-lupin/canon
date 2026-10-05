@@ -5,7 +5,8 @@ import type { L10n } from '../../shared/types.ts';
 import { get, run, tx } from '../db.ts';
 import { songs, texts } from '../repo/library.ts';
 import { templates } from '../repo/services.ts';
-import { teams, roles } from '../repo/volunteers.ts';
+import { roles } from '../repo/volunteers.ts';
+import { createTeam } from '../repo/groups.ts';
 import { getMeta, setMeta } from '../repo/settings.ts';
 
 const DEFAULT_TEAMS: { name: L10n; color: string; roles: { name: L10n; needed: number }[] }[] = [
@@ -52,8 +53,8 @@ export async function seed(force = false) {
   if (!get('SELECT 1 FROM teams LIMIT 1')) {
     tx(() => {
       DEFAULT_TEAMS.forEach((t, i) => {
-        const team = teams.insert({ name: t.name, color: t.color, sort: i });
-        t.roles.forEach((r, j) => roles.insert({ team_id: team.id, name: r.name, needed: r.needed, sort: j }));
+        const teamId = createTeam({ name: t.name, color: t.color, sort: i });
+        t.roles.forEach((r, j) => roles.insert({ team_id: teamId, name: r.name, needed: r.needed, sort: j }));
       });
     });
   }
