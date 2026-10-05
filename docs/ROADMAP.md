@@ -6,12 +6,13 @@ What is planned for Canon after v0.10.0. Plans change: each release is scoped in
 |---|---|
 | 0.10.0 | Reporting — done |
 | 0.11.0 | Hardening: archiving, storage, privacy; custom member fields |
-| 0.12.0 | Lending library |
-| 0.13.0 | Asset register |
-| 0.14.0 | Roles and permissions, second hardening round |
-| 0.15.0 | Book-keeping |
-| 0.15.1 | Claim forms |
-| 0.16.0 | UI/UX audit |
+| 0.12.0 | Meetings, Sunday school and the church calendar |
+| 0.13.0 | Lending library |
+| 0.14.0 | Asset register |
+| 0.15.0 | Roles and permissions, second hardening round |
+| 0.16.0 | Book-keeping |
+| 0.16.1 | Claim forms |
+| 0.17.0 | UI/UX audit |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
@@ -42,15 +43,25 @@ Roles and permissions come before the finance modules, because book-keeping and 
 - **Editing conflicts**: two people saving the same service or record at once get a clear "changed by someone else" message instead of silently overwriting each other.
 - **Content rights**: Bible versions and hymn texts list their source, edition and where they may be used, instead of a blanket "public domain".
 
-## 0.12.0 — Lending library
+## 0.12.0 — Meetings, Sunday school and the church calendar
+
+- **Meetings**: fellowship meetings, cell groups, prayer meetings and Sunday school classes become a lighter kind of service, linked to their group: date, time, place, the person chairing, topic or passage. An order of service, bulletin and slides stay optional. The planner shows services and meetings apart.
+- **Records like service records**: a headcount, new visitors with their follow-up, notes for the leaders (the chair notes any absence worth following up), and offerings with the same cash count, declaration and signing.
+- **Sunday school**: classes are groups (teachers lead, pupils are members, with an age range); each session is a meeting with its record.
+- **Recurring meetings**: created ahead from the group's meeting pattern (for example every Friday at 8 pm), so the chair just opens tonight's meeting.
+- **Reports** per group and kind of meeting: attendance trends, visitors, offerings.
+- **Church calendar**: services, meetings and other church events in one month / week / list view, by congregation and group.
+- AI agents see meetings and their records under the same Service records and Offerings permissions.
+
+## 0.13.0 — Lending library
 
 A library for the church's books, DVDs and curricula, lent to members. It will be called **Lending library**, separate from the existing **Library** of songs, liturgy and Bibles. Catalogue (title, author, ISBN, category, language, shelf), numbered copies with QR labels, loans with due dates, renewals and returns, an overdue list, CSV import, and a librarian permission.
 
-## 0.13.0 — Asset register
+## 0.14.0 — Asset register
 
 The church's equipment and property: what it is, where it is, who looks after it, when it was bought and for how much, its condition, and maintenance due. Shares item numbers and QR labels with the lending library.
 
-## 0.14.0 — Roles and permissions, second hardening round
+## 0.15.0 — Roles and permissions, second hardening round
 
 Roles reorganised around what churches actually do (for example treasurer, librarian, claims approver), with permissions per module and per field, before the finance modules arrive — one permission model shared by the web app and AI agents. This includes:
 - finer control over who sees which member details, beyond the read-only rule added in 0.11;
@@ -60,14 +71,18 @@ Roles reorganised around what churches actually do (for example treasurer, libra
 
 Plus a second round of hardening.
 
-## 0.15.0 — Book-keeping
+## 0.16.0 — Book-keeping
 
 Simple accounts for the church, plus **project accounts** for special events (a camp, a building fund, a conference). Verified offerings from service records can flow in as income, so nothing is typed twice.
 
-## 0.15.1 — Claim forms
+## 0.16.1 — Claim forms
 
 Expense claims with receipts, approval and on-screen signatures; approved claims become expenses in the main or a project account.
 
-## 0.16.0 — UI/UX audit
+## 0.17.0 — UI/UX audit
 
 A review of the whole app for clarity, consistency, accessibility and use on phones and tablets.
+
+## Later
+
+- **Child check-in and pick-up** for Sunday school: name labels and a collection code for the guardian.
