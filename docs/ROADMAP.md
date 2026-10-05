@@ -55,14 +55,14 @@ Differences from the plan, carried forward to the second hardening round (0.13):
 
 - **Meetings**: fellowship meetings, cell groups, prayer meetings and Sunday school classes become a lighter kind of service, linked to their group: date, time, place, the person chairing, topic or passage. An order of service, bulletin and slides stay optional. The planner shows services and meetings apart.
 - **Records like service records**: a headcount, new visitors with their follow-up, and notes for the leaders (the chair notes any absence worth following up).
-- **Offerings are optional**:
-  - A group sets whether its meetings take an offering, so recurring meetings follow it; a single meeting can still turn it on or off.
+- **Offerings are optional**, set on each meeting:
+  - A new meeting copies the setting from the group's previous meeting (as duplicating does), so it is usually set once and then carried forward.
   - With an offering, the record has the same cash count, declaration and signing as a service.
   - Without one, the record shows no offering section, and the meeting stays out of the offerings reports and the cash counts waiting to be verified.
 - **Group leaders record their own meetings**: a group's leaders can open and record that group's meetings without being editors. They don't see other groups' records or the rest of the register. This is the first piece of the 0.13 permission model.
 - **On a phone**: the meeting record and its cash count work on a phone, so the chair can fill them in on the night.
 - **Sunday school**: classes are groups (teachers lead, pupils are members, with an age range); each session is a meeting with its record.
-- **Recurring meetings**: created ahead from the group's meeting pattern (for example every Friday at 8 pm), so the chair just opens tonight's meeting.
+- **Recurring meetings**: created ahead from the group's meeting pattern (for example every Friday at 8 pm), each copying the previous meeting's details (place, chair, offering or not), so the chair just opens tonight's meeting.
 - **Reports** per group and kind of meeting: attendance trends, visitors, offerings.
 - **Church calendar**: services, meetings and other church events in one month / week / list view, by congregation and group.
 - AI agents see meetings and their records under the same Service records and Offerings permissions.
