@@ -2,7 +2,7 @@
 import type { Person } from '../../shared/types.ts';
 import { PersonInput } from '../../shared/schemas.ts';
 import { LANG_CODE_RE } from '../../shared/languages.ts';
-import { all, get } from '../db.ts';
+import { all } from '../db.ts';
 import { households, people } from '../repo/registers.ts';
 import { M, fail, say, type Entity, type Msg, type RowPlan } from './engine.ts';
 import {
@@ -11,9 +11,15 @@ import {
 import type { Ctx } from './engine.ts';
 import { cleanCustomValues, optionValue, type MemberField } from '../../shared/member-fields.ts';
 import { getSettings } from '../repo/settings.ts';
+import { seesSensitive, wallSql } from '../lib/walls.ts';
 
-/** The church's own fields (Settings → Member fields): one column each, custom_<key>. */
-const customDefs = (): MemberField[] => getSettings().member_fields ?? [];
+/**
+ * The church's own fields (Settings → Member fields): one column each, custom_<key>. Fields marked sensitive only for
+ * accounts whose role sees them: for others they are not exported, not shown in a preview and not changed by an
+ * import (a custom_<key> column for one is ignored like any unknown column).
+ */
+const allCustomDefs = (): MemberField[] => getSettings().member_fields ?? [];
+const customDefs = (): MemberField[] => allCustomDefs().filter((d) => seesSensitive() || !d.sensitive);
 const customCols = () => customDefs().map((d) => col(
   `custom_${d.key}`,
   M(d.label.en || Object.values(d.label)[0] || d.key, d.label.zh || d.label.en || d.key),
@@ -81,7 +87,11 @@ const nameKey = (first: string, last: string, birth: string | null) => `${first.
 const label = (p: { first_name?: unknown; last_name?: unknown; native_name?: unknown }) =>
   [p.first_name, p.last_name, p.native_name].filter((x) => typeof x === 'string' && x).join(' ');
 
-const rows = () => all<Row>('SELECT p.*, h.name household_name FROM people p LEFT JOIN households h ON h.id = p.household_id ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE, p.id');
+// only the people this account may see: an export, a preview and a match by name never reach another congregation's
+const rows = () => {
+  const w = wallSql('p.congregation_id');
+  return all<Row>(`SELECT p.*, h.name household_name FROM people p LEFT JOIN households h ON h.id = p.household_id WHERE 1${w.sql} ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE, p.id`, ...w.params);
+};
 
 export const members: Entity = {
   key: 'members',
@@ -121,7 +131,7 @@ export const members: Entity = {
     const hhCache = new Map<string, number>();
     const household = (name: string) => {
       const k = name.toLowerCase();
-      let id = hhCache.get(k) ?? get<{ id: number }>('SELECT id FROM households WHERE name = ? COLLATE NOCASE ORDER BY id', name)?.id;
+      let id = hhCache.get(k) ?? all<{ id: number }>('SELECT id FROM households WHERE name = ? COLLATE NOCASE ORDER BY id', name).map((h) => h.id).find((hid) => !!households.find(hid));
       if (!id) id = households.insert({ name }).id;
       hhCache.set(k, id);
       return id;
@@ -176,7 +186,8 @@ export const members: Entity = {
       if (cdefs.length) {
         const curC = customOf(cur);
         const given = Object.fromEntries(cdefs.map((d) => [d.key, r.v[`custom_${d.key}`] ?? '']));
-        const { values, errors: ce } = cleanCustomValues({ ...curC, ...given }, customDefs(), getSettings().languages[0]);
+        // cleaned against every field, so values the account doesn't see (sensitive ones) are kept as they are
+        const { values, errors: ce } = cleanCustomValues({ ...curC, ...given }, allCustomDefs(), getSettings().languages[0]);
         errors.push(...ce.map((e) => M(e, e)));
         if (JSON.stringify(values) !== JSON.stringify(curC)) {
           patch.custom = values;

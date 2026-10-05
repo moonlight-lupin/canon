@@ -8,6 +8,7 @@ import { M, type Change, type Entity, type Msg, type RowPlan } from './engine.ts
 import {
   PERSON_COLS, col, collect, diff, fmtBool, nameKey, parseBool, parseDate, parseList, parseText, personIndex,
 } from './common.ts';
+import { visiblePeople } from '../lib/walls.ts';
 
 const pickName = (n: L10n, langs: string[]) => langs.map((l) => n[l]).find((x) => x?.trim()) ?? n.en ?? Object.values(n).find(Boolean) ?? '';
 
@@ -37,8 +38,8 @@ export const teamMembersCsv: Entity = {
     const ts = new Map(teamTable.list().map((t) => [t.id, t]));
     const rs = roleTable.list('', [], 'sort, id');
     const quals = all<{ role_id: number; person_id: number }>('SELECT role_id, person_id FROM role_members');
-    const people = new Map(all<Parameters<typeof displayName>[0] & { id: number }>('SELECT * FROM people').map((p) => [p.id, p]));
-    return teamRoster().sort((a, b) => (a.team_id === b.team_id ? b.is_leader - a.is_leader : 0)).map((m) => ({
+    const people = new Map(visiblePeople<Parameters<typeof displayName>[0] & { id: number }>().map((p) => [p.id, p]));
+    return teamRoster().filter((m) => people.has(m.person_id)).sort((a, b) => (a.team_id === b.team_id ? b.is_leader - a.is_leader : 0)).map((m) => ({
       team: pickName(ts.get(m.team_id)!.name, ctx.langs),
       person_id: m.person_id,
       person: people.get(m.person_id) ? displayName(people.get(m.person_id)!) : '',
@@ -52,8 +53,8 @@ export const teamMembersCsv: Entity = {
     const rs = roleTable.list('', [], 'sort, id');
     const teamBy = new Map<string, Team>();
     for (const t of ts) for (const v of Object.values(t.name)) if (v) teamBy.set(nameKey(v), t);
-    const roster = teamRoster();
-    const quals = all<{ role_id: number; person_id: number }>('SELECT role_id, person_id FROM role_members');
+    const roster = teamRoster().filter((m) => idx.byId.has(m.person_id));
+    const quals = all<{ role_id: number; person_id: number }>('SELECT role_id, person_id FROM role_members').filter((q) => idx.byId.has(q.person_id));
     const seen = new Map<string, number>();
     const roleName = (r: ServiceRole) => pickName(r.name, ctx.langs);
 
@@ -127,15 +128,15 @@ export const unavailabilityCsv: Entity = {
     { person: '林美恩', start_date: '2025-11-09', end_date: '', reason: '考试' },
   ],
   export() {
-    const people = new Map(all<Parameters<typeof displayName>[0] & { id: number }>('SELECT * FROM people').map((p) => [p.id, p]));
-    return unavTable.list('', [], 'start_date, id').map((u) => ({
+    const people = new Map(visiblePeople<Parameters<typeof displayName>[0] & { id: number }>().map((p) => [p.id, p]));
+    return unavTable.list('', [], 'start_date, id').filter((u) => people.has(u.person_id)).map((u) => ({
       id: u.id, person_id: u.person_id, person: people.get(u.person_id) ? displayName(people.get(u.person_id)!) : '',
       start_date: u.start_date, end_date: u.end_date, reason: u.reason,
     }));
   },
   plan(input, _ctx, present) {
     const idx = personIndex();
-    const list = unavTable.list();
+    const list = unavTable.list().filter((u) => idx.byId.has(u.person_id));
     const byId = new Map(list.map((u) => [u.id, u]));
     return input.map((r): RowPlan => {
       const errors: Msg[] = [];

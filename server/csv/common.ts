@@ -2,10 +2,10 @@
 // formats, yes/是, labels instead of codes) and throw RowError with a plain-language message.
 import type { L10n, Lang, Person } from '../../shared/types.ts';
 import { langInfo } from '../../shared/languages.ts';
-import { all } from '../db.ts';
 import { toSimplified } from '../lib/chinese.ts';
 import { displayName } from '../repo/registers.ts';
 import { M, fail, type Change, type Column, type Ctx, type InRow, type Msg } from './engine.ts';
+import { visiblePeople } from '../lib/walls.ts';
 
 // ---------------------------------------------------------------- columns
 
@@ -189,7 +189,8 @@ export const PERSON_COLS = (required = true): Column[] => [
 
 /** Name index over the member register, built once per import. */
 export function personIndex() {
-  const people = all<Person>('SELECT * FROM people');
+  // an account limited to one congregation only finds its own people (and the whole church's)
+  const people = visiblePeople<Person>();
   const byId = new Map(people.map((p) => [p.id, p]));
   const byName = new Map<string, Person[]>();
   const add = (k: string, p: Person) => {

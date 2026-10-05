@@ -7,6 +7,7 @@ import { easter, seasonOf } from '../../shared/season.ts';
 import { partRuns } from '../../shared/parts.ts';
 import { all, get } from '../db.ts';
 import { NotFound } from '../lib/table.ts';
+import { checkRow, wallSql } from '../lib/walls.ts';
 
 const DAY = 86400_000;
 const ts = (d: string) => Date.parse(d + 'T00:00:00Z');
@@ -214,9 +215,9 @@ export function rosterSummaries(serviceIds: number[]): Map<number, string> {
   const rows = all<{ service_id: number; role: string; name: string }>(
     `SELECT a.service_id, r.name AS role, ${personName} AS name
      FROM assignments a JOIN roles r ON r.id = a.role_id JOIN teams t ON t.id = r.team_id JOIN people p ON p.id = a.person_id
-     WHERE a.status != 'declined' AND a.service_id IN (${placeholders(serviceIds.length)})
+     WHERE a.status != 'declined' AND a.service_id IN (${placeholders(serviceIds.length)})${wallSql('p.congregation_id').sql}
      ORDER BY a.service_id, t.sort, t.id, r.sort, r.id, name`,
-    ...serviceIds,
+    ...serviceIds, ...wallSql('p.congregation_id').params,
   );
   const by = new Map<number, Map<string, string[]>>();
   for (const r of rows) {
@@ -273,8 +274,9 @@ interface ServiceRow {
 /** The target as criteria: a service id (its date, type, template, sermon, songs and texts) or criteria as given. */
 export function targetCriteria(target: number | SimilarCriteria): SimilarCriteria & { id?: number; date: string } {
   if (typeof target !== 'number') return { ...target, date: target.date ?? todayIso() };
-  const s = get<ServiceRow>('SELECT * FROM services WHERE id = ?', target);
+  const s = get<ServiceRow & { congregation_id: number | null; kind: string }>('SELECT * FROM services WHERE id = ?', target);
   if (!s) throw new NotFound(`service ${target} not found`);
+  checkRow('services', s, 'read', target);
   const refs = all<{ kind: string; ref_id: number }>(`SELECT kind, ref_id FROM service_items WHERE service_id = ? AND ref_id IS NOT NULL AND kind IN ('song','text')`, target);
   return {
     id: s.id,
@@ -306,7 +308,8 @@ export function similarServices(
   const before = opts.before ?? t.date;
   const limit = opts.limit ?? 5;
   const tSeason = t.season ?? seasonOf(t.date);
-  const rows = all<ServiceRow>("SELECT id, date, title, service_type, sermon_ref, sermon_title, preacher, template_id, season FROM services WHERE kind = 'service' AND date < ? AND id != ? ORDER BY date DESC", before, t.id ?? 0);
+  const w = wallSql('congregation_id');
+  const rows = all<ServiceRow>(`SELECT id, date, title, service_type, sermon_ref, sermon_title, preacher, template_id, season FROM services WHERE kind = 'service' AND date < ? AND id != ?${w.sql} ORDER BY date DESC`, before, t.id ?? 0, ...w.params);
   if (!rows.length) return [];
 
   const songSet = new Set(t.song_ids ?? []);

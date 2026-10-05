@@ -24,6 +24,7 @@ const S = await import('../server/repo/settings.ts');
 const svc = await import('../server/repo/services.ts');
 const reg = await import('../server/repo/registers.ts');
 const grp = await import('../server/repo/groups.ts');
+const vol = await import('../server/repo/volunteers.ts');
 const { saveCongregation } = await import('../server/repo/congregations.ts');
 const C = await import('../server/lib/backup-crypto.ts');
 const { db, get, run } = await import('../server/db.ts');
@@ -92,7 +93,11 @@ before(async () => {
   ids.sB = svc.createService({ date: '2037-03-01', congregation_id: ids.B }).service.id;
   ids.sW = svc.createService({ date: '2037-03-01', congregation_id: null }).service.id;
   ids.gA = grp.groups.insert({ name: { en: 'Test North Cell' }, kind: 'cell_group', congregation_id: ids.A }).id;
-  ids.meeting = svc.createService({ date: '2037-03-04', kind: 'meeting', group_id: ids.gA, title: { en: 'Cell night' } } as never).service.id;
+  ids.meeting = svc.createService({ date: '2037-03-04', kind: 'meeting', group_id: ids.gA, title: { en: 'Cell night' }, sermon_ref: 'Psalm 23' } as never).service.id;
+  ids.hB = reg.households.insert({ name: 'Test South household', address: '9 Example Road South', phone: '6000 0909' }).id;
+  reg.people.update(ids.pB, { household_id: ids.hB, household_role: 'head' });
+  ids.pastB = svc.createService({ date: '2037-02-22', congregation_id: ids.B, preacher: 'Rev. Southward Example', sermon_title: { en: 'Only-South sermon' } }).service.id;
+  ids.pastA = svc.createService({ date: '2037-02-22', congregation_id: ids.A, preacher: 'Rev. Northward Example' }).service.id;
   const cur = S.getSettings().mcp;
   S.updateSettings({
     mcp: { ...cur, enabled: true, expose_member_pii: true, modules: { members: 'write', coworkers: 'write', groups: 'write', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'write', contributions: 'read' } },
@@ -184,14 +189,32 @@ test('meetings — MCP: a planner reads but can\'t change them; switched off, th
   // the planner still changes services
   assert.ok(!(await tool(mcp.planner, 'canon_update_service', { id: ids.sW, patch: { notes: 'Planner note' } })).isError);
 
+  const control = await tool(mcp.admin, 'canon_get_service_record', { service_id: ids.meeting });
+  assert.ok(!control.isError, `control: the record tool works while Meetings is on — ${JSON.stringify(control.json)}`);
   S.updateSettings({ modules: { ...S.getSettings().modules, meetings: false } });
   assert.equal((await call(web.admin, 'GET', `/services/${ids.meeting}`)).status, 404);
-  assert.ok((await tool(mcp.admin, 'canon_get_service', { id: ids.meeting })).isError, 'MCP hides it too');
-  assert.ok((await tool(mcp.admin, 'canon_get_record', { service_id: ids.meeting })).isError, 'and its record');
+  const hiddenSvc = await tool(mcp.admin, 'canon_get_service', { id: ids.meeting });
+  assert.ok(hiddenSvc.isError, 'MCP hides it too');
+  assert.match(hiddenSvc.json.error, /not found/);
+  const hiddenRec = await tool(mcp.admin, 'canon_get_service_record', { service_id: ids.meeting });
+  assert.ok(hiddenRec.isError, 'and its record');
+  assert.match(hiddenRec.json.error, /not found/);
+  // the scripture report: meetings asked for are refused; the default (services) leaves them out
+  const scr = await tool(mcp.admin, 'canon_scripture_report', { kind: 'meeting', from: '2037-03-01', to: '2037-03-31' });
+  assert.ok(scr.isError);
+  assert.match(scr.json.error, /Meetings are not available/);
+  const scrAll = await tool(mcp.admin, 'canon_scripture_report', { kind: 'all', years: [2037] });
+  assert.ok(scrAll.isError, 'years too');
+  const scrDef = await tool(mcp.admin, 'canon_scripture_report', { from: '2037-03-01', to: '2037-03-31' });
+  assert.ok(!scrDef.isError);
+  assert.ok(!JSON.stringify(scrDef.json).includes(`"service_id":${ids.meeting}`), 'no meeting passages by default');
   assert.ok((await tool(mcp.admin, 'canon_attendance_report', { kind: 'meeting' })).isError, 'and meeting reports');
   assert.ok(!(await tool(mcp.admin, 'canon_get_service', { id: ids.sW })).isError);
   S.updateSettings({ modules: { ...S.getSettings().modules, meetings: true } });
   assert.ok(!(await tool(mcp.admin, 'canon_get_service', { id: ids.meeting })).isError);
+  const scrOn = await tool(mcp.admin, 'canon_scripture_report', { kind: 'meeting', from: '2037-03-01', to: '2037-03-31' });
+  assert.ok(!scrOn.isError);
+  assert.ok(JSON.stringify(scrOn.json).includes('"service_id":' + ids.meeting), 'switched on: the meeting passage is there');
 });
 
 test('backups — a missing or damaged key never gives a plain backup while encryption is on', async () => {
@@ -223,4 +246,84 @@ test('backups — a missing or damaged key never gives a plain backup while encr
   const plain = await call(web.admin, 'POST', '/backups');
   assert.equal(plain.status, 200);
   assert.match(plain.body.created, /\.db$/);
+});
+
+// ---------------------------------------------------------------- 0.13.2: reads that don't go through a single row
+
+async function csv(who: Session, method: string, url: string, body?: string) {
+  const r = await fetch(`${base}/api${url}`, { method, headers: { Cookie: who.cookie, 'X-CSRF-Token': who.csrf, 'Content-Type': 'text/csv' }, body });
+  return { status: r.status, text: await r.text() };
+}
+
+test('congregation wall — CSV: export, preview and import never reach another congregation\'s member', async () => {
+  // the other congregation's member also holds a post, sits in a whole-church group and is away for a while
+  reg.coworkers.insert({ person_id: ids.pB, position: 'Test Deacon', category: 'deacon' });
+  const gW = grp.groups.insert({ name: { en: 'Test Whole Church Choir' }, kind: 'ministry', congregation_id: null }).id;
+  grp.addGroupMember(gW, { person_id: ids.pB });
+  grp.addGroupMember(gW, { person_id: ids.pA });
+  vol.unavailability.insert({ person_id: ids.pB, start_date: '2037-04-01', end_date: '2037-04-10', reason: 'Test trip south' });
+  const exp = await csv(web.walled, 'GET', '/csv/members/export.csv');
+  assert.equal(exp.status, 200);
+  assert.ok(exp.text.includes('Ada'), 'our member is exported');
+  for (const v of ['Bea', '9000 0202', 'fictional note B', 'Test South household']) assert.ok(!exp.text.includes(v), `export leaks ${v}`);
+  const file = `id,phone\n${ids.pB},99999999\n`;
+  const pre = await csv(web.walled, 'POST', '/csv/members/import?dry_run=1', file);
+  for (const v of ['Bea', 'South', '9000 0202']) assert.ok(!pre.text.includes(v), `preview leaks ${v}: ${pre.text}`);
+  await csv(web.walled, 'POST', '/csv/members/import', file);
+  assert.equal(person(ids.pB).phone, '9000 0202', 'not saved');
+  // other CSVs that name people
+  for (const e of ['coworkers', 'groups', 'team_members', 'unavailability']) {
+    const r = await csv(web.walled, 'GET', `/csv/${e}/export.csv`);
+    assert.equal(r.status, 200, e);
+    assert.ok(!r.text.includes('Bea') && !r.text.includes('Test trip south'), `${e} export leaks the other congregation's member`);
+  }
+});
+
+test('congregation wall — households: another congregation\'s household can\'t be read or changed (web and MCP)', async () => {
+  const list = await call(web.walled, 'GET', '/households');
+  assert.ok(!JSON.stringify(list.body).includes('Test South household'));
+  const patch = await call(web.walled, 'PATCH', `/households/${ids.hB}`, { name: 'Renamed across wall' });
+  assert.equal(patch.status, 404);
+  const m = await tool(mcp.walled, 'canon_save_household', { id: ids.hB, fields: { name: 'Renamed by agent' } });
+  assert.ok(m.isError);
+  for (const v of ['9 Example Road South', '6000 0909']) assert.ok(!JSON.stringify(m.json).includes(v), `MCP leaks ${v}`);
+  assert.equal(get<{ name: string }>('SELECT name FROM households WHERE id = ?', ids.hB)!.name, 'Test South household', 'not saved');
+  // putting our member into it is refused too
+  assert.equal((await call(web.walled, 'PATCH', `/people/${ids.pA}`, { household_id: ids.hB })).status, 404);
+  assert.equal(person(ids.pA).household_id, null);
+  // a household of our own works
+  const own = await call(web.walled, 'POST', '/households', { name: 'Test North household' });
+  assert.equal(own.status, 200, JSON.stringify(own.body));
+  assert.equal((await call(web.walled, 'PATCH', `/people/${ids.pA}`, { household_id: own.body.id })).status, 200);
+});
+
+test('congregation wall — precedent: similar services come from the account\'s own congregation and the whole church', async () => {
+  const like = await tool(mcp.walled, 'canon_find_services', { like: { date: '2037-03-08' } });
+  assert.ok(!like.isError, JSON.stringify(like.json));
+  const text = JSON.stringify(like.json);
+  for (const v of ['Rev. Southward Example', 'Only-South sermon', `"id":${ids.pastB},`]) assert.ok(!text.includes(v), `precedent leaks ${v}`);
+  assert.ok(text.includes('Rev. Northward Example'), 'our own past service is there');
+  assert.ok((await tool(mcp.walled, 'canon_find_services', { similar_to: ids.pastB })).isError, 'another congregation\'s service as the target');
+});
+
+test('sensitive fields — CSV: export, preview and import follow the role (secretary)', async () => {
+  const exp = await csv(web.secretary, 'GET', '/csv/members/export.csv');
+  assert.equal(exp.status, 200);
+  assert.ok(!exp.text.includes('custom_health') && !exp.text.includes('fictional note'), 'no sensitive column or value');
+  const file = `id,phone,custom_health\n${ids.pA},9000 0111,Changed via CSV\n`;
+  const pre = await csv(web.secretary, 'POST', '/csv/members/import?dry_run=1', file);
+  assert.equal(pre.status, 200, pre.text);
+  assert.ok(!pre.text.includes('fictional note') && !pre.text.includes('Changed via CSV'), `preview: ${pre.text}`);
+  const done = await csv(web.secretary, 'POST', '/csv/members/import', file);
+  assert.equal(done.status, 200, done.text);
+  assert.equal(person(ids.pA).phone, '9000 0111', 'the ordinary field is updated');
+  assert.equal(JSON.parse(person(ids.pA).custom).health, 'fictional note A', 'the sensitive one is not');
+  // an empty cell doesn't clear it either
+  await csv(web.secretary, 'POST', '/csv/members/import', `id,custom_health\n${ids.pA},\n`);
+  assert.equal(JSON.parse(person(ids.pA).custom).health, 'fictional note A');
+  // a role that sees sensitive fields exports and changes them
+  const adminExp = await csv(web.admin, 'GET', '/csv/members/export.csv');
+  assert.ok(adminExp.text.includes('custom_health') && adminExp.text.includes('fictional note A'));
+  assert.equal((await csv(web.admin, 'POST', '/csv/members/import', `id,custom_health\n${ids.pA},Updated by admin\n`)).status, 200);
+  assert.equal(JSON.parse(person(ids.pA).custom).health, 'Updated by admin');
 });

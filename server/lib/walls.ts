@@ -5,17 +5,18 @@
 // Lists read the wall from the request's actor (lib/actor.ts), so the web app and AI agents follow it alike; a
 // request for one item names it in its path, which the sign-in gate checks here (outsideWall).
 import { currentActor } from './actor.ts';
-import { get, type SqlValue } from '../db.ts';
+import { all, get, type SqlValue } from '../db.ts';
 
-/** Tables whose rows belong to a congregation (null = the whole church). */
-export type WallEntity = 'people' | 'services' | 'groups' | 'events';
+/** Tables whose rows belong to a congregation (null = the whole church); households belong to their members'. */
+export type WallEntity = 'people' | 'services' | 'groups' | 'events' | 'households';
 const ROW_SQL: Record<WallEntity, string> = {
   people: 'SELECT congregation_id, NULL AS kind FROM people WHERE id = ?',
   services: 'SELECT congregation_id, kind FROM services WHERE id = ?',
   groups: 'SELECT congregation_id, NULL AS kind FROM groups WHERE id = ?',
   events: 'SELECT congregation_id, NULL AS kind FROM events WHERE id = ?',
+  households: 'SELECT NULL AS congregation_id, NULL AS kind FROM households WHERE id = ?',
 };
-const LABEL: Record<WallEntity, string> = { people: 'person', services: 'service', groups: 'group', events: 'event' };
+const LABEL: Record<WallEntity, string> = { people: 'person', services: 'service', groups: 'group', events: 'event', households: 'household' };
 
 class Hidden extends Error {
   status = 404;
@@ -34,6 +35,15 @@ export const rowInfo = (entity: WallEntity, id: number) => get<{ congregation_id
 export function checkRow(entity: WallEntity, row: { congregation_id?: number | null; kind?: string | null }, mode: 'read' | 'write', id?: number) {
   const actor = currentActor();
   if (!actor) return;
+  if (entity === 'households') {
+    // a household belongs to the congregations of its members: hidden behind a wall when it has members and none of
+    // them is the congregation's or the whole church's (an empty one, e.g. just created, is not hidden)
+    if (actor.congregation_id && id != null) {
+      const cs = all<{ c: number | null }>('SELECT congregation_id AS c FROM people WHERE household_id = ?', id).map((r) => r.c);
+      if (cs.length && !cs.some((c) => c == null || c === actor.congregation_id)) throw new Hidden(`household ${id} not found`);
+    }
+    return;
+  }
   if (outside(row.congregation_id ?? null, actor.congregation_id ?? null)) throw new Hidden(`${LABEL[entity]}${id ? ` ${id}` : ''} not found`);
   actor.gate?.(entity, { id, congregation_id: row.congregation_id ?? null, kind: row.kind ?? null }, mode);
 }
@@ -45,6 +55,20 @@ export function checkRef(entity: WallEntity, id: number, mode: 'read' | 'write' 
   if (!r) throw new Hidden(`${LABEL[entity]} ${id} not found`);
   checkRow(entity, r, mode, id);
 }
+
+/** People this request may see (all of them without a wall), for lists built with plain SQL: CSV, reports. */
+export function visiblePeople<T = Record<string, unknown>>(columns = '*'): T[] {
+  const w = wallSql('congregation_id');
+  return all<T>(`SELECT ${columns} FROM people WHERE 1${w.sql}`, ...w.params);
+}
+/** The ids of those people, or null when there is no wall (everyone). */
+export function visiblePeopleIds(): Set<number> | null {
+  return currentWall() ? new Set(visiblePeople<{ id: number }>('id').map((p) => p.id)) : null;
+}
+/** May this request see a row of this congregation (null = the whole church)? */
+export const inSight = (congregationId: number | null | undefined) => !outside(congregationId ?? null);
+/** The current request may see and change member fields marked sensitive. */
+export const seesSensitive = () => currentActor()?.sensitive !== false;
 
 /** Moving a row to another congregation is for accounts of the whole church. */
 export function checkMove(from: number | null, to: number | null) {

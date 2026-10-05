@@ -48,6 +48,7 @@ import { isAdmin, listRoles, roleDef } from './lib/permissions.ts';
 import { hashCode, newRecoveryCodes, newSecret, otpauthUri, verifyTotp } from './lib/totp.ts';
 import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
+import { seesSensitiveFields } from './lib/permissions.ts';
 
 export const api = express.Router();
 
@@ -147,7 +148,7 @@ api.get('/about', (_req, res) => {
 
 api.use(requireUser);
 // the change log records who is making each change
-api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web', congregation_id: wallOf(req.user) }, next));
+api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web', congregation_id: wallOf(req.user), sensitive: seesSensitiveFields(req.user) }, next));
 // read-only accounts: no members' contact details, notes or birth years (server/lib/viewer-scrub.ts)
 api.use(viewerScrub);
 

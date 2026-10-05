@@ -10,7 +10,7 @@ import type { L10n } from '../../shared/types.ts';
 import { all, type SqlValue } from '../db.ts';
 import { BadRequest } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
-import { currentWall } from '../lib/walls.ts';
+import { currentWall, visiblePeople } from '../lib/walls.ts';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -237,7 +237,8 @@ export function servingReport(q: Period): ServingReport {
     `SELECT a.service_id, a.role_id, a.person_id, a.status FROM assignments a JOIN services s ON s.id = a.service_id
      WHERE s.date >= ? AND s.date <= ?`, p.from, p.to,
   ).filter((a) => ids.has(a.service_id));
-  const people = new Map(all<PersonRow>('SELECT id, first_name, last_name, preferred_name, native_name FROM people').map((x) => [x.id, x]));
+  // people of other congregations stay out of a limited account's report (they are left out below)
+  const people = new Map(visiblePeople<PersonRow>('id, first_name, last_name, preferred_name, native_name').map((x) => [x.id, x]));
   const teams = all<{ id: number; name: string; group_id: number | null }>('SELECT id, name, group_id FROM teams ORDER BY sort, id');
   const roster = all<{ team_id: number; person_id: number }>(
     `SELECT t.id AS team_id, gm.person_id FROM group_members gm JOIN teams t ON t.group_id = gm.group_id

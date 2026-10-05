@@ -4,6 +4,18 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.13.2 — permissions for exports, households and precedent
+
+Fixes from the review of 0.13.1.
+
+- **CSV follows congregation walls.** For an account limited to one congregation, member, co-worker, group, team and time-away exports, import previews and name matching cover only its congregation's people and the whole church's. Before, an export or a preview could show another congregation's member.
+- **CSV follows the sensitive-field permission.** A role that doesn't see sensitive member fields gets no column for them in exports or previews. A column for one in a file it imports is ignored, and the stored values stay.
+- **Households behind a wall.** A household whose members are all in other congregations can't be read, renamed or joined by a limited account, on the web or through an AI agent.
+- **Precedent behind a wall.** Similar past services (`similar_to`, `like`) come from the account's own congregation and the whole church.
+- **Lists and reports.** The member counts, the co-worker list and the serving report leave other congregations' people out.
+- **The scripture report** follows the meeting rules like the other reports: no meetings when Meetings is switched off.
+- **Tests:** the permission matrix now covers CSV, households, precedent and the scripture report, and checks that forbidden values appear nowhere in a response. Its record-tool case now uses the real tool, with a check that the call succeeds before Meetings is switched off.
+
 ## 0.13.1 — permissions hold through every channel
 
 Fixes from the review of 0.13.0.

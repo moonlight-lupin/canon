@@ -176,8 +176,8 @@ export const RECORD_TOOLS: ToolDef[] = [
     name: 'canon_scripture_report', module: 'services', access: 'read', title: 'Scripture coverage report', annotations: RO,
     description: 'Which chapters of the Bible were read (Scripture items) and preached (sermon passages), over a period (default: the last 12 months) or over chosen years that need not follow each other (`years`: [2023, 2025]). Returns totals (chapters covered of 1,189; Old and New Testament; books), per book the chapters read / preached (only books with any, unless all_books), the passages with dates, and the years that have services. Useful for planning a reading or preaching series on neglected books. Example: {"years":[2024,2025]}.',
     input: { ...PeriodInput, years: z.array(z.number().int().min(1900).max(2200)).max(50).optional(), all_books: z.boolean().optional().describe('include books with nothing read or preached') },
-    handler: (a) => {
-      const r = reports.scriptureReport(a);
+    handler: (a, ctx) => {
+      const r = reports.scriptureReport({ ...periodOf(a, ctx), years: a.years });
       const books = r.books.filter((b) => a.all_books || b.read.some(Boolean) || b.preached.some(Boolean)).map((b) => ({
         book: b.en, zh: b.zh, chapters: b.chapters,
         read: b.read.flatMap((n, i) => (n ? [i + 1] : [])), preached: b.preached.flatMap((n, i) => (n ? [i + 1] : [])),

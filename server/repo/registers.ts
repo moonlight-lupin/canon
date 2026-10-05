@@ -16,10 +16,10 @@ export const people = table<Person>({
   json: ['honorific', 'custom'],
   touch: true,
   revision: true,
-  guard: { own: 'people' },
+  guard: { own: 'people', refs: { household_id: 'households' } },
 });
 
-export const households = table<Household>({ name: 'households', cols: ['name', 'address', 'phone', 'notes'] });
+export const households = table<Household>({ name: 'households', cols: ['name', 'address', 'phone', 'notes'], guard: { own: 'households' } });
 
 export const coworkers = table<Coworker>({
   name: 'coworkers',
@@ -119,12 +119,14 @@ export function upcomingBirthdays(days = 14, from = new Date()) {
 }
 
 export function memberStats() {
-  return all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM people WHERE erased_at IS NULL GROUP BY status');
+  const w = wallSql('congregation_id');
+  return all<{ status: string; n: number }>(`SELECT status, COUNT(*) n FROM people WHERE erased_at IS NULL${w.sql} GROUP BY status`, ...w.params);
 }
 
 export function listCoworkers(opts: { active?: boolean } = {}) {
   const today = new Date().toISOString().slice(0, 10);
-  const where = opts.active ? `WHERE (c.end_date IS NULL OR c.end_date >= '${today}')` : '';
+  const w = wallSql('p.congregation_id');
+  const where = `WHERE ${opts.active ? `(c.end_date IS NULL OR c.end_date >= '${today}')` : '1'}${w.sql}`;
   return all<Coworker & { person_name: string; phone: string | null; email: string | null }>(
     `SELECT c.*, TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) ||
             CASE WHEN p.native_name IS NOT NULL THEN ' ' || p.native_name ELSE '' END AS person_name,
@@ -132,6 +134,7 @@ export function listCoworkers(opts: { active?: boolean } = {}) {
      FROM coworkers c JOIN people p ON p.id = c.person_id ${where}
      ORDER BY CASE c.category WHEN 'pastor' THEN 1 WHEN 'elder' THEN 2 WHEN 'deacon' THEN 3 WHEN 'ministry_staff' THEN 4
               WHEN 'admin_staff' THEN 5 ELSE 6 END, c.start_date`,
+    ...w.params,
   ).map((c) => ({ ...c, ordained: !!c.ordained }));
 }
 

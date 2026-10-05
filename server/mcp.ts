@@ -347,7 +347,7 @@ export function buildServer(auth: McpAuth, base = '') {
         try {
           r = ok(await asActor({
             user_id: auth.user.id, user_name: auth.user.display_name, via: 'mcp', client: clientName(auth.clientId),
-            congregation_id: wallOf(auth.user), gate: meetingGate(auth.user),
+            congregation_id: wallOf(auth.user), gate: meetingGate(auth.user), sensitive: sensitiveFor(cfg, auth.user.role),
           }, () => t.handler(args ?? {}, ctx)));
         } catch (e) {
           r = fail(errorMessage(e), e instanceof BatchError ? e.errors : undefined);

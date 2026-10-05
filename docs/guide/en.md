@@ -55,7 +55,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 - **Two-step sign-in** (Settings → My profile → **Set up two-step sign-in**): scan the QR code with an authenticator app on your phone (Google or Microsoft Authenticator, 1Password …) and enter its code. From then on Canon asks for the 6-digit code after your password. Keep the **recovery codes** shown once: each signs you in once if you lose your phone.
 - **Reset 2-step** (administrators, in the user list) turns it off for someone who lost their phone. In Security & privacy, **Require it for administrators** makes every administrator use it: one without it can't use administrator functions until they set it up.
 
-**Limited to** (churches with several congregations): an account limited to one congregation sees that congregation's services, meetings, records, members, groups and events, and the whole church's — not those of other congregations; what it creates belongs to its congregation, and its reports are about it. The same holds for AI assistants acting for it, and for people reached through something else (a group's members, the rota, a household): other congregations' people are left out, and they can't be added to its groups or rota. Moving something to another congregation needs an account for the whole church. Administrators always see everything.
+**Limited to** (churches with several congregations): an account limited to one congregation sees that congregation's services, meetings, records, members, groups and events, and the whole church's — not those of other congregations; what it creates belongs to its congregation, and its reports are about it. The same holds for AI assistants acting for it, and for people reached through something else (a group's members, the rota, a household): other congregations' people are left out, and they can't be added to its groups or rota. Moving something to another congregation needs an account for the whole church. A household whose members are all in other congregations is hidden from it too. Administrators always see everything.
 - **Meeting leaders**: link an account to the member it belongs to (the **Member** column). A member ticked **Leads** in a group, or chosen as a meeting's **Leader**, can then record those meetings with that account, even a read-only one: the headcount, new visitors with their contact details (for the follow-up), notes and the offering with its cash count and signing, the meeting's details and its next meeting. Nothing else changes for them: services, other meetings and the registers stay read-only, and deleting a meeting or reopening a verified count stays with editors and administrators.
 
 | What | Admin | Editor | Viewer |
@@ -271,6 +271,8 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 4. Press **Import N rows**, or **Import valid rows and skip errors**.
 
 > **Tip:** Importing the same file twice is safe: existing records are matched and updated, not duplicated.
+
+Exports and imports follow the account's access, like the screens: an account limited to one congregation exports, previews and updates only its congregation's people (and the whole church's), and a role that doesn't see sensitive member fields gets no column for them — a column for one in a file it imports is ignored, so the stored values stay.
 
 ## Service records {#service-records}
 

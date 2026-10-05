@@ -13,6 +13,8 @@ export interface Actor {
   client?: string | null;
   /** the congregation this account is limited to (lib/walls.ts); null = the whole church */
   congregation_id?: number | null;
+  /** may see and change member fields marked sensitive (absent = yes: Canon's own tasks) */
+  sensitive?: boolean;
   /**
    * Checks every row this request reads or changes through the shared table helper (lib/table.ts), after the wall:
    * MCP uses it for meetings (role access, the Meetings module switched off). Throws to refuse.

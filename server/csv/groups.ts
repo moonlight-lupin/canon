@@ -8,6 +8,7 @@ import { M, say, type Change, type Entity, type Msg, type RowPlan } from './engi
 import {
   PERSON_COLS, col, collect, diff, hasText, l10nCols, mergeL10n, nameKey, parseDate, parseEnum, parseText, personIndex, presentLangs, readL10n,
 } from './common.ts';
+import { inSight, visiblePeople } from '../lib/walls.ts';
 
 const KINDS = ['committee', 'fellowship', 'cell_group', 'ministry', 'other'] as const;
 const KIND_ALIAS: Record<string, GroupKind> = {
@@ -58,9 +59,9 @@ export const groupsCsv: Entity = {
     { name_en: 'Board of Deacons', name_zh: '执事会', 'name_zh-Hant': '執事會', kind: 'committee', meeting: 'First Tuesday, 8pm', person: 'Peter Lim', role: 'Chair', start_date: '2024-01-01', end_date: '2025-12-31' },
   ],
   export(ctx) {
-    const gs = groupTable.list('', [], 'sort, id');
-    const people = new Map(all<Parameters<typeof displayName>[0] & { id: number }>('SELECT * FROM people').map((p) => [p.id, p]));
-    const ms = all<Member>('SELECT * FROM group_members ORDER BY group_id, id');
+    const gs = groupTable.list('', [], 'sort, id').filter((g) => inSight(g.congregation_id));
+    const people = new Map(visiblePeople<Parameters<typeof displayName>[0] & { id: number }>().map((p) => [p.id, p]));
+    const ms = all<Member>('SELECT * FROM group_members ORDER BY group_id, id').filter((m) => people.has(m.person_id));
     const out: Record<string, unknown>[] = [];
     for (const g of gs) {
       const base: Record<string, unknown> = { kind: g.kind, meeting: g.meeting };
@@ -77,12 +78,12 @@ export const groupsCsv: Entity = {
   plan(input, ctx, present) {
     const idx = personIndex();
     const langs = presentLangs('name', ctx, present);
-    const existing = groupTable.list('', [], 'id');
+    const existing = groupTable.list('', [], 'id').filter((g) => inSight(g.congregation_id));
     const byName = new Map<string, Group>();
     for (const g of existing) for (const v of Object.values(g.name)) if (v && !byName.has(nameKey(v))) byName.set(nameKey(v), g);
     const states = new Map<string, GState>();
     const newByName = new Map<string, string>();
-    const memberships = all<Member>('SELECT * FROM group_members');
+    const memberships = all<Member>('SELECT * FROM group_members').filter((m) => idx.byId.has(m.person_id));
     const seenMember = new Map<string, number>();
 
     const ensureGroup = (s: GState) => {

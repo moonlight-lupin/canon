@@ -7,6 +7,7 @@ import { M, type Entity, type Msg, type RowPlan } from './engine.ts';
 import {
   PERSON_COLS, col, collect, diff, fmtBool, fmtField, missingRequired, parseBool, parseDate, parseEnum, parseText, personIndex, readFields, type Field,
 } from './common.ts';
+import { visiblePeople, visiblePeopleIds } from '../lib/walls.ts';
 
 const CATS = ['pastor', 'elder', 'deacon', 'ministry_staff', 'admin_staff', 'lay_leader'] as const;
 const CAT_ALIAS: Record<string, (typeof CATS)[number]> = {
@@ -30,7 +31,12 @@ const FIELDS: Field<Coworker>[] = [
 
 const ID = col('id', M('Id', '编号'), M('Canon\'s id for this co-worker record (from an export). Leave empty for new records.', 'Canon 的同工记录编号（来自导出文件）。新记录请留空。'));
 
-const list = () => all<Omit<Coworker, 'ordained'> & { ordained: number }>('SELECT * FROM coworkers ORDER BY id').map((c): Coworker => ({ ...c, ordained: !!c.ordained }));
+const list = () => {
+  const seen = visiblePeopleIds();
+  return all<Omit<Coworker, 'ordained'> & { ordained: number }>('SELECT * FROM coworkers ORDER BY id')
+    .filter((c) => !seen || seen.has(c.person_id))
+    .map((c): Coworker => ({ ...c, ordained: !!c.ordained }));
+};
 
 export const coworkers: Entity = {
   key: 'coworkers',
@@ -48,7 +54,7 @@ export const coworkers: Entity = {
     { person: 'Peter Lim', position: 'Elder', category: 'elder', employment: 'volunteer', ordained: 'yes', start_date: '2019-01-01', end_date: '2024-12-31' },
   ],
   export: () => {
-    const people = new Map(all<Person>('SELECT * FROM people').map((p) => [p.id, p]));
+    const people = new Map(visiblePeople<Person>().map((p) => [p.id, p]));
     return list().map((c) => {
       const out: Record<string, unknown> = { id: c.id, person_id: c.person_id, person: people.get(c.person_id) ? displayName(people.get(c.person_id)!) : '' };
       for (const f of FIELDS) out[f.col.key] = fmtField(f, f.get(c));
