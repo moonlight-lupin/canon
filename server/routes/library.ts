@@ -1,27 +1,13 @@
 // REST routes for hymnals, song hymnal numbers, text parts import (Westminster Standards). Mounted inside /api after authentication (see server/api.ts).
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express from 'express';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as lib from '../repo/library.ts';
 import { legacyImport, rawBody } from './csv.ts';
+import { h, id } from './helpers.ts';
 
 export const libraryRoutes = express.Router();
-
-type Handler = (req: Request, res: Response) => unknown;
-const h = (fn: Handler) => async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const out = await fn(req, res);
-    if (!res.headersSent) res.json(out ?? { ok: true });
-  } catch (e) {
-    next(e);
-  }
-};
-const id = (req: Request, name = 'id') => {
-  const n = Number(req.params[name]);
-  if (!Number.isInteger(n) || n <= 0) throw Object.assign(new Error(`Bad ${name}`), { status: 400 });
-  return n;
-};
 
 // ---- hymnals
 libraryRoutes.get('/hymnals', h(() => lib.listHymnals()));

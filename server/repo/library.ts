@@ -3,12 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Hymnal, L10n, LiturgyText, Song, SongHymnalRef, TextCategory, TextPart } from '../../shared/types.ts';
 import { compareHymnNumbers, parseHymnalQuery, partRuns, toRoman } from '../../shared/parts.ts';
-import { LANG_CODE_RE } from '../../shared/languages.ts';
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { config } from '../config.ts';
 import { table, likeTerm, BadRequest } from '../lib/table.ts';
 import { logChange } from './changelog.ts';
-import { toSimplified } from '../lib/chinese.ts';
 
 // ---------------------------------------------------------------- songs
 

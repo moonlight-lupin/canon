@@ -9,7 +9,8 @@ import { useApi } from '../api.ts';
 import { useContentLangs, useI18n } from '../i18n.tsx';
 import { L10nInput, Seg, useSession } from '../components/ui.tsx';
 import { Icon, type IconName } from '../components/icons.tsx';
-import { BulletinPages, PAPERS } from '../outputs/Bulletin.tsx';
+import { BulletinPages } from '../outputs/Bulletin.tsx';
+import { PAPERS } from '../outputs/bulletin-paper.tsx';
 import {
   ANNOUNCEMENTS_KEY, SECTION_TYPES, bulletinDecision, newSection, normaliseLayout,
   type BulletinBlock, type BulletinOptions, type BulletinSection, type BulletinSectionType,

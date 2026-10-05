@@ -10,7 +10,8 @@ import { buildSlides, type SlideDef } from '../../shared/slide-model.ts';
 import { biParts, biText, dateIn } from '../../shared/output-labels.ts';
 import { postureL10n, speakerLabel } from '../../shared/labels.ts';
 import { langInfo } from '../../shared/languages.ts';
-import { DEFAULT_THEME_VARS, blockImageKey, type FontScript, type SlideThemeVars } from '../../shared/presentation.ts';
+import { blockImageKey } from '../../shared/presentation.ts';
+import { DEFAULT_THEME_VARS, type FontScript, type SlideThemeVars } from '../../shared/slide-theme.ts';
 import { assetRow, getTheme, qrPng } from '../repo/presentation.ts';
 
 type TextProps = PptxGenJS.TextProps;

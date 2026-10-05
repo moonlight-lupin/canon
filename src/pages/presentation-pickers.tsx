@@ -4,7 +4,8 @@ import { useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, useSession } from '../components/ui.tsx';
 import type { ItemKind, ServiceItem } from '../types-client.ts';
-import type { BulletinTemplate, SlideTheme } from '../../shared/presentation.ts';
+import type { BulletinTemplate } from '../../shared/presentation.ts';
+import type { SlideTheme } from '../../shared/slide-theme.ts';
 import './presentation.css';
 
 /** Slide theme for a service; '' = the church default (named). */

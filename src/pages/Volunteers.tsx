@@ -15,7 +15,7 @@ import type {
   AssignmentStatus, L10n, PersonRow, RoleWithMembers, Rota, Team, TeamWithRoles, Unavailability,
 } from '../types-client.ts';
 import { PeopleMultiSelect, fullName, isActive } from './people-common.tsx';
-import { type TeamFull, type TeamMemberRef } from './groups-common.tsx';
+import type { TeamFull, TeamMemberRef } from './groups-common.tsx';
 
 type Tab = 'rota' | 'teams' | 'away';
 const NEXT: Record<AssignmentStatus, AssignmentStatus> = { scheduled: 'confirmed', confirmed: 'declined', declined: 'scheduled' };

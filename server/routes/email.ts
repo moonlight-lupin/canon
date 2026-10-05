@@ -1,23 +1,15 @@
 // REST routes for SMTP settings, test e-mail, manual volunteer reminders. Mounted inside /api after authentication (see server/api.ts).
 // Nothing here sends automatically: reminders go out only when an editor presses "Send reminders".
 // There are deliberately no MCP tools for e-mail — agents must not send e-mail.
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express, { type Request } from 'express';
 import { z } from 'zod';
 import { getSettings, updateSettings, setMeta, deleteMeta } from '../repo/settings.ts';
 import { externalBase } from '../oauth.ts';
 import { emailLog, reminderPreview, sendReminders, sendTestEmail, serviceExists } from '../repo/email.ts';
+import { h } from './helpers.ts';
 
 export const emailRoutes = express.Router();
 
-type Handler = (req: Request, res: Response) => unknown;
-const h = (fn: Handler) => async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const out = await fn(req, res);
-    if (!res.headersSent) res.json(out ?? { ok: true });
-  } catch (e) {
-    next(e);
-  }
-};
 const forbid = (msg: string) => Object.assign(new Error(msg), { status: 403 });
 const adminOnly = (req: Request) => {
   if (req.user?.role !== 'admin') throw forbid('Administrators only');

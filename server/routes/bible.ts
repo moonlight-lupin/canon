@@ -8,22 +8,15 @@
 //   GET    /api/bible/translations/:code/usage
 //   GET    /api/bible/translations/:code/export.csv
 //   GET    /api/bible/template.csv
-import express, { type NextFunction, type Request, type Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import { requireAdmin } from '../auth.ts';
-import { bibleTemplateCsv, deleteTranslation, exportTranslationCsv, readMeta, translationRow, translationUsage, uploadBible } from '../repo/bible-upload.ts';
+import {
+  bibleTemplateCsv, deleteTranslation, exportTranslationCsv, readMeta, translationRow, translationUsage, uploadBible,
+} from '../repo/bible-upload.ts';
 import { uiLang } from './csv.ts';
+import { h } from './helpers.ts';
 
 export const bibleRoutes = express.Router();
-
-type Handler = (req: Request, res: Response) => unknown;
-const h = (fn: Handler) => async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const out = await fn(req, res);
-    if (!res.headersSent) res.json(out ?? { ok: true });
-  } catch (e) {
-    next(e);
-  }
-};
 
 const flag = (v: unknown) => v === '1' || v === 'true';
 const query = (req: Request) =>

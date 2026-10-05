@@ -5,9 +5,13 @@ import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import type { L10n, Service } from '../../shared/types.ts';
 import {
-  BLOCK_KINDS, CssError, DEFAULT_BULLETIN_OPTIONS, MAX_QR_TEXT, blockImageKey, normaliseBlockData, compileThemeCss, normaliseBulletinOptions, normaliseThemeVars, scopeCss, themeBgKey, themeBgUrl,
-  type BulletinBlock, type BulletinBlockKind, type BulletinOptions, type BulletinTemplate, type SlideTheme, type SlideThemeVars,
+  BLOCK_KINDS, DEFAULT_BULLETIN_OPTIONS, MAX_QR_TEXT, blockImageKey, normaliseBlockData, normaliseBulletinOptions,
+  type BulletinBlock, type BulletinBlockKind, type BulletinOptions, type BulletinTemplate,
 } from '../../shared/presentation.ts';
+import {
+  CssError, compileThemeCss, normaliseThemeVars, scopeCss, themeBgKey, themeBgUrl, type SlideTheme,
+  type SlideThemeVars,
+} from '../../shared/slide-theme.ts';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, NotFound, table } from '../lib/table.ts';
 import { getMeta, getSettings, setMeta, updateSettings } from './settings.ts';

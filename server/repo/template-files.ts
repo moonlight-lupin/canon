@@ -2,8 +2,10 @@
 // A file carries everything the template needs: a slide template its background picture, a bulletin template the
 // QR codes / pictures / notes its page layout prints. Importing always makes a new template (nothing is overwritten);
 // QR codes and notes are matched by name and type with the Library's, and added when missing.
-import type { BulletinBlock, BulletinTemplate, SlideTheme } from '../../shared/presentation.ts';
-import { blockImageKey, themeBgKey } from '../../shared/presentation.ts';
+import type { BulletinBlock, BulletinTemplate } from '../../shared/presentation.ts';
+import type { SlideTheme } from '../../shared/slide-theme.ts';
+import { blockImageKey } from '../../shared/presentation.ts';
+import { themeBgKey } from '../../shared/slide-theme.ts';
 import { BadRequest } from '../lib/table.ts';
 import {
   assetRow, createBlock, createTemplate, createTheme, getTemplate, getTheme, listBlocks, setBlockImage, setThemeBackground,

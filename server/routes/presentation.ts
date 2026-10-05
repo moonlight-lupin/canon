@@ -7,18 +7,10 @@ import { requireAdmin } from '../auth.ts';
 import * as P from '../repo/presentation.ts';
 import { exportBulletinTemplate, exportSlideTemplate, importTemplateFile, templateFileName } from '../repo/template-files.ts';
 import { magicOk as rasterOk } from './design.ts';
+import { h } from './helpers.ts';
 
 export const presentationRoutes = express.Router();
 
-type Handler = (req: Request, res: Response) => unknown;
-const h = (fn: Handler) => async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const out = await fn(req, res);
-    if (!res.headersSent) res.json(out ?? { ok: true });
-  } catch (e) {
-    next(e);
-  }
-};
 const id = (req: Request) => {
   const n = Number(req.params.id);
   if (!Number.isInteger(n) || n <= 0) throw Object.assign(new Error('Bad id'), { status: 400 });

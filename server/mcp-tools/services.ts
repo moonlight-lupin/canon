@@ -24,7 +24,7 @@ export const congregationLabel = (id: number | null | undefined) => {
   return c ? { id: c.id, code: c.code, name: c.name } : undefined;
 };
 import { DOWNLOAD_KINDS, MAX_LINK_HOURS, createLinks, type DownloadKind } from '../repo/downloads.ts';
-import { DESTRUCTIVE, DateStr, Id, InputError, L10N_MERGE_NOTE, Limit, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
+import { DESTRUCTIVE, DateStr, Id, InputError, L10N_MERGE_NOTE, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
 // ---------------------------------------------------------------- output shaping
 

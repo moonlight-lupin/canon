@@ -1,10 +1,8 @@
 // Built-in slide themes and bulletin templates, seeded idempotently by a stable key (key → id is kept in the
 // settings meta `presentation_builtins`). Re-running adds only what is missing; built-ins are read-only in the app.
 import type { L10n } from '../../shared/types.ts';
-import {
-  DEFAULT_BULLETIN_OPTIONS, DEFAULT_THEME_VARS, FONT_PRESETS, LIGHT_THEME_COLOURS, legacyLayout,
-  type BulletinOptions, type SlideThemeVars,
-} from '../../shared/presentation.ts';
+import { DEFAULT_BULLETIN_OPTIONS, legacyLayout, type BulletinOptions } from '../../shared/presentation.ts';
+import { DEFAULT_THEME_VARS, FONT_PRESETS, LIGHT_THEME_COLOURS, type SlideThemeVars } from '../../shared/slide-theme.ts';
 import { tx } from '../db.ts';
 import { builtins, bulletinTemplates, setBuiltins, slideThemes } from '../repo/presentation.ts';
 

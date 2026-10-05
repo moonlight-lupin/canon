@@ -13,7 +13,7 @@ process.env.CANON_DB = path.join(tmp, 'test.db');
 const { splitSentences, balancedSizes, alignChunks, groupUnits, chunkParagraph, lineLimit } = await import('../shared/slide-chunks.ts');
 const { buildSlides, mapSlideIndex } = await import('../src/outputs/slideModel.ts');
 const { deckFit, largestFitting, scaledCap } = await import('../src/outputs/deckFit.ts');
-const { normaliseThemeVars, DEFAULT_THEME_VARS } = await import('../shared/presentation.ts');
+const { normaliseThemeVars, DEFAULT_THEME_VARS } = await import('../shared/slide-theme.ts');
 
 after(async () => {
   try {

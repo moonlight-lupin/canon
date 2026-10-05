@@ -10,7 +10,7 @@ import { Bi, LABEL, biText, formatDate, hasAny, itemSubtitles, langOptions, time
 import { isChinese } from '../../shared/languages.ts';
 import { postureL10n } from '../../shared/labels.ts';
 import { buildSlides } from './slideModel.ts';
-import type { SlideTheme } from '../../shared/presentation.ts';
+import type { SlideTheme } from '../../shared/slide-theme.ts';
 import './outputs.css';
 
 type Orientation = 'portrait' | 'landscape';

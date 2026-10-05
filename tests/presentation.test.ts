@@ -12,8 +12,8 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-presentation-'));
 process.env.CANON_DB = path.join(tmp, 'test.db');
 delete process.env.CANON_PUBLIC_URL;
 
-const { scopeCss, compileThemeCss, bulletinDecision, firstStanza, normaliseBulletinOptions, DEFAULT_THEME_VARS, DEFAULT_BULLETIN_OPTIONS } =
-  await import('../shared/presentation.ts');
+const { bulletinDecision, firstStanza, normaliseBulletinOptions, DEFAULT_BULLETIN_OPTIONS } = await import('../shared/presentation.ts');
+const { scopeCss, compileThemeCss, DEFAULT_THEME_VARS } = await import('../shared/slide-theme.ts');
 const { createApp } = await import('../server/app.ts');
 const { createUser } = await import('../server/auth.ts');
 const { seed } = await import('../server/seed/index.ts');

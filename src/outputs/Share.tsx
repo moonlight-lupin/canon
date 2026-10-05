@@ -8,9 +8,12 @@ import { ReedMark } from '../components/icons.tsx';
 import { SeasonChip, Tagline, logoUrl, useLogo } from '../components/brand.tsx';
 import { UI_LANGS, isChinese } from '../../shared/languages.ts';
 import type { L10n, RenderedService } from '../types-client.ts';
-import { Bi, ItemContent, LABEL, biText, formatDate, hasAny, hasContent, itemSubtitles, langOptions, langsFor, modeFor, timeRange, type LangMode } from './content.tsx';
+import {
+  Bi, ItemContent, LABEL, biText, formatDate, hasAny, hasContent, itemSubtitles, langOptions, langsFor, modeFor,
+  timeRange, type LangMode,
+} from './content.tsx';
 import { ANNOUNCEMENTS_KEY, weeklySections } from '../../shared/presentation.ts';
-import { isNumberedLine } from './Bulletin.tsx';
+import { isNumberedLine } from './bulletin-order.tsx';
 import './outputs.css';
 
 function useNarrow(q = '(max-width: 640px)') {
