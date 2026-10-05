@@ -14,7 +14,7 @@ import './records.css';
 interface FormInfo { token?: string; bulletin?: boolean; slides?: boolean; enabled_church: boolean; url: string | null; public_address: boolean; local_only: boolean; pending: number }
 
 /** The service's Visitor form tab. */
-export function VisitorFormPanel({ serviceId, canEdit }: { serviceId: number; canEdit: boolean }) {
+export function VisitorFormPanel({ serviceId, canEdit, noSwitch }: { serviceId: number; canEdit: boolean; noSwitch?: boolean }) {
   const { t } = useI18n();
   const { isAdmin } = useSession();
   const { data, error, setData } = useApi<FormInfo>(`/services/${serviceId}/visitor-form`);
@@ -48,7 +48,7 @@ export function VisitorFormPanel({ serviceId, canEdit }: { serviceId: number; ca
       <section className="card stack">
         <div className="row between">
           <h3>{t('Visitor form')} <InfoTip text={t('A short form visitors fill in on their phone: name, contact (optional), how they came, whether they would like to be contacted. Entries wait below until you accept them into the service record.')} /></h3>
-          {canEdit && <label className="switch"><input type="checkbox" checked={on} disabled={busy} onChange={(e) => save({ enabled: e.target.checked })} /><strong>{on ? t('On') : t('Off')}</strong></label>}
+          {canEdit && !noSwitch && <label className="switch"><input type="checkbox" checked={on} disabled={busy} onChange={(e) => save({ enabled: e.target.checked })} /><strong>{on ? t('On') : t('Off')}</strong></label>}
         </div>
         {on && data.url && (
           <div className="vf-grid">

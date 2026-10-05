@@ -66,13 +66,7 @@ export function Icon({ name, ...rest }: { name: IconName } & SVGProps<SVGSVGElem
 }
 
 /** The Canon mark: a measuring reed with graduations. */
+/** Canon's mark — the measuring reed with its white crossbar — from the one asset file (public/canon-mark.svg). */
 export function ReedMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <rect width="32" height="32" rx="7" fill="var(--ink)" />
-      <path d="M16 5v22" stroke="var(--reed)" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M16 8h4M16 12h3M16 16h5M16 20h3M16 24h4" stroke="var(--reed)" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M11 10h3" stroke="var(--paper)" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
+  return <img src="/canon-mark.svg" className={className} alt="" aria-hidden="true" draggable={false} />;
 }

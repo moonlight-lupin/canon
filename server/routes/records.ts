@@ -4,7 +4,7 @@ import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as rec from '../repo/records.ts';
-import { leadsMeeting } from '../lib/leaders.ts';
+import { leadsMeeting, cardService } from '../lib/leaders.ts';
 import * as arc from '../repo/archive.ts';
 import * as reports from '../repo/reports.ts';
 import { Forbidden } from '../lib/table.ts';
@@ -43,6 +43,8 @@ const reportPeriod = (req: Request) => reports.period({
   kind: str(req.query.kind), group_id: Number(req.query.group) || undefined,
 });
 const canSeeMoney = (req: Request) => can(req.user, 'contributions', 'read');
+/** The visitor form of a service and its entries: editors and administrators, or the leader of that meeting. */
+const mayHandleForm = (req: Request, serviceId: number) => canSeeMoney(req) || leadsMeeting(req.user?.person_id, serviceId);
 // which years are in archive files (reports cover the live database only, and say so)
 recordRoutes.get('/reports/archived-years', h(() => ({ years: arc.archiveYears() })));
 recordRoutes.get('/reports/attendance', h((req) => reports.attendanceReport(reportPeriod(req))));
@@ -74,19 +76,19 @@ recordRoutes.put('/visitor-form-settings', requireAdmin, h((req) => vf.saveFormS
 }).parse(req.body))));
 recordRoutes.get('/services/:id/visitor-form', h((req) => vf.serviceFormInfo(id(req), origin(req))));
 recordRoutes.put('/services/:id/visitor-form', h((req) => {
-  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators can change the visitor form.');
+  if (!mayHandleForm(req, id(req))) throw new Forbidden('Only editors, administrators and the meeting’s leader can change the visitor form.');
   return vf.setServiceForm(id(req), z.object({ enabled: z.boolean(), bulletin: z.boolean().optional(), slides: z.boolean().optional() }).parse(req.body), origin(req));
 }));
 recordRoutes.get('/services/:id/visitor-cards', h((req) => {
-  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators review visitor cards.');
+  if (!mayHandleForm(req, id(req))) throw new Forbidden('Only editors, administrators and the meeting’s leader review visitor cards.');
   return vf.cardsFor(id(req));
 }));
 recordRoutes.post('/visitor-cards/:id/accept', h((req) => {
-  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators review visitor cards.');
+  if (!mayHandleForm(req, cardService(id(req)))) throw new Forbidden('Only editors, administrators and the meeting’s leader review visitor cards.');
   return vf.acceptCard(id(req), recWho(req));
 }));
 recordRoutes.delete('/visitor-cards/:id', h((req) => {
-  if (!canSeeMoney(req)) throw new Forbidden('Only editors and administrators review visitor cards.');
+  if (!mayHandleForm(req, cardService(id(req)))) throw new Forbidden('Only editors, administrators and the meeting’s leader review visitor cards.');
   return vf.discardCard(id(req));
 }));
 recordRoutes.delete('/services/:id/record', requireAdmin, h((req) => rec.deleteRecord(id(req), recWho(req))));

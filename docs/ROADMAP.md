@@ -1,6 +1,6 @@
 # Roadmap
 
-What is planned for Canon after v0.13.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
+What is planned for Canon after v0.14.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
 
 | Version | Theme |
 |---|---|
@@ -8,7 +8,7 @@ What is planned for Canon after v0.13.0. Plans change: each release is scoped in
 | 0.11.0 | Hardening: archiving, storage, privacy; custom member fields — done |
 | 0.12.0 | Meetings, Sunday school and the church calendar — done |
 | 0.13.0 | Roles and permissions, optional modules, second hardening round — done |
-| 0.14.0 | UI/UX audit of the core (worship and records) |
+| 0.14.0 | UI/UX audit of the core (worship and records) — done |
 | 0.15.0 | Lending library and asset register (two optional modules, one release) |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
@@ -88,9 +88,23 @@ Differences from the plan:
 - **Content rights** cover Bible versions; songs keep their public-domain flag and copyright line.
 - **Running Canon as a Windows service** is left for the third hardening round (0.17).
 
-## 0.14.0 — UI/UX audit
+## 0.14.0 — UI/UX audit (done)
 
-A review of the core — services, the library, members and groups, meetings, records and reports, settings — for clarity, consistency, accessibility and use on phones and tablets, while it is complete and before the optional modules add more screens. The patterns it settles (forms, lists, dialogs, phone layouts, wording in both languages) are what the lending library, asset register and book-keeping are then built with.
+Shipped (see [CHANGELOG.md](../CHANGELOG.md) and [UI-AUDIT-0.14.md](UI-AUDIT-0.14.md)):
+- contrast to WCAG AA;
+- a grouped planner bar;
+- the planner and dashboard on phones;
+- a Planner section in the sidebar, with sections that fold;
+- one language switch per section, with field tabs to hover;
+- one ⋯ menu on the template pages;
+- a profile tab and grouped tabs in Settings;
+- landmarks, headings, labels and larger targets;
+- a visitor form for meetings;
+- the mark as one image file.
+
+Still to do as screens are touched: inline layout styles moved to shared classes. Still to test: drag-and-drop in the planner on a real touch device.
+
+The original plan: a review of the core — services, the library, members and groups, meetings, records and reports, settings — for clarity, consistency, accessibility and use on phones and tablets, while it is complete and before the optional modules add more screens. The patterns it settles (forms, lists, dialogs, phone layouts, wording in both languages) are what the lending library, asset register and book-keeping are then built with.
 
 ## 0.15.0 — Lending library and asset register
 

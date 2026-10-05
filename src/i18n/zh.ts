@@ -36,6 +36,9 @@ const zh: Record<string, string> = {
   'Automatic from': '自动转换自',
   // the sidebar section for services and meetings
   'Planner': '策划',
+  'Visitors can fill in a form on their phone': '新朋友可用手机填写表格',
+  'A short form from a QR code: name, how they came, contact if they wish. The entries wait for you to accept them into this meeting’s record. Saved straight away.': '扫描二维码填写的简短表格：姓名、如何来到、愿意留下的联系方式。填写的资料会等你接受后才加入这次聚会活动的记录。设定会立即保存。',
+  'The visitor form is on for this meeting.': '这次聚会活动已开启新朋友表格。',
   'Files': '文件',
   'Download the service as a file': '把聚会下载为文件',
   'The order of service as a Word file': '聚会程序的 Word 文件',

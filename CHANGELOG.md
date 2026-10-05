@@ -4,6 +4,42 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.14.0 — UI/UX audit of the core
+
+A review of the core screens (`docs/UI-AUDIT-0.14.md`), and what came out of it.
+
+- **Easier to read.** The grey used for hints, table headers and second-language titles, and the amber of warnings, now meet the accessibility minimum (WCAG AA) in light and dark themes.
+- **The service planner's bar:**
+  - **Bulletin**, **Slides** and **Run sheet** stay as buttons.
+  - **Files ▾** holds PowerPoint, Word and FreeShow.
+  - **Share** opens the link panel and shows **On** while the link works.
+  - **⋯** holds Duplicate, Save as template and **Delete this service** (in red, apart from the rest).
+- **On phones:**
+  - the planner fits the screen (each item's role and minutes go under its title);
+  - the dashboard shows its figures two per row.
+- **The sidebar:**
+  - **Planner** (策划) covers services and meetings, so **Meetings** moved there from Congregation;
+  - click a section's name to fold it (remembered in the browser);
+  - going to a page in a folded section opens it.
+- **One language switch per section.** Sections with several multilingual fields have **EN / 简** and **Side by side** at their top right, turning all their fields at once:
+  - the visitor form and member field settings;
+  - a service's details and Bulletin tab;
+  - a meeting's details;
+  - a bulletin template.
+
+  Each field keeps its own small tabs, in dialogs too. Click one to switch just that field, or hover over it to read the field in that language.
+- **One ⋯ menu on all three template pages.** Service templates now use the same ⋯ menu as slide and bulletin templates (Set as church default, Archive, Restore, Delete). The ⋯ button is larger, and the church default's Archive shows greyed out with the reason.
+- **Settings:** **My profile** is its own first tab, and the other tabs are grouped.
+- **A visitor form for meetings.** **Visitors can fill in a form on their phone**, next to **An offering is taken at this meeting**. The meeting gets its own QR code, link and cards to print, and its leader can switch it on and accept the entries.
+- **Canon's mark** is one image file (`public/canon-mark.svg`), used in the app and as the browser tab's icon. Its white crossbar now runs across the measuring reed.
+- **Accessibility:**
+  - the main content is marked as such;
+  - headings are in order;
+  - search boxes and filters have names;
+  - small targets are larger (field language tabs, "?" tips, calendar entries, insert buttons on touch screens);
+  - "reduce motion" is honoured.
+- No database change.
+
 ## 0.13.2 — permissions for exports, households and precedent
 
 Fixes from the review of 0.13.1.

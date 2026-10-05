@@ -32,6 +32,11 @@ const RECORD = /^\/services\/(\d+)\/record$/;
 const RECORD_ACTION = /^\/services\/(\d+)\/record\/(sign|approve|finish|unsign|verify)$/;
 const DETAILS = /^\/services\/(\d+)$/;
 const NEXT = /^\/services\/(\d+)\/duplicate$/;
+const VISITOR_FORM = /^\/services\/(\d+)\/visitor-form$/;
+const VISITOR_CARD = /^\/visitor-cards\/(\d+)(\/accept)?$/;
+
+/** The service (or meeting) a visitor card was filled in for. */
+export const cardService = (cardId: number) => get<{ service_id: number }>('SELECT service_id FROM visitor_cards WHERE id = ?', cardId)?.service_id ?? 0;
 
 /**
  * May this read-only account make this change? Only the listed requests, only for meetings its member leads.
@@ -58,6 +63,12 @@ export function leaderMayWrite(personId: number | null | undefined, req: Req): b
     return true;
   }
   if (req.method === 'POST' && (m = NEXT.exec(req.path))) return leadsMeeting(personId, Number(m[1]));
+  // the visitor form of their meeting: switch it on or off, accept or discard its entries
+  if (req.method === 'PUT' && (m = VISITOR_FORM.exec(req.path))) return leadsMeeting(personId, Number(m[1]));
+  if ((req.method === 'POST' || req.method === 'DELETE') && (m = VISITOR_CARD.exec(req.path))) {
+    if (req.method === 'POST' && !m[2]) return false;
+    return leadsMeeting(personId, cardService(Number(m[1])));
+  }
   if (req.method === 'POST' && req.path === '/meetings') return typeof body.group_id === 'number' && ledGroups(personId).includes(body.group_id);
   return false;
 }

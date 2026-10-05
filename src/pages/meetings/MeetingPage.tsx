@@ -11,6 +11,7 @@ import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import type { ServiceFull, L10n } from '../../types-client.ts';
 import type { ServiceRecord } from '../../../shared/records.ts';
 import type { Group } from '../../../shared/types.ts';
+import { VisitorFormPanel } from '../VisitorForm.tsx';
 
 type Draft = Pick<ServiceFull, 'title' | 'date' | 'start_time' | 'place' | 'leader_id' | 'chair' | 'topic' | 'sermon_ref' | 'offering' | 'notes'>;
 const draftOf = (m: ServiceFull): Draft => ({
@@ -23,7 +24,7 @@ export default function MeetingPage() {
   const mid = Number(id);
   const nav = useNavigate();
   const { t, lang } = useI18n();
-  const { canEdit: editor } = useSession();
+  const { canEdit: editor, settings } = useSession();
   const canRecord = useCanRecord();
   const meeting = useApi<ServiceFull>(`/services/${mid}`);
   const record = useApi<ServiceRecord & { saved: boolean }>(`/services/${mid}/record`);
@@ -122,6 +123,7 @@ export default function MeetingPage() {
             <input type="checkbox" checked={!!d.offering} onChange={(e) => set({ offering: e.target.checked })} />
             {t('An offering is taken at this meeting')} <InfoTip text={t('With an offering, the record has the cash count, declaration and signing, as for a service. The next meeting copies this choice.')} />
           </label>
+          {settings?.modules?.visitor_form !== false && <MeetingFormOption mid={mid} canEdit={canEdit} />}
           {!d.offering && rec?.saved && rec.offerings.length > 0 && <div className="callout small">{t('This meeting’s record already has offerings. They stay in the record but are not counted in the offerings reports while no offering is taken.')}</div>}
           <Field label={t('Notes')}><textarea rows={3} value={d.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} /></Field>
           {canEdit && <div><button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button></div>}
@@ -146,5 +148,38 @@ export default function MeetingPage() {
         <p className="small muted" style={{ margin: 0 }}>{t('An order of service, bulletin and slides are optional for a meeting. Next meeting copies this one to the date chosen.')}</p>
       </section>
     </div>
+  );
+}
+
+/**
+ * "Visitors fill in a form on their phone" for this meeting: the same visitor form as a service's (Settings → Visitor
+ * form), switched on here; the QR code, link and entries to accept show below.
+ */
+function MeetingFormOption({ mid, canEdit }: { mid: number; canEdit: boolean }) {
+  const { t } = useI18n();
+  const { isAdmin } = useSession();
+  const form = useApi<{ token: string | null; enabled_church: boolean }>(`/services/${mid}/visitor-form`);
+  const { run, busy } = useAction();
+  if (!form.data) return null;
+  const on = !!form.data.token;
+  if (!form.data.enabled_church) {
+    return (
+      <div className="small muted">
+        {t('Visitor form')}: {t('The visitor form is off for the church.')} {isAdmin && <Link to="/settings?tab=visitor-form">{t('Settings → Visitor form')}</Link>}
+      </div>
+    );
+  }
+  const toggle = (enabled: boolean) => run(async () => {
+    await api.put(`/services/${mid}/visitor-form`, { enabled });
+    form.reload();
+  }, enabled ? t('The visitor form is on for this meeting.') : t('Saved.'));
+  return (
+    <>
+      <label className="check">
+        <input type="checkbox" checked={on} disabled={!canEdit || busy} onChange={(e) => toggle(e.target.checked)} />
+        {t('Visitors can fill in a form on their phone')} <InfoTip text={t('A short form from a QR code: name, how they came, contact if they wish. The entries wait for you to accept them into this meeting’s record. Saved straight away.')} />
+      </label>
+      {on && <VisitorFormPanel serviceId={mid} canEdit={canEdit} noSwitch />}
+    </>
   );
 }

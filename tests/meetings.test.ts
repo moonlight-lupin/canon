@@ -178,6 +178,17 @@ test('a read-only account linked to a leader records the meetings they lead — 
   assert.equal(next.status, 200);
   assert.equal((await call(lead, 'POST', '/meetings', { group_id: ids.group, date: '2035-05-09' })).status, 200);
 
+  // the visitor form of their meeting (0.14): switch it on, see and accept the entries — but never a service's
+  const { updateSettings: us, getSettings: gs } = await import('../server/repo/settings.ts');
+  us({ visitor_form: { ...gs().visitor_form, enabled: true } });
+  const vf = await call(lead, 'PUT', `/services/${ids.m2}/visitor-form`, { enabled: true });
+  assert.equal(vf.status, 200, JSON.stringify(vf.body));
+  assert.ok(vf.body.token, 'the meeting has its own form link');
+  assert.equal((await call(lead, 'GET', `/services/${ids.m2}/visitor-cards`)).status, 200);
+  assert.equal((await call(lead, 'PUT', `/services/${ids.service}/visitor-form`, { enabled: true })).status, 403, 'never a service');
+  assert.equal((await call(plain, 'PUT', `/services/${ids.m2}/visitor-form`, { enabled: true })).status, 403);
+  assert.equal((await call(lead, 'PUT', `/services/${ids.m2}/visitor-form`, { enabled: false })).status, 200);
+
   // not: who leads it or which group, deleting, reopening a count, a one-off they don't lead, services, other groups
   assert.equal((await call(lead, 'PATCH', `/services/${ids.m2}`, { leader_id: ids.member })).status, 403);
   assert.equal((await call(lead, 'PATCH', `/services/${ids.m2}`, { group_id: null })).status, 403);
