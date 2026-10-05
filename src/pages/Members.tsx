@@ -269,7 +269,7 @@ function PersonEditor({ id, households, onClose, onSaved }: { id: number | null;
     // the church's own fields: every defined one is sent ("" clears it)
     if (fieldDefs.length) body.custom = Object.fromEntries(fieldDefs.map((d) => [d.key, custom[d.key] ?? '']));
     const ok = await run(async () => {
-      const p = id ? await api.patch<Person>(`/people/${id}`, body) : await api.post<Person>('/people', body);
+      const p = id ? await api.patch<Person>(`/people/${id}`, body, detail.data?.updated_at) : await api.post<Person>('/people', body);
       if (rolesDirty || (!id && roles.length)) await api.put(`/people/${p.id}/roles`, { role_ids: roles });
       return p;
     }, t('Saved.'));

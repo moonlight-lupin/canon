@@ -115,11 +115,22 @@ export default function ServiceEditor() {
   }, [setSvc, flush]);
 
   // the Bulletin tab saves the weekly sections itself; keep the loaded service in step
-  const onBulletinContent = useCallback((c: ServiceFull['bulletin_content']) => setSvc((s) => (s ? { ...s, bulletin_content: c } : s)), [setSvc]);
+  const onBulletinContent = useCallback((c: ServiceFull['bulletin_content'], updatedAt?: string) => {
+    if (updatedAt) version.current = updatedAt;
+    setSvc((s) => (s ? { ...s, bulletin_content: c, ...(updatedAt ? { updated_at: updatedAt } : {}) } : s));
+  }, [setSvc]);
 
-  const patchService = useCallback(async (patch: Partial<ServiceFull>) => {
-    setSvc((s) => (s ? { ...s, ...patch } : s));
-    await run(() => api.patch(`/services/${sid}`, patch));
+  // the version of the service row this page has; own saves move it on, so only someone else's change conflicts
+  const version = useRef<string | null>(null);
+  useEffect(() => {
+    if (svc?.updated_at && !version.current) version.current = svc.updated_at;
+  }, [svc?.updated_at]);
+  const patchService = useCallback(async (patch: Partial<ServiceFull>, check = false) => {
+    const r = await run(() => api.patch<ServiceFull>(`/services/${sid}`, patch, check ? version.current : null));
+    if (r) {
+      version.current = r.updated_at;
+      setSvc((s) => (s ? { ...s, ...patch, updated_at: r.updated_at } : s));
+    }
   }, [setSvc, run, sid]);
 
   // ---- add / remove / reorder
@@ -322,7 +333,7 @@ export default function ServiceEditor() {
         <button onClick={() => setShowDetails((s) => !s)}><Icon name="edit" style={{ width: 14, height: 14, verticalAlign: -2, marginRight: 4 }} />{t('Edit')}…</button>
       </div>
 
-      {showDetails && <DetailsCard svc={svc} onSave={patchService} canEdit={canEdit} />}
+      {showDetails && <DetailsCard svc={svc} onSave={(p) => patchService(p, true)} canEdit={canEdit} />}
 
       {tab === 'order' ? (
         <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { setLibDrag(null); setDropBefore(null); }}>

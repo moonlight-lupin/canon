@@ -22,7 +22,7 @@ function tidy(c: Record<string, L10n>): Record<string, L10n> {
   return out;
 }
 
-export function ServiceBulletinTab({ svc, canEdit, onContent }: { svc: ServiceFull; canEdit: boolean; onContent: (c: Record<string, L10n>) => void }) {
+export function ServiceBulletinTab({ svc, canEdit, onContent }: { svc: ServiceFull; canEdit: boolean; onContent: (c: Record<string, L10n>, updatedAt?: string) => void }) {
   const { t, lt } = useI18n();
   const { settings } = useSession();
   const toast = useToast();
@@ -49,8 +49,8 @@ export function ServiceBulletinTab({ svc, canEdit, onContent }: { svc: ServiceFu
     timer.current = null;
     const body = tidy(latest.current);
     try {
-      await api.patch(`/services/${svc.id}`, { bulletin_content: body });
-      onContent(body);
+      const r = await api.patch<ServiceFull>(`/services/${svc.id}`, { bulletin_content: body });
+      onContent(body, r.updated_at);
       setSaving('saved');
     } catch (e) {
       toast((e as Error).message, true);

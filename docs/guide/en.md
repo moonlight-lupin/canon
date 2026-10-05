@@ -329,6 +329,9 @@ Claude looks at your past services first: the same Sunday last year, the same se
 
 ## FAQ and troubleshooting
 
+**"Someone else changed this … after you opened it."**
+Two people edited the same service details, service record or member at the same time. Canon keeps the first save and refuses the second instead of silently overwriting it, and says who changed it and when. Copy anything you typed, reload the page to see their changes, then make yours again.
+
 **Chinese text is garbled when I open an export in Excel.**
 Canon's exports open correctly in Excel. If a file became garbled after you saved it, save it again as **CSV UTF-8**. Canon still reads files saved in Chinese encodings.
 

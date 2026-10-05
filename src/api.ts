@@ -24,8 +24,10 @@ export const onUnauthorised = (fn: Listener) => {
   };
 };
 
-async function request<T>(method: string, path: string, body?: unknown, raw = false): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, raw = false, version?: string | null): Promise<T> {
   const headers: Record<string, string> = {};
+  // the version this screen started from: the server refuses the save if someone else changed it since (409)
+  if (version) headers['X-Base-Version'] = version;
   if (csrf && method !== 'GET') headers['X-CSRF-Token'] = csrf;
   let payload: BodyInit | undefined;
   if (body instanceof Blob) {
@@ -57,8 +59,8 @@ async function request<T>(method: string, path: string, body?: unknown, raw = fa
 export const api = {
   get: <T>(p: string) => request<T>('GET', p),
   post: <T>(p: string, b?: unknown) => request<T>('POST', p, b ?? {}),
-  patch: <T>(p: string, b: unknown) => request<T>('PATCH', p, b),
-  put: <T>(p: string, b: unknown) => request<T>('PUT', p, b),
+  patch: <T>(p: string, b: unknown, version?: string | null) => request<T>('PATCH', p, b, false, version),
+  put: <T>(p: string, b: unknown, version?: string | null) => request<T>('PUT', p, b, false, version),
   del: <T = { ok: true }>(p: string) => request<T>('DELETE', p),
 };
 

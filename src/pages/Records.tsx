@@ -164,7 +164,7 @@ export function RecordEditor() {
         foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
       };
   const save = () => run(async () => {
-    const r = await api.put<Rec>(`/services/${sid}/record`, body());
+    const r = await api.put<Rec>(`/services/${sid}/record`, body(), rec.data?.saved ? rec.data.updated_at : null);
     rec.setData({ ...r, saved: true });
   }, t('Saved.'));
   const verify = (v: boolean) => {

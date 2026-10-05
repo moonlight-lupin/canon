@@ -143,3 +143,30 @@ test('logs export as CSV for administrators, with the filters applied', async ()
   assert.equal((await get(as.editor, '/change-log.csv')).status, 403);
   assert.equal((await get(as.viewer, '/mcp/audit.csv')).status, 403);
 });
+
+test('edit conflicts: a save based on an older version is refused with who changed it; own fresh saves pass', async () => {
+  const svcRepo = await import('../server/repo/services.ts');
+  const s2 = svcRepo.createService({ date: '2034-09-03' }).service.id;
+  const withVersion = async (who: Session, method: string, url: string, body: unknown, version: string) => {
+    const r = await fetch(`${base}/api${url}`, { method, headers: { 'Content-Type': 'application/json', Cookie: who.cookie, 'X-CSRF-Token': who.csrf, 'X-Base-Version': version }, body: JSON.stringify(body) });
+    return { status: r.status, body: (await r.json().catch(() => null)) as Json };
+  };
+  const opened = (await call(as.editor, 'GET', `/services/${s2}`)).body.updated_at as string;
+  await new Promise((r) => setTimeout(r, 1100)); // versions are kept to the second
+  const other = await call(as.admin, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Other' });
+  assert.equal(other.status, 200);
+  const stale = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, opened);
+  assert.equal(stale.status, 409);
+  assert.match(stale.body.error, /changed this by Test admin/);
+  const fresh = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, other.body.updated_at);
+  assert.equal(fresh.status, 200, 'saving on top of the latest version is fine');
+  assert.equal((await call(as.editor, 'PATCH', `/services/${s2}`, { theme: { en: 'x' } })).status, 200, 'no version sent: not checked');
+
+  // the same for a service record
+  await call(as.editor, 'PUT', `/services/${s2}/record`, { attendance: 10 });
+  const recOpened = (await call(as.editor, 'GET', `/services/${s2}/record`)).body.updated_at as string;
+  await new Promise((r) => setTimeout(r, 1100));
+  await call(as.admin, 'PUT', `/services/${s2}/record`, { attendance: 11 });
+  assert.equal((await withVersion(as.editor, 'PUT', `/services/${s2}/record`, { attendance: 12 }, recOpened)).status, 409);
+  assert.equal((await call(as.editor, 'GET', `/services/${s2}/record`)).body.attendance, 11, 'their number stands');
+});

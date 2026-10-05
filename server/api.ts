@@ -34,6 +34,7 @@ import * as cong from './repo/congregations.ts';
 import * as rec from './repo/records.ts';
 import * as reports from './repo/reports.ts';
 import { Forbidden } from './lib/table.ts';
+import { assertFresh } from './lib/versions.ts';
 import { cleanRef } from './repo/refs.ts';
 import { cleanFieldDefs, type MemberField } from '../shared/member-fields.ts';
 import { toCsv } from '../shared/reports.ts';
@@ -291,6 +292,7 @@ api.post('/people', h((req) => {
 }));
 api.patch('/people/:id', h((req) => {
   const pid = id(req);
+  assertFresh(req, reg.people.get(pid), 'people', pid);
   const b = S.PersonInput.partial().parse(req.body);
   const custom = reg.customFor(reg.people.get(pid).custom, b.custom);
   return reg.people.update(pid, { ...b, ...(custom ? { custom } : {}) });
@@ -482,7 +484,11 @@ api.delete('/visitor-cards/:id', h((req) => {
   return vf.discardCard(id(req));
 }));
 api.delete('/services/:id/record', requireAdmin, h((req) => rec.deleteRecord(id(req), recWho(req))));
-api.put('/services/:id/record', h((req) => rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req))));
+api.put('/services/:id/record', h((req) => {
+  const cur = rec.recordFor(id(req));
+  if (cur.saved) assertFresh(req, cur, 'service_records', cur.id);
+  return rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req));
+}));
 api.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));
 api.post('/services/:id/record/finish', h((req) => rec.finishSigning(id(req), recWho(req))));
 api.post('/services/:id/record/unsign', h((req) => rec.unsign(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name, recWho(req))));
@@ -559,6 +565,7 @@ api.post('/services', h((req) => {
 api.get('/services/:id', h((req) => svc.getServiceFull(id(req))));
 api.patch('/services/:id', h((req) => {
   const sid = id(req);
+  assertFresh(req, svc.services.get(sid), 'services', sid);
   const b = S.ServiceInput.partial().parse(req.body);
   return svc.services.update(sid, { ...b, ...(b.ref !== undefined ? { ref: cleanRef('service', b.ref, sid) } : {}) });
 }));
