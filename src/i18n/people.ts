@@ -954,5 +954,6 @@ const zh: Record<string, string> = {
   "printed in the bulletin": "印在周报上",
   "projected": "投影",
   "online (the share link is on)": "放在网上（已开启分享链接）",
+  "Backups are stopped: this computer’s backup key is missing or damaged. Set the backup password again below, or stop encrypting.": "备份已停止：这台电脑的备份密钥遗失或损坏。请在下方重新设置备份密码，或停止加密。",
 };
 export default zh;

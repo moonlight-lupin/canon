@@ -42,9 +42,11 @@ export const toDraft = (p: Person): Draft => {
 
 export function PersonEditor({ id, households, onClose, onSaved }: { id: number | null; households: HouseholdWithMembers[]; onClose: () => void; onSaved: () => void }) {
   const { t, lang, lt } = useI18n();
-  const { canEdit: mayEdit, isAdmin, settings } = useSession();
-  // the church's own fields; read-only accounts are not sent the sensitive ones, so leave those out
-  const fieldDefs = (settings?.member_fields ?? []).filter((d) => canEdit || !d.sensitive);
+  const { canEdit: mayEdit, isAdmin, settings, user } = useSession();
+  // the church's own fields; roles that don't see sensitive ones aren't sent them, so leave those out (saving an
+  // empty box would otherwise look like clearing the value)
+  const seesSensitive = isAdmin || !!user.role_def?.sensitive_fields;
+  const fieldDefs = (settings?.member_fields ?? []).filter((d) => seesSensitive || !d.sensitive);
   const detail = useApi<PersonDetail>(id ? `/people/${id}` : null);
   // a member whose personal data was erased (PDPA) stays only as a placeholder: nothing to edit
   const erased = !!detail.data?.erased_at;

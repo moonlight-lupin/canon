@@ -36,6 +36,7 @@ import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompt
 import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
 import type { PermModule } from '../shared/permissions.ts';
 import { wallOf } from './auth.ts';
+import { leadsMeeting } from './lib/leaders.ts';
 export type { ToolDef } from './mcp-tools/common.ts';
 
 const VERSION = '0.1.0';
@@ -117,6 +118,25 @@ export function toolCatalog() {
 /** Effective access to a module for this request = min(admin setting, token scope, user role). */
 /** Members' personal data on this connection: the administrator shares it, and the person's role sees members' details. */
 export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && roleDef(role).member_details;
+/** The church's member fields marked sensitive: personal data is shared, and the role sees sensitive fields too. */
+export const sensitiveFor = (cfg: McpConfig, role: Role) => piiFor(cfg, role) && roleDef(role).sensitive_fields;
+
+/**
+ * Meetings through the generic service and record tools: the same rules as the web app. Meetings switched off
+ * (Settings → Modules) don't exist for agents; otherwise the role's Meetings access decides (a leader may change
+ * the meetings they lead, as in the web app).
+ */
+export function meetingGate(user: { role: Role; person_id?: number | null }) {
+  return (entity: string, row: { id?: number; kind?: string | null }, mode: 'read' | 'write') => {
+    if (entity !== 'services' || row.kind !== 'meeting') return;
+    const hidden = () => Object.assign(new Error(`service ${row.id ?? ''} not found`.replace(/ $/, '')), { status: 404 });
+    if (getSettings().modules.meetings === false) throw hidden();
+    const access = roleAccess('meetings' as ModuleKey, user.role);
+    const leads = row.id != null && leadsMeeting(user.person_id, row.id);
+    if (access === 'none' && !leads) throw hidden();
+    if (mode === 'write' && access !== 'edit' && !leads) throw Object.assign(new Error('Your role can only read meetings.'), { status: 403 });
+  };
+}
 /** What the person's role allows in a module (administrators: everything). */
 const roleAccess = (module: ModuleKey, role: Role) => (roleDef(role).admin ? 'edit' : roleDef(role).access[module as PermModule] ?? 'none');
 
@@ -314,7 +334,7 @@ export function buildServer(auth: McpAuth, base = '') {
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
   const pii = piiFor(cfg, auth.user.role);
-  const ctx: Ctx = { auth, pii, levels, base };
+  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), levels, base };
   const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, pii, settings.languages) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;
@@ -325,7 +345,10 @@ export function buildServer(auth: McpAuth, base = '') {
       async (args: Args) => {
         let r: CallToolResult;
         try {
-          r = ok(await asActor({ user_id: auth.user.id, user_name: auth.user.display_name, via: 'mcp', client: clientName(auth.clientId), congregation_id: wallOf(auth.user) }, () => t.handler(args ?? {}, ctx)));
+          r = ok(await asActor({
+            user_id: auth.user.id, user_name: auth.user.display_name, via: 'mcp', client: clientName(auth.clientId),
+            congregation_id: wallOf(auth.user), gate: meetingGate(auth.user),
+          }, () => t.handler(args ?? {}, ctx)));
         } catch (e) {
           r = fail(errorMessage(e), e instanceof BatchError ? e.errors : undefined);
         }

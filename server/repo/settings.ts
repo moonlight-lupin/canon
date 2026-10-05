@@ -44,7 +44,8 @@ export interface Settings {
   /** first-run onboarding finished (languages chosen, Bibles offered) */
   onboarded: boolean;
   /** database backups: folder ('' = ./backups), automatic schedule, how many to keep */
-  backup: { dir: string; auto: 'off' | 'daily' | 'weekly'; keep: number };
+  /** encrypted: backups must be encrypted (a backup password was set); lib/backup-crypto.ts */
+  backup: { dir: string; auto: 'off' | 'daily' | 'weekly'; keep: number; encrypted?: boolean };
   /** public https address for claude.ai / remote agents, e.g. https://canon.your-church.org ('' = none) */
   public_url: string;
   /** church defaults for presentation; null = built-in */

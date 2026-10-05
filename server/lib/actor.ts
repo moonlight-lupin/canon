@@ -13,6 +13,11 @@ export interface Actor {
   client?: string | null;
   /** the congregation this account is limited to (lib/walls.ts); null = the whole church */
   congregation_id?: number | null;
+  /**
+   * Checks every row this request reads or changes through the shared table helper (lib/table.ts), after the wall:
+   * MCP uses it for meetings (role access, the Meetings module switched off). Throws to refuse.
+   */
+  gate?: (entity: string, row: { id?: number; congregation_id: number | null; kind?: string | null }, mode: 'read' | 'write') => void;
 }
 
 const store = new AsyncLocalStorage<Actor>();

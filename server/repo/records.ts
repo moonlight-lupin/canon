@@ -22,6 +22,7 @@ export const records = table<ServiceRecord>({
   touch: true,
   revision: true,
   log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
+  guard: { refs: { service_id: 'services' } },
 });
 
 const blank = (serviceId: number): Omit<ServiceRecord, 'id' | 'updated_at'> => ({

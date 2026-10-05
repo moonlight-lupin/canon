@@ -5,6 +5,9 @@
 // scheduled backups need no one to type the password, and backups restore on this computer without it. Each file
 // carries its own salt: on another computer the password alone restores it. Without the password an encrypted
 // backup can't be read — by anyone, including the church.
+//
+// That encryption is wanted is recorded separately, in the database (settings.backup.encrypted): if the key file is
+// then missing, damaged or unreadable, backups STOP with a message saying so — they never fall back to plain copies.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,13 +20,51 @@ export const keyFile = () => path.join(path.dirname(config.dbPath), 'backup-key.
 
 const derive = (password: string, salt: Buffer) => crypto.scryptSync(password, salt, 32, SCRYPT);
 
-/** The church's backup key (set with a password), or null when backups are not encrypted. */
+export class BackupKeyError extends Error {
+  status = 409;
+}
+const keyProblem = (why: string) => new BackupKeyError(`Backups are set to be encrypted, but ${why}. No backup was made. Set the backup password again in Settings → Backups (or turn encryption off there).`);
+
+/**
+ * This computer's backup key, or null when there is no key file. A key file that exists but can't be read or is not a
+ * valid key throws (BackupKeyError): it never counts as "not encrypted".
+ */
 export function backupKey(): { salt: Buffer; key: Buffer } | null {
+  let text: string;
   try {
-    const j = JSON.parse(fs.readFileSync(keyFile(), 'utf8')) as { salt: string; key: string };
-    return { salt: Buffer.from(j.salt, 'base64'), key: Buffer.from(j.key, 'base64') };
+    text = fs.readFileSync(keyFile(), 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw keyProblem(`the backup key file (${keyFile()}) can't be read (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`);
+  }
+  try {
+    const j = JSON.parse(text) as { salt?: unknown; key?: unknown };
+    const salt = typeof j.salt === 'string' ? Buffer.from(j.salt, 'base64') : Buffer.alloc(0);
+    const key = typeof j.key === 'string' ? Buffer.from(j.key, 'base64') : Buffer.alloc(0);
+    if (salt.length !== 16 || key.length !== 32) throw new Error('bad length');
+    return { salt, key };
   } catch {
-    return null;
+    throw keyProblem(`the backup key file (${keyFile()}) is damaged`);
+  }
+}
+
+/**
+ * The key to encrypt a new backup with: null = make a plain copy (encryption is off and there is no key file).
+ * `wanted` is the church's setting (settings.backup.encrypted); a key file on its own also means encryption is on.
+ */
+export function keyForBackup(wanted: boolean | undefined): { salt: Buffer; key: Buffer } | null {
+  const k = backupKey();
+  if (!k && wanted) throw keyProblem(`this computer's backup key file (${keyFile()}) is missing`);
+  return k;
+}
+
+/** The key file, for status screens: never throws. */
+export function backupKeyState(wanted: boolean | undefined): { encrypted: boolean; problem: string | null } {
+  try {
+    const k = keyForBackup(wanted);
+    return { encrypted: !!k, problem: null };
+  } catch (e) {
+    return { encrypted: true, problem: (e as Error).message };
   }
 }
 
@@ -68,7 +109,12 @@ export function decryptFile(src: string, dest: string, password?: string | null)
   const iv = all.subarray(MAGIC.length + 16, MAGIC.length + 28);
   const tag = all.subarray(all.length - 16);
   const body = all.subarray(MAGIC.length + 28, all.length - 16);
-  const own = backupKey();
+  let own: { salt: Buffer; key: Buffer } | null = null;
+  try {
+    own = backupKey();
+  } catch {
+    own = null; // a damaged key file: the password still opens it
+  }
   const key = password ? derive(password, salt) : own && own.salt.equals(salt) ? own.key : null;
   const need = (msg: string) => Object.assign(new Error(msg), { status: 400, needs_password: true });
   if (!key) throw need('This backup is encrypted with another backup password. Enter that password to restore it.');

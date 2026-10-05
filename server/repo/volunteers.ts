@@ -3,17 +3,19 @@ import type { Assignment, AssignmentStatus, ServiceRole, Team, Unavailability } 
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { ensureOnRoleTeam, isLeaderRole, teamGroupId } from './groups.ts';
-import { wallSql } from '../lib/walls.ts';
+import { checkRef, wallSql } from '../lib/walls.ts';
 
 export const teams = table<Team>({ name: 'teams', cols: ['name', 'description', 'color', 'sort'], json: ['name'] });
 export const roles = table<ServiceRole>({ name: 'roles', cols: ['team_id', 'name', 'needed', 'sort'], json: ['name'] });
 export const unavailability = table<Unavailability>({
   name: 'unavailability',
   cols: ['person_id', 'start_date', 'end_date', 'reason'],
+  guard: { refs: { person_id: 'people' } },
 });
 export const assignments = table<Assignment>({
   name: 'assignments',
   cols: ['service_id', 'role_id', 'person_id', 'status', 'notes'],
+  guard: { refs: { service_id: 'services', person_id: 'people' } },
 });
 
 const personName = `TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) ||
@@ -24,13 +26,15 @@ export function teamsWithRoles() {
   const ts = teams.list('', [], 'sort, id');
   const rs = roles.list('', [], 'sort, id');
   const members = all<{ role_id: number; person_id: number; name: string }>(
-    `SELECT rm.role_id, rm.person_id, ${personName} AS name FROM role_members rm JOIN people p ON p.id = rm.person_id ORDER BY name`,
+    `SELECT rm.role_id, rm.person_id, ${personName} AS name FROM role_members rm JOIN people p ON p.id = rm.person_id WHERE 1${wallSql('p.congregation_id').sql} ORDER BY name`,
+    ...wallSql('p.congregation_id').params,
   );
   // team roster: the current members of each team's "Serving team" group, leaders first, then by name
   for (const t of ts) teamGroupId(t.id);
   const roster = all<{ team_id: number; person_id: number; name: string; role: string | null }>(
     `SELECT t.id AS team_id, gm.person_id, ${personName} AS name, gm.role FROM group_members gm JOIN teams t ON t.group_id = gm.group_id
-     JOIN people p ON p.id = gm.person_id WHERE gm.end_date IS NULL OR gm.end_date >= date('now') ORDER BY name`,
+     JOIN people p ON p.id = gm.person_id WHERE (gm.end_date IS NULL OR gm.end_date >= date('now'))${wallSql('p.congregation_id').sql} ORDER BY name`,
+    ...wallSql('p.congregation_id').params,
   ).map((m) => ({ ...m, is_leader: isLeaderRole(m.role) ? 1 : 0 })).sort((a, b) => b.is_leader - a.is_leader);
   return ts.map((t) => ({
     ...t,
@@ -43,6 +47,7 @@ export function teamsWithRoles() {
 
 export function setRoleMembers(roleId: number, personIds: number[]) {
   roles.get(roleId);
+  for (const pid of new Set(personIds)) checkRef('people', pid, 'write');
   tx(() => {
     run('DELETE FROM role_members WHERE role_id = ?', roleId);
     for (const pid of new Set(personIds)) {
@@ -68,8 +73,8 @@ export function isUnavailable(personId: number, date: string) {
 export function listUnavailability(from?: string, to?: string) {
   return all<Unavailability & { person_name: string }>(
     `SELECT u.*, ${personName} AS person_name FROM unavailability u JOIN people p ON p.id = u.person_id
-     WHERE (? IS NULL OR u.end_date >= ?) AND (? IS NULL OR u.start_date <= ?) ORDER BY u.start_date`,
-    from ?? null, from ?? null, to ?? null, to ?? null,
+     WHERE (? IS NULL OR u.end_date >= ?) AND (? IS NULL OR u.start_date <= ?)${wallSql('p.congregation_id').sql} ORDER BY u.start_date`,
+    from ?? null, from ?? null, to ?? null, to ?? null, ...wallSql('p.congregation_id').params,
   );
 }
 
@@ -78,8 +83,8 @@ export function serviceAssignments(serviceId: number) {
     `SELECT a.*, ${personName} AS person_name, r.name AS role_name, r.team_id, p.email, p.phone
      FROM assignments a JOIN people p ON p.id = a.person_id JOIN roles r ON r.id = a.role_id
      JOIN teams t ON t.id = r.team_id
-     WHERE a.service_id = ? ORDER BY t.sort, t.id, r.sort, r.id, person_name`,
-    serviceId,
+     WHERE a.service_id = ?${wallSql('p.congregation_id').sql} ORDER BY t.sort, t.id, r.sort, r.id, person_name`,
+    serviceId, ...wallSql('p.congregation_id').params,
   ).map((a) => ({ ...a, role_name: JSON.parse(a.role_name) }));
 }
 
@@ -87,6 +92,8 @@ export function assign(serviceId: number, roleId: number, personId: number, stat
   if (!get('SELECT 1 FROM services WHERE id = ?', serviceId)) throw new NotFound(`service ${serviceId} not found`);
   roles.get(roleId);
   if (!get('SELECT 1 FROM people WHERE id = ?', personId)) throw new NotFound(`person ${personId} not found`);
+  checkRef('services', serviceId, 'write');
+  checkRef('people', personId, 'write');
   run(
     `INSERT INTO assignments (service_id, role_id, person_id, status) VALUES (?,?,?,?)
      ON CONFLICT(service_id, role_id, person_id) DO UPDATE SET status = excluded.status`,
@@ -125,14 +132,14 @@ export function rosterWarnings(serviceId: number) {
 export function rota(from: string, to: string, congregationId?: number) {
   const services = all<{ id: number; date: string; start_time: string; title: string; status: string; congregation_id: number | null }>(
     `SELECT id, date, start_time, title, status, congregation_id FROM services WHERE kind = 'service' AND date BETWEEN ? AND ? AND (? IS NULL OR congregation_id = ?)${wallSql('congregation_id').sql} ORDER BY date, start_time`,
-    from, to, congregationId ?? null, congregationId ?? null,
-  ).map((s) => ({ ...s, title: JSON.parse(s.title) }), ...wallSql('congregation_id').params);
+    from, to, congregationId ?? null, congregationId ?? null, ...wallSql('congregation_id').params,
+  ).map((s) => ({ ...s, title: JSON.parse(s.title) }));
   const ids = services.map((s) => s.id);
   const cells = ids.length
     ? all<{ id: number; service_id: number; role_id: number; person_id: number; status: string; person_name: string }>(
         `SELECT a.id, a.service_id, a.role_id, a.person_id, a.status, ${personName} AS person_name
-         FROM assignments a JOIN people p ON p.id = a.person_id WHERE a.service_id IN (${ids.map(() => '?').join(',')})`,
-        ...ids,
+         FROM assignments a JOIN people p ON p.id = a.person_id WHERE a.service_id IN (${ids.map(() => '?').join(',')})${wallSql('p.congregation_id').sql}`,
+        ...ids, ...wallSql('p.congregation_id').params,
       )
     : [];
   return { services, teams: teamsWithRoles(), assignments: cells, unavailability: listUnavailability(from, to) };

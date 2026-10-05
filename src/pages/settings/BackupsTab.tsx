@@ -19,6 +19,8 @@ interface Status {
   last_restore: { at: string; from: string; safety: string } | null;
   /** backups are encrypted with the church's backup password */
   encrypted: boolean;
+  /** encryption is on but this computer's key file is missing or damaged: backups stop until it is fixed */
+  key_problem?: string | null;
 }
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
@@ -140,6 +142,7 @@ export default function BackupsTab() {
           <h3>{t('Encryption')}</h3>
           {s.encrypted ? <span className="badge ok"><Icon name="lock" />{t('Encrypted')}</span> : <span className="badge warn">{t('Not encrypted')}</span>}
         </div>
+        {s.key_problem && <div className="callout warn small">{t('Backups are stopped: this computer’s backup key is missing or damaged. Set the backup password again below, or stop encrypting.')}<div className="muted">{s.key_problem}</div></div>}
         <p className="small muted" style={{ margin: 0 }}>
           {t('With a backup password, every backup (and the archive copies with it) is encrypted: a lost USB drive or a shared cloud folder doesn’t expose members’ data. This computer remembers the key, so automatic backups need no one, and they restore here without the password. On another computer, the password is needed — keep it with the church’s records. Without it, an encrypted backup can’t be opened by anyone.')}
         </p>

@@ -15,7 +15,7 @@ import * as pdpa from '../repo/pdpa.ts';
 import * as grp from '../repo/groups.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
-import { seesMemberDetails } from '../lib/permissions.ts';
+import { seesMemberDetails, seesSensitiveFields } from '../lib/permissions.ts';
 import { inWall } from '../lib/walls.ts';
 
 export const peopleRoutes = express.Router();
@@ -46,14 +46,14 @@ peopleRoutes.get('/people/:id', h((req) => {
 }));
 peopleRoutes.post('/people', h((req) => {
   const b = S.PersonInput.parse(req.body);
-  return reg.people.insert(inWall({ ...b, custom: reg.customFor({}, b.custom) ?? {} }));
+  return reg.people.insert(inWall({ ...b, custom: reg.customFor({}, b.custom, seesSensitiveFields(req.user)) ?? {} }));
 }));
 peopleRoutes.patch('/people/:id', h((req) => {
   const pid = id(req);
   if (reg.people.get(pid).erased_at) throw Object.assign(new Error('This member’s personal data was erased: the record can’t be edited.'), { status: 400 });
   assertFresh(req, reg.people.get(pid), 'people', pid);
   const b = S.PersonInput.partial().parse(req.body);
-  const custom = reg.customFor(reg.people.get(pid).custom, b.custom);
+  const custom = reg.customFor(reg.people.get(pid).custom, b.custom, seesSensitiveFields(req.user));
   return reg.people.update(pid, { ...b, ...(custom ? { custom } : {}) });
 }));
 // Settings → Security & privacy (administrators): the checklist, what was confirmed, who viewed member records; storage

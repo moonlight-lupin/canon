@@ -10,7 +10,7 @@ import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
 import { copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
 import { createAllMeetingsAhead } from './services.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
-import { backupKey, decryptFile, encryptFile, isEncrypted } from '../lib/backup-crypto.ts';
+import { decryptFile, encryptFile, isEncrypted, keyForBackup } from '../lib/backup-crypto.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
 // .db.enc: encrypted with the church's backup password (lib/backup-crypto.ts)
@@ -58,7 +58,8 @@ export function listBackups(dir = backupDir()): BackupFile[] {
 /** Write a backup now. Returns the new file. */
 export function createBackup(dir = backupDir()): BackupFile & { path: string } {
   fs.mkdirSync(dir, { recursive: true });
-  const key = backupKey();
+  // configured encryption with a missing or damaged key stops here (never a plain copy instead)
+  const key = keyForBackup(getSettings().backup.encrypted);
   const ext = key ? '.db.enc' : '.db';
   let file = path.join(dir, `canon-${stamp()}${ext}`);
   for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-${i}${ext}`);

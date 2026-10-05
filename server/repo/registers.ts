@@ -16,6 +16,7 @@ export const people = table<Person>({
   json: ['honorific', 'custom'],
   touch: true,
   revision: true,
+  guard: { own: 'people' },
 });
 
 export const households = table<Household>({ name: 'households', cols: ['name', 'address', 'phone', 'notes'] });
@@ -24,6 +25,7 @@ export const coworkers = table<Coworker>({
   name: 'coworkers',
   cols: ['person_id', 'position', 'category', 'employment', 'ministry_area', 'ordained', 'start_date', 'end_date', 'notes'],
   bool: ['ordained'],
+  guard: { refs: { person_id: 'people' } },
 });
 
 export const displayName = (p: Pick<Person, 'first_name' | 'last_name' | 'preferred_name' | 'native_name'>) => {
@@ -138,9 +140,12 @@ export function listCoworkers(opts: { active?: boolean } = {}) {
 // ---------------------------------------------------------------- custom member fields
 
 /** A person's custom values for saving: the stored ones with the given ones on top ("" or null clears a field). */
-export function customFor(current: Record<string, string> | null | undefined, given: Record<string, string | null> | undefined): Record<string, string> | undefined {
+export function customFor(current: Record<string, string> | null | undefined, given: Record<string, string | null> | undefined, sensitiveAllowed = true): Record<string, string> | undefined {
   if (given === undefined) return undefined;
   const defs = getSettings().member_fields ?? [];
+  // a role that doesn't see sensitive fields never changes them (its screens don't show them: an empty value there
+  // is not a request to clear one)
+  if (!sensitiveAllowed) given = Object.fromEntries(Object.entries(given).filter(([k]) => !defs.some((d) => d.key === k && d.sensitive)));
   const merged: Record<string, unknown> = { ...(current ?? {}), ...given };
   const { values, errors } = cleanCustomValues(merged, defs, getSettings().languages[0]);
   if (errors.length) throw new BadRequest(errors.join(' '));

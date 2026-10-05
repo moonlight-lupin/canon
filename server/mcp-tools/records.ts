@@ -10,6 +10,23 @@ import * as rec from '../repo/records.ts';
 import * as reports from '../repo/reports.ts';
 import { DateStr, Id, RO, WRITE, addDays, canRead, today, type Ctx, type ToolDef } from './common.ts';
 import { get as dbGet } from '../db.ts';
+import { checkRef } from '../lib/walls.ts';
+import { roleDef } from '../lib/permissions.ts';
+import { getSettings } from '../repo/settings.ts';
+
+/** May this connection see meetings at all (Meetings switched on, and the role reads them or the person leads one)? */
+function meetingsVisible(ctx: Ctx) {
+  if (getSettings().modules.meetings === false) return false;
+  if (!ctx.auth) return true; // called directly (tests), not through a connection
+  const role = roleDef(ctx.auth.user.role);
+  return role.admin || (role.access.meetings ?? 'none') !== 'none' || !!dbGet("SELECT 1 FROM group_members WHERE person_id = ? AND leads = 1", ctx.auth.user.person_id ?? 0);
+}
+/** The kind of service a list or report may cover on this connection: without meetings, services only. */
+function kindFor<T extends { kind?: string }>(a: T, ctx: Ctx, def?: string): T {
+  if (meetingsVisible(ctx)) return a;
+  if (a.kind === 'meeting' || a.kind === 'all') throw Object.assign(new Error('Meetings are not available on this connection.'), { status: 403 });
+  return { ...a, kind: def ?? a.kind };
+}
 
 const PeriodInput = {
   from: DateStr.optional().describe('default: 12 months before `to`'),
@@ -18,7 +35,7 @@ const PeriodInput = {
   kind: z.enum(['service', 'meeting', 'all']).optional().describe('services (default), meetings of groups (fellowships, cell groups, Sunday school …), or both'),
   group_id: Id.optional().describe('with kind "meeting": one group\'s meetings (ids from canon_find_groups)'),
 };
-const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }) => reports.period(a);
+const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }, ctx: Ctx) => reports.period(kindFor(a, ctx));
 // the connection's access already follows the person's role (no offerings for roles without them)
 const money = (ctx: Ctx) => canRead(ctx, 'contributions');
 
@@ -28,6 +45,8 @@ const visitorOut = (v: Visitor, i: number, ctx: Ctx) => ({
 });
 
 function recordOut(serviceId: number, ctx: Ctx) {
+  // the service (or meeting) must be one this connection may use: congregation wall, meetings
+  checkRef('services', serviceId, 'read');
   const r = rec.recordFor(serviceId);
   const out: Record<string, unknown> = {
     service_id: serviceId, saved: r.saved, attendance: r.attendance, children: r.children, online: r.online, notes: r.notes,
@@ -67,7 +86,7 @@ export const RECORD_TOOLS: ToolDef[] = [
       const showMoney = money(ctx);
       return {
         from, to,
-        services: rec.listRecords({ from, to, congregation_id: a.congregation_id, kind: a.kind, group_id: a.group_id }).map((r) => ({
+        services: rec.listRecords(kindFor({ from, to, congregation_id: a.congregation_id, kind: a.kind, group_id: a.group_id }, ctx, 'service')).map((r) => ({
           service_id: r.service_id, kind: r.kind, group_id: r.group_id, group_name: r.group_name, offering: r.offering,
           date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
           recorded: r.recorded, attendance: r.attendance, children: r.children, online: r.online, new_visitors: r.visitors, has_notes: r.has_notes,
@@ -95,6 +114,7 @@ export const RECORD_TOOLS: ToolDef[] = [
       visitor_updates: z.array(z.object({ index: z.number().int().min(0), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional(), follow_up_by: z.string().max(200).optional() })).max(200).optional(),
     },
     handler: (a, ctx) => {
+      checkRef('services', a.service_id, 'write');
       const cur = rec.recordFor(a.service_id);
       const visitors = cur.visitors.map((v) => ({ ...v }));
       for (const u of a.visitor_updates ?? []) {
@@ -120,8 +140,8 @@ export const RECORD_TOOLS: ToolDef[] = [
     name: 'canon_attendance_report', module: 'records', access: 'read', title: 'Attendance and visitors report', annotations: RO,
     description: 'Attendance over a period (default: the last 12 months): average, median, highest and lowest, children and online averages, the same period a year earlier, averages per month and per congregation, and each service\'s numbers (services unless kind is "meeting" or "all": a cell group\'s headcount would distort Sunday\'s); plus new visitors: how many reached each follow-up step (new → contacted → came back → joined), how they came, and per month. Visitor names only. Example: {"from":"2026-01-01","to":"2026-06-30"}.',
     input: PeriodInput,
-    handler: (a) => {
-      const p = periodOf(a);
+    handler: (a, ctx) => {
+      const p = periodOf(a, ctx);
       const att = reports.attendanceReport(p);
       const vis = reports.visitorsReport(p, { contact: false });
       return {
@@ -137,20 +157,20 @@ export const RECORD_TOOLS: ToolDef[] = [
     input: PeriodInput,
     handler: (a, ctx) => {
       if (!money(ctx)) throw new Error('Offerings are not shared on this connection.');
-      return reports.offeringsReport(periodOf(a));
+      return reports.offeringsReport(periodOf(a, ctx));
     },
   },
   {
     name: 'canon_serving_report', module: 'volunteers', access: 'read', title: 'Serving report', annotations: RO,
     description: 'The rota over a past period (default: the last 12 months), services only: how often each person served (confirmed, declined, last served, teams), serving-team members who were not rostered (and when they last served), and per role how many services used it, at how many it was short of people, declines and how many people are qualified — to spot overload and roles that are hard to fill. Names only. Example: {"from":"2026-04-01","to":"2026-09-30"}.',
     input: { from: DateStr.optional(), to: DateStr.optional() },
-    handler: (a) => reports.servingReport(periodOf(a)),
+    handler: (a, ctx) => reports.servingReport(periodOf(a, ctx)),
   },
   {
     name: 'canon_song_report', module: 'services', access: 'read', title: 'Song usage report', annotations: RO,
     description: 'What was sung in the services of a period (default: the last 12 months): each song with times sung, first/last date, public domain or copyright and CCLI song number (for a licence usage report), and library songs not sung in the period (with when they were last sung). Example: {"from":"2026-01-01","to":"2026-12-31"}.',
     input: PeriodInput,
-    handler: (a) => reports.songsReport(periodOf(a)),
+    handler: (a, ctx) => reports.songsReport(periodOf(a, ctx)),
   },
   {
     name: 'canon_scripture_report', module: 'services', access: 'read', title: 'Scripture coverage report', annotations: RO,
@@ -169,6 +189,6 @@ export const RECORD_TOOLS: ToolDef[] = [
     name: 'canon_membership_stats', module: 'members', access: 'read', title: 'Membership statistics', annotations: RO,
     description: 'Counts from the member register: people by status, members and regulars by congregation, gender and age band (no birth dates), and who joined (membership date) or was baptised in a period, plus how many were added to the register. Example: {"from":"2026-01-01","to":"2026-12-31"}.',
     input: PeriodInput,
-    handler: (a) => reports.membershipReport(periodOf(a)),
+    handler: (a, ctx) => reports.membershipReport(periodOf(a, ctx)),
   },
 ];

@@ -4,6 +4,22 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.13.1 — permissions hold through every channel
+
+Fixes from the review of 0.13.0.
+
+- **Congregation walls hold everywhere.** Rows are now checked where they are read and saved, so the web app, AI agents and imports follow the same wall.
+  - An account limited to one congregation can no longer read or change another congregation's members or services through an AI agent.
+  - It can't add another congregation's member to its groups, rota or roles.
+  - Group member lists, team rosters, a service's roster, the rota grid, time away and households leave other congregations' people out.
+  - Moving something to another congregation needs an account for the whole church.
+- **The rota for a limited account** shows its own congregation's services again, not only the whole church's.
+- **Sensitive member fields through AI agents** follow the role's own permission. A role that sees contact details but not sensitive fields (the secretary) no longer gets them, or can change them, through an agent.
+- **Sensitive fields on the web.** A role without them could clear them by saving a member: the empty boxes on its form were sent as values. They are now left off its form and ignored by the server.
+- **Meetings through AI agents** follow the role, as in the web app. A role that only reads meetings (the service planner) can't change them through the service, order or record tools. When Meetings is switched off, meetings, their records and meeting reports don't exist for agents.
+- **Encrypted backups never fall back to plain copies.** Canon now records that encryption is on, separately from the key file. If this computer's key file is missing, damaged or unreadable, backups stop with a message, and the Backups tab and security checklist say so.
+- **Tests:** a permission matrix runs the same cases through the web app and AI agents, and checks what was saved as well as the responses.
+
 ## 0.13.0 — roles and permissions, optional modules, second hardening round
 
 - **Roles a church can shape** (Settings → Users & access → Roles):

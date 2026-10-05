@@ -1071,6 +1071,7 @@ const zhHant: Record<string, string> = {
  "printed in the bulletin": "印在週報上",
  "projected": "投影",
  "online (the share link is on)": "放在網上（已開啟分享鏈接）",
+ "Backups are stopped: this computer’s backup key is missing or damaged. Set the backup password again below, or stop encrypting.": "備份已停止：這臺電腦的備份密鑰遺失或損壞。請在下方重新設置備份密碼，或停止加密。",
  "Paper size, what each bulletin prints, and slide colours and fonts are set in templates and themes.": "紙張大小、次序單印刷內容，以及投影的顏色與字體，都在模板與主題中設定。",
  "How the slides look on the projector, and what the printed bulletin includes.": "設定投影畫面的樣式，以及印刷次序單要包含的內容。",
  "Slide themes": "投影主題",

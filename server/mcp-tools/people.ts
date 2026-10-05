@@ -12,6 +12,7 @@ import * as grp from '../repo/groups.ts';
 import { findCongregation } from '../repo/congregations.ts';
 import { sensitiveKeys, visibleCustom } from '../../shared/member-fields.ts';
 import { COWORKER_PII, HOUSEHOLD_PII, Id, InputError, Limit, PERSON_PII, RO, WRITE, mergeL10nFields, redact, type ToolDef } from './common.ts';
+import { wallSql } from '../lib/walls.ts';
 
 const MemberStatus = z.enum(['member', 'regular', 'visitor', 'inactive', 'transferred', 'deceased']);
 
@@ -29,8 +30,8 @@ function personSummary(p: Person & { household_name?: string | null }, pii: bool
   };
 }
 
-const personOut = (p: Person, pii: boolean) => {
-  const custom = visibleCustom(p.custom, getSettings().member_fields ?? [], pii);
+const personOut = (p: Person, pii: boolean, sensitive = pii) => {
+  const custom = visibleCustom(p.custom, getSettings().member_fields ?? [], pii && sensitive);
   return { ...redact(p, PERSON_PII, pii), custom: Object.keys(custom).length ? custom : undefined, name: reg.displayName(p) };
 };
 
@@ -38,7 +39,7 @@ function householdOut(id: number, pii: boolean) {
   const h = reg.households.get(id);
   return {
     ...redact({ id: h.id, name: h.name, address: h.address, phone: h.phone, notes: h.notes }, HOUSEHOLD_PII, pii),
-    members: reg.people.list('household_id = ?', [id], 'id').map((m) => ({ id: m.id, name: reg.displayName(m), household_role: m.household_role, status: m.status })),
+    members: reg.people.list(`household_id = ?${wallSql('congregation_id').sql}`, [id, ...wallSql('congregation_id').params], 'id').map((m) => ({ id: m.id, name: reg.displayName(m), household_role: m.household_role, status: m.status })),
   };
 }
 
@@ -97,7 +98,7 @@ export const PEOPLE_TOOLS: ToolDef[] = [
       logMemberView({ user_id: ctx.auth.user.id, user_name: ctx.auth.user.display_name, person_id: p.id, via: 'mcp' });
       const hh = p.household_id ? reg.households.find(p.household_id) : undefined;
       return {
-        ...personOut(p, ctx.pii),
+        ...personOut(p, ctx.pii, ctx.sensitive ?? ctx.pii),
         household: hh ? { id: hh.id, name: hh.name } : null,
         coworker: reg.coworkers.list('person_id = ?', [p.id]).map((c) => redact(c, COWORKER_PII, ctx.pii)),
         ...(ctx.pii ? {} : { redacted: 'contact details, address, birth date and notes are withheld by the administrator' }),
@@ -110,14 +111,16 @@ export const PEOPLE_TOOLS: ToolDef[] = [
     input: { id: Id.optional(), fields: S.PersonInput.partial().default({}) },
     handler: (a, ctx) => {
       const cur = a.id ? reg.people.get(a.id) : undefined;
-      if (a.fields.custom && !ctx.pii) {
+      if (a.fields.custom && !(ctx.sensitive ?? ctx.pii)) {
         const hide = sensitiveKeys(getSettings().member_fields ?? []);
-        if (Object.keys(a.fields.custom).some((k) => hide.has(k))) throw new InputError('Sensitive member fields can only be changed when the church shares personal data with AI agents.');
+        if (Object.keys(a.fields.custom).some((k) => hide.has(k))) {
+          throw new InputError('Sensitive member fields can only be changed when the church shares personal data with AI agents and your role sees sensitive fields.');
+        }
       }
       const custom = reg.customFor(cur?.custom, a.fields.custom);
       const fields = { ...a.fields, ...(custom ? { custom } : {}) };
       const p = cur ? reg.people.update(cur.id, mergeL10nFields(cur, fields, ['honorific'])) : reg.people.insert(S.PersonInput.parse(fields));
-      return { ...personOut(p, ctx.pii), created: a.id ? undefined : true };
+      return { ...personOut(p, ctx.pii, ctx.sensitive ?? ctx.pii), created: a.id ? undefined : true };
     },
   },
   {

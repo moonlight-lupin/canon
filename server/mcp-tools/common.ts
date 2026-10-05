@@ -12,6 +12,8 @@ export interface Ctx {
   auth: McpAuth;
   /** member contact details / birth dates / notes may be returned */
   pii: boolean;
+  /** the church's member fields marked sensitive may be returned and changed (absent = as pii) */
+  sensitive?: boolean;
   /** effective access per module on this connection (absent = assume every module readable) */
   levels?: Record<ModuleKey, ModuleAccess>;
   /** the address this client reached Canon at (for links in results), without a trailing slash */

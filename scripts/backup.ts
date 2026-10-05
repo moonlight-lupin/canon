@@ -9,20 +9,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from '../server/config.ts';
-import { backupKey, encryptFile } from '../server/lib/backup-crypto.ts';
+import { encryptFile, keyForBackup } from '../server/lib/backup-crypto.ts';
 
 const db = new DatabaseSync(config.dbPath);
 db.exec('PRAGMA busy_timeout = 5000');
 const setting = db.prepare("SELECT value FROM settings WHERE key = 'backup'").get() as { value: string } | undefined;
-const configured = setting ? (JSON.parse(setting.value) as { dir?: string }).dir : '';
+const backupSettings = setting ? (JSON.parse(setting.value) as { dir?: string; encrypted?: boolean }) : {};
+const configured = backupSettings.dir ?? '';
 const dir = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(configured || path.join(config.root, 'backups'));
 fs.mkdirSync(dir, { recursive: true });
 
 const d = new Date();
 const p2 = (n: number) => String(n).padStart(2, '0');
 const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`;
-// encrypted when the church set a backup password (Settings → Backups)
-const key = backupKey();
+// encrypted when the church set a backup password (Settings → Backups); a missing or damaged key stops the backup
+let key: ReturnType<typeof keyForBackup>;
+try {
+  key = keyForBackup(backupSettings.encrypted);
+} catch (e) {
+  console.error((e as Error).message);
+  process.exit(1);
+}
 const ext = key ? '.db.enc' : '.db';
 let file = path.join(dir, `canon-${stamp}${ext}`);
 for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp}-${i}${ext}`);

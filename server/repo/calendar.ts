@@ -27,6 +27,7 @@ export const events = table<ChurchEvent>({
   cols: ['title', 'date', 'end_date', 'start_time', 'end_time', 'place', 'description', 'congregation_id', 'group_id'],
   json: ['title'],
   touch: true,
+  guard: { own: 'events', refs: { group_id: 'groups' } },
 });
 
 /** Check an event's dates and times make sense together. */

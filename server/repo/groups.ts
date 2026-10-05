@@ -5,7 +5,7 @@ import type { Group, GroupKind, GroupMember, L10n } from '../../shared/types.ts'
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { isLeaderRole, roleRank } from '../../shared/group-roles.ts';
-import { inWall, wallSql } from '../lib/walls.ts';
+import { checkRef, inWall, wallSql } from '../lib/walls.ts';
 
 export class Conflict extends Error {
   status = 409;
@@ -16,12 +16,14 @@ export const groups = table<Group>({
   cols: ['name', 'kind', 'description', 'color', 'meeting', 'active', 'sort', 'congregation_id', 'age_min', 'age_max', 'pattern'],
   json: ['name', 'pattern'],
   bool: ['active'],
+  guard: { own: 'groups' },
 });
 
 export const groupMembers = table<GroupMember>({
   name: 'group_members',
   cols: ['group_id', 'person_id', 'role', 'start_date', 'end_date', 'leads'],
   bool: ['leads'],
+  guard: { refs: { group_id: 'groups', person_id: 'people' } },
 });
 
 const personName = `TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) ||
@@ -57,8 +59,8 @@ export function membersOf(groupId: number, includePast = true): MemberRow[] {
     `SELECT gm.*, ${personName} AS name, p.first_name, p.last_name, p.preferred_name, p.native_name, p.status, p.phone, p.email,
             CASE WHEN ${CURRENT} THEN 1 ELSE 0 END AS current
      FROM group_members gm JOIN people p ON p.id = gm.person_id
-     WHERE gm.group_id = ? ${includePast ? '' : `AND ${CURRENT}`}`,
-    t, groupId, ...(includePast ? [] : [t]),
+     WHERE gm.group_id = ? ${includePast ? '' : `AND ${CURRENT}`}${wallSql('p.congregation_id').sql}`,
+    t, groupId, ...(includePast ? [] : [t]), ...wallSql('p.congregation_id').params,
   )
     .map((m) => ({ ...m, current: !!m.current }))
     .sort((a, b) => Number(b.current) - Number(a.current) || byRank(a, b));
@@ -97,8 +99,8 @@ export function listGroups(f: GroupFilter = {}) {
   );
   const officers = all<{ group_id: number; person_id: number; name: string; role: string | null }>(
     `SELECT gm.group_id, gm.person_id, ${personName} AS name, gm.role FROM group_members gm JOIN people p ON p.id = gm.person_id
-     WHERE ${CURRENT} AND gm.role IS NOT NULL`,
-    t,
+     WHERE ${CURRENT} AND gm.role IS NOT NULL${wallSql('p.congregation_id').sql}`,
+    t, ...wallSql('p.congregation_id').params,
   ).filter((m) => isLeaderRole(m.role)).sort(byRank);
   return gs.map((g) => ({
     ...g,
@@ -145,6 +147,7 @@ function checkTerm(start?: string | null, end?: string | null) {
 export function addGroupMember(groupId: number, m: { person_id: number; role?: string | null; start_date?: string | null; end_date?: string | null; leads?: boolean }) {
   groups.get(groupId);
   if (!get('SELECT 1 FROM people WHERE id = ?', m.person_id)) throw new NotFound(`person ${m.person_id} not found`);
+  checkRef('people', m.person_id, 'write');
   checkTerm(m.start_date, m.end_date);
   const existing = get<{ id: number }>('SELECT id FROM group_members WHERE group_id = ? AND person_id = ?', groupId, m.person_id);
   if (existing) {
@@ -187,8 +190,8 @@ export function committeesView() {
   const rows = all<{ id: number; group_id: number; person_id: number; name: string; role: string | null; start_date: string | null; end_date: string | null }>(
     `SELECT gm.id, gm.group_id, gm.person_id, ${personName} AS name, gm.role, gm.start_date, gm.end_date
      FROM group_members gm JOIN groups g ON g.id = gm.group_id JOIN people p ON p.id = gm.person_id
-     WHERE g.kind = 'committee' AND g.active = 1 AND ${CURRENT}`,
-    t,
+     WHERE g.kind = 'committee' AND g.active = 1 AND ${CURRENT}${wallSql('p.congregation_id').sql}`,
+    t, ...wallSql('p.congregation_id').params,
   );
   const positions = all<{ person_id: number; position: string; category: string }>(
     `SELECT person_id, position, category FROM coworkers WHERE end_date IS NULL OR end_date >= ? ORDER BY start_date`, t,
@@ -241,8 +244,8 @@ export function teamMembers(teamId: number): TeamMemberRow[] {
   );
   return all<{ person_id: number; name: string; role: string | null; status: string }>(
     `SELECT gm.person_id, ${personName} AS name, gm.role, p.status
-     FROM group_members gm JOIN people p ON p.id = gm.person_id WHERE gm.group_id = ? AND ${CURRENT}`,
-    gid, today(),
+     FROM group_members gm JOIN people p ON p.id = gm.person_id WHERE gm.group_id = ? AND ${CURRENT}${wallSql('p.congregation_id').sql}`,
+    gid, today(), ...wallSql('p.congregation_id').params,
   )
     .map((m) => ({ team_id: teamId, person_id: m.person_id, name: m.name, status: m.status, is_leader: isLeaderRole(m.role), roles: quals.filter((q) => q.person_id === m.person_id).map((q) => q.role_id) }))
     .sort((a, b) => Number(b.is_leader) - Number(a.is_leader) || a.name.localeCompare(b.name));

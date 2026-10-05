@@ -7,6 +7,51 @@
 import { currentActor } from './actor.ts';
 import { get, type SqlValue } from '../db.ts';
 
+/** Tables whose rows belong to a congregation (null = the whole church). */
+export type WallEntity = 'people' | 'services' | 'groups' | 'events';
+const ROW_SQL: Record<WallEntity, string> = {
+  people: 'SELECT congregation_id, NULL AS kind FROM people WHERE id = ?',
+  services: 'SELECT congregation_id, kind FROM services WHERE id = ?',
+  groups: 'SELECT congregation_id, NULL AS kind FROM groups WHERE id = ?',
+  events: 'SELECT congregation_id, NULL AS kind FROM events WHERE id = ?',
+};
+const LABEL: Record<WallEntity, string> = { people: 'person', services: 'service', groups: 'group', events: 'event' };
+
+class Hidden extends Error {
+  status = 404;
+}
+class Refused extends Error {
+  status = 403;
+}
+
+/** The congregation (and, for services, the kind) of one row, or undefined when there is no such row. */
+export const rowInfo = (entity: WallEntity, id: number) => get<{ congregation_id: number | null; kind: string | null }>(ROW_SQL[entity], id);
+
+/**
+ * Refuse a row the current request may not use: another congregation's (404, as if it did not exist), or one the
+ * request's gate refuses (MCP: meetings). Rows of the whole church pass the wall.
+ */
+export function checkRow(entity: WallEntity, row: { congregation_id?: number | null; kind?: string | null }, mode: 'read' | 'write', id?: number) {
+  const actor = currentActor();
+  if (!actor) return;
+  if (outside(row.congregation_id ?? null, actor.congregation_id ?? null)) throw new Hidden(`${LABEL[entity]}${id ? ` ${id}` : ''} not found`);
+  actor.gate?.(entity, { id, congregation_id: row.congregation_id ?? null, kind: row.kind ?? null }, mode);
+}
+
+/** A row named by id (a related record: a group's new member, a rota entry's person): must exist and be usable. */
+export function checkRef(entity: WallEntity, id: number, mode: 'read' | 'write' = 'read') {
+  if (!currentActor()) return;
+  const r = rowInfo(entity, id);
+  if (!r) throw new Hidden(`${LABEL[entity]} ${id} not found`);
+  checkRow(entity, r, mode, id);
+}
+
+/** Moving a row to another congregation is for accounts of the whole church. */
+export function checkMove(from: number | null, to: number | null) {
+  const wall = currentWall();
+  if (wall && (from ?? null) !== (to ?? null)) throw new Refused('Only an account for the whole church can move this to another congregation.');
+}
+
 /** The congregation the current request is limited to, or null. */
 export const currentWall = (): number | null => currentActor()?.congregation_id ?? null;
 

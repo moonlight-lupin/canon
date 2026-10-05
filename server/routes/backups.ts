@@ -8,7 +8,7 @@ import {
   restoreBackup, saveUpload, withPlainBackup,
 } from '../repo/backups.ts';
 import { isAdmin } from '../lib/permissions.ts';
-import { backupKey, clearBackupPassword, setBackupPassword } from '../lib/backup-crypto.ts';
+import { backupKeyState, clearBackupPassword, setBackupPassword } from '../lib/backup-crypto.ts';
 import { logChange } from '../repo/changelog.ts';
 
 export const backupRoutes = express.Router();
@@ -27,8 +27,12 @@ const status = () => ({
   folder_problem: checkFolder(backupDir()),
   items: listBackups(),
   last_restore: lastRestore(),
-  encrypted: !!backupKey(),
+  ...encryptionStatus(),
 });
+const encryptionStatus = () => {
+  const st = backupKeyState(getSettings().backup.encrypted);
+  return { encrypted: st.encrypted, key_problem: st.problem };
+};
 
 backupRoutes.get('/backups', adminOnly, (_req, res) => res.json(status()));
 
@@ -53,7 +57,7 @@ backupRoutes.put('/backups/settings', adminOnly, (req, res) => {
   const dir = b.dir.trim();
   const problem = checkFolder(dir);
   if (problem) return res.status(400).json({ error: problem });
-  updateSettings({ backup: { dir, auto: b.auto, keep: b.keep } });
+  updateSettings({ backup: { ...getSettings().backup, dir, auto: b.auto, keep: b.keep } });
   res.json(status());
 });
 
@@ -121,6 +125,9 @@ backupRoutes.put('/backups/password', adminOnly, (req, res, next) => {
     const b = z.object({ password: z.string().max(200).nullable() }).parse(req.body);
     if (b.password === null) clearBackupPassword();
     else setBackupPassword(b.password);
+    // what the church wants is kept apart from the key file: losing the file stops backups instead of silently
+    // making plain ones
+    updateSettings({ backup: { ...getSettings().backup, encrypted: b.password !== null } });
     logChange({ entity: 'backups', entity_id: null, action: 'update', summary: b.password === null ? 'Backups no longer encrypted' : 'Backup password set: backups are encrypted' });
     res.json(status());
   } catch (e) {

@@ -23,6 +23,7 @@ export const services = table<Service>({
   bool: ['offering'],
   touch: true,
   revision: true,
+  guard: { own: 'services' },
 });
 
 export const items = table<ServiceItem>({
@@ -34,6 +35,7 @@ export const items = table<ServiceItem>({
   json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks'],
   bool: ['in_bulletin', 'on_slides'],
   log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
+  guard: { refs: { service_id: 'services' } },
 });
 
 export const templates = table<Template>({
