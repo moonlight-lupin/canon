@@ -74,6 +74,7 @@ npm run dev          # API on :3000, web app on :5173 (proxied)
 - **Agent handbook** for Claude and other MCP agents: [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md). The MCP server serves it as the resource `canon://guide/agents`, and offers its playbooks as prompts (`plan_service`, `suggest_hymns`, `roster_check`, `proofread_service`, `catechism_series`, `translate_library`, `member_care`, `group_overview`).
 - **Claude skill**: [skills/](skills/README.md) — upload `skills/canon` to claude.ai or copy it into Claude Code.
 - **Docker**: [docs/DOCKER.md](docs/DOCKER.md) · **Content to review before first use**: [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md).
+- **Roadmap**: [docs/ROADMAP.md](docs/ROADMAP.md) — what is planned after the current release.
 
 ## Using Canon
 
