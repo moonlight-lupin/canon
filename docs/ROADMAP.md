@@ -9,7 +9,7 @@ What is planned for Canon after v0.11.0. Plans change: each release is scoped in
 | 0.12.0 | Meetings, Sunday school and the church calendar |
 | 0.13.0 | Roles and permissions, optional modules, second hardening round |
 | 0.14.0 | Lending library and asset register (two optional modules, one release) |
-| 0.15.0 | Book-keeping (optional module) |
+| 0.15.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.15.1 | Claim forms |
 | 0.16.0 | UI/UX audit |
 
@@ -98,7 +98,14 @@ Two separate optional modules, released together because they share item numbers
 
 ## 0.15.0 — Book-keeping
 
-An optional module: simple accounts for the church, plus **project accounts** for special events (a camp, a building fund, a conference). Verified offerings from service records can flow in as income, so nothing is typed twice. Decide first, when the release is scoped: simple income and expense lists, or double-entry accounts (what charity accounts and auditors usually expect).
+An optional module of proper **double-entry** accounts, the kind charity accounts and auditors expect:
+- **Chart of accounts:** assets, liabilities, funds, income and expenses, starting from a simple church template that the treasurer can adjust.
+- **Journal:** every transaction is a balanced journal entry (debits equal credits). Posted entries are never edited: a mistake is corrected by a reversing entry, so the books keep their history.
+- **Funds and projects:** restricted and unrestricted funds, and **project accounts** for special events (a camp, a building fund, a conference).
+- **Offerings flow in:** verified offerings from service records become journal entries, by fund and payment method, so nothing is typed twice.
+- **Bank reconciliation** against statements.
+- **Period close:** a closed month or year can't be changed.
+- **Reports:** trial balance, income and expenditure, balance sheet, and fund and project statements, printable and exportable to Excel.
 
 ## 0.15.1 — Claim forms
 
