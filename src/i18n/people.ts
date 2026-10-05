@@ -120,7 +120,7 @@ const zh: Record<string, string> = {
   'They will be signed out everywhere.': '对方会在所有设备上被登出。',
   'Everything, including users, church settings and AI access.': '全部权限，包括用户、教会设置和 AI 权限。',
   'Plans services and edits the registers, library and rota.': '安排聚会，编辑名册、资料库和事奉表。',
-  'Read only — can view and print, and change their own password.': '只读——可查看和打印，并可更改自己的密码。',
+  'Read only — can view and print, and change their own password. Linked to a member who leads a group or a meeting, they can also record those meetings.': '只读——可查看和打印，并可更改自己的密码。若连结到带领某个群组或聚会活动的会友，也可以记录那些聚会活动。',
   'Canon can be connected to Claude (claude.ai) as a custom connector so an AI assistant can help plan services and rotas. You decide exactly which parts of the church’s data it may see or change. Each agent acts as the user who approved it: viewers only ever get read access.':
     'Canon 可作为自定义连接器接入 Claude（claude.ai），让 AI 助手协助安排聚会和事奉表。由你决定 AI 能查看或修改教会的哪些资料。每个 AI 代理以批准它的用户身份运作：只读用户只会获得只读权限。',
   On: '开启',
@@ -795,5 +795,6 @@ const zh: Record<string, string> = {
   "Group role · Assistant teacher": "助教",
   "Group role · Pupil": "学生",
   "Meeting": "聚会活动",
+  "The member this account belongs to. A member who leads a group or a meeting can then record those meetings, even with a read-only account.": "这个帐户所属的会友。带领某个群组或聚会活动的会友，即使使用只读帐户，也可以记录那些聚会活动。",
 };
 export default zh;

@@ -28,6 +28,7 @@ import { all, get, run } from './db.ts';
 import { config } from './config.ts';
 import { asActor } from './lib/actor.ts';
 import { viewerScrub } from './lib/viewer-scrub.ts';
+import { ledGroups } from './lib/leaders.ts';
 import { logChange } from './repo/changelog.ts';
 import * as reg from './repo/registers.ts';
 import * as vol from './repo/volunteers.ts';
@@ -49,7 +50,8 @@ export const api = express.Router();
 
 api.get('/me', (req, res) => {
   const u = sessionUser(req);
-  res.json({ user: u ? { ...u, csrf: undefined } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
+  // leads: the groups this account's member leads (the screens offer recording their meetings)
+  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id) } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
 });
 
 api.post('/setup', h((req, res) => {
@@ -150,7 +152,10 @@ api.post('/users', requireAdmin, h((req) => {
   return u;
 }));
 api.patch('/users/:id', requireAdmin, h((req) => {
-  const b = z.object({ role: z.enum(['admin', 'editor', 'viewer']).optional(), password: z.string().min(8).optional(), display_name: z.string().optional() }).parse(req.body);
+  const b = z.object({
+    role: z.enum(['admin', 'editor', 'viewer']).optional(), password: z.string().min(8).optional(), display_name: z.string().optional(),
+    person_id: z.number().int().nullable().optional(),
+  }).parse(req.body);
   const uid = id(req);
   if (b.role && b.role !== 'admin' && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
   const before = getUser(uid);
@@ -160,8 +165,12 @@ api.patch('/users/:id', requireAdmin, h((req) => {
     run('DELETE FROM sessions WHERE user_id = ?', uid);
   }
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
+  if (b.person_id !== undefined) {
+    if (b.person_id !== null && !get('SELECT 1 FROM people WHERE id = ?', b.person_id)) throw Object.assign(new Error('That member does not exist.'), { status: 400 });
+    run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);
+  }
   const after = getUser(uid);
-  const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role } : null);
+  const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null } : null);
   logChange({ entity: 'users', entity_id: uid, action: 'update', before: pick(before), after: pick(after), summary: b.password ? 'Password changed' : undefined });
   return after;
 }));

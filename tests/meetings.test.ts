@@ -151,3 +151,61 @@ test('a meeting\'s record: the offering when one is taken, none when not; report
   assert.equal((await off('&kind=meeting')).body.services.length, 1, 'only the meeting that takes an offering');
   assert.equal((await off('')).body.services.length, 1, 'services only by default');
 });
+
+test('a read-only account linked to a leader records the meetings they lead — and nothing else', async () => {
+  const { createUser: mk } = await import('../server/auth.ts');
+  const leaderUser = mk({ username: 'lead', display_name: 'Test lead', password: 'correct-horse-7', role: 'viewer' });
+  mk({ username: 'plain', display_name: 'Test plain', password: 'correct-horse-7', role: 'viewer' });
+  // only administrators link accounts to members
+  assert.equal((await call(as.editor, 'PATCH', `/users/${leaderUser.id}`, { person_id: ids.leader })).status, 403);
+  assert.equal((await call(as.admin, 'PATCH', `/users/${leaderUser.id}`, { person_id: ids.leader })).status, 200);
+  const lead = await login('lead');
+  const plain = await login('plain');
+  const me = (await call(lead, 'GET', '/me')).body;
+  assert.equal(me.user.person_id, ids.leader);
+  assert.deepEqual(me.user.leads, [ids.group]);
+
+  // their group's meeting: the record in full, saved, verified; the details; the next meeting
+  const visitor = { name: 'Test Guest', contact: '9000 0300' };
+  const saved = await call(lead, 'PUT', `/services/${ids.m2}/record`, { attendance: 15, visitors: [visitor] });
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  const full = (await call(lead, 'GET', `/services/${ids.m2}/record`)).body;
+  assert.equal(full.visitors[0].contact, '9000 0300', 'they follow visitors up');
+  assert.equal(full.offerings[0].amount, 3000, 'and count the offering');
+  assert.equal((await call(plain, 'GET', `/services/${ids.m2}/record`)).body.visitors[0].contact, undefined, 'other read-only accounts still don\'t');
+  assert.equal((await call(lead, 'PATCH', `/services/${ids.m2}`, { place: 'Riverside room' })).status, 200);
+  const next = await call(lead, 'POST', `/services/${ids.m2}/duplicate`, { date: '2035-05-02' });
+  assert.equal(next.status, 200);
+  assert.equal((await call(lead, 'POST', '/meetings', { group_id: ids.group, date: '2035-05-09' })).status, 200);
+
+  // not: who leads it or which group, deleting, reopening a count, a one-off they don't lead, services, other groups
+  assert.equal((await call(lead, 'PATCH', `/services/${ids.m2}`, { leader_id: ids.member })).status, 403);
+  assert.equal((await call(lead, 'PATCH', `/services/${ids.m2}`, { group_id: null })).status, 403);
+  assert.equal((await call(lead, 'DELETE', `/services/${next.body.id}`)).status, 403);
+  assert.equal((await call(lead, 'POST', `/services/${ids.m2}/record/verify`, { verified: false })).status, 403);
+  assert.equal((await call(lead, 'PUT', `/services/${ids.oneOff}/record`, { attendance: 3 })).status, 403);
+  assert.equal((await call(lead, 'PUT', `/services/${ids.service}/record`, { attendance: 3 })).status, 403, 'never a service');
+  assert.equal((await call(lead, 'PATCH', `/services/${ids.service}`, { notes: 'x' })).status, 403);
+  assert.equal((await call(lead, 'POST', '/meetings', { date: '2035-05-09', title: { en: 'Test own one-off' } })).status, 403, 'no one-offs');
+  assert.equal((await call(lead, 'PATCH', `/people/${ids.member}`, { phone: '1' })).status, 403);
+  const other = await call(as.editor, 'POST', '/groups', { name: { en: 'Test Other Cell' }, kind: 'cell_group' });
+  const otherMeeting = (await call(as.editor, 'POST', '/meetings', { group_id: other.body.id, date: '2035-05-03' })).body;
+  assert.equal((await call(lead, 'PUT', `/services/${otherMeeting.id}/record`, { attendance: 3 })).status, 403);
+  assert.equal((await call(lead, 'POST', '/meetings', { group_id: other.body.id, date: '2035-05-10' })).status, 403);
+
+  // a meeting they lead themselves, with no group
+  const own = (await call(as.editor, 'POST', '/meetings', { date: '2035-05-04', title: { en: 'Test Prayer Walk' }, leader_id: ids.leader })).body;
+  assert.equal((await call(lead, 'PUT', `/services/${own.id}/record`, { attendance: 6 })).status, 200);
+
+  // an unlinked read-only account records nothing; a leader whose term ended neither
+  assert.equal((await call(plain, 'PUT', `/services/${ids.m2}/record`, { attendance: 1 })).status, 403);
+  const gm = (await call(as.editor, 'GET', `/groups/${ids.group}/members`)).body as Json[];
+  const mine = gm.find((m) => m.person_id === ids.leader)!;
+  assert.equal((await call(as.editor, 'PATCH', `/group-members/${mine.id}`, { start_date: '2020-01-01', end_date: '2025-12-31' })).status, 200);
+  // m2 names them as its own leader too, so it stays theirs; a group meeting led by nobody in particular doesn't
+  assert.equal((await call(lead, 'PUT', `/services/${ids.m2}/record`, { attendance: 16 })).status, 200, 'their own meeting');
+  const groupOnly = (await call(as.editor, 'POST', '/meetings', { group_id: ids.group, date: '2035-05-16', leader_id: null })).body;
+  assert.equal(groupOnly.leader_id, null);
+  assert.equal((await call(lead, 'PUT', `/services/${groupOnly.id}/record`, { attendance: 16 })).status, 403, 'term ended');
+  assert.equal((await call(lead, 'PUT', `/services/${own.id}/record`, { attendance: 7 })).status, 200, 'still leads their own meeting');
+});

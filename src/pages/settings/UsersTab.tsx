@@ -6,9 +6,11 @@ import { ErrorBox, Field, Loading, Modal, confirmAction, useAction, useSession }
 import { Icon } from '../../components/icons.tsx';
 import type { Lang, Role } from '../../types-client.ts';
 import { fmtStamp } from './common.tsx';
+import { Combo, type ComboOption } from '../../components/Combo.tsx';
+import { InfoTip } from '../../components/InfoTip.tsx';
 import '../people.css';
 
-export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string };
+export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null };
 
 export const ROLES: Role[] = ['admin', 'editor', 'viewer'];
 
@@ -17,7 +19,7 @@ export const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', editor: 'Edito
 export const ROLE_HELP: Record<Role, string> = {
   admin: 'Everything, including users, church settings and AI access.',
   editor: 'Plans services and edits the registers, library and rota.',
-  viewer: 'Read only — can view and print, and change their own password.',
+  viewer: 'Read only — can view and print, and change their own password. Linked to a member who leads a group or a meeting, they can also record those meetings.',
 };
 
 export function UsersTab() {
@@ -28,6 +30,14 @@ export function UsersTab() {
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState<UserRow | null>(null);
 
+  // the member each account belongs to: leaders record the meetings they lead with it
+  const people = useApi<{ rows: { id: number; first_name: string; last_name: string; preferred_name: string | null; native_name: string | null }[] }>('/people?limit=5000');
+  const personOptions: ComboOption[] = (people.data?.rows ?? []).map((p) => ({
+    value: String(p.id), label: `${p.preferred_name || p.first_name} ${p.last_name}`.trim() + (p.native_name ? ` ${p.native_name}` : ''),
+  })).sort((a, b) => a.label.localeCompare(b.label));
+  const setPerson = async (u: UserRow, personId: number | null) => {
+    if (await run(() => api.patch(`/users/${u.id}`, { person_id: personId }), t('Saved.'))) reload();
+  };
   const setRole = async (u: UserRow, role: Role) => {
     if (await run(() => api.patch(`/users/${u.id}`, { role }), t('Saved.'))) reload();
   };
@@ -48,7 +58,7 @@ export function UsersTab() {
       {loading && !data ? <Loading /> : (
         <div className="card flush table-wrap">
           <table className="t">
-            <thead><tr><th>{t('Display name')}</th><th>{t('Username')}</th><th>{t('Role')}</th><th>{t('Created')}</th><th /></tr></thead>
+            <thead><tr><th>{t('Display name')}</th><th>{t('Username')}</th><th>{t('Role')}</th><th>{t('Member')} <InfoTip text={t('The member this account belongs to. A member who leads a group or a meeting can then record those meetings, even with a read-only account.')} /></th><th>{t('Created')}</th><th /></tr></thead>
             <tbody>
               {data?.map((u) => (
                 <tr key={u.id}>
@@ -58,6 +68,10 @@ export function UsersTab() {
                     <select className="mini" value={u.role} disabled={u.id === me.id || busy} onChange={(e) => setRole(u, e.target.value as Role)} aria-label={t('Role')}>
                       {ROLES.map((r) => <option key={r} value={r}>{t(ROLE_LABEL[r])}</option>)}
                     </select>
+                  </td>
+                  <td style={{ minWidth: 200 }}>
+                    <Combo value={u.person_id ? String(u.person_id) : ''} options={personOptions} noneLabel="—" ariaLabel={t('Member')} disabled={busy}
+                      onChange={(v) => setPerson(u, v ? Number(v) : null)} />
                   </td>
                   <td className="nowrap muted small">{fmtStamp(u.created_at, lang)}</td>
                   <td className="right nowrap">

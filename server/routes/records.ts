@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as rec from '../repo/records.ts';
+import { leadsMeeting } from '../lib/leaders.ts';
 import * as arc from '../repo/archive.ts';
 import * as reports from '../repo/reports.ts';
 import { Forbidden } from '../lib/table.ts';
@@ -57,7 +58,8 @@ recordRoutes.get('/reports/scripture', h((req) => reports.scriptureReport({
 recordRoutes.get('/reports/membership', h((req) => reports.membershipReport(reportPeriod(req))));
 recordRoutes.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));
-  return canSeeMoney(req) ? r : rec.forViewer(r);
+  // editors and administrators, and the leader of this meeting, see the whole record
+  return canSeeMoney(req) || leadsMeeting(req.user?.person_id, id(req)) ? r : rec.forViewer(r);
 }));
 // visitor form: settings (administrators), a service's form (editors), the review queue (editors)
 const origin = (req: Request) => `${req.protocol}://${req.get('host')}`;

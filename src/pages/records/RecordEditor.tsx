@@ -3,7 +3,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Bi, ErrorBox, Field, Loading, confirmAction, fmtDate, today, useAction, useSession } from '../../components/ui.tsx';
+import { useCanRecord, Bi, ErrorBox, Field, Loading, confirmAction, fmtDate, today, useAction, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { HistoryButton } from '../../components/LogTools.tsx';
@@ -26,7 +26,8 @@ export function RecordEditor() {
   const sid = Number(id);
   const nav = useNavigate();
   const { t, lang } = useI18n();
-  const { canEdit, isAdmin, settings } = useSession();
+  const { canEdit: editor, isAdmin, settings } = useSession();
+  const canRecord = useCanRecord();
   const congs = useCongregations();
   const svc = useApi<ServiceFull>(`/services/${sid}`);
   const rec = useApi<Rec>(`/services/${sid}/record`);
@@ -52,6 +53,8 @@ export function RecordEditor() {
   const takesOffering = s.offering !== false;
   const noMoney = restricted || !takesOffering;
   const isMeeting = s.kind === 'meeting';
+  // editors, or the leader of this meeting (lib/leaders.ts on the server)
+  const canEdit = editor || canRecord(s);
   const archivedYear = (d as Rec & { archived_year?: number | null }).archived_year ?? null;
   // a verified count is locked for everyone; an administrator reopens it to correct it
   const locked = !!d.verified_at;
@@ -211,7 +214,7 @@ export function RecordEditor() {
           {!restricted && <div className="small muted pdpa">{t('Visitors’ details are personal data: record only what the church needs to follow up (PDPA).')}</div>}
         </section>
 
-        {!restricted && canEdit && <VisitorCardsReview serviceId={sid} onAccepted={() => rec.reload()} />}
+        {!restricted && editor && <VisitorCardsReview serviceId={sid} onAccepted={() => rec.reload()} />}
 
         <section className="card stack">
           <h3>{t('Notes for the team')}</h3>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Bi, ErrorBox, Field, L10nInput, Loading, confirmAction, fmtDate, addDays, useAction, useSession } from '../../components/ui.tsx';
+import { useCanRecord, Bi, ErrorBox, Field, L10nInput, Loading, confirmAction, fmtDate, addDays, useAction, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { Combo, type ComboOption } from '../../components/Combo.tsx';
@@ -23,12 +23,13 @@ export default function MeetingPage() {
   const mid = Number(id);
   const nav = useNavigate();
   const { t, lang } = useI18n();
-  const { canEdit } = useSession();
+  const { canEdit: editor } = useSession();
+  const canRecord = useCanRecord();
   const meeting = useApi<ServiceFull>(`/services/${mid}`);
   const record = useApi<ServiceRecord & { saved: boolean }>(`/services/${mid}/record`);
   const groupId = meeting.data?.group_id ?? null;
   const group = useApi<Group & { members: { person_id: number; name: string; current: boolean; leads?: boolean | number }[] }>(groupId ? `/groups/${groupId}` : null);
-  const people = useApi<{ rows: { id: number; first_name: string; last_name: string; preferred_name: string | null; native_name: string | null }[] }>(canEdit ? '/people?limit=5000' : null);
+  const people = useApi<{ rows: { id: number; first_name: string; last_name: string; preferred_name: string | null; native_name: string | null }[] }>(editor ? '/people?limit=5000' : null);
   const { run, busy } = useAction();
   const [d, setD] = useState<Draft | null>(null);
   useEffect(() => {
@@ -39,6 +40,8 @@ export default function MeetingPage() {
   if (meeting.error) return <div className="page"><ErrorBox error={meeting.error} /></div>;
   if (!meeting.data || !d) return <div className="page"><Loading /></div>;
   const m = meeting.data;
+  // editors, or the leader of this meeting: its details, record and next meeting (deleting stays with editors)
+  const canEdit = editor || canRecord(m);
   if (m.kind !== 'meeting') {
     nav(`/services/${mid}`, { replace: true });
     return null;
@@ -103,11 +106,11 @@ export default function MeetingPage() {
             <Field label={t('Start time')}><input type="time" value={d.start_time} onChange={(e) => set({ start_time: e.target.value })} /></Field>
             <Field label={t('Place')}><input value={d.place ?? ''} onChange={(e) => set({ place: e.target.value })} placeholder={t('e.g. church hall, or a home')} /></Field>
             <Field label={<>{t('Leader')} <InfoTip text={t('Pick the member who leads this meeting: if their Canon account is linked to them (Settings → Users), they can record it. For someone outside the register, type their name instead.')} /></>}>
-              {canEdit
+              {editor
                 ? <Combo value={d.leader_id ? String(d.leader_id) : ''} options={leaderOptions} noneLabel="—" ariaLabel={t('Leader')} onChange={(v) => set({ leader_id: v ? Number(v) : null })} />
                 : <input value={leaderName || (d.chair ?? '')} readOnly />}
             </Field>
-            {canEdit && !d.leader_id && <Field label={t('Or the leader’s name')}><input value={d.chair ?? ''} onChange={(e) => set({ chair: e.target.value })} placeholder={t('someone not in the register')} /></Field>}
+            {editor && !d.leader_id && <Field label={t('Or the leader’s name')}><input value={d.chair ?? ''} onChange={(e) => set({ chair: e.target.value })} placeholder={t('someone not in the register')} /></Field>}
             <Field label={t('Passage')}><input value={d.sermon_ref ?? ''} onChange={(e) => set({ sermon_ref: e.target.value })} placeholder="Acts 2:42-47" /></Field>
           </div>
           <Field label={t('Topic')}><L10nInput value={d.topic ?? {}} onChange={(v: L10n) => set({ topic: v })} /></Field>
@@ -131,7 +134,7 @@ export default function MeetingPage() {
                 <input type="date" value={nextDate || addDays(m.date, 7)} onChange={(e) => setNextDate(e.target.value)} style={{ width: 160 }} aria-label={t('Date of the next meeting')} />
                 <button className="btn sm" onClick={next} disabled={busy}><Icon name="copy" />{t('Next meeting')}</button>
               </span>
-              <button className="btn sm danger" onClick={remove} disabled={busy} style={{ marginLeft: 'auto' }}><Icon name="trash" />{t('Delete')}</button>
+              {editor && <button className="btn sm danger" onClick={remove} disabled={busy} style={{ marginLeft: 'auto' }}><Icon name="trash" />{t('Delete')}</button>}
             </>
           )}
         </div>

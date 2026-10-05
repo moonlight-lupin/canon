@@ -8,6 +8,7 @@
 
 import { visibleCustom } from '../../shared/member-fields.ts';
 import { getSettings } from '../repo/settings.ts';
+import { leaderOwnsPath } from './leaders.ts';
 
 const CONTACT = new Set(['phone', 'email', 'address']);
 const PRIVATE = new Set(['notes', 'reason']);
@@ -47,8 +48,9 @@ const MEMBER_ROUTE = /^\/(people|households|coworkers|groups|teams|rota|unavaila
 const SERVICE_ROUTE = /^\/(services|share)(\/|$)/;
 
 /** Express middleware (after sign-in): filter viewers' responses on member and service routes. */
-export function viewerScrub(req: { user?: { role: string } | null; path: string }, res: { json: (b: unknown) => unknown }, next: () => void) {
-  if (req.user?.role === 'viewer') {
+export function viewerScrub(req: { user?: { role: string; person_id?: number | null } | null; path: string }, res: { json: (b: unknown) => unknown }, next: () => void) {
+  // a meeting leader's own meeting record comes in full (lib/leaders.ts)
+  if (req.user?.role === 'viewer' && !leaderOwnsPath(req.user.person_id, req.path)) {
     const member = MEMBER_ROUTE.test(req.path);
     if (member || SERVICE_ROUTE.test(req.path)) {
       const json = res.json.bind(res);

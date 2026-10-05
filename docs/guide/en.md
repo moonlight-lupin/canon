@@ -43,6 +43,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 - **Admin**: everything, including settings.
 - **Editor**: plans services and edits the registers, library and rota.
 - **Viewer**: can view and print only.
+- **Meeting leaders**: link an account to the member it belongs to (the **Member** column). A member ticked **Leads** in a group, or chosen as a meeting's **Leader**, can then record those meetings with that account, even a read-only one: the headcount, new visitors with their contact details (for the follow-up), notes and the offering with its cash count and signing, the meeting's details and its next meeting. Nothing else changes for them: services, other meetings and the registers stay read-only, and deleting a meeting or reopening a verified count stays with editors and administrators.
 
 | What | Admin | Editor | Viewer |
 |---|---|---|---|
@@ -50,6 +51,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 | Members' phone, e-mail, address, notes, reasons for absence, birth year | ✓ | ✓ | — (names, households, groups and birthdays — day and month — only) |
 | Plan services; edit library, members, co-workers, groups, rota, templates | ✓ | ✓ | — |
 | Service records: attendance and notes | ✓ | ✓ | see only |
+| Record the meetings they lead (linked to a member who leads them) | ✓ | ✓ | ✓ |
 | Service records: offerings and visitors' contact details | ✓ | ✓ (until the cash count is verified) | — |
 | Reopen a verified cash count | ✓ | — | — |
 | Delete a service record entered by mistake | ✓ | — | — |

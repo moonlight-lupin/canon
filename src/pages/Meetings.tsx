@@ -18,7 +18,9 @@ export type MeetingRow = ServiceListRow & { group_name: L10n | null; group_color
 
 export default function Meetings() {
   const { t, lang } = useI18n();
-  const { canEdit } = useSession();
+  const { canEdit, user } = useSession();
+  // leaders may start meetings of the groups they lead
+  const mayCreate = canEdit || (user.leads ?? []).length > 0;
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
   const [when, setWhen] = useState<'upcoming' | 'past'>('upcoming');
@@ -43,7 +45,7 @@ export default function Meetings() {
           {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
         </select>
         <Seg value={when} onChange={setWhen} options={[{ value: 'upcoming', label: t('Upcoming') }, { value: 'past', label: t('Past') }]} />
-        {canEdit && <button className="btn primary" onClick={() => setParams({ ...(group ? { group: String(group) } : {}), new: '' })}><Icon name="plus" />{t('New meeting')}</button>}
+        {mayCreate && <button className="btn primary" onClick={() => setParams({ ...(group ? { group: String(group) } : {}), new: '' })}><Icon name="plus" />{t('New meeting')}</button>}
       </PageHead>
       {error && <ErrorBox error={error} />}
       {!data ? <Loading /> : !data.length ? (
@@ -81,7 +83,10 @@ export function NewMeetingDialog({ onClose, initialGroup }: { onClose: () => voi
   const { t, lang } = useI18n();
   const nav = useNavigate();
   const { run, busy } = useAction();
+  const { canEdit, user } = useSession();
   const groups = useApi<GroupRow[]>('/groups');
+  // a leader (read-only account) starts meetings of the groups they lead only
+  const offered = meetingGroups(groups.data).filter((g) => canEdit || (user.leads ?? []).includes(g.id));
   // a group's id, 0 for a one-off meeting, null while not chosen
   const [groupId, setGroupId] = useState<number | null>(initialGroup ?? null);
   const [date, setDate] = useState(today());
@@ -108,8 +113,8 @@ export function NewMeetingDialog({ onClose, initialGroup }: { onClose: () => voi
           <Field label={t('Group')}>
             <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value === '' ? null : Number(e.target.value))}>
               <option value="">{t('Choose…')}</option>
-              <option value="0">{t('No group (a one-off meeting)')}</option>
-              {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+              {canEdit && <option value="0">{t('No group (a one-off meeting)')}</option>}
+              {offered.map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
             </select>
           </Field>
           <Field label={t('Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>

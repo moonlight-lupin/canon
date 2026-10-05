@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 import type { Role } from '../shared/types.ts';
 import { all, get, run } from './db.ts';
 import { config } from './config.ts';
+import { leaderMayWrite } from './lib/leaders.ts';
 
 export interface User {
   id: number;
@@ -11,6 +12,8 @@ export interface User {
   display_name: string;
   role: Role;
   lang: string;
+  /** the member this account belongs to (meeting leaders record the meetings they lead) */
+  person_id?: number | null;
 }
 
 // Cookies are scoped by host, not port: include the port so several Canon instances on one machine don't sign each other out.
@@ -45,8 +48,12 @@ export function createUser(u: { username: string; display_name: string; password
 }
 
 export const getUser = (id: number) =>
-  get<User>('SELECT id, username, display_name, role, lang FROM users WHERE id = ?', id);
-export const listUsers = () => all<User & { created_at: string }>('SELECT id, username, display_name, role, lang, created_at FROM users ORDER BY id');
+  get<User>('SELECT id, username, display_name, role, lang, person_id FROM users WHERE id = ?', id);
+export const listUsers = () => all<User & { created_at: string; person_name: string | null }>(
+  `SELECT u.id, u.username, u.display_name, u.role, u.lang, u.created_at, u.person_id,
+          CASE WHEN p.id IS NOT NULL THEN TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) END AS person_name
+   FROM users u LEFT JOIN people p ON p.id = u.person_id ORDER BY u.id`,
+);
 
 export function authenticate(username: string, password: string): User | null {
   const row = get<User & { password_hash: string }>('SELECT * FROM users WHERE username = ?', username.trim());
@@ -115,8 +122,8 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   if (!u) return res.status(401).json({ error: 'Not signed in' });
   if (!SAFE.has(req.method)) {
     if (req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Bad CSRF token' });
-    // viewers may still update their own profile (language, password)
-    if (u.role === 'viewer' && req.path !== '/me') return res.status(403).json({ error: 'Read-only account' });
+    // viewers may still update their own profile (language, password), and record the meetings they lead
+    if (u.role === 'viewer' && req.path !== '/me' && !leaderMayWrite(u.person_id, req)) return res.status(403).json({ error: 'Read-only account' });
   }
   req.user = u;
   next();

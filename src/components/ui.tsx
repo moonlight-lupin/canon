@@ -14,6 +14,10 @@ export interface SessionUser {
   display_name: string;
   role: Role;
   lang: Lang;
+  /** the member this account belongs to */
+  person_id?: number | null;
+  /** the groups that member leads (their meetings can be recorded with any account) */
+  leads?: number[];
 }
 interface Session {
   user: SessionUser;
@@ -28,6 +32,17 @@ interface Session {
 }
 export const SessionCtx = createContext<Session>(null!);
 export const useSession = () => useContext(SessionCtx);
+
+type MeetingLike = { kind?: string; group_id?: number | null; leader_id?: number | null } | null | undefined;
+/**
+ * May this account record this meeting (its record, details and next meeting)? Editors and administrators may;
+ * so may the member who leads it, or who leads its group, even with a read-only account (the server checks too).
+ */
+export function useCanRecord() {
+  const { user, canEdit } = useSession();
+  return (m: MeetingLike) => canEdit || (!!m && m.kind === 'meeting' && !!user.person_id
+    && (m.leader_id === user.person_id || (m.group_id != null && (user.leads ?? []).includes(m.group_id))));
+}
 
 // ---------------------------------------------------------------- toast
 
