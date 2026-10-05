@@ -192,6 +192,14 @@ export function securityChecklist(): CheckItem[] {
     : admins > 4
       ? { key: 'admins', status: 'warn', title: 'Administrators', detail: `${admins} administrators: each can change everything. Keep it to the few who need it.`, link: '/settings?tab=users' }
       : { key: 'admins', status: 'ok', title: 'Administrators', detail: `${admins} administrators.` });
+  // two-step sign-in for administrators
+  const withTwoStep = all<{ role: string; totp_enabled: number }>('SELECT role, totp_enabled FROM users').filter((u) => isAdmin(u));
+  const without = withTwoStep.filter((u) => !u.totp_enabled).length;
+  items.push(s.security?.require_admin_2fa
+    ? { key: 'two_step', status: 'ok', title: 'Two-step sign-in', detail: `Required for administrators${without ? ` (${without} still to set it up — they can’t use administrator functions until they do)` : ''}.` }
+    : without === 0
+      ? { key: 'two_step', status: 'ok', title: 'Two-step sign-in', detail: 'Every administrator uses it. Require it, so a new administrator does too.' }
+      : { key: 'two_step', status: 'warn', title: 'Two-step sign-in', detail: `${without} administrator${without === 1 ? ' signs' : 's sign'} in with a password only. Set up two-step sign-in (Settings → My profile) with an authenticator app, then require it here.` });
   const cutoff = Date.now() - 180 * 86400_000;
   const stale = users.filter((u) => (u.last_login_at ? Date.parse(u.last_login_at.replace(' ', 'T') + 'Z') : Date.parse(u.created_at.replace(' ', 'T') + 'Z')) < cutoff);
   items.push(stale.length

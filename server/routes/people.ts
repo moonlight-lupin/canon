@@ -56,7 +56,12 @@ peopleRoutes.patch('/people/:id', h((req) => {
 }));
 // Settings → Security & privacy (administrators): the checklist, what was confirmed, who viewed member records; storage
 peopleRoutes.get('/security', requireAdmin, h(() => ({ checklist: sec.securityChecklist(), security: getSettings().security })));
-peopleRoutes.put('/security', requireAdmin, h((req) => updateSettings({ security: z.object({ disk_encryption: z.boolean() }).parse(req.body) }).security));
+peopleRoutes.put('/security', requireAdmin, h((req) => {
+  const b = z.object({ disk_encryption: z.boolean().optional(), require_admin_2fa: z.boolean().optional() }).parse(req.body);
+  // requiring it is only possible for an administrator who uses it (else they would lock themselves out)
+  if (b.require_admin_2fa && !req.user?.totp_enabled) throw Object.assign(new Error('Turn on two-step sign-in for your own account first (Settings → My profile).'), { status: 400 });
+  return updateSettings({ security: { ...getSettings().security, ...b } }).security;
+}));
 const viewQuery = (q: Record<string, string | undefined>) => ({
   person_id: Number(q.person) || undefined, user_id: Number(q.user) || undefined, via: q.via || undefined,
   from: q.from, to: q.to, q: q.q, page: Number(q.page) || 1, size: Number(q.size) || 50,

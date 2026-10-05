@@ -21,6 +21,8 @@ export interface SessionUser {
   leads?: number[];
   /** what the account's role allows (shared/permissions.ts) */
   role_def?: RoleDef;
+  /** two-step sign-in is on */
+  totp_enabled?: boolean | number;
 }
 interface Session {
   user: SessionUser;

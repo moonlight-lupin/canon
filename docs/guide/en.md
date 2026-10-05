@@ -50,6 +50,11 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 
 **Roles** (below the accounts) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. **Edit** a ready-made role to fit your church (the Administrator always keeps everything), or **New role** for anything else, e.g. a worship leader who edits services and the library. A role in use can't be deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role.
 
+**Signing in safely**:
+- Five wrong passwords in a row lock an account for 15 minutes (the list shows **Locked**); **Reset password** unlocks it.
+- **Two-step sign-in** (Settings → My profile → **Set up two-step sign-in**): scan the QR code with an authenticator app on your phone (Google or Microsoft Authenticator, 1Password …) and enter its code. From then on Canon asks for the 6-digit code after your password. Keep the **recovery codes** shown once: each signs you in once if you lose your phone.
+- **Reset 2-step** (administrators, in the user list) turns it off for someone who lost their phone. In Security & privacy, **Require it for administrators** makes every administrator use it: one without it can't use administrator functions until they set it up.
+
 **Limited to** (churches with several congregations): an account limited to one congregation sees that congregation's services, meetings, records, members, groups and events, and the whole church's — not those of other congregations; what it creates belongs to its congregation, and its reports are about it. Administrators always see everything.
 - **Meeting leaders**: link an account to the member it belongs to (the **Member** column). A member ticked **Leads** in a group, or chosen as a meeting's **Leader**, can then record those meetings with that account, even a read-only one: the headcount, new visitors with their contact details (for the follow-up), notes and the offering with its cash count and signing, the meeting's details and its next meeting. Nothing else changes for them: services, other meetings and the registers stay read-only, and deleting a meeting or reopening a verified count stays with editors and administrators.
 

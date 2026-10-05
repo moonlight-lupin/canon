@@ -13,7 +13,7 @@ import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import '../people.css';
 
-export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null };
+export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null; totp_enabled?: number | boolean; locked?: number | boolean };
 
 export function UsersTab() {
   const { t, lang, lt } = useI18n();
@@ -37,6 +37,10 @@ export function UsersTab() {
   const setPerson = async (u: UserRow, personId: number | null) => {
     if (await run(() => api.patch(`/users/${u.id}`, { person_id: personId }), t('Saved.'))) reload();
   };
+  const resetTwoStep = async (u: UserRow) => {
+    if (!confirmAction(t('Turn off two-step sign-in for {name}? They sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
+    if (await run(() => api.patch(`/users/${u.id}`, { reset_two_step: true }), t('Saved.'))) reload();
+  };
   const setRole = async (u: UserRow, role: Role) => {
     if (await run(() => api.patch(`/users/${u.id}`, { role }), t('Saved.'))) reload();
   };
@@ -56,7 +60,11 @@ export function UsersTab() {
             <tbody>
               {data?.map((u) => (
                 <tr key={u.id}>
-                  <td className="nowrap">{u.display_name}{u.id === me.id && <span className="badge lapis" style={{ marginLeft: 6 }}>{t('You')}</span>}</td>
+                  <td className="nowrap">
+                    {u.display_name}{u.id === me.id && <span className="badge lapis" style={{ marginLeft: 6 }}>{t('You')}</span>}
+                    {!!u.totp_enabled && <span className="badge ok" style={{ marginLeft: 6 }} title={t('Two-step sign-in')}>2FA</span>}
+                    {!!u.locked && <span className="badge warn" style={{ marginLeft: 6 }} title={t('Locked after too many wrong passwords; a new password unlocks it')}>{t('Locked')}</span>}
+                  </td>
                   <td className="nowrap"><span className="code">{u.username}</span></td>
                   <td>
                     <select className="mini" value={u.role} disabled={u.id === me.id || busy} onChange={(e) => setRole(u, e.target.value as Role)} aria-label={t('Role')}>
@@ -78,7 +86,8 @@ export function UsersTab() {
                   </td>
                   <td className="nowrap muted small">{fmtStamp(u.created_at, lang)}</td>
                   <td className="right nowrap">
-                    <button className="btn sm" onClick={() => setResetting(u)}><Icon name="lock" />{t('Reset password')}</button>
+                    <button className="btn sm" onClick={() => setResetting(u)}><Icon name="lock" />{t('Reset password')}</button>{' '}
+                    {!!u.totp_enabled && u.id !== me.id && <button className="btn sm ghost" disabled={busy} onClick={() => resetTwoStep(u)} title={t('A lost phone: turn their two-step sign-in off so they can set it up again')}>{t('Reset 2-step')}</button>}
                     {u.id !== me.id && <button className="btn ghost sm icon" onClick={() => remove(u)} aria-label={t('Delete')} title={t('Delete')} disabled={busy}><Icon name="trash" /></button>}
                   </td>
                 </tr>

@@ -706,7 +706,14 @@ export const MIGRATIONS: (string | Migration)[] = [
       last_login_at TEXT,
       person_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
       -- limited to one congregation (null = the whole church)
-      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL,
+      -- wrong passwords in a row, and until when the account is locked after too many
+      failed_logins INTEGER NOT NULL DEFAULT 0,
+      locked_until TEXT,
+      -- two-step sign-in: the authenticator secret, whether it is on, and the hashed one-time recovery codes
+      totp_secret TEXT,
+      totp_enabled INTEGER NOT NULL DEFAULT 0,
+      recovery_codes TEXT NOT NULL DEFAULT '[]'
     );
     INSERT INTO users_v13 (id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id)
       SELECT id, username, display_name, password_hash, role, lang, created_at, last_login_at, person_id FROM users;

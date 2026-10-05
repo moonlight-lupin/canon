@@ -22,18 +22,28 @@ export default function Login({ needsSetup, onDone }: { needsSetup: boolean; onD
   const [langs, setLangs] = useState<Lang[]>(['en', 'zh']);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // two-step sign-in: after the password, the code from the authenticator app (or a recovery code)
+  const [ticket, setTicket] = useState<string | null>(null);
+  const [code, setCode] = useState('');
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const r = needsSetup
-        ? await api.post<{ csrf: string }>('/setup', {
+      type Reply = { csrf: string; second_step?: boolean; ticket?: string };
+      const r: Reply = needsSetup
+        ? await api.post<Reply>('/setup', {
             username, password, display_name: displayName || username, languages: langs, ui_lang: lang,
             church_name: Object.values(church).some((v) => v?.trim()) ? church : undefined,
           })
-        : await api.post<{ csrf: string }>('/login', { username, password });
+        : ticket
+          ? await api.post<Reply>('/login/code', { ticket, code })
+          : await api.post<Reply>('/login', { username, password });
+      if (r.second_step && r.ticket) {
+        setTicket(r.ticket);
+        return;
+      }
       setCsrf(r.csrf);
       const next = safeNext();
       if (next) {
@@ -85,8 +95,13 @@ export default function Login({ needsSetup, onDone }: { needsSetup: boolean; onD
         <Field label={t('Password')} hint={needsSetup ? '8+' : undefined}>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={needsSetup ? 'new-password' : 'current-password'} required minLength={needsSetup ? 8 : 1} />
         </Field>
+        {ticket && (
+          <Field label={t('Code from your authenticator app')} hint={t('Or one of your recovery codes.')}>
+            <input value={code} onChange={(e) => setCode(e.target.value)} autoFocus inputMode="numeric" autoComplete="one-time-code" required />
+          </Field>
+        )}
         {error && <div className="callout warn">{error}</div>}
-        <button className="btn primary" disabled={busy}>{needsSetup ? t('Create administrator') : t('Sign in')}</button>
+        <button className="btn primary" disabled={busy}>{needsSetup ? t('Create administrator') : ticket ? t('Continue') : t('Sign in')}</button>
         <Tagline />
       </form>
     </div>

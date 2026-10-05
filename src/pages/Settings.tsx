@@ -18,6 +18,8 @@ import { ChurchTab } from './settings/ChurchTab.tsx';
 import { McpTab } from './settings/McpTab.tsx';
 import { UsersTab } from './settings/UsersTab.tsx';
 import { ModulesPanel } from './settings/ModulesTab.tsx';
+import { InfoTip } from '../components/InfoTip.tsx';
+import { Icon } from '../components/icons.tsx';
 
 type Tab = 'church' | 'languages' | 'modules' | 'users' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
 
@@ -61,6 +63,60 @@ export default function Settings() {
 }
 
 // ---------------------------------------------------------------- my profile
+
+/** Two-step sign-in for my account: an authenticator app's code after the password, and recovery codes. */
+function TwoStepCard() {
+  const { t } = useI18n();
+  const { user, refresh } = useSession();
+  const { run, busy } = useAction();
+  const [setup, setSetup] = useState<{ secret: string; qr: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [codes, setCodes] = useState<string[] | null>(null);
+  const [pw, setPw] = useState('');
+  const start = () => run(async () => setSetup(await api.post<{ secret: string; qr: string }>('/me/two-step/setup', {})));
+  const enable = () => run(async () => {
+    const r = await api.post<{ recovery_codes: string[] }>('/me/two-step/enable', { code });
+    setCodes(r.recovery_codes);
+    setSetup(null);
+    setCode('');
+    await refresh();
+  }, t('Two-step sign-in is on.'));
+  const disable = () => run(async () => {
+    await api.post('/me/two-step/disable', { password: pw });
+    setPw('');
+    await refresh();
+  }, t('Two-step sign-in is off.'));
+  return (
+    <div className="stack tight">
+      <h3 className="sect" style={{ marginBottom: 0 }}>{t('Two-step sign-in')} <InfoTip text={t('After your password, Canon asks for a 6-digit code from an authenticator app on your phone (Google or Microsoft Authenticator, 1Password …), so a stolen password alone can’t sign in.')} /></h3>
+      {codes && (
+        <div className="callout">
+          <strong>{t('Your recovery codes')}</strong> — {t('keep them somewhere safe: each signs you in once if you lose your phone. They are shown only now.')}
+          <pre className="small" style={{ margin: '6px 0 0' }}>{codes.join('\n')}</pre>
+        </div>
+      )}
+      {user.totp_enabled ? (
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="badge ok">{t('On')}</span>
+          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t('Your password')} autoComplete="current-password" style={{ maxWidth: 200 }} />
+          <button className="btn sm" onClick={disable} disabled={busy || !pw}>{t('Turn off')}</button>
+        </div>
+      ) : setup ? (
+        <div className="stack tight">
+          <p className="small" style={{ margin: 0 }}>{t('Scan this with your authenticator app (or type the key), then enter the code it shows.')}</p>
+          <img src={setup.qr} alt="" width={180} height={180} />
+          <code className="small">{setup.secret}</code>
+          <div className="row" style={{ gap: 8 }}>
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" style={{ width: 120 }} />
+            <button className="btn primary sm" onClick={enable} disabled={busy || code.trim().length < 6}>{t('Turn on')}</button>
+          </div>
+        </div>
+      ) : (
+        <div><button className="btn sm" onClick={start} disabled={busy}><Icon name="lock" />{t('Set up two-step sign-in')}</button></div>
+      )}
+    </div>
+  );
+}
 
 function ProfileCard() {
   const { t, lang, setLang } = useI18n();
@@ -119,6 +175,7 @@ function ProfileCard() {
           </div>
           <div className="row end"><button className="btn" type="submit" disabled={busy || !pw.current || !pw.next}>{t('Change password')}</button></div>
         </form>
+        <TwoStepCard />
       </div>
     </div>
   );
