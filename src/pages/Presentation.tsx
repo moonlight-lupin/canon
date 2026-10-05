@@ -1,7 +1,8 @@
 // Service Planner → Slide templates and Bulletin templates.
 // Each page opens on a gallery of templates (pick the church default, make a copy, hide the ones nobody uses) and
 // edits one template at a time in a few numbered steps beside a large live preview. Built-in templates can't be
-// changed or deleted: they open as a preview with "Make a copy to customise", and can be hidden instead.
+// changed or deleted: they open as a preview with "Make a copy to customise", and can be archived instead. Any
+// template can be archived (Archived templates section); administrators delete archived ones that aren't built-in.
 // Both previews use the real renderers (SlideFace, the bulletin's BulletinPages) on a small sample service.
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -39,7 +40,7 @@ function Badges({ builtin, isDefault, hidden }: { builtin: boolean; isDefault: b
     <div className="pr-badges">
       {isDefault && <span className="badge reed" title={t('Services use this template unless they choose another.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
       {builtin && <span className="badge" title={t("Comes with Canon. It can't be changed or deleted, but you can copy it or hide it.")}>{t('Built-in')}</span>}
-      {hidden && <span className="badge">{t('Hidden')}</span>}
+      {hidden && <span className="badge">{t('Archived')}</span>}
     </div>
   );
 }
@@ -74,13 +75,13 @@ function useGalleryActions(kind: 'slide' | 'bulletin', reload: () => Promise<unk
       }
     },
     setHidden: async (id: number, hidden: boolean) => {
-      if (await run(() => api.put(`${base}/${id}/hidden`, { hidden }), hidden ? t('Hidden. Find it under Hidden templates.') : t('Shown again.'))) await reload();
+      if (await run(() => api.put(`${base}/${id}/hidden`, { hidden }), hidden ? t('Archived. Find it under Archived templates.') : t('Restored.'))) await reload();
     },
     exportFile: (id: number) => {
       window.location.href = `/api${base}/${id}/export`;
     },
     remove: async (id: number) => {
-      if (!confirmAction(t('Delete this template? Services using it go back to the church default.'))) return false;
+      if (!confirmAction(t('Delete this archived template for good? Services using it go back to the church default.'))) return false;
       if (await run(() => api.del(`${base}/${id}`), t('Deleted.'))) {
         await reload();
         reloadSettings();
@@ -104,11 +105,12 @@ function cardActions(
   if (can.edit) out.push({ label: x.builtin ? t('Make a copy to customise') : t('Duplicate'), onClick: () => a.copy(x.id) });
   if (can.edit) {
     out.push(x.hidden
-      ? { label: t('Show again'), onClick: () => a.setHidden(x.id, false) }
-      : { label: t('Hide'), onClick: () => a.setHidden(x.id, true), disabled: isDefault, title: isDefault ? t('The church default cannot be hidden.') : t('Leave it out of the template lists. Services already using it keep it.') });
+      ? { label: t('Restore'), onClick: () => a.setHidden(x.id, false) }
+      : { label: t('Archive'), onClick: () => a.setHidden(x.id, true), disabled: isDefault, title: isDefault ? t('The church default cannot be archived.') : t('Move it to Archived templates, out of the template lists. Services already using it keep it.') });
   }
   out.push({ label: t('Export to a file'), onClick: () => a.exportFile(x.id), title: t('Save this template as one file, to use on another computer or share with another church.') });
-  if (can.edit && !x.builtin) out.push({ label: t('Delete'), onClick: () => a.remove(x.id), danger: true });
+  // deleting: administrators, archived templates only, never Canon's built-in ones
+  if (can.admin && x.hidden && !x.builtin) out.push({ label: t('Delete'), onClick: () => a.remove(x.id), danger: true });
   return out;
 }
 
@@ -162,7 +164,7 @@ function GalleryGrid<T extends { id: number; hidden?: boolean }>({ items, card, 
       </div>
       {hidden.length > 0 && (
         <details className="tp-hidden">
-          <summary>{t('Hidden templates')} <span className="badge">{hidden.length}</span> <InfoTip text={t('Hidden templates are left out of the lists in the service planner. Services that already use one keep it. Use the ⋯ menu to show one again.')} /></summary>
+          <summary>{t('Archived templates')} <span className="badge">{hidden.length}</span> <InfoTip text={t('Archived templates are left out of the lists in the service planner; services that already use one keep it. Use the ⋯ menu to restore one; administrators can delete archived templates (not Canon’s built-in ones).')} /></summary>
           <div className="tp-grid">{hidden.map(card)}</div>
         </details>
       )}
@@ -408,7 +410,7 @@ function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved }: {
       <GuideLink anchor="slide-templates" />
       {isAdmin && !isDefault && <button className="btn sm" disabled={busy || dirty} title={dirty ? t('Save your changes first') : t('Services use this template unless they choose another.')} onClick={() => acts.makeDefault(theme.id)}><Icon name="check" />{t('Set as church default')}</button>}
       {canEdit && !theme.builtin && <button className="btn sm" disabled={busy} onClick={() => { if (!dirty || confirmAction(t('Discard your unsaved changes?'))) acts.copy(theme.id); }}><Icon name="copy" />{t('Duplicate')}</button>}
-      {canEdit && !theme.builtin && <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await acts.remove(theme.id)) onBack(); }}><Icon name="trash" />{t('Delete')}</button>}
+      {isAdmin && theme.hidden && !theme.builtin && <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await acts.remove(theme.id)) onBack(); }}><Icon name="trash" />{t('Delete')}</button>}
     </div>
   );
 
@@ -790,7 +792,7 @@ function TemplateEditor({ tpl, isDefault, onBack, acts, onSaved }: {
       <GuideLink anchor="bulletin-templates" />
       {isAdmin && !isDefault && <button className="btn sm" disabled={busy || dirty} title={dirty ? t('Save your changes first') : t('Services use this template unless they choose another.')} onClick={() => acts.makeDefault(tpl.id)}><Icon name="check" />{t('Set as church default')}</button>}
       {canEdit && !tpl.builtin && <button className="btn sm" disabled={busy} onClick={() => { if (!dirty || confirmAction(t('Discard your unsaved changes?'))) acts.copy(tpl.id); }}><Icon name="copy" />{t('Duplicate')}</button>}
-      {canEdit && !tpl.builtin && <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await acts.remove(tpl.id)) onBack(); }}><Icon name="trash" />{t('Delete')}</button>}
+      {isAdmin && tpl.hidden && !tpl.builtin && <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await acts.remove(tpl.id)) onBack(); }}><Icon name="trash" />{t('Delete')}</button>}
     </div>
   );
   const previewPane = (

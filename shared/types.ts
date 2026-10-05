@@ -362,6 +362,10 @@ export interface Template {
   service_type: string;
   start_time: string;
   items: TemplateItem[];
+  /** archived: left out of the pickers; services already using it keep it */
+  hidden?: boolean;
+  /** one of Canon's own templates (seeded): it can be archived, not deleted */
+  builtin?: boolean;
 }
 
 // ---------------------------------------------------------------- MCP control

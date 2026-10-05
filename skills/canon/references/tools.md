@@ -27,7 +27,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - `canon_get_service` with `format: "downloads"`: short-lived links (24 h default, max 72) for `slides_pptx` (PowerPoint, styled by the slide template), `bulletin_docx` (Word), `freeshow`, `run_sheet`; `open_in_canon` links the print-ready bulletin (Print → PDF), slide show and run sheet for a signed-in user. Links work without signing in — give them only to the user who asked.
 - Congregations: `congregation` (id / short label / name) filters `canon_find_services`, `canon_find_people`, `canon_find_groups`; `congregation_id` on create / update service (its languages are the default).
 - Service records: `records` and `contributions` are off by default; `contributions` needs `records` and is always read only (never change money, sign or verify; viewers never get it). Amounts in cents of the church currency; other currencies apart, never converted. Visitor follow-up status `new` / `contacted` / `returning` / `joined`; contact details only with personal data exposed. `canon_save_service_record` replaces notes — read first. Reports take `from`, `to` (default the last 12 months), `congregation_id`.
-- `canon_get_templates`: `church_default: true` marks the template the church normally starts from.
+- `canon_get_templates` lists active templates (archived ones are left out); `church_default: true` marks the template the church normally starts from.
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
 
 ## Precedent: past services first

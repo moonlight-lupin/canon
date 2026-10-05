@@ -181,15 +181,15 @@ Open [Library](/library).
 
 ## Templates
 
-- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**. **Set as church default** (administrators) picks the template **New service** starts from; it shows a **Church default** badge.
+- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**. **Set as church default** (administrators) picks the template **New service** starts from; it shows a **Church default** badge. **Archive** moves a template you no longer use to **Archived templates** at the bottom of the page — see the archive rules below; they are the same for all three kinds of template.
 
 Bulletin templates and slide templates both open on a gallery. Each card has a main button (**Edit** for your own templates, **Preview** for built-in ones) and a **⋯** menu:
 
 - **Set as church default** (administrators): services use this template unless they choose another.
 - **Make a copy to customise** / **Duplicate**: built-in templates come with Canon and can't be changed or deleted, so copy one and change the copy.
-- **Hide** leaves a template out of the lists in the service planner (services already using it keep it). Hidden templates are under **Hidden templates** at the bottom of the gallery; **Show again** brings one back. The church default can't be hidden.
+- **Archive** leaves a template out of the lists in the service planner (services already using it keep it). Archived templates are under **Archived templates** at the bottom of the page; **Restore** brings one back. The church default can't be archived; making an archived template the church default restores it.
 - **Export to a file** saves the template as one file (with its background picture, or the QR codes and pictures its pages print), to copy to another computer or share with another church. **Import a template file…** at the top of the page adds it as a new template; QR codes and notes it needs are added to the Library unless one of the same name is already there.
-- **Delete** (your own templates only).
+- **Delete** (administrators): only archived templates can be deleted, and never Canon's built-in ones (they can only be archived). Archive first, then delete from **Archived templates**. Services using a deleted slide or bulletin template go back to the church default; services made from a deleted service template keep their order of service.
 
 The editor shows the settings in numbered steps that fold open, with a large live preview beside them. Changes appear in the preview straight away; **Save changes** in the bar at the bottom keeps them, **Discard** drops them. Point at a **?** for a short explanation, or press **How this works** to come back here.
 

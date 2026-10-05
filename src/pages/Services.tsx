@@ -76,7 +76,7 @@ export function NewServiceDialog({ onClose, initialTemplate, initialCongregation
   const [sermonTitle, setSermonTitle] = useState<L10n>({});
   const [sermonRef, setSermonRef] = useState('');
   const { settings } = useSession();
-  const churchDefault = templates?.find((x) => x.id === settings?.default_service_template_id)?.id ?? templates?.[0]?.id ?? null;
+  const churchDefault = templates?.find((x) => x.id === settings?.default_service_template_id)?.id ?? templates?.find((x) => !x.hidden)?.id ?? null;
   const tid = templateId ?? churchDefault;
   // congregation: chosen here, else the filter's, else the template's
   const [congPick, setCongPick] = useState<number | null | undefined>(undefined);
@@ -110,7 +110,7 @@ export function NewServiceDialog({ onClose, initialTemplate, initialCongregation
         <Field label={t('Sermon title')}><L10nInput value={sermonTitle} onChange={setSermonTitle} /></Field>
         <div className="field" style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)' }}>{t('Template')}</div>
         <div className="grid cols-2" style={{ gap: 8 }}>
-          {(templates ?? []).map((tp) => (
+          {(templates ?? []).filter((tp) => !tp.hidden || tp.id === tid).map((tp) => (
             <button key={tp.id} type="button" className="card" onClick={() => setTemplateId(tp.id)}
               style={{ textAlign: 'left', cursor: 'pointer', padding: '12px 14px', borderColor: tid === tp.id ? 'var(--reed)' : undefined, background: tid === tp.id ? 'var(--reed-wash)' : undefined, font: 'inherit', color: 'inherit' }}>
               <div className="row between"><strong className="serif"><Bi v={tp.name} /></strong><span className="small muted">{tp.id === churchDefault && <span className="badge reed" style={{ marginRight: 6 }}>{t('Church default')}</span>}{tp.start_time}</span></div>

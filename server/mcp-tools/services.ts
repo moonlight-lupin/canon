@@ -347,7 +347,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
     name: 'canon_get_templates', module: 'templates', access: 'read', title: 'Get service templates', annotations: RO,
     description: 'Service templates (standard orders of worship, e.g. Lord\'s Day morning, Lord\'s Supper). Without id: summaries (church_default marks the one the church normally starts from); with id: the template with its items (kind, title, song_key / text_key, scripture_ref, duration, role). Pass a template id to canon_create_service.',
     input: { id: Id.optional() },
-    handler: (a) => (a.id ? svc.templates.get(a.id) : svc.templates.list('', [], 'id').map(templateSummary)),
+    handler: (a) => (a.id ? svc.templates.get(a.id) : svc.templates.list('hidden = 0', [], 'id').map(templateSummary)),
   },
   {
     name: 'canon_save_service_as_template', module: 'templates', access: 'write', title: 'Save service as template', annotations: WRITE,

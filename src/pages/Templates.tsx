@@ -7,6 +7,7 @@ import { Bi, Field, L10nInput, Loading, Modal, PageHead, confirmAction, useActio
 import { CongregationBadge, CongregationField, useCongregations } from '../components/Congregations.tsx';
 import { Combo } from '../components/Combo.tsx';
 import { Icon } from '../components/icons.tsx';
+import { InfoTip } from '../components/InfoTip.tsx';
 import { CsvTools } from '../components/CsvTools.tsx';
 import { KIND_ICON, KIND_LABEL, PostureField } from './ServiceEditor.tsx';
 import type { ItemKind, LiturgyText, Song, TeamWithRoles, Template, TemplateItem } from '../types-client.ts';
@@ -21,12 +22,64 @@ export default function Templates() {
   const { data, reload } = useApi<Template[]>('/templates');
   const congs = useCongregations();
   const { run } = useAction();
-  const defaultId = data?.find((x) => x.id === settings?.default_service_template_id)?.id ?? data?.[0]?.id ?? null;
+  const defaultId = data?.find((x) => x.id === settings?.default_service_template_id)?.id ?? data?.find((x) => !x.hidden)?.id ?? null;
   const makeDefault = (tid: number) => run(async () => {
     await api.put('/templates-default', { template_id: tid });
     reloadSettings();
   }, t('This is now the church default.'));
   const [edit, setEdit] = useState<Partial<Template> | null>(null);
+  const setHidden = (tp: Template, hidden: boolean) => run(async () => {
+    await api.put(`/templates/${tp.id}/hidden`, { hidden });
+    reload();
+  }, hidden ? t('Archived. Find it under Archived templates.') : t('Restored.'));
+  const remove = (tp: Template) => {
+    if (!confirmAction(t('Delete this archived template for good? Services made from it keep their order of service.'))) return;
+    run(async () => {
+      await api.del(`/templates/${tp.id}`);
+      reload();
+    }, t('Deleted.'));
+  };
+  const shown = (data ?? []).filter((x) => !x.hidden);
+  const archived = (data ?? []).filter((x) => x.hidden);
+  const card = (tp: Template) => (
+    <div key={tp.id} className={`card${tp.hidden ? ' muted-card' : ''}`}>
+      <div className="card-head">
+        <h2><Bi v={tp.name} /></h2>
+        <span className="row" style={{ gap: 6 }}>
+          {tp.id === defaultId && <span className="badge reed" title={t('New service starts from this template.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
+          {tp.builtin && <span className="badge" title={t('One of Canon’s own templates: it can be archived, not deleted.')}>{t('Built-in')}</span>}
+          {tp.hidden && <span className="badge">{t('Archived')}</span>}
+          <CongregationBadge id={tp.congregation_id} list={congs} />
+          <span className="badge">{tp.start_time}</span>
+        </span>
+      </div>
+      <p className="muted small">{lt(tp.description)}</p>
+      <div className="small" style={{ columns: 2, columnGap: 16, margin: '10px 0' }}>
+        {tp.items.map((it, i) => (
+          <div key={i} style={{ breakInside: 'avoid', fontWeight: it.kind === 'section' ? 600 : 400, color: it.kind === 'section' ? 'var(--reed-ink)' : undefined, marginTop: it.kind === 'section' && i ? 6 : 0 }}>
+            {lt(it.title)}
+          </div>
+        ))}
+      </div>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+        <span className="small muted">{tp.items.length} · {tp.items.reduce((a, i) => a + i.duration_min, 0)} {t('min')}</span>
+        <div className="grow" />
+        {tp.hidden ? (
+          <>
+            {canEdit && <button className="btn sm" onClick={() => setHidden(tp, false)}>{t('Restore')}</button>}
+            {isAdmin && !tp.builtin && <button className="btn sm ghost danger" onClick={() => remove(tp)}><Icon name="trash" />{t('Delete')}</button>}
+          </>
+        ) : (
+          <>
+            {isAdmin && tp.id !== defaultId && <button className="btn sm ghost" onClick={() => makeDefault(tp.id)} title={t('New service starts from this template.')}><Icon name="check" />{t('Set as church default')}</button>}
+            {canEdit && tp.id !== defaultId && <button className="btn sm ghost" onClick={() => setHidden(tp, true)} title={t('Move it to Archived templates, out of the template lists. Services already using it keep it.')}>{t('Archive')}</button>}
+            {canEdit && <button className="btn sm" onClick={() => setEdit(tp)}><Icon name="edit" />{t('Edit')}</button>}
+            {canEdit && <Link className="btn sm primary" to={`/services?new&template=${tp.id}`}>{t('Use template')}</Link>}
+          </>
+        )}
+      </div>
+    </div>
+  );
   return (
     <div className="page">
       <PageHead eyebrow={t('Service Planner')} title={t('Service templates')} sub={lt({ en: 'Reusable orders of worship. Hymn slots are left empty to fill each week.', zh: '可重复使用的聚会程序。诗歌位置留空，每周填写。' })}>
@@ -34,35 +87,15 @@ export default function Templates() {
         {canEdit && <button className="btn primary" onClick={() => setEdit({ name: {}, description: {}, service_type: 'lords_day', start_time: '10:00', items: [] })}><Icon name="plus" />{t('New template')}</button>}
       </PageHead>
       {!data ? <Loading /> : (
-        <div className="grid cols-2">
-          {data.map((tp) => (
-            <div key={tp.id} className="card">
-              <div className="card-head">
-                <h2><Bi v={tp.name} /></h2>
-                <span className="row" style={{ gap: 6 }}>
-                  {tp.id === defaultId && <span className="badge reed" title={t('New service starts from this template.')}><Icon name="check" width={12} height={12} />{t('Church default')}</span>}
-                  <CongregationBadge id={tp.congregation_id} list={congs} />
-                  <span className="badge">{tp.start_time}</span>
-                </span>
-              </div>
-              <p className="muted small">{lt(tp.description)}</p>
-              <div className="small" style={{ columns: 2, columnGap: 16, margin: '10px 0' }}>
-                {tp.items.map((it, i) => (
-                  <div key={i} style={{ breakInside: 'avoid', fontWeight: it.kind === 'section' ? 600 : 400, color: it.kind === 'section' ? 'var(--reed-ink)' : undefined, marginTop: it.kind === 'section' && i ? 6 : 0 }}>
-                    {lt(it.title)}
-                  </div>
-                ))}
-              </div>
-              <div className="row">
-                <span className="small muted">{tp.items.length} · {tp.items.reduce((a, i) => a + i.duration_min, 0)} {t('min')}</span>
-                <div className="grow" />
-                {isAdmin && tp.id !== defaultId && <button className="btn sm ghost" onClick={() => makeDefault(tp.id)} title={t('New service starts from this template.')}><Icon name="check" />{t('Set as church default')}</button>}
-                {canEdit && <button className="btn sm" onClick={() => setEdit(tp)}><Icon name="edit" />{t('Edit')}</button>}
-                {canEdit && <Link className="btn sm primary" to={`/services?new&template=${tp.id}`}>{t('Use template')}</Link>}
-              </div>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="grid cols-2">{shown.map(card)}</div>
+          {archived.length > 0 && (
+            <details className="tp-archived">
+              <summary>{t('Archived templates')} <span className="badge">{archived.length}</span> <InfoTip text={t('Archived templates are left out of the lists in the service planner; services already made from one keep their order of service. Restore one to use it again; administrators can delete archived templates (not Canon’s built-in ones).')} /></summary>
+              <div className="grid cols-2" style={{ marginTop: 10 }}>{archived.map(card)}</div>
+            </details>
+          )}
+        </>
       )}
       {edit && <TemplateEditor tpl={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
     </div>
@@ -96,7 +129,6 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
   return (
     <Modal title={x.id ? lt(x.name) : t('New template')} onClose={onClose} size="lg" footer={
       <>
-        {x.id && <button className="btn danger left" onClick={async () => { if (confirmAction(t('Are you sure?')) && await run(() => api.del(`/templates/${x.id}`))) onSaved(); }}><Icon name="trash" />{t('Delete')}</button>}
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
         <button className="btn primary" disabled={busy || !hasAnyText(x.name)} onClick={save}>{t('Save')}</button>
       </>

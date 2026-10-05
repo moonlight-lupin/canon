@@ -526,6 +526,8 @@ const MIGRATIONS: (string | Migration)[] = [
   `,
   // v0.10.2 — the date the cash was counted (printed on the declaration; empty = the service date)
   `ALTER TABLE service_records ADD COLUMN counted_on TEXT;`,
+  // v0.10.4 — service templates can be archived like slide and bulletin templates ("hidden" = archived)
+  `ALTER TABLE templates ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 /** Bring the database up to the current schema (also after restoring an older backup). */

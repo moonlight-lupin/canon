@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import type { ItemKind, L10n, Service, ServiceFull, ServiceItem, Template, TemplateItem } from '../../shared/types.ts';
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
+import { SEED_TEMPLATES } from '../seed/templates.ts';
 import { songs, texts } from './library.ts';
 import { roleByName, roles, serviceAssignments } from './volunteers.ts';
 import { getSettings } from './settings.ts';
@@ -33,7 +34,8 @@ export const items = table<ServiceItem>({
 
 export const templates = table<Template>({
   name: 'templates',
-  cols: ['key', 'name', 'description', 'service_type', 'start_time', 'items', 'congregation_id'],
+  bool: ['hidden'],
+  cols: ['key', 'name', 'description', 'service_type', 'start_time', 'items', 'congregation_id', 'hidden'],
   json: ['name', 'description', 'items'],
 });
 
@@ -339,3 +341,26 @@ export function itemTimes(svc: Pick<Service, 'start_time'>, its: Pick<ServiceIte
   });
 }
 const fmt = (min: number) => `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${String(Math.round(min % 60)).padStart(2, '0')}`;
+
+// ---------------------------------------------------------------- archiving service templates
+
+/** Keys of Canon's own service templates (seeded at start-up): they can be archived, never deleted. */
+const SEED_KEYS = new Set(SEED_TEMPLATES.map((t) => t.key));
+export const isBuiltinTemplate = (t: Pick<Template, 'key'>) => !!t.key && SEED_KEYS.has(t.key);
+export const withBuiltin = (t: Template): Template => ({ ...t, builtin: isBuiltinTemplate(t) });
+
+/** Archive or restore a service template. The church default cannot be archived. */
+export function setServiceTemplateHidden(id: number, hidden: boolean, defaultId: number | null): Template {
+  const t = templates.get(id);
+  if (hidden && defaultId === id) throw new BadRequest("This is the church default, so it can't be archived. Set another template as the church default first.");
+  templates.update(id, { hidden });
+  return withBuiltin({ ...t, hidden });
+}
+
+/** Delete an archived service template (administrators); built-in templates can't be deleted. */
+export function deleteServiceTemplate(id: number) {
+  const t = templates.get(id);
+  if (isBuiltinTemplate(t)) throw new BadRequest("Built-in templates can't be deleted. Archive it instead.");
+  if (!t.hidden) throw new BadRequest('Archive the template first; archived templates can then be deleted.');
+  templates.remove(id);
+}

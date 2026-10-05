@@ -437,3 +437,8 @@ table.t tr.click:hover td { background: var(--sunk); }
 /* Library → Check (pages/LibraryCheck.tsx) */
 .check-group > summary { cursor: pointer; padding: 6px 0; }
 .check-group table { margin: 4px 0 10px; }
+
+/* Service templates: the Archived templates section */
+.tp-archived { margin-top: 18px; }
+.tp-archived summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.muted-card { opacity: 0.8; }

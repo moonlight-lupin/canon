@@ -193,6 +193,8 @@ test('bulletin template resolution: service → church default → "Full words b
   const custom = P.duplicateTemplate(b.order);
   svc.services.update(s.id, { bulletin_template_id: custom.id });
   assert.equal(renderService(s.id).bulletin.template_id, custom.id);
+  assert.throws(() => P.deleteTemplate(custom.id), /Archive the template first/);
+  P.setTemplateHidden(custom.id, true);
   P.deleteTemplate(custom.id);
   assert.equal(renderService(s.id).bulletin.template_id, b.large);
   updateSettings({ default_bulletin_template_id: null });
@@ -283,9 +285,13 @@ test('themes: built-ins are read-only, duplicates are editable, bad CSS is a 400
   assert.equal(img.headers.get('content-type'), 'image/png');
   assert.equal((await fetch(`${base}/api/assets/slide-theme-${id}-bg`)).status, 401, 'pictures need a session');
 
-  // church default (admin) and delete resets it
+  // church default (admin): it can't be archived, so not deleted either; archive another default first
   const def = await api('PUT', '/presentation/defaults', { slide_theme_id: id });
   assert.equal(def.json!.default_slide_theme_id, id);
+  assert.equal((await api('PUT', `/slide-themes/${id}/hidden`, { hidden: true })).status, 400, 'the default cannot be archived');
+  assert.equal((await api('DELETE', `/slide-themes/${id}`)).status, 400, 'not archived: not deleted');
+  await api('PUT', '/presentation/defaults', { slide_theme_id: b.ink });
+  assert.equal((await api('PUT', `/slide-themes/${id}/hidden`, { hidden: true })).status, 200);
   assert.equal((await api('DELETE', `/slide-themes/${id}`)).status, 200);
   assert.equal(get('SELECT 1 FROM assets WHERE key = ?', `slide-theme-${id}-bg`), undefined, 'picture removed with the theme');
   assert.equal(P.resolveSlideThemeId(null), b.ink);
@@ -303,6 +309,9 @@ test('templates: CRUD over REST, built-ins protected', async () => {
   const id = created.json!.id as number;
   const patched = await api('PATCH', `/bulletin-templates/${id}`, { options: { print: { song: 'bogus' } } });
   assert.equal(patched.json!.options.print.song, 'first_stanza', 'unknown values keep the current choice');
+  assert.equal((await api('DELETE', `/bulletin-templates/${id}`)).status, 400, 'archive first');
+  assert.equal((await api('PUT', `/bulletin-templates/${id}/hidden`, { hidden: true })).status, 200);
+  assert.equal((await api('DELETE', `/bulletin-templates/${b.full}`)).status, 400, 'built-ins are never deleted');
   assert.equal((await api('DELETE', `/bulletin-templates/${id}`)).status, 200);
 });
 

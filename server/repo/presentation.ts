@@ -122,8 +122,9 @@ export function duplicateTheme(id: number): SlideTheme {
 }
 
 export function deleteTheme(id: number) {
-  slideThemes.get(id);
-  if (keyOf('slide', id)) throw new BadRequest("Built-in themes can't be deleted.");
+  const cur = slideThemes.get(id);
+  if (keyOf('slide', id)) throw new BadRequest("Built-in templates can't be deleted. Archive it instead.");
+  if (!cur.hidden) throw new BadRequest('Archive the template first; archived templates can then be deleted.');
   tx(() => {
     slideThemes.remove(id);
     run('DELETE FROM assets WHERE key = ?', themeBgKey(id));
@@ -223,7 +224,8 @@ export function duplicateTemplate(id: number): BulletinTemplate {
 
 export function deleteTemplate(id: number) {
   const cur = getTemplate(id);
-  if (cur.builtin) throw new BadRequest("Built-in templates can't be deleted.");
+  if (cur.builtin) throw new BadRequest("Built-in templates can't be deleted. Archive it instead.");
+  if (!cur.hidden) throw new BadRequest('Archive the template first; archived templates can then be deleted.');
   bulletinTemplates.remove(id);
   if (getSettings().default_bulletin_template_id === id) updateSettings({ default_bulletin_template_id: null });
 }
@@ -254,13 +256,13 @@ export function resolveBulletinTemplate(svc: Pick<Service, 'bulletin_template_id
  */
 export function setThemeHidden(id: number, hidden: boolean): SlideTheme {
   slideThemes.get(id);
-  if (hidden && resolveSlideThemeId(null) === id) throw new BadRequest("This is the church default, so it can't be hidden. Set another template as the church default first.");
+  if (hidden && resolveSlideThemeId(null) === id) throw new BadRequest("This is the church default, so it can't be archived. Set another template as the church default first.");
   slideThemes.update(id, { hidden });
   return getTheme(id);
 }
 export function setTemplateHidden(id: number, hidden: boolean): BulletinTemplate {
   bulletinTemplates.get(id);
-  if (hidden && resolveBulletinTemplate(null).template_id === id) throw new BadRequest("This is the church default, so it can't be hidden. Set another template as the church default first.");
+  if (hidden && resolveBulletinTemplate(null).template_id === id) throw new BadRequest("This is the church default, so it can't be archived. Set another template as the church default first.");
   bulletinTemplates.update(id, { hidden });
   return getTemplate(id);
 }

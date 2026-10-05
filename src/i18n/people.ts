@@ -575,5 +575,19 @@ const zh: Record<string, string> = {
   "Finish – all counters have signed": "完成——所有点算同工已签名",
   "Sign or clear the pad before finishing.": "完成前请先签名或清除签名板。",
   "The cash count is verified, so the cash is locked. To correct it, an administrator reopens the count; it is then verified again.": "现金点算已确认，现金已锁定。如需更正，由管理员重新开启点算，之后须再次确认。",
+  // v0.10.4 — archived templates
+  "Archived. Find it under Archived templates.": "已归档，可在“已归档的模板”中找到。",
+  "Restored.": "已恢复。",
+  "Delete this archived template for good? Services using it go back to the church default.": "永久删除这个已归档的模板？使用它的聚会会改用教会默认模板。",
+  "Delete this archived template for good? Services made from it keep their order of service.": "永久删除这个已归档的模板？用它建立的聚会仍保留原有程序。",
+  "Archive": "归档",
+  "The church default cannot be archived.": "教会默认模板不能归档。",
+  "Move it to Archived templates, out of the template lists. Services already using it keep it.": "移到“已归档的模板”，不再出现在模板列表中。已在使用的聚会不受影响。",
+  "Archived": "已归档",
+  "Archived templates": "已归档的模板",
+  "Archived templates are left out of the lists in the service planner; services that already use one keep it. Use the ⋯ menu to restore one; administrators can delete archived templates (not Canon’s built-in ones).": "已归档的模板不会出现在聚会策划的列表中；已在使用的聚会不受影响。可用 ⋯ 菜单恢复；管理员可删除已归档的模板（Canon 内置的除外）。",
+  "Archived templates are left out of the lists in the service planner; services already made from one keep their order of service. Restore one to use it again; administrators can delete archived templates (not Canon’s built-in ones).": "已归档的模板不会出现在聚会策划的列表中；已用它建立的聚会仍保留原有程序。恢复后即可再用；管理员可删除已归档的模板（Canon 内置的除外）。",
+  "One of Canon’s own templates: it can be archived, not deleted.": "Canon 内置的模板：可以归档，不能删除。",
+  "Built-in": "内置",
 };
 export default zh;

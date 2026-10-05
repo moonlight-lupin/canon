@@ -45,7 +45,7 @@ presentationRoutes.get('/slide-themes', h(() => P.listThemes()));
 presentationRoutes.get('/slide-themes/:id', h((req) => P.getTheme(id(req))));
 presentationRoutes.post('/slide-themes', h((req) => P.createTheme(ThemeInput.parse(req.body) as P.ThemeInput)));
 presentationRoutes.patch('/slide-themes/:id', h((req) => P.updateTheme(id(req), ThemeInput.parse(req.body) as P.ThemeInput)));
-presentationRoutes.delete('/slide-themes/:id', h((req) => P.deleteTheme(id(req))));
+presentationRoutes.delete('/slide-themes/:id', requireAdmin, h((req) => P.deleteTheme(id(req))));
 presentationRoutes.post('/slide-themes/:id/duplicate', h((req) => P.duplicateTheme(id(req))));
 presentationRoutes.put('/slide-themes/:id/hidden', h((req) => P.setThemeHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden)));
 
@@ -107,7 +107,7 @@ presentationRoutes.get('/bulletin-templates', h(() => P.listTemplates()));
 presentationRoutes.get('/bulletin-templates/:id', h((req) => P.getTemplate(id(req))));
 presentationRoutes.post('/bulletin-templates', h((req) => P.createTemplate(TemplateInput.parse(req.body))));
 presentationRoutes.patch('/bulletin-templates/:id', h((req) => P.updateTemplate(id(req), TemplateInput.parse(req.body))));
-presentationRoutes.delete('/bulletin-templates/:id', h((req) => P.deleteTemplate(id(req))));
+presentationRoutes.delete('/bulletin-templates/:id', requireAdmin, h((req) => P.deleteTemplate(id(req))));
 presentationRoutes.post('/bulletin-templates/:id/duplicate', h((req) => P.duplicateTemplate(id(req))));
 presentationRoutes.put('/bulletin-templates/:id/hidden', h((req) => P.setTemplateHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden)));
 

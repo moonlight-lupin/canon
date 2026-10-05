@@ -441,19 +441,25 @@ api.delete('/congregations/:id', requireAdmin, h((req) => cong.deleteCongregatio
 
 // ---------------------------------------------------------------- templates
 
-api.get('/templates', h(() => svc.templates.list('', [], 'id')));
-api.get('/templates/:id', h((req) => svc.templates.get(id(req))));
+api.get('/templates', h(() => svc.templates.list('', [], 'id').map(svc.withBuiltin)));
+api.get('/templates/:id', h((req) => svc.withBuiltin(svc.templates.get(id(req)))));
 api.post('/templates', h((req) => svc.templates.insert({ description: {}, items: [], ...S.TemplateInput.parse(req.body) })));
 api.patch('/templates/:id', h((req) => svc.templates.update(id(req), S.TemplateInput.partial().parse(req.body))));
-api.delete('/templates/:id', h((req) => {
+/** Archive / restore (editors). The church default can't be archived. */
+api.put('/templates/:id/hidden', h((req) => svc.setServiceTemplateHidden(id(req), z.object({ hidden: z.boolean() }).parse(req.body).hidden, getSettings().default_service_template_id ?? null)));
+/** Delete an archived template (administrators; never a built-in one). */
+api.delete('/templates/:id', requireAdmin, h((req) => {
   const tid = id(req);
-  svc.templates.remove(tid);
+  svc.deleteServiceTemplate(tid);
   if (getSettings().default_service_template_id === tid) updateSettings({ default_service_template_id: null });
 }));
 /** The church's usual service template: New service starts from it (administrators). */
 api.put('/templates-default', requireAdmin, h((req) => {
   const tid = z.object({ template_id: z.number().int().positive().nullable() }).parse(req.body).template_id;
-  if (tid != null) svc.templates.get(tid);
+  if (tid != null) {
+    svc.templates.get(tid);
+    svc.templates.update(tid, { hidden: false });
+  }
   return { default_service_template_id: updateSettings({ default_service_template_id: tid }).default_service_template_id };
 }));
 
