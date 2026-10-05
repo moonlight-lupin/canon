@@ -74,8 +74,21 @@ export function recordName(row: Row | null | undefined, id?: number | null): str
   return `#${row.id ?? id ?? ''}`;
 }
 
+/**
+ * Fields kept in full (not shortened) because they are financial records; signatures are kept without their images.
+ */
+const FULL: Record<string, Set<string>> = {
+  service_records: new Set(['offerings', 'cash', 'foreign_cash', 'currency', 'counters', 'verified_at', 'verified_by', 'signatures']),
+};
+const fullValue = (k: string, v: unknown): unknown => {
+  if (k !== 'signatures') return v ?? null;
+  const list = typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return []; } })() : v;
+  return Array.isArray(list) ? list.map((s: Record<string, unknown>) => ({ name: s.name, signed_at: s.signed_at, by: s.by, hash: s.hash })) : null;
+};
+
 /** Field-by-field differences between two versions of a record. */
-export function diff(before: Row | null, after: Row | null): Record<string, [unknown, unknown]> {
+export function diff(before: Row | null, after: Row | null, entity?: string): Record<string, [unknown, unknown]> {
+  const full = entity ? FULL[entity] : undefined;
   const out: Record<string, [unknown, unknown]> = {};
   const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
   for (const k of keys) {
@@ -83,7 +96,7 @@ export function diff(before: Row | null, after: Row | null): Record<string, [unk
     const a = before?.[k] ?? null;
     const b = after?.[k] ?? null;
     if (JSON.stringify(a) === JSON.stringify(b)) continue;
-    out[k] = [short(a), short(b)];
+    out[k] = full?.has(k) ? [fullValue(k, a), fullValue(k, b)] : [short(a), short(b)];
   }
   return out;
 }
@@ -104,7 +117,7 @@ export interface ChangeInput {
 export function logChange(c: ChangeInput): void {
   const actor = currentActor();
   if (!actor) return;
-  const changes = c.action === 'update' ? diff(c.before ?? null, c.after ?? null) : c.action === 'create' ? diff(null, c.after ?? null) : diff(c.before ?? null, null);
+  const changes = c.action === 'update' ? diff(c.before ?? null, c.after ?? null, c.entity) : c.action === 'create' ? diff(null, c.after ?? null, c.entity) : diff(c.before ?? null, null, c.entity);
   if (c.action === 'update' && !Object.keys(changes).length && !c.summary) return;
   run(
     `INSERT INTO change_log (user_id, user_name, via, client, entity, entity_id, action, name, summary, changes, parent_entity, parent_id)

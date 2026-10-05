@@ -130,21 +130,57 @@ test('on-screen signing: only when chosen, needs a matching count, two signature
     assert.throws(() => R.sign(s.id, { name: 'Cy', image: PNG }, editor), /already verified/);
     assert.throws(() => R.unsign(s.id, 'Ben', editor), /administrator/);
 
-    // notes and attendance do not disturb the signatures; an administrator's money change does
+    // notes and attendance do not disturb the signatures; money cannot change while verified, even for an administrator
     R.saveRecord(s.id, { attendance: 80 }, editor);
     assert.equal(R.recordFor(s.id).signatures.length, 2);
-    r = R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7500 }] }, admin);
-    assert.deepEqual(r.signatures, []);
-    assert.equal(r.verified_at, null);
+    assert.throws(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7500 }] }, admin), /Reopen the cash count first/);
 
-    // reopening a signed count asks for new signatures
-    R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7000 }] }, editor);
-    R.sign(s.id, { name: 'Ann', image: PNG }, editor);
-    R.sign(s.id, { name: 'Ben', image: PNG }, editor);
+    // reopening a signed count asks for new signatures; a money change before signing again drops a stale signature
     r = R.setVerified(s.id, false, admin);
     assert.deepEqual(r.signatures, []);
+    R.sign(s.id, { name: 'Ann', image: PNG }, editor);
+    r = R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 7000 }], cash: { '5000': 1, '1000': 2 }, attendance: 81 }, editor);
+    assert.equal(r.signatures.length, 1, 'an unchanged copy of the money keeps the signature');
+    r = R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 6000 }], cash: { '5000': 1, '1000': 1 } }, editor);
+    assert.deepEqual(r.signatures, [], 'a changed count drops it');
     assert.deepEqual(R.forViewer(R.recordFor(s.id)).signatures, []);
   } finally {
     settings.updateSettings({ offering: { ...settings.getSettings().offering, signing: 'paper' } });
   }
+});
+
+test('review fixes: verified money is locked for everyone, an unchanged full payload saves, recorded services cannot be deleted', () => {
+  const s = svc.createService({ date: '2033-05-01' }).service;
+  const money = { offerings: [{ fund: 'General', method: 'cash' as const, amount: 5000 }], cash: { '5000': 1 }, counters: ['Ann', 'Ben'], currency: 'SGD' };
+  R.saveRecord(s.id, { attendance: 70, ...money }, editor);
+  R.setVerified(s.id, true, editor);
+
+  // the editor's screen sends the whole record: attendance changes, the money is unchanged — accepted
+  const r = R.saveRecord(s.id, { attendance: 72, notes: 'late start', visitors: [], ...money, foreign_cash: {} }, editor);
+  assert.equal(r.attendance, 72);
+  assert.ok(r.verified_at);
+
+  // a paper-verified count: no money change for anyone without reopening
+  assert.throws(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 9999 }] }, editor), /Only an administrator/);
+  assert.throws(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 9999 }] }, admin), /Reopen the cash count first/);
+  assert.throws(() => R.saveRecord(s.id, { counters: ['Ann', 'Someone Else'] }, admin), /Reopen/);
+  assert.equal(R.recordFor(s.id).offerings[0].amount, 5000);
+
+  // the service cannot be deleted while it has a record; the record only by an administrator, after reopening
+  assert.throws(() => R.assertServiceDeletable(s.id), /cannot be deleted/);
+  assert.throws(() => R.deleteRecord(s.id, { admin: false }), /Only an administrator/);
+  assert.throws(() => R.deleteRecord(s.id, { admin: true }), /Reopen it first/);
+  R.setVerified(s.id, false, admin);
+  assert.deepEqual(R.deleteRecord(s.id, { admin: true }), { deleted: true });
+  R.assertServiceDeletable(s.id);
+});
+
+test('change log keeps money in full (signatures without images), written with the change', () => {
+  const s = svc.createService({ date: '2033-05-08' }).service;
+  const long = Array.from({ length: 30 }, (_, i) => ({ fund: `Fund number ${i}`, method: 'transfer' as const, amount: 1000 + i, note: 'a fairly long note for this line' }));
+  actor.asActor({ user_id: null, user_name: 'Ed Itor', via: 'web' }, () => R.saveRecord(s.id, { offerings: long }, editor));
+  const row = log.listChanges({ entity: 'services', entity_id: s.id }).rows.find((x) => x.entity === 'service_records')!;
+  const offerings = row.changes.offerings[1] as unknown;
+  const parsed = typeof offerings === 'string' ? JSON.parse(offerings) : offerings;
+  assert.equal(parsed.length, 30, 'not shortened');
 });

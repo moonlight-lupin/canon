@@ -434,6 +434,9 @@ const zh: Record<string, string> = {
   "Other…": "其他…",
   "Signature pad": "签名板",
   "Sign here": "在此签名",
+  'The cash count is verified, so the offerings are locked. To correct them, an administrator reopens the count; it is then verified again.': '现金点算已确认，奉献已锁定。如需更正，由管理员重新开启点算，之后须再次确认。',
+  'Delete this service record — attendance, visitors, notes and offerings? Only do this if it was entered by mistake. The change log keeps a copy.': '删除这份聚会记录——出席、新朋友、备注和奉献？只在记录输入错误时才这样做。修改记录会保留一份副本。',
+  'Delete record': '删除记录',
   // v0.10.0 — reports, visitor follow-up, AI modules for service records and offerings
   "Reports": "报表",
   "Trends and summaries over a period, to print or export to Excel.": "一段期间的趋势与汇总，可打印或导出到 Excel。",

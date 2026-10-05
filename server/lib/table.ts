@@ -1,4 +1,4 @@
-import { db, type SqlValue } from '../db.ts';
+import { db, tx, type SqlValue } from '../db.ts';
 import { currentActor } from './actor.ts';
 import { logChange } from '../repo/changelog.ts';
 
@@ -10,6 +10,9 @@ export class BadRequest extends Error {
 }
 export class Forbidden extends Error {
   status = 403;
+}
+export class Conflict extends Error {
+  status = 409;
 }
 
 interface Spec {
@@ -67,6 +70,10 @@ export function table<T extends { id: number }>(spec: Spec) {
       return decode(db.prepare(`SELECT * FROM ${spec.name} WHERE id = ?`).get(id) as Record<string, unknown>);
     },
     insert(data: Record<string, unknown>): T {
+      // the change and its log entry are written together, or neither is
+      return logged() ? tx(() => this.insertNow(data)) : this.insertNow(data);
+    },
+    insertNow(data: Record<string, unknown>): T {
       const e = encode(data);
       const keys = Object.keys(e);
       const sql = keys.length
@@ -78,6 +85,9 @@ export function table<T extends { id: number }>(spec: Spec) {
       return row;
     },
     update(id: number, patch: Record<string, unknown>): T {
+      return logged() ? tx(() => this.updateNow(id, patch)) : this.updateNow(id, patch);
+    },
+    updateNow(id: number, patch: Record<string, unknown>): T {
       const e = encode(patch);
       const keys = Object.keys(e);
       const before = keys.length && logged() ? this.find(id) : undefined;
@@ -92,6 +102,10 @@ export function table<T extends { id: number }>(spec: Spec) {
       return after;
     },
     remove(id: number): void {
+      if (logged()) tx(() => this.removeNow(id));
+      else this.removeNow(id);
+    },
+    removeNow(id: number): void {
       const before = logged() ? this.find(id) : undefined;
       const r = db.prepare(`DELETE FROM ${spec.name} WHERE id = ?`).run(id);
       if (!r.changes) throw new NotFound(`${spec.name} ${id} not found`);

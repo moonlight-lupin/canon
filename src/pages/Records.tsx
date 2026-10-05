@@ -146,6 +146,7 @@ type Rec = ServiceRecord & { saved: boolean; hidden?: string[] };
 export function RecordEditor() {
   const { id } = useParams();
   const sid = Number(id);
+  const nav = useNavigate();
   const { t, lang } = useI18n();
   const { canEdit, isAdmin, settings } = useSession();
   const congs = useCongregations();
@@ -166,7 +167,8 @@ export function RecordEditor() {
   if (!svc.data || !d) return <div className="page"><Loading /></div>;
   const s = svc.data;
   const restricted = !!d.hidden?.length;
-  const locked = !!d.verified_at && !isAdmin;
+  // a verified count is locked for everyone; an administrator reopens it to correct it
+  const locked = !!d.verified_at;
   const cur = d.currency;
   const dirty = JSON.stringify(d) !== JSON.stringify(rec.data);
   const set = (p: Partial<Rec>) => setD((x) => (x ? { ...x, ...p } : x));
@@ -179,7 +181,9 @@ export function RecordEditor() {
 
   const body = () => restricted
     ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes }
-    : {
+    : locked
+      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors }
+      : {
         attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency,
         // counts of currencies no longer in the offerings are dropped
         foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
@@ -204,6 +208,13 @@ export function RecordEditor() {
     setInk(null);
     setPadKey((k) => k + 1);
   }, t('Signed.'));
+  const removeRecord = () => {
+    if (!confirmAction(t('Delete this service record — attendance, visitors, notes and offerings? Only do this if it was entered by mistake. The change log keeps a copy.'))) return;
+    run(async () => {
+      await api.del(`/services/${sid}/record`);
+      nav('/records');
+    }, t('Deleted.'));
+  };
   const unsign = (name: string) => {
     if (!confirmAction(t('Remove the signature of {name}?').replace('{name}', name))) return;
     run(async () => {
@@ -387,13 +398,14 @@ export function RecordEditor() {
 
       <div className="rec-actions">
         {!restricted && <Link className="btn" to={`/records/${sid}/declaration`} target="_blank"><Icon name="print" />{t('Print cash-count declaration')}</Link>}
+        {isAdmin && d.saved && !d.verified_at && <button className="btn ghost danger" onClick={removeRecord} disabled={busy}><Icon name="trash" />{t('Delete record')}</button>}
         <div className="grow" />
         {canEdit && !restricted && (d.verified_at
           ? isAdmin && <button className="btn" onClick={() => verify(false)} disabled={busy}>{t('Reopen cash count')}</button>
           : !onScreen && <button className="btn" onClick={() => verify(true)} disabled={busy || !d.offerings.length}><Icon name="check" />{t('Mark as counted and verified')}</button>)}
         {canEdit && <button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button>}
       </div>
-      {locked && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified: only an administrator can change the offerings.')}</div>}
+      {locked && !restricted && <div className="small muted" style={{ textAlign: 'right' }}>{t('The cash count is verified, so the offerings are locked. To correct them, an administrator reopens the count; it is then verified again.')}</div>}
     </div>
   );
 }

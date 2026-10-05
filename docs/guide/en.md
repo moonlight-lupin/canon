@@ -51,6 +51,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 | Service records: attendance and notes | ✓ | ✓ | see only |
 | Service records: offerings and visitors' contact details | ✓ | ✓ (until the cash count is verified) | — |
 | Reopen a verified cash count | ✓ | — | — |
+| Delete a service record entered by mistake | ✓ | — | — |
 | Reports: attendance, visitors, serving, songs and Scripture, membership | ✓ | ✓ | ✓ (visitors without contact details) |
 | Reports: offerings, and the monthly summary for the treasurer | ✓ | ✓ | — |
 | Import CSV; export personal data | ✓ | ✓ | — |
@@ -249,9 +250,10 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 - **Cash count**: the number of each note and coin; Canon adds them up and shows any difference from the cash lines. Cash in another currency gets its own count under **Cash in USD** (or just a **Counted total** for currencies Canon has no notes and coins for), and an optional **Value once exchanged** in the church's currency for the treasurer (not added to the totals). Every currency's count must match its cash lines.
 - **Signing the count**: administrators choose under **Currency and funds** how counters sign:
   - **On paper** (the default): enter at least two **Counted by** names, print the declaration for them to sign, then **Mark as counted and verified**.
-  - **On screen**: once every count matches, each counter types their name and signs on the record with a finger, pen or mouse (**Sign the count**). When two have signed, the count is verified. The signatures belong to that exact count: if an administrator changes the money or reopens the count, the signatures are removed and the counters sign again.
+  - **On screen**: once every count matches, each counter types their name and signs on the record with a finger, pen or mouse (**Sign the count**). When two have signed, the count is verified. The signatures belong to that exact count: if an administrator reopens the count, or the money changes before the second signature, the signatures are removed and the counters sign again.
 
-  After verification only an administrator can change the money (**Reopen cash count**); attendance and notes can still be updated.
+  After verification the money is locked for everyone. To correct it, an administrator presses **Reopen cash count**, changes it, and the count is verified (or signed) again. Attendance, visitors and notes can still be updated.
+- **Deleting**: a service that has a record cannot be deleted, so its attendance and offerings are never lost by accident. If a record was entered by mistake, an administrator can **Delete record** on the record page (a verified count must be reopened first); the change log keeps a copy, offerings in full.
 - **Print cash-count declaration** prints an A4 page with the count (each currency separately), the totals by method, a short declaration, and the counters' signatures — drawn on screen, or blank name, signature and date lines to sign on paper. Churches that sign on screen can still print blank lines as a fallback before anyone has signed.
 
 Read-only users see attendance and notes only, without offerings or visitors' contact details. Every change is in **Settings → Change log** (an administrator's **History** button on the record shows just that service).

@@ -381,7 +381,7 @@ const RecordInput = z.object({
   currency: z.string().max(5).optional(),
 });
 api.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined })
-  .map((r) => (req.user?.role === 'viewer' ? { ...r, offering_total: null, cash_counted: null } : r))));
+  .map((r) => (canSeeMoney(req) ? r : rec.listRowForViewer(r)))));
 // reports (Records → Reports): offerings for editors and administrators only; visitors' contact details likewise
 const reportPeriod = (req: Request) => reports.period({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined });
 const canSeeMoney = (req: Request) => req.user?.role === 'admin' || req.user?.role === 'editor';
@@ -396,8 +396,9 @@ api.get('/reports/songs', h((req) => reports.songsReport(reportPeriod(req))));
 api.get('/reports/membership', h((req) => reports.membershipReport(reportPeriod(req))));
 api.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));
-  return req.user?.role === 'viewer' ? rec.forViewer(r) : r;
+  return canSeeMoney(req) ? r : rec.forViewer(r);
 }));
+api.delete('/services/:id/record', requireAdmin, h((req) => rec.deleteRecord(id(req), recWho(req))));
 api.put('/services/:id/record', h((req) => rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req))));
 api.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));
 api.post('/services/:id/record/unsign', h((req) => rec.unsign(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name, recWho(req))));
@@ -459,7 +460,10 @@ api.post('/services', h((req) => {
 }));
 api.get('/services/:id', h((req) => svc.getServiceFull(id(req))));
 api.patch('/services/:id', h((req) => svc.services.update(id(req), S.ServiceInput.partial().parse(req.body))));
-api.delete('/services/:id', h((req) => svc.services.remove(id(req))));
+api.delete('/services/:id', h((req) => {
+  rec.assertServiceDeletable(id(req));
+  return svc.services.remove(id(req));
+}));
 api.post('/services/:id/duplicate', h((req) => {
   const b = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), with_roster: z.boolean().optional() }).parse(req.body);
   return svc.duplicateService(id(req), b.date, b.with_roster);

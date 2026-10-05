@@ -1,12 +1,13 @@
 // Service records: one per service held — attendance, new visitors, notes for the team, offerings and the cash
-// count. Once the cash count is marked "counted and verified", only an administrator can change the money.
+// count. Once the cash count is verified, the money is locked for everyone: an administrator reopens the count to
+// correct it, and it is verified again. A service with a record cannot be deleted (the record would go with it).
 // Every change goes to the change log (table() logs it with the person who made it).
 import type { ServiceRecord } from '../../shared/records.ts';
 import { DENOMINATIONS, OFFERING_METHODS, cashTotal, countProblems, foreignCurrencies, methodTotal, money, moneyKey } from '../../shared/records.ts';
 import type { Signature } from '../../shared/records.ts';
 import crypto from 'node:crypto';
 import { all, get, type SqlValue } from '../db.ts';
-import { BadRequest, Forbidden, table } from '../lib/table.ts';
+import { BadRequest, Conflict, Forbidden, table } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
 import { services } from './services.ts';
 
@@ -39,9 +40,13 @@ export const signingMode = () => (getSettings().offering.signing === 'screen' ? 
 /** Save part of a service's record. Money is locked once verified, except for administrators. */
 export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who: { name: string; admin: boolean }): ServiceRecord {
   const cur = recordFor(serviceId);
-  const touchesMoney = MONEY_FIELDS.some((k) => patch[k] !== undefined);
-  if (cur.verified_at && touchesMoney && !who.admin) {
-    throw new Forbidden('The cash count has been verified. Only an administrator can change the offerings now.');
+  // compare what is sent with what is stored: an unchanged copy of the money (the editor sends the whole record) is fine
+  const sentMoney = Object.fromEntries(MONEY_FIELDS.filter((k) => patch[k] !== undefined).map((k) => [k, patch[k]]));
+  const nextMoney = { ...cur, ...sentMoney } as ServiceRecord;
+  const moneyChanged = hashOf(nextMoney) !== hashOf(cur) || JSON.stringify(nextMoney.counters ?? []) !== JSON.stringify(cur.counters ?? []);
+  if (cur.verified_at && moneyChanged) {
+    if (!who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can reopen it to change the offerings.');
+    throw new Conflict('The cash count has been verified. Reopen the cash count first (Reopen cash count), then change the offerings and verify it again.');
   }
   if (patch.offerings) {
     for (const l of patch.offerings) {
@@ -54,10 +59,10 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
     if (l.currency && !/^[A-Z]{3}$/.test(l.currency)) throw new BadRequest(`"${l.currency}" is not a currency code (three capital letters, e.g. USD)`);
   }
   const { id: _i, service_id: _s, saved: _v, updated_at: _u, verified_at: _va, verified_by: _vb, signatures: _sg, ...rest } = patch as ServiceRecord & { saved?: boolean };
-  // signatures belong to one exact count: when the money changes, they (and the verification) no longer apply
-  const next = { ...cur, ...rest };
-  const stale = cur.saved && (cur.signatures?.length ?? 0) > 0 && hashOf(next) !== hashOf(cur);
-  if (stale) Object.assign(rest, { signatures: [], verified_at: null, verified_by: null });
+  if (!moneyChanged) for (const k of MONEY_FIELDS) delete (rest as Record<string, unknown>)[k];
+  // signatures belong to one exact count: when the money changes they no longer apply (the count is not verified here:
+  // a verified count cannot change, above)
+  if (cur.saved && moneyChanged && (cur.signatures?.length ?? 0) > 0) Object.assign(rest, { signatures: [] });
   return cur.saved ? records.update(cur.id, rest) : records.insert({ ...blank(serviceId), ...rest });
 }
 
@@ -116,6 +121,23 @@ export function unsign(serviceId: number, name: string, who: { name: string; adm
   return records.update(cur.id, { signatures: next, ...(next.length < 2 ? { verified_at: null, verified_by: null } : {}) });
 }
 
+/** Refuse to delete a service that has a record: deleting the service would take its attendance and money with it. */
+export function assertServiceDeletable(serviceId: number) {
+  if (records.list('service_id = ?', [serviceId]).length) {
+    throw new Conflict('This service has a service record (attendance, visitors or offerings), so it cannot be deleted. If the record was entered by mistake, an administrator can delete it first on the record page.');
+  }
+}
+
+/** Delete a service's record (administrators; a verified count must be reopened first). Logged in full. */
+export function deleteRecord(serviceId: number, who: { admin: boolean }) {
+  if (!who.admin) throw new Forbidden('Only an administrator can delete a service record.');
+  const cur = recordFor(serviceId);
+  if (!cur.saved) return { deleted: false };
+  if (cur.verified_at) throw new Conflict('The cash count has been verified. Reopen it first if the record really has to be deleted.');
+  records.remove(cur.id);
+  return { deleted: true };
+}
+
 export interface RecordsQuery {
   from?: string;
   to?: string;
@@ -163,12 +185,21 @@ export function listRecords(q: RecordsQuery) {
 
 /** What a read-only user may see of a record: attendance and notes, not money or visitors' contact details. */
 export function forViewer(r: ServiceRecord & { saved?: boolean }) {
+  // built from an allowlist: a field added to records later stays hidden from viewers until it is listed here
   return {
-    ...r,
+    id: r.id, service_id: r.service_id, saved: r.saved, updated_at: r.updated_at,
+    attendance: r.attendance, children: r.children, online: r.online, notes: r.notes,
     visitors: r.visitors.map((v) => ({ name: v.name, source: v.source, status: v.status })),
-    offerings: [], cash: {}, counters: [], foreign_cash: {}, signatures: [],
+    currency: r.currency, offerings: [], cash: {}, counters: [], foreign_cash: {}, signatures: [], verified_at: null, verified_by: null,
     hidden: ['offerings', 'cash', 'counters', 'visitor contact'],
   };
 }
+
+/** A list row for a viewer: the same allowlist idea (no money of any currency). */
+export const listRowForViewer = (r: ReturnType<typeof listRecords>[number]) => ({
+  service_id: r.service_id, date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,
+  recorded: r.recorded, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors, has_notes: r.has_notes,
+  currency: r.currency, offering_total: null, cash_counted: null, other_currencies: [], verified: false,
+});
 
 export const recordCount = () => get<{ n: number }>('SELECT COUNT(*) AS n FROM service_records')?.n ?? 0;
