@@ -5,7 +5,8 @@ export * from '../shared/types.ts';
 
 import type { Person, Coworker, Team, ServiceRole, Service, Unavailability } from '../shared/types.ts';
 
-export type PersonRow = Person & { household_name: string | null };
+/** `birthday` (MM-DD) replaces `birth_date` for read-only accounts: no year, no age */
+export type PersonRow = Person & { household_name: string | null; birthday?: string };
 export type CoworkerRow = Coworker & { person_name: string; phone: string | null; email: string | null };
 export type RoleWithMembers = ServiceRole & { members: { person_id: number; name: string }[] };
 export type TeamWithRoles = Team & { roles: RoleWithMembers[] };

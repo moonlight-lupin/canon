@@ -47,6 +47,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 | What | Admin | Editor | Viewer |
 |---|---|---|---|
 | See services, library, registers, groups, rota | ✓ | ✓ | ✓ |
+| Members' phone, e-mail, address, notes, reasons for absence, birth year | ✓ | ✓ | — (names, households, groups and birthdays — day and month — only) |
 | Plan services; edit library, members, co-workers, groups, rota, templates | ✓ | ✓ | — |
 | Service records: attendance and notes | ✓ | ✓ | see only |
 | Service records: offerings and visitors' contact details | ✓ | ✓ (until the cash count is verified) | — |
@@ -313,7 +314,7 @@ Claude looks at your past services first: the same Sunday last year, the same se
 ### What Claude can and can't see
 
 - It sees only the modules you allow, and acts as the person who approved it. A viewer's connection is always read only.
-- Member contact details and birthdays stay hidden unless you turn on **Expose member contact details & birthdays**.
+- Member contact details and birthdays stay hidden unless you turn on **Expose member contact details & birthdays** — and a connection approved by a read-only account never gets them, whatever the switch says.
 - It cannot send e-mail, delete people, or see accounts or settings. It asks before changing things.
 - **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export CSV** (every entry matching the filters) and its own **Keep** period.
 

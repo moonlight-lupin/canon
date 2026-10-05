@@ -23,6 +23,7 @@ import { all, get, run } from './db.ts';
 import { config } from './config.ts';
 import { normalisePublicUrl, publicUrl } from './lib/public-url.ts';
 import { asActor } from './lib/actor.ts';
+import { viewerScrub } from './lib/viewer-scrub.ts';
 import { ENTITY_LABEL, changeLogUsers, listAudit, listChanges, logChange } from './repo/changelog.ts';
 import * as reg from './repo/registers.ts';
 import * as vol from './repo/volunteers.ts';
@@ -161,6 +162,8 @@ api.get('/about', (_req, res) => {
 api.use(requireUser);
 // the change log records who is making each change
 api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web' }, next));
+// read-only accounts: no members' contact details, notes or birth years (server/lib/viewer-scrub.ts)
+api.use(viewerScrub);
 
 api.patch('/me', h((req) => {
   const b = z.object({ lang: S.LangSchema.optional(), display_name: z.string().min(1).optional(), current_password: z.string().optional(), new_password: z.string().min(8).optional() }).parse(req.body);
@@ -259,6 +262,8 @@ api.get('/dashboard', h(() => {
 
 api.get('/people', h((req) => reg.listPeople({
   q: str(req.query.q), status: str(req.query.status),
+  // read-only accounts search names only (searching by phone or e-mail would reveal them)
+  names_only: req.user?.role === 'viewer',
   household_id: Number(req.query.household_id) || undefined,
   congregation_id: Number(req.query.congregation) || undefined,
   limit: Number(req.query.limit) || undefined, offset: Number(req.query.offset) || undefined,

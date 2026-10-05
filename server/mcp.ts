@@ -82,9 +82,9 @@ const WHOAMI: ToolDef = {
       church: { name: settings.church_name, languages: settings.languages.map((l) => ({ code: l, name: langInfo(l).name })) },
       congregations: listCongregations().filter((c) => c.active).map((c) => ({ id: c.id, code: c.code, name: c.name, languages: c.languages })),
       modules: Object.fromEntries(MODULES.map((m) => [m, { access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role) }])),
-      member_contact_details: cfg.expose_member_pii ? 'shown where relevant — handle with care (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
+      member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : auth.user.role === 'viewer' && cfg.expose_member_pii ? 'withheld: read-only accounts never receive members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
       tools: allowedTools(cfg, auth.scopes, auth.user.role).map((t) => t.name),
-      playbooks: allowedPrompts(levels, cfg.expose_member_pii).map((p) => p.name),
+      playbooks: allowedPrompts(levels, piiFor(cfg, auth.user.role)).map((p) => p.name),
       never: [
         'send e-mail or messages', 'delete people', 'see user accounts, passwords, settings or connection data',
         ...(levels.records === 'off' ? ['see service records (attendance, visitors, notes)'] : []),
@@ -92,7 +92,7 @@ const WHOAMI: ToolDef = {
         'change offerings, cash counts or signatures, or verify a count', 'type hymn words that are under copyright unless the church holds a licence',
         'remove or overwrite anything without asking the user first',
       ],
-      instructions: instructions(levels, cfg.expose_member_pii, settings.languages),
+      instructions: instructions(levels, piiFor(cfg, auth.user.role), settings.languages),
       handbook: 'canon://guide/agents',
     };
   },
@@ -117,6 +117,9 @@ export function toolCatalog() {
 // ---------------------------------------------------------------- exposure control
 
 /** Effective access to a module for this request = min(admin setting, token scope, user role). */
+/** Members' personal data on this connection: the administrator shares it, and the person is not a read-only account. */
+export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && role !== 'viewer';
+
 export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): ModuleAccess {
   const setting = configuredAccess(module, cfg.modules);
   if (!cfg.enabled || setting === 'off') return 'off';
@@ -132,7 +135,7 @@ export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): T
     if (t.always) return cfg.enabled;
     const lvl = effectiveAccess(t.module, cfg, scopes, role);
     if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
-    return !t.requiresPii || cfg.expose_member_pii;
+    return !t.requiresPii || piiFor(cfg, role);
   });
 }
 
@@ -305,8 +308,9 @@ export function buildServer(auth: McpAuth, base = '') {
   const settings = getSettings();
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
-  const ctx: Ctx = { auth, pii: cfg.expose_member_pii, levels, base };
-  const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, cfg.expose_member_pii, settings.languages) });
+  const pii = piiFor(cfg, auth.user.role);
+  const ctx: Ctx = { auth, pii, levels, base };
+  const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, pii, settings.languages) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;
   const register = (t: ToolDef) =>
@@ -330,7 +334,7 @@ export function buildServer(auth: McpAuth, base = '') {
     server.registerTool('canon_placeholder', { description: 'placeholder', inputSchema: {} }, async () => ok(null)).remove();
   }
   // Playbooks (prompts) are filtered by the same effective access; the handbook and user guide are always readable.
-  registerPrompts(server, { levels, pii: cfg.expose_member_pii, languages: settings.languages, today: new Date().toISOString().slice(0, 10) });
+  registerPrompts(server, { levels, pii, languages: settings.languages, today: new Date().toISOString().slice(0, 10) });
   registerResources(server);
   auditInHandlers = !wrapToolsCall(server, auth);
   compactToolsList(server);

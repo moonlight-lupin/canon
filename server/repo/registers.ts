@@ -28,6 +28,8 @@ export const displayName = (p: Pick<Person, 'first_name' | 'last_name' | 'prefer
 };
 
 export interface PeopleQuery {
+  /** search names only, not e-mail or phone (read-only accounts) */
+  names_only?: boolean;
   q?: string;
   status?: string;
   household_id?: number;
@@ -41,7 +43,9 @@ export function listPeople(f: PeopleQuery = {}) {
   const params: SqlValue[] = [];
   if (f.q) {
     where.push(
-      `(p.first_name || ' ' || p.last_name || ' ' || IFNULL(p.native_name,'') || ' ' || IFNULL(p.preferred_name,'') || ' ' || IFNULL(p.email,'') || ' ' || IFNULL(p.phone,'')) LIKE ? ESCAPE '\\'`,
+      f.names_only
+        ? `(p.first_name || ' ' || p.last_name || ' ' || IFNULL(p.native_name,'') || ' ' || IFNULL(p.preferred_name,'')) LIKE ? ESCAPE '\\'`
+        : `(p.first_name || ' ' || p.last_name || ' ' || IFNULL(p.native_name,'') || ' ' || IFNULL(p.preferred_name,'') || ' ' || IFNULL(p.email,'') || ' ' || IFNULL(p.phone,'')) LIKE ? ESCAPE '\\'`,
     );
     params.push(likeTerm(f.q));
   }
