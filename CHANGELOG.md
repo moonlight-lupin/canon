@@ -16,6 +16,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
   Sundays, Christmas Day, Easter Day and Pentecost have their own. Every greeting is in each interface language.
 - **The Bible card** lists the installed versions by language, instead of a verse count.
 - **The library cards** open their own Library tab: Hymns & songs, Liturgical texts or Bible.
+- **Canon's mark:** the gold reed now stands in front of the white crossbar.
 - No database change.
 
 ## 0.14.0 — UI/UX audit of the core
