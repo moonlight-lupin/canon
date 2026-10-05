@@ -39,7 +39,8 @@ It was designed with a bilingual (English / 中文) Reformed and Presbyterian co
   - Excel import and export;
   - a change log;
   - backups and archives;
-  - an audit-logged MCP server for AI agents, with access set per module.
+  - roles a church can adjust, congregation walls and optional modules;
+  - an audit-logged MCP server for AI agents, following the same roles.
 
 The [user guide](docs/guide/en.md) describes all of it.
 
@@ -73,7 +74,8 @@ Keep the "Canon server" window open while Canon is in use.
 - Member data stays in your own database (`data/`, never in the repository).
 - Read-only accounts see members' names, not their contact details or notes, and see birthdays as day and month only. Custom fields marked sensitive are hidden from read-only accounts too (editors and administrators see them).
 - AI agents see personal details only if an administrator allows it, and never when acting for a read-only user.
-- **Settings → Security & privacy** has a checklist, a log of who opened which member, how long visitors' details are kept, and yearly archives.
+- **Settings → Security & privacy** has a checklist, a log of who opened which member, how long visitors' details are kept, and yearly archives. Administrators can export or erase a member's personal data on request.
+- Sign-in attempts are limited; two-step sign-in can be required for administrators; backups can be encrypted with a password.
 - The database is an ordinary file: protect the computer it is on with disk encryption, and an account for each person.
 
 ## Content and copyright

@@ -1,13 +1,13 @@
 # Roadmap
 
-What is planned for Canon after v0.12.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
+What is planned for Canon after v0.13.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
 
 | Version | Theme |
 |---|---|
 | 0.10.0 | Reporting — done |
 | 0.11.0 | Hardening: archiving, storage, privacy; custom member fields — done |
 | 0.12.0 | Meetings, Sunday school and the church calendar — done |
-| 0.13.0 | Roles and permissions, optional modules, second hardening round |
+| 0.13.0 | Roles and permissions, optional modules, second hardening round — done |
 | 0.14.0 | UI/UX audit of the core (worship and records) |
 | 0.15.0 | Lending library and asset register (two optional modules, one release) |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
@@ -69,24 +69,24 @@ Changed from the plan, at the church's request:
 - each meeting has its own leader;
 - the offering is chosen per meeting, not per group.
 
-## 0.13.0 — Roles and permissions, optional modules, second hardening round
+## 0.13.0 — Roles and permissions, optional modules, second hardening round (done)
 
-Roles reorganised around what churches actually do (for example treasurer, librarian, equipment keeper, claims approver, group leader), with permissions per module and per field — one permission model shared by the web app and AI agents. This includes:
-- finer control over who sees which member details, beyond the read-only rule added in 0.11;
-- deciding whether congregations should also limit what people can see (today they are filters, not walls);
-- for signatures and approvals, telling apart "two people signed on one device" from "two people each approved from their own account" before claims rely on it;
-- approved, dated versions of a service's bulletin and slides;
-- **optional modules**: turning modules on and off in onboarding and Settings, ready for 0.15 and 0.16.
+Shipped (see [CHANGELOG.md](../CHANGELOG.md)):
+- ready-made roles a church can adjust (administrator, pastor, editor, planner, treasurer, secretary, read-only), with access per module and per kind of member detail, shared by the web app and AI agents;
+- congregation walls for accounts limited to one congregation;
+- approvals from counters' own accounts, told apart from signatures on one device;
+- approved, dated versions of the bulletin and slides;
+- optional modules in onboarding and Settings (meetings and calendar, volunteers and rota, the visitor form);
+- sign-in limits, two-step sign-in (requirable for administrators);
+- encrypted backups;
+- export and erasure of a member's personal data (PDPA);
+- archive ages per kind (records, logs);
+- Bible version licences: edition, licence and allowed uses (print, project, online), enforced on the outputs.
 
-The second round of hardening includes:
-- **encrypted backups**;
-- what was carried forward from 0.11: archive ages per kind of data, and per-item content rights.
-
-Candidates to decide when the round is scoped:
-- running Canon as a Windows service instead of a console window;
-- two-factor sign-in for administrators;
-- limits on repeated sign-in attempts;
-- letting a member's own data be exported or erased on request (PDPA).
+Differences from the plan:
+- **Roles for the new modules** (librarian, equipment keeper, claims approver) come with those modules (0.15, 0.16); the permission model they plug into is in place. Group leaders keep the leader mark from 0.12.
+- **Content rights** cover Bible versions; songs keep their public-domain flag and copyright line.
+- **Running Canon as a Windows service** is left for the third hardening round (0.17).
 
 ## 0.14.0 — UI/UX audit
 
@@ -123,7 +123,7 @@ Part of the book-keeping module: expense claims with receipts, approval and on-s
 
 ## 0.17.0 — Third hardening round
 
-After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals).
+After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals). Also carried forward from 0.13: running Canon as a Windows service instead of a console window.
 
 ## Later
 

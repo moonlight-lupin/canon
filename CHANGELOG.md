@@ -4,6 +4,28 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.13.0 — roles and permissions, optional modules, second hardening round
+
+- **Roles a church can shape** (Settings → Users & access → Roles):
+  - ready-made roles: administrator, pastor, editor, planner, treasurer, secretary and read-only;
+  - each sets, per module, no access, read or edit, and whether the role sees members' contact details, sensitive fields, and may reopen a verified cash count;
+  - administrators can adjust the ready-made ones or add their own;
+  - one model for the web app and AI agents: the sidebar, the server and the MCP tools follow the same role.
+- **Congregation walls:** an account can be limited to one congregation. It then sees and creates only that congregation's (and the whole church's) services, members, groups, meetings and records.
+- **Counters approve from their own accounts** (Settings → Offerings): a cash count can be approved by each counter signed in to their own account, shown apart from signatures drawn on one device.
+- **Approved versions** of a service's bulletin and slides: **Approve** keeps a dated copy; later changes don't alter it, and the copy can be opened, printed or projected as approved.
+- **Optional modules** (Settings → Modules, and in onboarding): meetings and calendar, volunteers and rota, and the visitor form can be turned off. A module that is off is hidden, refused by the server and missing from AI agents' tools; its data is kept.
+- **Signing in:**
+  - five wrong passwords lock an account for 15 minutes (an administrator's new password unlocks it);
+  - **two-step sign-in** with an authenticator app, with one-time recovery codes (Settings → My profile);
+  - a church can require it for administrators (Settings → Security & privacy); an administrator can reset it for someone who lost their phone.
+- **Encrypted backups:** with a backup password (Settings → Backups), backups and the archive copies made with them are encrypted. This computer restores its own backups without the password; elsewhere Canon asks for it. `npm run decrypt-backup` for restoring by hand.
+- **A member's personal data (PDPA):** administrators download everything Canon holds about a member as a file for them, and erase it on request. The record stays as an anonymous placeholder so history still counts; the change log and archives forget them.
+- **Archive ages per kind:** service records and logs can be archived after different numbers of years.
+- **Bible version licences:** each version records its edition, licence and whether it may be printed, projected or put online. Outputs a use isn't allowed for show the reference without the text, and the planner warns. New uploads start without "online".
+- **AI agents:** tools follow the account's role and congregation; a module that is off has no tools.
+- Database: 23 → 24.
+
 ## 0.12.0 — meetings, Sunday school and the church calendar
 
 - **Meetings** (Congregation → Meetings): fellowship meetings, cell groups, prayer meetings, Sunday school classes, committee meetings and one-off gatherings.
