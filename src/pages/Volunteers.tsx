@@ -221,7 +221,7 @@ function RotaTab({ people }: { people: PersonRow[] }) {
       {data && data.services.length > 0 && load.length > 0 && (
         <div className="card no-print">
           <div className="card-head">
-            <h3>{t('Serving load in this period')}</h3>
+            <h2 className="h3">{t('Serving load in this period')}</h2>
             <span className="muted small">{t('Assignments per person, declined excluded')}</span>
           </div>
           <div className="load-list">
@@ -302,7 +302,7 @@ function TeamsTab({ people }: { people: PersonRow[] }) {
       {data?.map((tm) => (
         <div key={tm.id} className="card flush">
           <div className="card-head" style={{ padding: '14px 16px 0' }}>
-            <h3><span className="dot" style={{ background: tm.color, width: 10, height: 10 }} /><Bi v={tm.name} /></h3>
+            <h2 className="h3"><span className="dot" style={{ background: tm.color, width: 10, height: 10 }} /><Bi v={tm.name} /></h2>
             {canEdit && (
               <div className="row" style={{ gap: 4 }}>
                 <button className="btn sm" onClick={() => setRole({ team: tm, role: null })}><Icon name="plus" />{t('Add role')}</button>
@@ -552,7 +552,7 @@ function AwayTab({ people }: { people: PersonRow[] }) {
       <div className="row end"><CsvTools entity="unavailability" label={t('Unavailability')} onImported={reload} /></div>
       {canEdit && (
         <div className="card">
-          <h3 className="sect">{t('Add unavailability')}</h3>
+          <h2 className="sect h3">{t('Add unavailability')}</h2>
           <div className="form-grid">
             <Field label={t('Person')}>
               <Combo value={pid} noneLabel="—" ariaLabel={t('Person')}

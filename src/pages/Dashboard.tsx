@@ -58,13 +58,13 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="muted">{lang === 'zh' ? '未来八周没有安排聚会。' : 'No services planned in the next eight weeks.'} <Link to="/services?new">{t('New service')} →</Link></div>
+            <div className="muted">{lang === 'zh' ? '未来八周没有安排聚会。' : 'No services planned in the next eight weeks.'}</div>
           )}
         </div>
 
         <div className="card">
           <div className="card-head"><h2><Icon name="users" width={18} height={18} />{t('Members')}</h2><Link to="/members" className="small">{t('Open')} →</Link></div>
-          <div className="grid cols-4" style={{ gap: 10 }}>
+          <div className="grid cols-4 stats" style={{ gap: 10 }}>
             <div className="stat"><span className="n">{count('member')}</span><span className="l">{t('Member')}</span></div>
             <div className="stat"><span className="n">{count('regular')}</span><span className="l">{t('Regular')}</span></div>
             <div className="stat"><span className="n">{count('visitor')}</span><span className="l">{t('Visitor')}</span></div>

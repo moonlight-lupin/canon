@@ -21,7 +21,7 @@ import { ModulesPanel } from './settings/ModulesTab.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { Icon } from '../components/icons.tsx';
 
-type Tab = 'church' | 'languages' | 'modules' | 'users' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
+type Tab = 'profile' | 'church' | 'languages' | 'modules' | 'users' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -29,20 +29,33 @@ export default function Settings() {
   // ?tab=email etc. opens a specific tab (used by links from other screens)
   const [tab, setTab] = useState<Tab>(() => {
     const q = new URLSearchParams(location.search).get('tab');
-    return q && ['church', 'languages', 'modules', 'users', 'member-fields', 'offerings', 'visitor-form', 'email', 'backups', 'security', 'changelog', 'mcp'].includes(q) ? (q as Tab) : 'church';
+    return q && ['profile', 'church', 'languages', 'modules', 'users', 'member-fields', 'offerings', 'visitor-form', 'email', 'backups', 'security', 'changelog', 'mcp'].includes(q) ? (q as Tab) : 'profile';
   });
+  // the tabs in groups (a thin line between groups): my own account; the church; people and access; records; Canon itself
+  const groups: [Tab, string][][] = [
+    [['profile', 'My profile']],
+    [['church', 'Church'], ['languages', 'Languages'], ['modules', 'Modules']],
+    [['users', 'Users & access'], ['member-fields', 'Member fields']],
+    [['offerings', 'Offerings'], ['visitor-form', 'Visitor form']],
+    [['email', 'E-mail'], ['backups', 'Backups'], ['security', 'Security & privacy'], ['changelog', 'Change log'], ['mcp', 'AI / MCP']],
+  ];
+  const shown = (k: Tab) => k !== 'visitor-form' || settings?.modules?.visitor_form !== false;
   return (
     <div className="page people-page">
       <PageHead eyebrow={t('Admin')} title={t('Settings')} />
       <div className="stack">
-        <ProfileCard />
+        {!isAdmin && <ProfileCard />}
         {isAdmin && (
           <div>
-            <div className="tabs mt" role="tablist">
-              {([['church', 'Church'], ['languages', 'Languages'], ['modules', 'Modules'], ['users', 'Users & access'], ['member-fields', 'Member fields'], ['offerings', 'Offerings'], ['visitor-form', 'Visitor form'], ['email', 'E-mail'], ['backups', 'Backups'], ['security', 'Security & privacy'], ['changelog', 'Change log'], ['mcp', 'AI / MCP']] as [Tab, string][]).filter(([k]) => k !== 'visitor-form' || settings?.modules?.visitor_form !== false).map(([k, l]) => (
-                <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>
-              ))}
+            <div className="tabs" role="tablist">
+              {groups.map((g, gi) => [
+                gi > 0 && <span key={`sep-${gi}`} className="tab-sep" aria-hidden="true" />,
+                ...g.filter(([k]) => shown(k)).map(([k, l]) => (
+                  <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>
+                )),
+              ])}
             </div>
+            {tab === 'profile' && <ProfileCard />}
             {tab === 'church' && <ChurchTab />}
             {tab === 'changelog' && <ChangeLogTab />}
             {tab === 'languages' && settings && <LanguagesPanel settings={settings} onSaved={reloadSettings} />}

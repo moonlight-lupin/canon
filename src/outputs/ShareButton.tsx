@@ -1,5 +1,5 @@
 // Turn the read-only team share link on/off and copy it. Used by the service editor.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { useAction, useToast } from '../components/ui.tsx';
@@ -11,6 +11,38 @@ export function shareUrl(token: string) {
 }
 
 export function ShareButton({
+  serviceId, shareToken, onChange, compact,
+}: { serviceId: number; shareToken: string | null; onChange?: (token: string | null) => void; compact?: boolean }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('keydown', close);
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('keydown', close);
+    };
+  }, [open]);
+  if (!compact) return <ShareBox serviceId={serviceId} shareToken={shareToken} onChange={onChange} />;
+  // a planner toolbar: one button (showing whether the link is on) that opens the link controls
+  return (
+    <div className="tp-menu" ref={ref}>
+      <button type="button" className={`btn sm${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        title={t('Share with team (read-only, no contact details)')}>
+        <Icon name="link" />{t('Share')}{shareToken && <span className="badge ok" style={{ marginLeft: 4 }}>{t('On')}</span>}
+      </button>
+      {open && <div className="tp-menu-list down share-pop" role="dialog" aria-label={t('Share link')}><ShareBox serviceId={serviceId} shareToken={shareToken} onChange={onChange} /></div>}
+    </div>
+  );
+}
+
+/** The share link itself: enable, copy, open, disable. */
+function ShareBox({
   serviceId, shareToken, onChange,
 }: { serviceId: number; shareToken: string | null; onChange?: (token: string | null) => void }) {
   const { t } = useI18n();

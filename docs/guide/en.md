@@ -119,7 +119,7 @@ The [Calendar](/calendar) shows services, meetings and the church's other events
 
 When the service is ready, switch **Draft** to **Final** at the top.
 
-> **Tip:** **Duplicate** copies a service to another date (optionally with the roster). **Save as template** turns a good order into a template.
+> **Tip:** in the **⋯** menu at the end of the **Outputs** bar, **Duplicate** copies a service to another date (optionally with the roster) and **Save as template** turns a good order into a template. **Delete this service** is there too.
 
 ### 2. Roster and reminders
 
@@ -157,15 +157,15 @@ Open the **Team & roster** tab.
 | **O** | Overview of all slides |
 | number + Enter | Jump to that slide |
 
-**PowerPoint** in the **Outputs** bar downloads the slides as a PowerPoint file, for a computer without Canon or to send to the AV team. It uses the service's slide template (colours, background picture, fonts, text size, lines per slide, footer and screen shape); **Custom CSS** is not carried over. Open it in PowerPoint and press **F5**.
+**Files** → **PowerPoint** in the **Outputs** bar downloads the slides as a PowerPoint file, for a computer without Canon or to send to the AV team. It uses the service's slide template (colours, background picture, fonts, text size, lines per slide, footer and screen shape); **Custom CSS** is not carried over. Open it in PowerPoint and press **F5**.
 
 **Approve** (in the **Outputs** bar; anyone who may edit the service): keeps a copy of the bulletin and slides as they are now — the words, order, people, bulletin template and slide template — with the date and who approved it, and an optional note. The button then shows **Approved**, or **Changed since approved** once the service changes. **Approved versions** lists them; **Bulletin** or **Slides** next to one opens that version exactly as it was approved (a green line at the top says so), even after the service has changed. Pictures are referred to, not copied.
 
 ### 5. Share with the team
 
 - **Run sheet**: a printable timed list with leaders and AV cues for the team.
-- **Share with team**: press **Enable link**, then **Copy** and send the link. It is read-only and shows no contact details. **Disable link** stops it; turning it on again makes a new link.
-- **PowerPoint**, **Word document** and **FreeShow project** download files for other programs.
+- **Share** (in the **Outputs** bar; it shows **On** while the link works): press **Enable link**, then **Copy** and send the link. It is read-only and shows no contact details. **Disable link** stops it; turning it on again makes a new link.
+- **Files** → **PowerPoint**, **Word document** and **FreeShow project** download files for other programs.
 - An AI assistant connected to Canon can also make **download links** for these files (they stop working after a day or so). Anyone with such a link can download that file without signing in, so send it only to the people who need it.
 - **Email the team** opens your own e-mail program with the team in BCC.
 
@@ -323,7 +323,7 @@ The form is a public page: anyone with the service's link or QR code can open it
 
 Open [Settings](/settings).
 
-- **My profile** (everyone): display name, interface language, **Change password**.
+- **My profile** (everyone; for administrators it is the first tab): display name, interface language, **Change password**.
 - **Church**, **Languages**, **Users & access**: see [Getting started](#getting-started).
 - **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form**. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it; values already entered are kept and come back if the field is added again.

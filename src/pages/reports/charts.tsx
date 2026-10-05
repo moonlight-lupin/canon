@@ -41,7 +41,7 @@ export function Section({ title, tip, csv, children }: { title: string; tip?: st
   return (
     <section className="card stack rep-sect">
       <div className="row between">
-        <h3>{title}{tip && <InfoTip text={tip} />}</h3>
+        <h2 className="h3">{title}{tip && <InfoTip text={tip} />}</h2>
         {csv && <button className="btn sm ghost no-print" onClick={csv}><Icon name="download" />{t('CSV')}</button>}
       </div>
       {children}

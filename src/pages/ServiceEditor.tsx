@@ -28,6 +28,7 @@ import { TeamTab } from './service/TeamTab.tsx';
 import { ApprovalsButton } from './service/Approvals.tsx';
 import { type Assignment, fmtMin, KIND_ICON, KIND_LABEL, toMin } from './service/common.ts';
 import { RightsWarnings } from './service/RightsWarnings.tsx';
+import { CardMenu } from './template-ui.tsx';
 
 export default function ServiceEditor() {
   const { id } = useParams();
@@ -265,29 +266,34 @@ export default function ServiceEditor() {
         )}
       </PageHead>
 
-      {/* Outputs */}
-      <div className="card" style={{ padding: '10px 12px', marginBottom: 16 }}>
+      {/* Outputs: what you open every week as buttons; files, sharing and rarely used actions behind one button each */}
+      <div className="card out-bar" style={{ padding: '10px 12px', marginBottom: 16 }}>
         <div className="row">
-          <span className="eyebrow" style={{ margin: '0 6px 0 2px' }}>{t('Outputs')}</span>
+          <span className="eyebrow out-bar-label" style={{ margin: '0 6px 0 2px' }}>{t('Outputs')}</span>
           <Link className="btn sm" to={`/services/${sid}/bulletin`}><Icon name="print" />{t('Bulletin')}</Link>
           <Link className="btn sm" to={`/services/${sid}/slides`} target="_blank"><Icon name="monitor" />{t('Slides')}</Link>
           <Link className="btn sm" to={`/services/${sid}/runsheet`}><Icon name="list" />{t('Run sheet')}</Link>
-          <a className="btn sm" href={`/api/services/${sid}/slides.pptx`} title={t('The slides as a PowerPoint file, styled by the slide template')}><Icon name="download" />{t('PowerPoint')}</a>
-          <a className="btn sm" href={`/api/services/${sid}/export.docx`}><Icon name="file" />{t('Word document')}</a>
-          <a className="btn sm" href={`/api/services/${sid}/freeshow.project`}><Icon name="download" />{t('FreeShow project')}</a>
+          <CardMenu down label={t('Download the service as a file')} trigger={<><Icon name="download" />{t('Files')}<Icon name="chevronDown" /></>} actions={[
+            { label: t('PowerPoint'), title: t('The slides as a PowerPoint file, styled by the slide template'), onClick: () => { window.location.href = `/api/services/${sid}/slides.pptx`; } },
+            { label: t('Word document'), title: t('The order of service as a Word file'), onClick: () => { window.location.href = `/api/services/${sid}/export.docx`; } },
+            { label: t('FreeShow project'), title: t('The slides for FreeShow'), onClick: () => { window.location.href = `/api/services/${sid}/freeshow.project`; } },
+          ]} />
           <button className="btn sm" onClick={emailTeam}><Icon name="mail" />{t('Email the team')}</button>
           <div className="grow" />
           <ApprovalsButton sid={sid} canEdit={canEdit} />
-          {canEdit && <ShareButton serviceId={sid} shareToken={svc.share_token} onChange={(token) => setSvc({ ...svc, share_token: token })} />}
+          {canEdit && <ShareButton compact serviceId={sid} shareToken={svc.share_token} onChange={(token) => setSvc({ ...svc, share_token: token })} />}
           {canEdit && (
-            <>
-              <button className="btn sm ghost" onClick={() => setDialog('duplicate')}><Icon name="copy" />{t('Duplicate')}</button>
-              <button className="btn sm ghost" onClick={() => setDialog('template')}><Icon name="layout" />{t('Save as template')}</button>
-              <button className="btn sm ghost danger" onClick={async () => {
-                if (!confirmAction(t('Are you sure?'))) return;
-                if (await run(() => api.del(`/services/${sid}`))) nav(svc.kind === 'meeting' ? '/meetings' : '/services');
-              }}><Icon name="trash" /></button>
-            </>
+            <CardMenu down label={t('More actions')} actions={[
+              { label: t('Duplicate'), onClick: () => setDialog('duplicate') },
+              { label: t('Save as template'), onClick: () => setDialog('template') },
+              {
+                label: svc.kind === 'meeting' ? t('Delete this meeting') : t('Delete this service'), danger: true,
+                onClick: async () => {
+                  if (!confirmAction(t('Are you sure?'))) return;
+                  if (await run(() => api.del(`/services/${sid}`))) nav(svc.kind === 'meeting' ? '/meetings' : '/services');
+                },
+              },
+            ]} />
           )}
         </div>
       </div>

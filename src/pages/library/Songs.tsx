@@ -31,7 +31,7 @@ export function Songs() {
     <>
       <div className="row" style={{ marginBottom: 12 }}>
         <div className="grow" style={{ maxWidth: 360 }}><SearchBox value={q} onChange={setQ} placeholder={t('Title, words or number (HP 123)')} /></div>
-        <select value={cat} onChange={(e) => setCat(e.target.value as SongCategory | '')} style={{ width: 150 }}>
+        <select value={cat} onChange={(e) => setCat(e.target.value as SongCategory | '')} style={{ width: 150 }} aria-label={t('Category')}>
           <option value="">{t('All')}</option>
           {SONG_CATS.map((c) => <option key={c} value={c}>{lt(SONG_CAT_LABEL[c])}</option>)}
         </select>

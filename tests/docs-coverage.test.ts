@@ -30,7 +30,8 @@ function navLabels(): string[] {
 /** Settings tab labels, read from the Settings page. */
 function settingsTabs(): string[] {
   const src = read('src/pages/Settings.tsx');
-  const m = src.match(/\(\[\s*(\[\s*'church'[\s\S]*?)\]\s*as\s*\[Tab,\s*string\]\[\]\)/);
+  // the tabs, in groups: const groups: [Tab, string][][] = [ [['profile', 'My profile']], … ];
+  const m = src.match(/const groups: \[Tab, string\]\[\]\[\] = \[([\s\S]*?)\n {2}\];/);
   assert.ok(m, 'Settings tab list not found — update this test if the Settings page changed shape');
   return [...m[1].matchAll(/\[\s*'[^']+',\s*'([^']+)'\s*\]/g)].map((x) => x[1]);
 }

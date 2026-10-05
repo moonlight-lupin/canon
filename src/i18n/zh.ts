@@ -36,6 +36,13 @@ const zh: Record<string, string> = {
   'Automatic from': '自动转换自',
   // the sidebar section for services and meetings
   'Planner': '策划',
+  'Files': '文件',
+  'Download the service as a file': '把聚会下载为文件',
+  'The order of service as a Word file': '聚会程序的 Word 文件',
+  'The slides for FreeShow': '给 FreeShow 用的投影片',
+  'Share': '分享',
+  'Delete this meeting': '删除这次聚会活动',
+  'Delete this service': '删除这次聚会',
   '(empty)': '（空白）',
   'Show this section': '展开此部分',
   'Fold this section': '收起此部分',

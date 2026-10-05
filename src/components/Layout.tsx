@@ -153,7 +153,9 @@ export function Layout() {
           <ReedMark className="brand-mark" />
           <strong className="serif">Canon</strong>
         </div>
-        <Outlet />
+        <main id="main">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

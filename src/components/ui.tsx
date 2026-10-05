@@ -159,7 +159,8 @@ export function ErrorBox({ error }: { error: string }) {
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="empty">
-      <h3>{title}</h3>
+      {/* a message, not a section heading (it would break the page's heading order) */}
+      <p className="empty-title">{title}</p>
       {children}
     </div>
   );
@@ -400,7 +401,7 @@ export function SearchBox({ value, onChange, placeholder, autoFocus }: { value: 
   return (
     <div className="search">
       <Icon name="search" />
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? t('Search…')} autoFocus={autoFocus} />
+      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? t('Search…')} aria-label={placeholder ?? t('Search…')} autoFocus={autoFocus} />
     </div>
   );
 }

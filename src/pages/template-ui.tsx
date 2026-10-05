@@ -111,8 +111,11 @@ export function TemplateCard({ thumb, name, desc, badges, primary, actions, mute
   );
 }
 
-/** The "⋯" button with a template's other actions (archive, restore, church default, delete …). */
-export function CardMenu({ label, actions }: { label: string; actions: CardAction[] }) {
+/**
+ * A menu button: "⋯" by default (a template's other actions — archive, restore, church default, delete …), or a
+ * labelled button (`trigger`, e.g. "Files ▾"). The list opens above the button, or below it with `down`.
+ */
+export function CardMenu({ label, actions, trigger, down }: { label: string; actions: CardAction[]; trigger?: ReactNode; down?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -129,11 +132,15 @@ export function CardMenu({ label, actions }: { label: string; actions: CardActio
   }, [open]);
   return (
     <div className="tp-menu" ref={ref}>
-      <button type="button" className={`tp-more${open ? ' on' : ''}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" /></svg>
-      </button>
+      {trigger ? (
+        <button type="button" className={`btn sm${open ? ' on' : ''}`} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{trigger}</button>
+      ) : (
+        <button type="button" className={`tp-more${open ? ' on' : ''}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" /></svg>
+        </button>
+      )}
       {open && (
-        <div className="tp-menu-list" role="menu">
+        <div className={`tp-menu-list${down ? ' down' : ''}`} role="menu">
           {actions.map((a) => (
             <button key={a.label} type="button" role="menuitem" className={a.danger ? 'danger' : ''} disabled={a.disabled} title={a.title}
               onClick={() => { setOpen(false); a.onClick(); }}>
