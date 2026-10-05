@@ -3,193 +3,85 @@
 *"Let all things be done decently and in order."* — 1 Corinthians 14:40
 *凡事都要规规矩矩地按着次序行。* — 哥林多前书 14:40
 
-**Canon** is a local-first, multilingual system for running a church: plan the service, print the bulletin, project the slides, and keep the registers. It is self-hosted — on an office PC, a server, a NAS or any Docker host — with no cloud account, so the church's data stays under the church's control. Staff use it in a browser. AI assistants such as Claude can connect through a permission-controlled MCP server.
+**Canon** is a local-first, multilingual system for running a church: plan the service, print the bulletin, project the slides, and keep the registers and records. It runs on an office PC, a server or any Docker host, with no cloud account, so the church's data stays under the church's control. Staff use it in a browser, and AI assistants such as Claude can connect through a permission-controlled MCP server.
 
-It was designed with a bilingual (English / 中文) Reformed and Presbyterian congregation in mind, but its languages, liturgies and templates are all configurable.
+It was designed with a bilingual (English / 中文) Reformed and Presbyterian congregation in mind, but its languages, liturgies and templates are all configurable. The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3; Gal 6:16).
 
-The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3; Gal 6:16).
-
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![Node 22.18+](https://img.shields.io/badge/node-%E2%89%A522.18-417e38)
-
----
+[![CI](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml/badge.svg)](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![Node 22.18+](https://img.shields.io/badge/node-%E2%89%A522.18-417e38)
 
 ## Features
 
-**Worship**
-- **Service planner.** Start from a template. Insert hymns, psalms, readings, creeds, catechism questions and prayers anywhere in the order, then reorder by dragging. Clock times run down a timeline. Each item has a leader or role and a posture (stand / sit), and you can use empty slots to fill in later.
-- **Library.**
-  - **Hymns** with hymnal numbers: one song can be in several hymnbooks.
-  - **Liturgical texts** in responsive format: leader / congregation / all.
-  - **Long texts in numbered parts:** e.g. the Westminster Shorter Catechism, so a service can use "Q1–3".
-  - **Bibles:** KJV and the Chinese Union Version 和合本 are built in, and other public-domain Bibles download in one click. You can also upload Bibles you hold a licence for, and choose the version per service or per reading.
-- **Outputs, all from one plan:**
-  - **Printed bulletin.** A4 landscape folded into an A5 booklet, with the pages arranged for folding automatically; other paper sizes too. **Bulletin templates** decide what prints for each kind of item (full words, first verse, or title only), plus covers, rosters, announcements and QR codes.
-  - **Projector slides** with a presenter view, and a **PowerPoint** download. **Slide templates** cover colours, background, fonts per script, text size, 16:9 or 4:3 and custom CSS, with a live preview; any item can have its own background picture from the **Slide backgrounds** library.
-  - **Timed run sheet** for the team, a **read-only share link**, a **Word document**, and a **FreeShow** project.
-- **Liturgical calendar:** season colours (optional) and the four styles of bulletin cover.
-- **Library check:** finds songs and texts whose languages have drifted apart, likely duplicates, and Bible versions with missing chapters.
+- **Service planner:** build the order of worship from templates, with drag-and-drop, clock times, roles and postures.
+- **Library:** hymns (with hymnal numbers), responsive liturgy, catechisms in numbered parts, and Bibles. KJV and 和合本 are built in; other Bibles download in one click or can be uploaded under your own licence.
+- **From one plan:**
+  - a printed bulletin, folded into a booklet automatically;
+  - projector slides with a presenter view;
+  - PowerPoint, Word and FreeShow files;
+  - a run sheet and a read-only share link.
+  - Bulletin and slide templates set the look.
+- **People:**
+  - congregations;
+  - members and households;
+  - co-workers;
+  - groups and committees, with custom member fields;
+  - a volunteer rota with e-mail reminders.
+- **Records:**
+  - attendance and new visitors, with a visitor form on their phones;
+  - offerings, with a cash count signed on paper or on screen;
+  - reports to print or export to Excel.
+- **Everywhere:**
+  - worship languages side by side (Chinese Simplified ↔ Traditional automatic); the interface is in English, 简体 and 繁體;
+  - Excel import and export;
+  - a change log;
+  - backups and archives;
+  - an audit-logged MCP server for AI agents, with access set per module.
 
-**People**
-- **Congregations:** one church with several congregations (e.g. English, Chinese and Indonesian services): services, templates, members and groups can belong to one, and lists filter by it.
-- **Groups:** committees (with roles and terms), fellowships, cell groups, ministries and serving teams (every volunteer team is a group).
-- **Members:** households, membership, baptism, profession of faith, and titles such as 弟兄 / 姐妹 / Bro. / Sis.
-- **Co-workers:** pastors, elders, deacons and staff, tagged with their committees.
-- **Volunteer rota:** teams and members, roles, away dates, fair auto-fill, warnings, and manual e-mail reminders through your own SMTP server.
-
-**Records**
-- **Service records:** attendance, new visitors (with follow-up), notes for the team and offerings for each service — including the odd gift in another currency — with a cash count by denomination and a cash-count declaration the counters sign on paper or on screen. Once verified, only an administrator can change the money.
-- **Reports:** attendance trends (with last year), offerings by fund, month and method (and a monthly summary for the treasurer), new visitors' follow-up, serving load and hard-to-fill roles, songs sung (for licence reports) and books of the Bible read and preached, and membership — for a period and congregation, printable and exportable to Excel.
-
-**Everywhere**
-- **Languages.** The church chooses its worship languages, primary first: English, 简体中文, 繁體中文, Bahasa Melayu, Bahasa Indonesia, Tamil and more. Each service shows up to three side by side. Simplified and Traditional Chinese convert automatically, and the interface is in English, 简体 and 繁體.
-- **Excel import and export** (CSV) for every register and library section. It comes with downloadable templates, a preview before saving, and automatic handling of files Excel saved in a Chinese encoding.
-- **Change log.** Who changed what and when — in Canon, by an AI agent or by CSV import — with each field's old and new value, filters and paging; a record's **History**.
-- **Backups** on a schedule, and **restore** from Settings (a copy of the current data is saved first).
-- **AI / MCP.** An OAuth 2.1 MCP server that claude.ai can connect to. Administrators set each module to *off / read / read & write*, for example hiding the member register for PDPA. Every call is audit-logged, and `canon_whoami` tells an agent who it acts for and what it may do.
+The [user guide](docs/guide/en.md) describes all of it.
 
 ## Quick start
 
-### Windows office PC
+**Windows office PC**
 1. Install **Node.js 22.18 or newer** (LTS) from <https://nodejs.org>.
-2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs dependencies and builds the app. To update later, replace the files and start it again: see [docs/UPGRADING.md](docs/UPGRADING.md).
-3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Then onboarding offers the public-domain Bibles for those languages.
-4. Other computers on the office network open `http://<office-pc-name>:3000`.
+2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs and builds everything.
+3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Other computers on the office network open `http://<office-pc-name>:3000`.
 
-Keep the "Canon server" window open while Canon is in use. To start Canon automatically, add `start-canon.bat` to Windows Task Scheduler with the trigger "At log on".
+Keep the "Canon server" window open while Canon is in use.
 
-### Docker (server, NAS or cloud VM)
-```bash
-docker compose up -d
-```
-See [docs/DOCKER.md](docs/DOCKER.md). It covers updates, backups and restore, plus an optional Cloudflare Tunnel for a public address.
+**Docker** (server, NAS or cloud VM): run `docker compose up -d`. See [docs/DOCKER.md](docs/DOCKER.md).
 
-### From source
-```bash
-npm install
-npm run dev          # API on :3000, web app on :5173 (proxied)
-```
+**Updating:** replace the files and start Canon again. It keeps a copy of the database before upgrading it. See [docs/UPGRADING.md](docs/UPGRADING.md).
 
 ## Documentation
 
-- **User guide** for church office staff: [English](docs/guide/en.md) · [简体中文](docs/guide/zh.md) · [繁體中文](docs/guide/zh-Hant.md). It is also built into the app: **Guide**, at the bottom of the sidebar.
-- **Agent handbook** for Claude and other MCP agents: [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md). The MCP server serves it as the resource `canon://guide/agents`, and offers its playbooks as prompts (`plan_service`, `suggest_hymns`, `roster_check`, `proofread_service`, `catechism_series`, `translate_library`, `member_care`, `group_overview`, `monthly_report`).
-- **Claude skill**: [skills/](skills/README.md) — upload `skills/canon` to claude.ai or copy it into Claude Code.
-- **Docker**: [docs/DOCKER.md](docs/DOCKER.md) · **Content to review before first use**: [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md).
-- **Updating and going back**: [docs/UPGRADING.md](docs/UPGRADING.md) · **What changed**: [CHANGELOG.md](CHANGELOG.md).
-- **Roadmap**: [docs/ROADMAP.md](docs/ROADMAP.md) — what is planned after the current release.
+| | |
+|---|---|
+| **User guide** | [English](docs/guide/en.md) · [简体中文](docs/guide/zh.md) · [繁體中文](docs/guide/zh-Hant.md). Also built into the app: **Guide**, at the bottom of the sidebar. |
+| **Running Canon** | [docs/ADMINISTRATION.md](docs/ADMINISTRATION.md): configuration, backups, connecting Claude |
+| **Updating** | [docs/UPGRADING.md](docs/UPGRADING.md) · [CHANGELOG.md](CHANGELOG.md) · [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **Docker** | [docs/DOCKER.md](docs/DOCKER.md) |
+| **AI agents** | [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md) · [Claude skill](skills/README.md) |
+| **Before first use** | [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md): wordings to check against your church's practice |
+| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-## Using Canon
+## Privacy
 
-- **Plan a service:** Services → New service → pick a template. Then:
-  - use the **＋** between items to insert anything;
-  - open an item to choose the hymn, verses, reading, version or catechism questions;
-  - use the **Team & roster** tab to assign people.
-- **Print and project:** the planner's *Outputs* bar has Bulletin, Slides, Run sheet, Word and FreeShow. Bulletin and slide looks are set under **Service Planner → Bulletin templates / Slide templates**; QR codes and notes for both live in **Library → QR codes & notes**.
-- **Import from Excel:** each register and library screen has **Download template · Export · Import CSV…** buttons.
-  - Save from Excel as **CSV UTF-8**; Chinese-encoded files are detected anyway.
-  - The import shows a preview and saves nothing until you confirm. It is all-or-nothing unless you choose to skip bad rows.
-  - Rows are matched to existing records: members by id or name + birth date, hymns and texts by key or title. Importing the same file again is therefore safe.
-- **Bibles:** Settings → Languages. Download public-domain versions with one click, or use **Add a Bible** to upload a version your church holds the licence for (ESV, 和合本修订版, 新译本, Alkitab…).
-  - **CSV:** one verse per row, `book,chapter,verse,text`. Books can be numbers 1–66, English names or abbreviations (`Gen`, `1 Cor`) or Chinese names (`创世记`, `林前`, `創`). Use numbers for other languages. `reference,text` rows (`John 3:16`) also work.
-  - **JSON:** the scrollmapper format is also accepted.
-  - The upload previews missing books and unreadable rows before importing, and there is a downloadable template.
-  - In the planner, choose versions in the service details (per language) or on an individual reading. Library → Bible compares up to four versions side by side.
-  - Some publishers limit how many verses may be printed or projected; Canon reminds you.
-- **E-mail reminders:** configure SMTP under Settings → E-mail. Then in the planner, use *Team & roster → Send reminders*, which previews each person's message in their preferred language before sending. Nothing is ever sent automatically.
-
-## Connecting Claude (MCP)
-
-1. **Settings → AI / MCP:** enable the server and choose each module's access. By default, members are hidden and contact details are redacted.
-2. claude.ai needs a public **https** address. Run a tunnel, e.g. [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) (`cloudflared tunnel --url http://localhost:3000`). Paste its address into **Settings → AI / MCP → Public address**, press **Check**, then **Save**.
-3. In claude.ai, go to **Settings → Connectors → Add custom connector** and paste `https://<your-host>/mcp`. Leave the client ID blank, then sign in with a Canon account and approve.
-4. Connected agents and the activity log are listed under Settings → AI / MCP, where each one can be revoked.
-
-For each module, access is the most restrictive of three things:
-- the admin's module setting;
-- the token's scope (`canon:read` or `canon:write`);
-- the user's current role (a viewer only ever gets read access).
-
-Tools an agent isn't allowed never appear in its tool list. There are 26 tools in all; `canon_whoami` tells an agent who it acts for and what it may do. Batch tools (`canon_edit_order`, `canon_update_rota`, …) apply all-or-nothing. Agents can't send e-mail, delete people, or see accounts, settings or OAuth data.
-
-## Configuration
-
-Everything a church office needs is in **Settings**. Environment variables are only optional overrides for IT administrators:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `CANON_PORT` | `3000` | HTTP port. On Windows, put `set CANON_PORT=5018` (for example) in a file `canon.local.bat` next to `start-canon.bat`; it is read at start-up and is not part of the repository. |
-| `CANON_HOST` | `0.0.0.0` | Interface to listen on. The default lets the office LAN reach Canon. |
-| `CANON_DB` | `data/canon.db` | SQLite database file |
-| `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
-| `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*`. This is automatic once a public address is set. |
-
-## Backups
-
-**Settings → Backups** (administrators): **Back up now**, automatic daily or weekly backups that keep the newest N, a backup folder you can point at a USB drive or a synced folder (with **Check**), and download / delete. From the command line:
-
-```bash
-npm run backup                      # → backups/canon-YYYY-MM-DD-HHMM.db (safe while running)
-npm run backup -- D:\CanonBackups   # to a USB drive or synced folder
-```
-
-To restore, press **Restore** next to a backup in Settings → Backups (or **Restore from a file…**); Canon saves a copy of the current data first. If Canon will not start, stop it and copy a backup over `data/canon.db`, deleting any `canon.db-wal` / `canon.db-shm` next to it. Docker users: see [docs/DOCKER.md](docs/DOCKER.md).
-
-## Development
-
-```bash
-npm install
-npm run dev            # API (watch) + Vite
-npm test               # node:test — OAuth/MCP, CSV, groups, e-mail, presentation, Bible uploads
-npm run typecheck
-npm run build          # regenerates the Traditional Chinese UI dictionary, then builds the web app
-```
-
-- **Stack:** Node 24 runs the TypeScript server directly (type stripping, no build step), with Express 5 and `node:sqlite`. The web app is React 19 + Vite + dnd-kit, styled with hand-written CSS (no UI framework).
-- **Layout:**
-
-  | Path | Contents |
-  |---|---|
-  | `server/repo/*` | business logic |
-  | `server/routes/*`, `server/api.ts` | REST |
-  | `server/mcp.ts`, `server/mcp-tools/*` | the MCP server and tool table |
-  | `server/oauth.ts` | the OAuth authorization server |
-  | `server/repo/render.ts` | turns a service into one fully resolved multilingual structure that every output uses |
-  | `server/csv/*` | import/export specifications |
-  | `shared/*` | types, schemas, language registry, Bible references, liturgical calendar |
-  | `src/*` | the web app |
-
-- **Database:** migrations are appended to `server/db.ts`; never edit a shipped one.
-- **Translations:** the English UI text is the key. Simplified Chinese lives in `src/i18n/*.ts`, and Traditional Chinese is generated by `npm run i18n`.
-- **Conventions:**
-  - Server files use `.ts` import extensions and `import type`.
-  - No enums or namespaces, so Node's type stripping works.
-  - Put scratch files in `_workings/` (git-ignored).
-
-Contributions are welcome. Every change that users or AI agents can see must also update the guide (`docs/guide/en.md` and `zh.md`) and the agent playbooks (`docs/AGENT-PLAYBOOKS.md`, `skills/canon/`). `tests/docs-coverage.test.ts` checks the basics. Please open an issue to discuss larger changes first, and keep `npm test` and `npm run typecheck` green.
+- Member data stays in your own database (`data/`, never in the repository).
+- Read-only accounts see members' names, not their contact details or notes, and see birthdays as day and month only. Custom fields marked sensitive are for administrators only.
+- AI agents see personal details only if an administrator allows it, and never when acting for a read-only user.
+- **Settings → Security & privacy** has a checklist, a log of who opened which member, how long visitors' details are kept, and yearly archives.
+- The database is an ordinary file: protect the computer it is on with disk encryption, and an account for each person.
 
 ## Content and copyright
 
 - **Bundled texts are public domain in most countries:**
-  - the KJV (the 1769 Oxford edition) and the Chinese Union Version 和合本 (1919), from [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases). In the United Kingdom, the KJV remains under the Crown's perpetual rights; printing it there is administered by Cambridge University Press;
-  - the Westminster Confession and Catechisms (1647), from [NonlinearFruit/Creeds.json](https://github.com/NonlinearFruit/Creeds.json);
+  - KJV (1769) and 和合本 (1919), from [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases);
+  - the Westminster Standards, from [NonlinearFruit/Creeds.json](https://github.com/NonlinearFruit/Creeds.json);
   - historic creeds;
-  - hymns first published before 1929, which is the United States rule. Where copyright lasts 70 years after the author's death, a hymn's words, a translation or an arrangement can still be in copyright. Check each hymn against your own country's rules.
-- **Each item records its own source:** songs have a copyright line, a CCLI number and a public-domain mark; an uploaded Bible keeps the licence note it was uploaded with. The *Songs sung* report lists what was used, for licence returns.
-- **Material your church adds** stays under its owners' copyright: hymns from licensed hymnals, Bible versions such as ESV or 和合本修订版, logos and images. Use it under your own licences, e.g. CCLI. Some Bible publishers limit how much may be printed or projected.
-- **Review before use:** [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md) lists wordings a church should check against its own practice.
-
-## Privacy
-
-- Member data stays in your own database (`data/`, git-ignored). Never commit it.
-- Share links show names and the order of service, never contact details.
-- Read-only accounts see members' names, never their contact details or notes, and see birthdays as day and month only. They can't export personal data. Custom fields marked sensitive are for administrators only.
-- AI agents see member contact details and birthdays only if an administrator explicitly allows it, and never when acting for a read-only user. The audit log stores argument names, not the personal data itself.
-- **Settings → Security & privacy** has:
-  - a checklist;
-  - a log of who opened which member;
-  - how long visitors' contact details are kept;
-  - archiving of old records into one file per year.
-- The database is an ordinary file, so protect the computer it is on. Use disk encryption (BitLocker, FileVault), a signed-in account for each person, and backups kept somewhere safe.
+  - hymns first published before 1929.
+- **The rules differ by country:**
+  - in the United Kingdom, the KJV is under the Crown's perpetual rights;
+  - where copyright lasts 70 years after the author's death, an older hymn's words, translation or arrangement may still be in copyright.
+- **What your church adds** keeps its owners' copyright. Use it under your own licences, such as CCLI. Each song records its copyright and CCLI number, and the *Songs sung* report lists what was used, for licence returns.
 
 ## License
 

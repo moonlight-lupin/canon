@@ -23,6 +23,8 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
   - `start-canon.bat` checks the Node.js version, and installs and rebuilds what changed after an update;
   - continuous integration runs on Windows and Linux;
   - added [docs/UPGRADING.md](docs/UPGRADING.md) and this changelog.
+- **Public-domain status depends on the country:** the README and *About Canon* now say so (the KJV in the UK; hymns under life + 70).
+- **Under the hood:** long files are split into smaller modules, with no change in behaviour. The README is shorter, with [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ADMINISTRATION.md](docs/ADMINISTRATION.md) beside it.
 - Database: 18 → 20.
 
 ## 0.10.7

@@ -1,11 +1,11 @@
 # Roadmap
 
-What is planned for Canon after v0.10.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
+What is planned for Canon after v0.11.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
 
 | Version | Theme |
 |---|---|
 | 0.10.0 | Reporting — done |
-| 0.11.0 | Hardening: archiving, storage, privacy; custom member fields |
+| 0.11.0 | Hardening: archiving, storage, privacy; custom member fields — done |
 | 0.12.0 | Meetings, Sunday school and the church calendar |
 | 0.13.0 | Lending library |
 | 0.14.0 | Asset register |
@@ -29,20 +29,26 @@ Roles and permissions come before the finance modules, because book-keeping and 
 - **Membership**: numbers by status, age band and congregation, and new members.
 - **AI agents (MCP)**: service records become a module of their own, with **contributions** (offerings and cash counts) as a separate permission nested inside it. Both are off until an administrator turns them on.
 
-## 0.11.0 — Hardening: archiving, storage, privacy
+## 0.11.0 — Hardening: archiving, storage, privacy (done)
 
-- **Archive** data older than five years (service records, offerings, the change log, the MCP activity log, and later library loans) into a separate read-only archive file per period. Archived data is kept, not deleted: charities usually have to keep financial records for years.
-- Administrators can **open an archive** in Canon, read-only. Archive files are included in backups.
-- The archive age is **set per kind of data**. Visitors' contact details have their own, shorter setting and are erased rather than archived (personal data is kept only as long as it is needed).
-- A **Storage** panel in Settings: database size, what uses the space, how fast it grows, and an early warning.
-- **Custom fields on members**: the church adds its own fields (text, date, yes/no, a choice from a list), shown on the member page, usable in filters and CSV import/export. A field can be marked sensitive: then read-only accounts and AI agents don't see it unless personal data is shared.
-- **Read-only accounts no longer see members' contact details or pastoral notes** (phone, e-mail, address, notes) — in screens, searches and exports. Birthdays show the day and month only, without the year.
-- A **log of who viewed member records**, and a **security checklist** in Settings: disk encryption, backup encryption, where backups are kept, and the retention settings.
-- **Release discipline**: tests, type checking and the production build in CI on every push; versioned releases with upgrade notes; a supported-runtime list.
-- **Safe updates**: a version-aware update on Windows that always rebuilds the web app with the server (no old screens with a new server); upgrade tests from older database versions; restore tested against older backups.
-- **Editing conflicts**: two people saving the same service or record at once get a clear "changed by someone else" message instead of silently overwriting each other.
-- **Refactoring long files** (no change in behaviour; tests first, then split by workflow): the service editor (about 1,500 lines: order of service, team & roster, slides), the presentation screens and the bulletin and slide outputs (900+ each), the Word export, the members page, the settings page (each tab in its own file), the records and reports pages (list, editor, declaration and signature pad; one file per report and shared charts), the sign-in / AI connection code, the API routes (records, reports, services and AI administration into their own route files, as the others already are) and the database migrations (one file per version).
-- **Content rights**: Bible versions and hymn texts list their source, edition and where they may be used, instead of a blanket "public domain".
+Shipped as planned (see [CHANGELOG.md](../CHANGELOG.md)):
+- archiving into one read-only file per year, viewable in Canon and copied with backups;
+- erasing visitors' contact details after a set time;
+- the Storage panel;
+- custom member fields with a sensitive flag;
+- read-only accounts without members' contact details or notes, and birthdays as day and month only;
+- the member-view log and security checklist;
+- CI on Windows and Linux;
+- safe updates (a pre-upgrade copy, a newer-database guard, a start check that rebuilds what changed);
+- upgrade and restore tests;
+- edit-conflict protection;
+- long files split into smaller modules.
+
+Differences from the plan, carried forward to the second hardening round (0.15):
+- **Archive age per kind of data:** 0.11 has one age for service records and logs, plus a separate setting for visitors' contact details.
+- **Backup encryption:** the checklist says plainly that backups are not encrypted yet.
+- **Content rights per item:** 0.11 states that public-domain status depends on the country (the KJV's Crown rights in the UK, hymns under life + 70). Recording each Bible version's edition and where it may be used is still to do.
+- **Migrations:** they moved into one file of their own (`server/migrations.ts`) rather than one file per version.
 
 ## 0.12.0 — Meetings, Sunday school and the church calendar
 
@@ -70,7 +76,7 @@ Roles reorganised around what churches actually do (for example treasurer, libra
 - for signatures and approvals, telling apart "two people signed on one device" from "two people each approved from their own account" before claims rely on it;
 - approved, dated versions of a service's bulletin and slides.
 
-Plus a second round of hardening.
+Plus a second round of hardening, including what was carried forward from 0.11: archive ages per kind of data, encrypted backups and per-item content rights.
 
 ## 0.16.0 — Book-keeping
 
