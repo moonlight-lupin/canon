@@ -393,6 +393,10 @@ api.get('/reports/offerings', h((req) => {
 api.get('/reports/visitors', h((req) => reports.visitorsReport(reportPeriod(req), { contact: canSeeMoney(req) })));
 api.get('/reports/serving', h((req) => reports.servingReport(reportPeriod(req))));
 api.get('/reports/songs', h((req) => reports.songsReport(reportPeriod(req))));
+api.get('/reports/scripture', h((req) => reports.scriptureReport({
+  from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined,
+  years: (str(req.query.years) ?? '').split(',').map(Number).filter(Boolean),
+})));
 api.get('/reports/membership', h((req) => reports.membershipReport(reportPeriod(req))));
 api.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));

@@ -1,10 +1,10 @@
 // Reports (Records → Reports, and the MCP report tools): read-only summaries over a period and, optionally, one
 // congregation. Nothing here writes. Money is only computed in offeringsReport, which callers gate.
-import { BOOKS, parseRef } from '../../shared/bible.ts';
+import { BOOKS, CHAPTERS, parseRef } from '../../shared/bible.ts';
 import { foreignCurrencies, type OfferingLine, type OfferingMethod, type ServiceRecord, type Visitor } from '../../shared/records.ts';
 import {
   AGE_BANDS, VISITOR_STATUSES, ageBand, average, median, monthsBetween, yearEarlier,
-  type AttendanceReport, type MembershipReport, type OfferingsReport, type Period, type ServiceRef, type ServingReport, type SongsReport, type VisitorsReport,
+  type AttendanceReport, type MembershipReport, type OfferingsReport, type Period, type ServiceRef, type ScripturePassage, type ScriptureReport, type ServingReport, type SongsReport, type VisitorsReport,
 } from '../../shared/reports.ts';
 import type { L10n } from '../../shared/types.ts';
 import { all, type SqlValue } from '../db.ts';
@@ -266,26 +266,31 @@ export function servingReport(q: Period): ServingReport {
   };
 }
 
-// ================================================================= songs and Scripture
+// ================================================================= songs
+
+function itemsOf(ids: number[], kinds: string[]) {
+  const items: { service_id: number; kind: string; ref_id: number | null; scripture_ref: string | null }[] = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    items.push(...all<(typeof items)[number]>(
+      `SELECT service_id, kind, ref_id, scripture_ref FROM service_items WHERE service_id IN (${chunk.map(() => '?').join(',')}) AND kind IN (${kinds.map(() => '?').join(',')})`,
+      ...chunk, ...kinds,
+    ));
+  }
+  return items;
+}
 
 export function songsReport(q: Period): SongsReport {
   const p = period(q);
   const svcs = servicesIn(p);
   const dateOf = new Map(svcs.map((s) => [s.id, s.date]));
-  const ids = svcs.map((s) => s.id);
-  const items: { service_id: number; kind: string; ref_id: number | null; scripture_ref: string | null }[] = [];
-  for (let i = 0; i < ids.length; i += 500) {
-    const chunk = ids.slice(i, i + 500);
-    items.push(...all<(typeof items)[number]>(
-      `SELECT service_id, kind, ref_id, scripture_ref FROM service_items WHERE service_id IN (${chunk.map(() => '?').join(',')}) AND kind IN ('song', 'scripture')`, ...chunk,
-    ));
-  }
+  const items = itemsOf(svcs.map((s) => s.id), ['song']);
   const songs = new Map(all<{ id: number; title: string; category: string; public_domain: number; copyright: string | null; ccli: string | null }>(
     'SELECT id, title, category, public_domain, copyright, ccli FROM songs',
   ).map((s) => [s.id, s]));
   const use = new Map<number, { times: number; first: string; last: string }>();
   for (const it of items) {
-    if (it.kind !== 'song' || !it.ref_id || !songs.has(it.ref_id)) continue;
+    if (!it.ref_id || !songs.has(it.ref_id)) continue;
     const d = dateOf.get(it.service_id)!;
     const u = use.get(it.ref_id) ?? { times: 0, first: d, last: d };
     u.times++;
@@ -296,29 +301,6 @@ export function songsReport(q: Period): SongsReport {
   const lastEver = new Map(all<{ ref_id: number; last: string }>(
     `SELECT i.ref_id, MAX(s.date) AS last FROM service_items i JOIN services s ON s.id = i.service_id WHERE i.kind = 'song' AND i.ref_id IS NOT NULL AND s.date <= ? GROUP BY i.ref_id`, p.to,
   ).map((r) => [r.ref_id, r.last]));
-
-  const passages: SongsReport['passages'] = [];
-  for (const it of items) if (it.kind === 'scripture' && it.scripture_ref?.trim()) passages.push({ date: dateOf.get(it.service_id)!, service_id: it.service_id, kind: 'reading', ref: it.scripture_ref.trim() });
-  const sermons = all<{ id: number; date: string; sermon_ref: string | null }>(
-    `SELECT id, date, sermon_ref FROM services WHERE id IN (${ids.map(() => '?').join(',') || 'NULL'})`, ...ids,
-  );
-  for (const s of sermons) if (s.sermon_ref?.trim()) passages.push({ date: s.date, service_id: s.id, kind: 'sermon', ref: s.sermon_ref.trim() });
-  passages.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
-  const books = new Map<number, { readings: number; sermons: number }>();
-  for (const x of passages) {
-    let segs: { book: number }[] = [];
-    try {
-      segs = parseRef(x.ref);
-    } catch {
-      continue; // free text such as "see bulletin" is listed but not counted
-    }
-    for (const b of new Set(segs.map((s) => s.book))) {
-      const c = books.get(b) ?? { readings: 0, sermons: 0 };
-      if (x.kind === 'sermon') c.sermons++;
-      else c.readings++;
-      books.set(b, c);
-    }
-  }
   return {
     period: p,
     services: svcs.length,
@@ -328,8 +310,99 @@ export function songsReport(q: Period): SongsReport {
     }).sort((a, b) => b.times - a.times || a.last_used.localeCompare(b.last_used)),
     unused: [...songs.values()].filter((s) => !use.has(s.id)).map((s) => ({ song_id: s.id, title: JSON.parse(s.title) as L10n, category: s.category, last_used: lastEver.get(s.id) ?? null }))
       .sort((a, b) => (a.last_used ?? '').localeCompare(b.last_used ?? '')),
-    books: [...books].sort(([a], [b]) => a - b).map(([n, c]) => ({ book: n, en: BOOKS[n - 1].en, zh: BOOKS[n - 1].zh, ...c })),
+  };
+}
+
+// ================================================================= Scripture: chapters read and preached
+
+/** Chapters a reference touches, per book; [] when it is not a reference ("see the bulletin"). */
+export function chaptersOf(ref: string): { book: number; chapters: number[] }[] {
+  let segs: { book: number; startCh: number; endCh: number }[] = [];
+  try {
+    segs = parseRef(ref);
+  } catch {
+    return [];
+  }
+  const out = new Map<number, Set<number>>();
+  for (const sg of segs) {
+    const max = CHAPTERS[sg.book - 1] ?? 0;
+    const set = out.get(sg.book) ?? new Set<number>();
+    for (let c = Math.max(1, sg.startCh); c <= Math.min(max, Math.max(sg.startCh, sg.endCh)); c++) set.add(c);
+    out.set(sg.book, set);
+  }
+  return [...out].map(([book, set]) => ({ book, chapters: [...set].sort((a, b) => a - b) }));
+}
+
+/** Years that have services (optionally of one congregation), newest first. */
+export function serviceYears(congregationId?: number): number[] {
+  return all<{ y: string }>(
+    `SELECT DISTINCT substr(date, 1, 4) AS y FROM services ${congregationId ? 'WHERE congregation_id = ?' : ''} ORDER BY y DESC`,
+    ...(congregationId ? [congregationId] : []),
+  ).map((r) => Number(r.y)).filter((y) => y > 0);
+}
+
+/**
+ * Which chapters of the Bible were read (scripture items) and preached (the sermon passage), over a period or over
+ * chosen years (which need not be consecutive, e.g. 2023 and 2025).
+ */
+export function scriptureReport(q: { from?: string; to?: string; congregation_id?: number; years?: number[] }): ScriptureReport {
+  const years = [...new Set((q.years ?? []).filter((y) => Number.isInteger(y) && y >= 1900 && y <= 2200))].sort((a, b) => a - b).slice(0, 50);
+  let svcs: SvcRow[];
+  let p: Period;
+  if (years.length) {
+    p = { from: `${years[0]}-01-01`, to: `${years[years.length - 1]}-12-31`, ...(q.congregation_id ? { congregation_id: q.congregation_id } : {}) };
+    const want = new Set(years.map(String));
+    svcs = servicesIn(p).filter((s) => want.has(s.date.slice(0, 4)));
+  } else {
+    p = period(q);
+    svcs = servicesIn(p);
+  }
+  const dateOf = new Map(svcs.map((s) => [s.id, s.date]));
+  const ids = svcs.map((s) => s.id);
+  const passages: ScripturePassage[] = [];
+  for (const it of itemsOf(ids, ['scripture'])) {
+    if (it.scripture_ref?.trim()) passages.push({ date: dateOf.get(it.service_id)!, service_id: it.service_id, kind: 'reading', ref: it.scripture_ref.trim(), chapters: chaptersOf(it.scripture_ref) });
+  }
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    for (const s of all<{ id: number; date: string; sermon_ref: string | null }>(`SELECT id, date, sermon_ref FROM services WHERE id IN (${chunk.map(() => '?').join(',')})`, ...chunk)) {
+      if (s.sermon_ref?.trim()) passages.push({ date: s.date, service_id: s.id, kind: 'sermon', ref: s.sermon_ref.trim(), chapters: chaptersOf(s.sermon_ref) });
+    }
+  }
+  passages.sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+  const books = BOOKS.map((b, i) => ({ book: b.n, en: b.en, zh: b.zh, zhT: b.zhT, chapters: CHAPTERS[i], read: Array<number>(CHAPTERS[i]).fill(0), preached: Array<number>(CHAPTERS[i]).fill(0) }));
+  for (const x of passages) {
+    for (const c of x.chapters) {
+      const b = books[c.book - 1];
+      if (!b) continue;
+      for (const ch of c.chapters) (x.kind === 'sermon' ? b.preached : b.read)[ch - 1]++;
+    }
+  }
+  let read = 0, preached = 0, both = 0, covered = 0, ot = 0, nt = 0, bookCount = 0;
+  for (const b of books) {
+    let any = false;
+    for (let i = 0; i < b.chapters; i++) {
+      const r = b.read[i] > 0, s = b.preached[i] > 0;
+      if (r) read++;
+      if (s) preached++;
+      if (r && s) both++;
+      if (r || s) {
+        covered++;
+        any = true;
+        if (b.book <= 39) ot++;
+        else nt++;
+      }
+    }
+    if (any) bookCount++;
+  }
+  return {
+    period: p,
+    years,
+    years_available: serviceYears(q.congregation_id),
+    services: svcs.length,
+    books,
     passages,
+    totals: { chapters: CHAPTERS.reduce((s, n) => s + n, 0), read, preached, both, covered, ot_covered: ot, nt_covered: nt, books_covered: bookCount },
   };
 }
 

@@ -13,7 +13,7 @@ import { CONG_LABEL, CongregationBadge, CongregationFilter, useCongregationFilte
 import { METHOD_LABEL, VISITOR_STATUS_LABEL, money } from '../../shared/records.ts';
 import {
   movingAverage, toCsv,
-  type AttendanceReport, type MembershipReport, type OfferingsReport, type ReportKind, type ServingReport, type SongsReport, type VisitorsReport, type VisitorStatus,
+  type AttendanceReport, type MembershipReport, type OfferingsReport, type ReportKind, type ScriptureReport, type ServingReport, type SongsReport, type VisitorsReport, type VisitorStatus,
 } from '../../shared/reports.ts';
 import { STATUS_LABEL } from './people-common.tsx';
 import type { L10n, MemberStatus } from '../types-client.ts';
@@ -25,7 +25,8 @@ const TABS: { kind: ReportKind; label: string; money?: boolean }[] = [
   { kind: 'offerings', label: 'Offerings', money: true },
   { kind: 'visitors', label: 'New visitors' },
   { kind: 'serving', label: 'Serving' },
-  { kind: 'songs', label: 'Songs & Scripture' },
+  { kind: 'songs', label: 'Songs' },
+  { kind: 'scripture', label: 'Scripture' },
   { kind: 'membership', label: 'Membership' },
 ];
 
@@ -103,6 +104,7 @@ export default function Reports() {
       {kind === 'visitors' && <VisitorsTab {...ctx} />}
       {kind === 'serving' && <ServingTab {...ctx} />}
       {kind === 'songs' && <SongsTab {...ctx} />}
+      {kind === 'scripture' && <ScriptureTab {...ctx} />}
       {kind === 'membership' && <MembershipTab {...ctx} />}
     </div>
   );
@@ -544,10 +546,104 @@ function SongsTab({ q }: Ctx) {
           </table>
         )}
       </Section>
-      <Section title={t('Books of the Bible')} tip={t('Readings and sermon passages of the services in this period.')}
-        csv={() => download(`scripture-${r.period.from}-${r.period.to}.csv`, [['Date', 'Kind', 'Passage'], ...r.passages.map((p) => [p.date, p.kind, p.ref])])}>
-        {!r.books.length ? <div className="small muted">{t('No readings or sermon passages in this period.')}</div> : (
-          <Bars items={r.books.map((b) => ({ key: String(b.book), label: lang === 'en' ? b.en : `${b.zh} ${b.en}`, value: b.readings + b.sermons, note: b.sermons ? `(${t('sermons')} ${b.sermons})` : undefined }))} />
+    </>
+  );
+}
+
+// ================================================================= Scripture: every book and chapter
+
+function ScriptureTab({ q, cong }: Ctx) {
+  const { t, lang } = useI18n();
+  const [years, setYears] = useState<number[]>([]);
+  const [onlyCovered, setOnlyCovered] = useState(false);
+  const [pick, setPick] = useState<{ book: number; ch: number } | null>(null);
+  const url = years.length ? `/reports/scripture${qs({ years: years.join(','), congregation: cong })}` : `/reports/scripture${q}`;
+  const { data: r, error } = useApi<ScriptureReport>(url);
+  if (error) return <ErrorBox error={error} />;
+  if (!r) return <Loading />;
+  const tot = r.totals;
+  const name = (b: ScriptureReport['books'][number]) => (lang === 'en' ? b.en : lang === 'zh-Hant' ? b.zhT : b.zh);
+  const toggleYear = (y: number) => {
+    setPick(null);
+    setYears((ys) => (ys.includes(y) ? ys.filter((x) => x !== y) : [...ys, y].sort((a, b) => a - b)));
+  };
+  const picked = pick ? r.passages.filter((x) => x.chapters.some((c) => c.book === pick.book && c.chapters.includes(pick.ch))) : [];
+  const unread = r.passages.filter((x) => !x.chapters.length);
+  const groups: [string, number, number][] = [[t('Old Testament'), 0, 39], [t('New Testament'), 39, 66]];
+  return (
+    <>
+      <div className="card rep-years no-print">
+        <span className="small muted">{t('Years')} <InfoTip text={t('Choose one or more years (they need not follow each other) instead of the period above. Choose none to use the period.')} /></span>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {r.years_available.map((y) => (
+            <button key={y} className={`year-chip${years.includes(y) ? ' on' : ''}`} aria-pressed={years.includes(y)} onClick={() => toggleYear(y)}>{y}</button>
+          ))}
+          {years.length > 0 && <button className="btn sm ghost" onClick={() => { setYears([]); setPick(null); }}>{t('Use the period')}</button>}
+        </div>
+        <label className="switch small"><input type="checkbox" checked={onlyCovered} onChange={(e) => setOnlyCovered(e.target.checked)} />{t('Only books with readings or sermons')}</label>
+      </div>
+      {years.length > 0 && <p className="rep-period">{t('Years')}: {years.join(', ')}</p>}
+      <div className="rep-stats">
+        <Stat label={t('Chapters read or preached')} value={`${tot.covered} / ${tot.chapters}`} sub={pct(tot.covered, tot.chapters)} />
+        <Stat label={t('Read')} value={tot.read} sub={t('chapters')} />
+        <Stat label={t('Preached')} value={tot.preached} sub={t('chapters')} />
+        <Stat label={t('Old Testament')} value={pct(tot.ot_covered, 929) || '0%'} sub={`${tot.ot_covered} / 929`} />
+        <Stat label={t('New Testament')} value={pct(tot.nt_covered, 260) || '0%'} sub={`${tot.nt_covered} / 260`} />
+        <Stat label={t('Books')} value={`${tot.books_covered} / 66`} />
+      </div>
+      <Section title={t('Chapters read and preached')} tip={t('Readings are the Scripture items of each service; sermons are the sermon passage. A darker square was read or preached more often. Click a square to see when.')}
+        csv={() => download(`scripture-chapters-${r.period.from}-${r.period.to}.csv`, [['Book', 'Chapter', 'Read', 'Preached'], ...r.books.flatMap((b) => b.read.map((n, i) => [b.en, i + 1, n, b.preached[i]]).filter((x) => x[2] || x[3]))])}>
+        <div className="heat-legend small">
+          <span><i className="heat-cell read l3" />{t('Read')}</span>
+          <span><i className="heat-cell preached l3" />{t('Preached')}</span>
+          <span><i className="heat-cell both l3" />{t('Read and preached')}</span>
+          <span><i className="heat-cell" />{t('Not yet')}</span>
+        </div>
+        {groups.map(([label, a, b]) => {
+          const list = r.books.slice(a, b).filter((bk) => !onlyCovered || bk.read.some(Boolean) || bk.preached.some(Boolean));
+          if (!list.length) return null;
+          return (
+            <div key={label} className="heat-group">
+              <h4>{label}</h4>
+              {list.map((bk) => (
+                <div key={bk.book} className="heat-row">
+                  <div className="heat-book">{name(bk)}</div>
+                  <div className="heat-cells">
+                    {bk.read.map((rd, i) => {
+                      const pr = bk.preached[i];
+                      const kind = rd && pr ? 'both' : rd ? 'read' : pr ? 'preached' : '';
+                      const n = rd + pr;
+                      const on = pick?.book === bk.book && pick.ch === i + 1;
+                      return (
+                        <button key={i} className={`heat-cell ${kind} l${Math.min(3, n)}${on ? ' sel' : ''}`}
+                          title={`${name(bk)} ${i + 1}${rd ? ` · ${t('Read')} ${rd}×` : ''}${pr ? ` · ${t('Preached')} ${pr}×` : ''}`}
+                          aria-label={`${name(bk)} ${i + 1}`} onClick={() => setPick(on ? null : { book: bk.book, ch: i + 1 })} />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </Section>
+      {pick && (
+        <Section title={`${name(r.books[pick.book - 1])} ${pick.ch}`}>
+          {!picked.length ? <div className="small muted">{t('Not read or preached in this period.')}</div> : (
+            <table className="t">
+              <tbody>{picked.map((x, i) => <tr key={i}><td className="nowrap"><Link to={`/services/${x.service_id}`}>{fmtDate(x.date, lang)}</Link></td><td><span className={`badge ${x.kind === 'sermon' ? 'reed' : 'lapis'}`}>{t(x.kind === 'sermon' ? 'Sermon' : 'Reading')}</span></td><td>{x.ref}</td></tr>)}</tbody>
+            </table>
+          )}
+        </Section>
+      )}
+      <Section title={t('Readings and sermons')} csv={() => download(`scripture-${r.period.from}-${r.period.to}.csv`, [['Date', 'Kind', 'Passage'], ...r.passages.map((p) => [p.date, p.kind, p.ref])])}>
+        {!r.passages.length ? <div className="small muted">{t('No readings or sermon passages in this period.')}</div> : (
+          <details>
+            <summary className="small">{t('{n} passages').replace('{n}', String(r.passages.length))}{unread.length ? ` · ${t('{n} not recognised as Bible references').replace('{n}', String(unread.length))}` : ''}</summary>
+            <table className="t">
+              <tbody>{r.passages.map((x, i) => <tr key={i}><td className="nowrap">{fmtDate(x.date, lang)}</td><td>{t(x.kind === 'sermon' ? 'Sermon' : 'Reading')}</td><td>{x.ref}{!x.chapters.length && <span className="small warn-text"> · {t('not recognised')}</span>}</td></tr>)}</tbody>
+            </table>
+          </details>
         )}
       </Section>
     </>

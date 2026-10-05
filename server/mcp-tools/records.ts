@@ -137,10 +137,23 @@ export const RECORD_TOOLS: ToolDef[] = [
     handler: (a) => reports.servingReport(periodOf(a)),
   },
   {
-    name: 'canon_songs_scripture_report', module: 'services', access: 'read', title: 'Songs and Scripture report', annotations: RO,
-    description: 'What was sung and read in the services of a period (default: the last 12 months): each song with times sung, first/last date, public domain or copyright and CCLI song number (for a licence usage report); library songs not sung in the period (with when they were last sung); readings and sermon passages, and how often each book of the Bible was read or preached. Example: {"from":"2026-01-01","to":"2026-12-31"}.',
+    name: 'canon_song_report', module: 'services', access: 'read', title: 'Song usage report', annotations: RO,
+    description: 'What was sung in the services of a period (default: the last 12 months): each song with times sung, first/last date, public domain or copyright and CCLI song number (for a licence usage report), and library songs not sung in the period (with when they were last sung). Example: {"from":"2026-01-01","to":"2026-12-31"}.',
     input: PeriodInput,
     handler: (a) => reports.songsReport(periodOf(a)),
+  },
+  {
+    name: 'canon_scripture_report', module: 'services', access: 'read', title: 'Scripture coverage report', annotations: RO,
+    description: 'Which chapters of the Bible were read (Scripture items) and preached (sermon passages), over a period (default: the last 12 months) or over chosen years that need not follow each other (`years`: [2023, 2025]). Returns totals (chapters covered of 1,189; Old and New Testament; books), per book the chapters read / preached (only books with any, unless all_books), the passages with dates, and the years that have services. Useful for planning a reading or preaching series on neglected books. Example: {"years":[2024,2025]}.',
+    input: { ...PeriodInput, years: z.array(z.number().int().min(1900).max(2200)).max(50).optional(), all_books: z.boolean().optional().describe('include books with nothing read or preached') },
+    handler: (a) => {
+      const r = reports.scriptureReport(a);
+      const books = r.books.filter((b) => a.all_books || b.read.some(Boolean) || b.preached.some(Boolean)).map((b) => ({
+        book: b.en, zh: b.zh, chapters: b.chapters,
+        read: b.read.flatMap((n, i) => (n ? [i + 1] : [])), preached: b.preached.flatMap((n, i) => (n ? [i + 1] : [])),
+      }));
+      return { period: r.period, years: r.years, years_available: r.years_available, services: r.services, totals: r.totals, books, passages: r.passages.map((x) => ({ date: x.date, service_id: x.service_id, kind: x.kind, ref: x.ref })) };
+    },
   },
   {
     name: 'canon_membership_stats', module: 'members', access: 'read', title: 'Membership statistics', annotations: RO,

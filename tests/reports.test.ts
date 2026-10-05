@@ -128,14 +128,39 @@ test('serving: times served, team members not rostered, roles short of people', 
   assert.deepEqual([role.services, role.short, role.declined, role.qualified], [2, 2, 1, 2]);
 });
 
-test('songs and Scripture: usage with copyright details, unused songs, books read and preached', () => {
+test('songs: usage with copyright details, unused songs', () => {
   const s = R.songsReport(P);
   const one = s.songs.find((x) => x.song_id === ids.song1)!;
   assert.equal(one.times, 2);
   assert.equal(one.ccli, '1234567');
   assert.ok(s.unused.some((x) => x.song_id === ids.song2));
-  assert.deepEqual(s.books.map((b) => [b.en, b.readings, b.sermons]), [['Psalms', 1, 0], ['John', 0, 1]]);
-  assert.equal(s.passages.length, 3); // free text is listed though not counted
+});
+
+test('Scripture: every book and chapter, read and preached, by period or by chosen years', () => {
+  assert.deepEqual(R.chaptersOf('Gen 1:1-2:3; Romans 8'), [{ book: 1, chapters: [1, 2] }, { book: 45, chapters: [8] }]);
+  assert.deepEqual(R.chaptersOf('Ps 23-24'), [{ book: 19, chapters: [23, 24] }]);
+  assert.deepEqual(R.chaptersOf('see the bulletin'), []);
+
+  const s = R.scriptureReport(P);
+  assert.equal(s.books.length, 66);
+  assert.equal(s.books[18].chapters, 150);
+  assert.equal(s.books[18].read[22], 1, 'Psalm 23 read');
+  assert.equal(s.books[42].preached[2], 1, 'John 3 preached');
+  assert.equal(s.totals.chapters, 1189);
+  assert.deepEqual([s.totals.read, s.totals.preached, s.totals.covered, s.totals.ot_covered, s.totals.nt_covered, s.totals.books_covered], [1, 1, 2, 1, 1, 2]);
+  assert.equal(s.passages.length, 3);
+  assert.deepEqual(s.passages.find((x) => x.ref === 'see the bulletin')?.chapters, [], 'free text is listed but not counted');
+
+  // years need not follow each other: 2030 and 2032, not 2031
+  const old = svc.createService({ date: '2030-06-02' }).service.id;
+  db.run('INSERT INTO service_items (service_id, position, kind, scripture_ref) VALUES (?, 900, ?, ?)', old, 'scripture', 'Genesis 1:1-2:3');
+  const y = R.scriptureReport({ years: [2032, 2030] });
+  assert.deepEqual(y.years, [2030, 2032]);
+  assert.ok(y.years_available.includes(2031) && y.years_available.includes(2030));
+  assert.deepEqual(y.books[0].read.slice(0, 3), [1, 1, 0]);
+  assert.equal(y.books[18].read[22], 1);
+  assert.equal(y.books[18].read.length, 150);
+  assert.equal(R.scriptureReport({ years: [2031] }).totals.covered, 0, 'the 2031 service has no readings');
 });
 
 test('membership: status, age bands, joined and baptised in the period', () => {

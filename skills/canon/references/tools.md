@@ -17,7 +17,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | groups | `canon_find_groups` | `canon_save_group`, `canon_update_group_members` (batch) |
 | records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |
 | contributions (inside records, read only) | `canon_offerings_report` (+ offerings in the record tools) | — |
-| reports elsewhere | `canon_serving_report` (volunteers), `canon_songs_scripture_report` (services), `canon_membership_stats` (members) | — |
+| reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
 
 - `find_*` / `search_*` → summaries; `get_*` → detail. `canon_get_service` returns words and Bible text only with `include_text: true`; `format: "text"` returns a run sheet.
 - `save_*`: no `id` = create; `id` + fields = update only those fields.

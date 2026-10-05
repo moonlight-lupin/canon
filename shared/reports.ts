@@ -10,8 +10,8 @@ export interface Period {
   congregation_id?: number;
 }
 
-export type ReportKind = 'attendance' | 'offerings' | 'visitors' | 'serving' | 'songs' | 'membership';
-export const REPORT_KINDS: ReportKind[] = ['attendance', 'offerings', 'visitors', 'serving', 'songs', 'membership'];
+export type ReportKind = 'attendance' | 'offerings' | 'visitors' | 'serving' | 'songs' | 'scripture' | 'membership';
+export const REPORT_KINDS: ReportKind[] = ['attendance', 'offerings', 'visitors', 'serving', 'songs', 'scripture', 'membership'];
 
 export interface ServiceRef {
   service_id: number;
@@ -72,8 +72,29 @@ export interface SongsReport {
   songs: { song_id: number; title: L10n; category: string; times: number; first_used: string; last_used: string; public_domain: boolean; copyright: string | null; ccli: string | null }[];
   /** songs in the library not sung in the period */
   unused: { song_id: number; title: L10n; category: string; last_used: string | null }[];
-  books: { book: number; en: string; zh: string; readings: number; sermons: number }[];
-  passages: { date: string; service_id: number; kind: 'reading' | 'sermon'; ref: string }[];
+}
+
+export interface ScripturePassage {
+  date: string;
+  service_id: number;
+  kind: 'reading' | 'sermon';
+  ref: string;
+  /** the chapters it touches, per book (empty when the reference could not be read, e.g. "see bulletin") */
+  chapters: { book: number; chapters: number[] }[];
+}
+
+/** Which chapters were read and preached: every book of the Bible, every chapter. */
+export interface ScriptureReport {
+  period: Period;
+  /** the years chosen instead of a period (empty = the period) */
+  years: number[];
+  /** years that have services, for the year filter */
+  years_available: number[];
+  services: number;
+  /** all 66 books; `read[i]` / `preached[i]` = how often chapter i+1 was read / preached */
+  books: { book: number; en: string; zh: string; zhT: string; chapters: number; read: number[]; preached: number[] }[];
+  passages: ScripturePassage[];
+  totals: { chapters: number; read: number; preached: number; both: number; covered: number; ot_covered: number; nt_covered: number; books_covered: number };
 }
 
 export interface MembershipReport {

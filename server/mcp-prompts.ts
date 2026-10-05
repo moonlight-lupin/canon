@@ -504,7 +504,7 @@ export const PROMPTS: PromptDef[] = [
           ? step(`canon_offerings_report ${period}: total by fund and payment method (amounts are in cents — divide by 100), other currencies separately (never add them to the total), and cash counts still not verified. Report totals only; do not single out services or people.`)
           : null,
         can(c, 'volunteers', 'read') ? step(`canon_serving_report ${period}: roles that were short of people, people serving very often, and team members not rostered.`) : null,
-        can(c, 'services', 'read') ? step(`canon_songs_scripture_report ${period}: books read and preached, and how many songs under copyright were sung (for the licence report).`) : null,
+        can(c, 'services', 'read') ? step(`canon_scripture_report ${period}: chapters read and preached; canon_song_report ${period}: how many songs under copyright were sung (for the licence report).`) : null,
         can(c, 'members', 'read') ? step(`canon_membership_stats ${period}: who joined or was baptised this month.`) : null,
         step('Write the report: a few headline numbers, then one short section per topic, then 2–4 points for the leaders to pray about or act on (e.g. visitors waiting for follow-up, a role that keeps being short). Plain language; no charts unless asked.'),
         step('Offer the user the report to copy. Staff can print the full figures from Records → Reports (and the treasurer the monthly offerings summary).'),

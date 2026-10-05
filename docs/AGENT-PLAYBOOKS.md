@@ -107,7 +107,7 @@ Read tools are safe to call freely. Write tools change church data: confirm firs
 | groups | `canon_find_groups` | `canon_save_group`, `canon_update_group_members` (batch) |
 | records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |
 | contributions (inside records; read only) | `canon_offerings_report`, plus offerings in the two record tools above | — |
-| reports in other modules | `canon_serving_report` (volunteers), `canon_songs_scripture_report` (services), `canon_membership_stats` (members) | — |
+| reports in other modules | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
 
 Patterns:
 - `find_*` / `search_*` return summaries; `get_*` returns detail. `canon_get_service` returns hymn words, Bible text and liturgy only with `include_text: true`; `format: "text"` gives a plain-text run sheet.
@@ -169,7 +169,7 @@ The MCP server offers these as prompts; each is offered only when your access al
 - **check_library** `{focus?}` — `canon_search_library {"type":"checks"}` gives a report of languages that drift apart (verses or parts missing a language, different line or paragraph counts, Leader / People lines that do not match), likely duplicates (same title, a hymnal number used twice) and Bible chapters with fewer verses; level `check` probably needs fixing, `note` may be fine. Group and explain the findings, look at the items with `canon_get_library_item`, suggest which duplicate to keep (deleting is done by a person), fill missing words only for public-domain or church-owned texts (as translate_library), and end with a short to-do list.
 - **translate_library** `{type: songs|texts, lang}` — only public-domain or church-owned texts; never copyrighted hymns; small batches shown side by side; after a yes, `canon_save_song` / `canon_save_text` with only the new language (updates merge by language — the existing languages are kept), tagged `translation-draft` for review.
 - **member_care** `{days?}` — only with members readable and personal data exposed: birthdays (`canon_find_people` view `birthdays`) and visitors to follow up, with suggested follow-up people (`canon_list_coworkers`, `canon_find_groups`) and privacy reminders.
-- **monthly_report** `{month?, compare?}` — needs records readable: `canon_attendance_report` and `canon_list_service_records` for the month (gaps listed, not guessed); where allowed, `canon_offerings_report` (totals only, other currencies separate), `canon_serving_report`, `canon_songs_scripture_report`, `canon_membership_stats`; then a short report with headline numbers, one section per topic and 2–4 points for the leaders. Changes nothing.
+- **monthly_report** `{month?, compare?}` — needs records readable: `canon_attendance_report` and `canon_list_service_records` for the month (gaps listed, not guessed); where allowed, `canon_offerings_report` (totals only, other currencies separate), `canon_serving_report`, `canon_scripture_report`, `canon_song_report`, `canon_membership_stats`; then a short report with headline numbers, one section per topic and 2–4 points for the leaders. Changes nothing.
 - **group_overview** `{kind?}` — `canon_find_groups` for each kind and each group; sizes, leaders, terms ending soon, groups without a leader, people on many groups; propose changes only.
 
 ## 12. Troubleshooting

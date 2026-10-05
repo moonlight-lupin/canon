@@ -33,9 +33,32 @@
 .rep-col .v { font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
 .rep-col .l { font-size: 10.5px; color: var(--ink-3); margin-top: 3px; }
 
+/* Scripture heatmap: every book, every chapter */
+.rep-years { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 10px; }
+.year-chip { border: 1px solid var(--rule-strong); background: var(--paper-2); color: var(--ink-2); border-radius: 999px; padding: 3px 11px; font: 500 13px var(--sans); cursor: pointer; }
+.year-chip.on { background: var(--lapis); border-color: var(--lapis); color: var(--on-lapis); }
+.heat-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-2); }
+.heat-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.heat-group h4 { margin: 10px 0 4px; font-size: 13px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.heat-row { display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: start; padding: 2px 0; border-bottom: 1px solid var(--rule); }
+.heat-row:last-child { border-bottom: 0; }
+.heat-book { font-size: 13px; line-height: 14px; padding-top: 1px; }
+.heat-cells { display: flex; flex-wrap: wrap; gap: 2px; }
+.heat-cell { display: inline-block; width: 12px; height: 12px; padding: 0; border: 0; border-radius: 2px; background: var(--sunk); cursor: pointer; }
+.heat-cell.read { background: var(--lapis); }
+.heat-cell.preached { background: var(--reed); }
+.heat-cell.both { background: linear-gradient(135deg, var(--lapis) 50%, var(--reed) 50%); }
+.heat-cell.l1 { opacity: 0.55; }
+.heat-cell.l2 { opacity: 0.8; }
+.heat-cell.l3 { opacity: 1; }
+.heat-cell.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+.heat-cell:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+@media (max-width: 640px) { .heat-row { grid-template-columns: 92px 1fr; } }
+
 @media print {
   body:has(.rep-page) .side, body:has(.rep-page) .mobile-bar { display: none !important; }
   body:has(.rep-page) .main { margin: 0 !important; padding: 0 !important; }
   .rep-page .card { box-shadow: none; break-inside: avoid; }
-  .rep-page .rep-bar, .rep-col .b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rep-page .rep-bar, .rep-col .b, .heat-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .heat-row { break-inside: avoid; }
 }
