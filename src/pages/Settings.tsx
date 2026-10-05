@@ -564,7 +564,7 @@ function AuditCard() {
           <button className="btn ghost sm icon" onClick={reload} aria-label={t('Refresh')} title={t('Refresh')}><Icon name="refresh" /></button>
         </div>
       </div>
-      <FilterBar active={log.active} onClear={log.clear}>
+      <FilterBar active={log.active} onClear={log.clear} csv={`/api/mcp/audit.csv${log.exportQuery}`}>
         <select className="mini" value={f.module} onChange={(e) => set('module', e.target.value)} aria-label={t('Module')}>
           <option value="">{t('All modules')}</option>
           {MODULES.map((m) => <option key={m} value={m}>{t(MOD_LABEL[m])}</option>)}
@@ -621,7 +621,7 @@ function AuditCard() {
 function DateRange({ from, to, onFrom, onTo }: { from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
   const { t } = useI18n();
   return (
-    <span className="row" style={{ gap: 4 }}>
+    <span className="log-dates">
       <input className="mini" type="date" value={from} onChange={(e) => onFrom(e.target.value)} aria-label={t('From')} title={t('From')} />
       <span className="small muted">–</span>
       <input className="mini" type="date" value={to} onChange={(e) => onTo(e.target.value)} aria-label={t('To')} title={t('To')} />
@@ -672,7 +672,7 @@ function ChangeLogTab() {
           <button className="btn ghost sm icon" onClick={log.reload} aria-label={t('Refresh')} title={t('Refresh')}><Icon name="refresh" /></button>
         </div>
       </div>
-      <FilterBar active={log.active} onClear={log.clear}>
+      <FilterBar active={log.active} onClear={log.clear} csv={`/api/change-log.csv${log.exportQuery}`}>
         <select className="mini" value={f.entity} onChange={(e) => set('entity', e.target.value)} aria-label={t('What')}>
           <option value="">{t('Everything')}</option>
           {data && Object.entries(data.entities).map(([k, v]) => <option key={k} value={k}>{lang === 'en' ? v.en : v.zh}</option>)}

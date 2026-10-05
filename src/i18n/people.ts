@@ -643,5 +643,7 @@ const zh: Record<string, string> = {
   "Offer a prayer request box (optional for visitors; kept as private as contact details)": "提供代祷事项栏（新朋友可不填；与联络资料一样保密）",
   "Accept entries until how many days after the service": "聚会后几天内仍接受填写",
   "to review": "待审核",
+  // v0.10.7 — log export
+  "Download every entry matching these filters (up to 20,000) for Excel.": "下载符合这些筛选条件的所有记录（最多 20,000 条），可用 Excel 打开。",
 };
 export default zh;

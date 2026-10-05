@@ -771,6 +771,7 @@ const zhHant: Record<string, string> = {
  "Offer a prayer request box (optional for visitors; kept as private as contact details)": "提供代禱事項欄（新朋友可不填；與聯絡資料一樣保密）",
  "Accept entries until how many days after the service": "聚會後幾天內仍接受填寫",
  "to review": "待審核",
+ "Download every entry matching these filters (up to 20,000) for Excel.": "下載符合這些篩選條件的所有記錄（最多 20,000 條），可用 Excel 打開。",
  "Paper size, what each bulletin prints, and slide colours and fonts are set in templates and themes.": "紙張大小、次序單印刷內容，以及投影的顏色與字體，都在模板與主題中設定。",
  "How the slides look on the projector, and what the printed bulletin includes.": "設定投影畫面的樣式，以及印刷次序單要包含的內容。",
  "Slide themes": "投影主題",

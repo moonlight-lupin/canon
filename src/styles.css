@@ -413,6 +413,13 @@ table.t tr.click:hover td { background: var(--sunk); }
 
 /* logs: filters, pager, field changes (components/LogTools.tsx) */
 .log-filters { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding: 10px 16px; }
+/* every control in a log's filter bar the same height, date boxes their natural width */
+.log-filters select.mini, .log-filters input.mini { height: 32px; min-height: 32px; font-size: 13px; margin: 0; box-sizing: border-box; }
+.log-filters input.mini { padding: 0 8px; }
+.log-filters input[type='date'].mini { width: 148px; }
+.log-filters .btn.sm { height: 32px; }
+.log-filters .log-dates { display: inline-flex; align-items: center; gap: 4px; }
+.log-filters .log-export { margin-left: auto; }
 .log-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 10px; }
 .log-table td { vertical-align: top; }
 .log-changes { min-width: 260px; font-size: 13px; }

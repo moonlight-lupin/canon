@@ -129,6 +129,8 @@ export function logChange(c: ChangeInput): void {
 }
 
 export interface LogQuery {
+  /** every matching row (CSV export), not one page */
+  all?: boolean;
   entity?: string;
   entity_id?: number;
   user_id?: number;
@@ -159,7 +161,10 @@ export interface ChangeRow {
 }
 
 /** Shared paging: page from 1, size 10–200 (default 50). */
-export const paging = (q: { page?: number; size?: number }) => {
+/** Up to this many rows go into a CSV export. */
+export const EXPORT_MAX = 20000;
+export const paging = (q: { page?: number; size?: number; all?: boolean }) => {
+  if (q.all) return { size: EXPORT_MAX, page: 1, offset: 0 };
   const size = Math.min(200, Math.max(10, Math.floor(q.size ?? 50)));
   const page = Math.max(1, Math.floor(q.page ?? 1));
   return { size, page, offset: (page - 1) * size };
@@ -224,6 +229,8 @@ export function listChanges(q: LogQuery): { rows: ChangeRow[]; total: number; pa
 // ---------------------------------------------------------------- AI activity log (mcp_audit), same filters and paging
 
 export interface AuditQuery {
+  /** every matching row (CSV export), not one page */
+  all?: boolean;
   user_id?: number;
   client?: string;
   tool?: string;

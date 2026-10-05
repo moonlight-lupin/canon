@@ -292,7 +292,7 @@ Open [Settings](/settings).
 - **Church**, **Languages**, **Users & access**: see [Getting started](#getting-started).
 - **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).
 - **E-mail**: choose the **Provider** (Gmail, Microsoft 365 or other), fill in the SMTP details and **Save**, then **Send test**. Gmail needs an app password.
-- **Change log** (administrators): every change made in Canon, by an AI agent or by a CSV import — who, when, how, and each field's old → new value. Filter by what (members, services, songs…), who, how, added / changed / deleted, dates or words, and page through older entries. **Keep** sets how many months are kept (older entries are deleted once a day). Passwords are never recorded. A member's **History** button shows the changes to that person.
+- **Change log** (administrators): every change made in Canon, by an AI agent or by a CSV import — who, when, how, and each field's old → new value. Filter by what (members, services, songs…), who, how, added / changed / deleted, dates or words, and page through older entries. **Export CSV** downloads every entry matching the filters (up to 20,000) for Excel. **Keep** sets how many months are kept (older entries are deleted once a day). Passwords are never recorded. A member's **History** button shows the changes to that person.
 - **AI / MCP**: see below.
 
 ## AI assistants
@@ -315,7 +315,7 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - It sees only the modules you allow, and acts as the person who approved it. A viewer's connection is always read only.
 - Member contact details and birthdays stay hidden unless you turn on **Expose member contact details & birthdays**.
 - It cannot send e-mail, delete people, or see accounts or settings. It asks before changing things.
-- **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages and its own **Keep** period.
+- **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export CSV** (every entry matching the filters) and its own **Keep** period.
 
 ## Backups and moving to Docker
 

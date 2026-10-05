@@ -124,3 +124,22 @@ test('a service with a record cannot be deleted; the record only by an administr
   assert.equal((await call(as.admin, 'DELETE', `/services/${sid}/record`)).status, 200);
   assert.equal((await call(as.editor, 'DELETE', `/services/${sid}`)).status, 200);
 });
+
+test('logs export as CSV for administrators, with the filters applied', async () => {
+  const get = (who: Session, url: string) => fetch(`${base}/api${url}`, { headers: { Cookie: who.cookie } });
+  const r = await get(as.admin, '/change-log.csv?entity=service_records');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type') ?? '', /text\/csv/);
+  assert.match(r.headers.get('content-disposition') ?? '', /attachment; filename="canon-change-log-/);
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf], 'BOM, so Excel reads Chinese correctly');
+  const text = new TextDecoder().decode(bytes);
+  assert.ok(text.startsWith('Time (UTC),Who,How,Client,What,Record,Action,Summary,Changes'));
+  assert.ok(text.includes('Service record'), 'filtered to service records');
+  assert.ok(!text.includes(',Service,'), 'other kinds left out');
+  const a = await get(as.admin, '/mcp/audit.csv');
+  assert.equal(a.status, 200);
+  assert.ok((await a.text()).startsWith('Time (UTC),User,Client,Tool'));
+  assert.equal((await get(as.editor, '/change-log.csv')).status, 403);
+  assert.equal((await get(as.viewer, '/mcp/audit.csv')).status, 403);
+});

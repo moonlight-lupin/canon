@@ -34,6 +34,7 @@ import * as rec from './repo/records.ts';
 import * as reports from './repo/reports.ts';
 import { Forbidden } from './lib/table.ts';
 import { cleanRef } from './repo/refs.ts';
+import { toCsv } from '../shared/reports.ts';
 import * as vf from './repo/visitor-form.ts';
 import * as bg from './repo/backgrounds.ts';
 import { libraryChecks } from './repo/checks.ts';
@@ -51,6 +52,13 @@ import { toolCatalog } from './mcp.ts';
 export const api = express.Router();
 
 type Handler = (req: Request, res: Response) => unknown;
+/** Send a CSV download (with a BOM so Excel reads Chinese correctly). */
+function sendCsv(res: Response, filename: string, rows: (string | number | null | undefined)[][]) {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(toCsv(rows));
+}
 /** Wrap a handler: async errors go to the error middleware, return values are sent as JSON. */
 const h = (fn: Handler) => async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -555,24 +563,45 @@ api.put('/services/:id/order', h((req) => svc.reorderItems(id(req), z.array(z.nu
 api.get('/mcp/config', requireAdmin, h(() => getSettings().mcp));
 api.put('/mcp/config', requireAdmin, h((req) => updateSettings({ mcp: S.McpConfigSchema.parse(req.body) }).mcp));
 /** AI activity log, newest first, with filters and paging. */
-api.get('/mcp/audit', requireAdmin, h((req) => {
-  const q = req.query as Record<string, string | undefined>;
-  return listAudit({
-    user_id: Number(q.user) || undefined, client: q.client || undefined, tool: q.tool || undefined, module: q.module || undefined,
-    ok: q.result === 'ok' ? true : q.result === 'error' ? false : undefined, from: q.from, to: q.to, q: q.q,
-    page: Number(q.page) || 1, size: Number(q.size) || 50,
-  });
+const auditQuery = (q: Record<string, string | undefined>) => ({
+  user_id: Number(q.user) || undefined, client: q.client || undefined, tool: q.tool || undefined, module: q.module || undefined,
+  ok: q.result === 'ok' ? true : q.result === 'error' ? false : undefined, from: q.from, to: q.to, q: q.q,
+  page: Number(q.page) || 1, size: Number(q.size) || 50,
+});
+api.get('/mcp/audit', requireAdmin, h((req) => listAudit(auditQuery(req.query as Record<string, string | undefined>))));
+/** The AI activity log as CSV: every row matching the filters (up to 20,000). */
+api.get('/mcp/audit.csv', requireAdmin, h((req, res) => {
+  const r = listAudit({ ...auditQuery(req.query as Record<string, string | undefined>), all: true });
+  const rows = r.rows as { at: string; user_name: string | null; client_name: string | null; client_id: string | null; tool: string; module: string | null; access: string | null; ok: number; error: string | null; args: string | null }[];
+  sendCsv(res, `canon-ai-activity-${new Date().toISOString().slice(0, 10)}.csv`, [
+    ['Time (UTC)', 'User', 'Client', 'Tool', 'Module', 'Access', 'Result', 'Error', 'Arguments'],
+    ...rows.map((a) => [a.at, a.user_name, a.client_name ?? a.client_id, a.tool, a.module, a.access, a.ok ? 'OK' : 'Error', a.error, a.args]),
+  ]);
 }));
 
 /** The change log (administrators): who changed what and when; a record's history with entity + entity_id. */
+const changeQuery = (q: Record<string, string | undefined>) => ({
+  entity: q.entity || undefined, entity_id: Number(q.entity_id) || undefined, user_id: Number(q.user) || undefined,
+  via: (['web', 'mcp', 'import', 'system'].includes(q.via ?? '') ? q.via : undefined) as 'web' | undefined,
+  action: q.action || undefined, from: q.from, to: q.to, q: q.q, page: Number(q.page) || 1, size: Number(q.size) || 50,
+});
 api.get('/change-log', requireAdmin, h((req) => {
-  const q = req.query as Record<string, string | undefined>;
-  const r = listChanges({
-    entity: q.entity || undefined, entity_id: Number(q.entity_id) || undefined, user_id: Number(q.user) || undefined,
-    via: (['web', 'mcp', 'import', 'system'].includes(q.via ?? '') ? q.via : undefined) as 'web' | undefined,
-    action: q.action || undefined, from: q.from, to: q.to, q: q.q, page: Number(q.page) || 1, size: Number(q.size) || 50,
-  });
+  const r = listChanges(changeQuery(req.query as Record<string, string | undefined>));
   return { ...r, users: changeLogUsers(), entities: ENTITY_LABEL };
+}));
+/** The change log as CSV: every row matching the filters (up to 20,000), one row per change with its fields. */
+api.get('/change-log.csv', requireAdmin, h((req, res) => {
+  const r = listChanges({ ...changeQuery(req.query as Record<string, string | undefined>), all: true });
+  const val = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'string' ? v : JSON.stringify(v));
+  const VIA: Record<string, string> = { web: 'In Canon', mcp: 'AI agent', import: 'CSV import', system: 'Canon' };
+  const ACTION: Record<string, string> = { create: 'Added', update: 'Changed', delete: 'Deleted' };
+  sendCsv(res, `canon-change-log-${new Date().toISOString().slice(0, 10)}.csv`, [
+    ['Time (UTC)', 'Who', 'How', 'Client', 'What', 'Record', 'Action', 'Summary', 'Changes'],
+    ...r.rows.map((c) => [
+      c.at, c.user_name, VIA[c.via] ?? c.via, c.client, ENTITY_LABEL[c.entity]?.en ?? c.entity, c.name, ACTION[c.action] ?? c.action, c.summary,
+      Object.entries(c.changes ?? {}).map(([k, [a, b]]) => `${k}: ${val(a)} → ${val(b)}`).join('; '),
+    ]),
+  ]);
 }));
 api.put('/log-retention', requireAdmin, h((req) => {
   const b = z.object({ change_log_months: z.number().int().min(0).max(120), mcp_audit_months: z.number().int().min(0).max(120) }).parse(req.body);
