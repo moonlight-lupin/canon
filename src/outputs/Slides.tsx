@@ -14,6 +14,7 @@ import './outputs.css';
 import { PresenterView, toggleFullscreen } from './PresenterView.tsx';
 import { SlideOrBlank, useDeckSizes } from './SlideFace.tsx';
 import { type Blank, DeckSizeCtx, sigOf, SlideThemeCtx, Stage, type SyncState } from './slide-fit.tsx';
+import { withRights } from '../../shared/bible-rights.ts';
 
 export default function Slides() {
   const { id } = useParams();
@@ -22,9 +23,10 @@ export default function Slides() {
   const { t, lt } = useI18n();
   // an approved version (?approved=…) is drawn from the copy kept when it was approved, its template's CSS too
   const { approvedId, approval, error: apError } = useApproved(id);
-  const live = useApi<RenderedService>(approvedId ? null : `/services/${id}/render`);
+  // projected: a Bible version whose licence doesn't allow projection gives the reference only
+  const live = useApi<RenderedService>(approvedId ? null : `/services/${id}/render?for=project`);
   const liveThemes = useApi<SlideTheme[]>(approvedId ? null : '/slide-themes');
-  const r = approvedId ? approval?.snapshot.render : live.data;
+  const r = approvedId ? (approval ? withRights(approval.snapshot.render, 'project') : undefined) : live.data;
   const error = apError ?? live.error;
   const themes = approvedId ? (approval ? (approval.snapshot.slide_theme ? [approval.snapshot.slide_theme] : []) : undefined) : liveThemes.data;
   const themesError = approvedId ? null : liveThemes.error;

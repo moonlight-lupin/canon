@@ -189,6 +189,7 @@ Open [Library](/library).
 
 - Library → **Bible**: look up a **Reference** or **Search** words; **＋ Compare** shows up to 4 versions side by side.
 - To add a licensed Bible: **Settings → Languages → ＋ Add a Bible**. Download the CSV template (`book, chapter, verse, text`), save from Excel as **CSV UTF-8**, tick the permission box, check the preview, then **Import**.
+  - **Licence and allowed uses** (administrators): the lock button next to an installed version records its **Edition**, the **Licence** text and what it may be used for — **Printed** (bulletins, Word files), **Projected** (slides, presentation files, FreeShow) and **Online** (the public share page). A newly uploaded version is printed and projected but not put online until you tick **Online**; public-domain versions allow everything. Where a use isn't allowed, that output shows the passage's reference without the text, and the service planner warns above the order (**Bible licence**) so you can choose another version or paste licensed text. Uploading the version again keeps what you recorded.
   - **Indonesian**: Canon does not include an Indonesian Bible. The usual versions (Terjemahan Baru, and the older Terjemahan Lama) are held by Lembaga Alkitab Indonesia, so a church uploads the one it uses with the Bible Society's permission.
 
 ### QR codes & notes

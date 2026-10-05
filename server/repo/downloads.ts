@@ -10,6 +10,7 @@ import { services } from './services.ts';
 import { serviceDocx } from '../export/docx.ts';
 import { freeshowProject } from '../export/freeshow.ts';
 import { servicePptx } from '../export/pptx.ts';
+import { withRights } from '../../shared/bible-rights.ts';
 
 export const DOWNLOAD_KINDS = ['slides_pptx', 'bulletin_docx', 'freeshow', 'run_sheet'] as const;
 export type DownloadKind = (typeof DOWNLOAD_KINDS)[number];
@@ -30,7 +31,8 @@ export interface DownloadFile {
 
 /** Build one file for a service. */
 export async function buildFile(serviceId: number, kind: DownloadKind, langs?: Lang[] | null): Promise<DownloadFile> {
-  const r = renderService(serviceId);
+  // slides and FreeShow are projected; the Word file is printed (a licence may allow one and not the other)
+  const r = withRights(renderService(serviceId), kind === 'bulletin_docx' ? 'print' : kind === 'run_sheet' ? 'print' : 'project');
   langs = langs?.filter((l) => r.languages.includes(l)) ?? null;
   switch (kind) {
     case 'slides_pptx':

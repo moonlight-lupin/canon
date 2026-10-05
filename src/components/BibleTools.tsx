@@ -10,6 +10,7 @@ import { LANGUAGE_CATALOG, isChinese, langInfo } from '../../shared/languages.ts
 import type { Lang } from '../types-client.ts';
 import './csv.css';
 import './bible.css';
+import type { BibleRights } from '../../shared/bible-rights.ts';
 
 export interface Translation {
   code: string;
@@ -20,6 +21,10 @@ export interface Translation {
   notes: string | null;
   created_at: string | null;
   verses: number;
+  /** which printing of the version (e.g. "2011 text") */
+  edition?: string | null;
+  /** what the licence allows: printed, projected, online (shared/bible-rights.ts) */
+  rights?: BibleRights;
 }
 
 // One fetch of the installed list shared by every select on the page; refreshBibles() after a change. A Bible added

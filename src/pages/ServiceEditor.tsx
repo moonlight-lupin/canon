@@ -27,6 +27,7 @@ import { DuplicateDialog, SaveTemplateDialog } from './service/ServiceDialogs.ts
 import { TeamTab } from './service/TeamTab.tsx';
 import { ApprovalsButton } from './service/Approvals.tsx';
 import { type Assignment, fmtMin, KIND_ICON, KIND_LABEL, toMin } from './service/common.ts';
+import { RightsWarnings } from './service/RightsWarnings.tsx';
 
 export default function ServiceEditor() {
   const { id } = useParams();
@@ -303,6 +304,7 @@ export default function ServiceEditor() {
       </div>
 
       {showDetails && <DetailsCard svc={svc} onSave={(p) => patchService(p, true)} canEdit={canEdit} />}
+      <RightsWarnings sid={sid} version={JSON.stringify([svc.share_token, svc.bibles, svc.sermon_ref, svc.items.map((i) => [i.kind, i.scripture_ref, i.bibles, i.in_bulletin, i.on_slides, i.body])])} />
 
       {tab === 'order' ? (
         <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => { setLibDrag(null); setDropBefore(null); }}>

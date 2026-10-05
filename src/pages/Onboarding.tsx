@@ -11,9 +11,13 @@ import { LanguagePicker } from '../components/LanguagePicker.tsx';
 import { MAX_SERVICE_LANGS, langInfo } from '../../shared/languages.ts';
 import type { Lang, Settings } from '../types-client.ts';
 import { ModulesPanel } from './settings/ModulesTab.tsx';
+import { BIBLE_USES, type BibleUse } from '../../shared/bible-rights.ts';
+import { RightsDialog } from './library/RightsDialog.tsx';
 
 interface CatalogBible { code: string; name: string; lang: string; year?: number; imported: number; job: { status: string; message: string } | null }
 const OTHER = '_other';
+
+const NOT_USE: Record<BibleUse, string> = { print: 'Not for printing', project: 'Not for projection', online: 'Not online' };
 
 export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Settings; onSaved: () => void; saveLabel?: string }) {
   const { t, lt } = useI18n();
@@ -24,6 +28,8 @@ export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Set
   const [layout, setLayout] = useState(settings.bilingual_layout);
   const catalog = useApi<CatalogBible[]>('/bible/catalog');
   const installed = useApi<Translation[]>('/bible/translations');
+  // an administrator records a version's edition, licence and allowed uses
+  const [rightsFor, setRightsFor] = useState<Translation | null>(null);
   const running = (catalog.data ?? []).some((b) => b.job?.status === 'running');
   // Onboarding runs before the session context exists; only an administrator ever sees it.
   const session = useSession() as ReturnType<typeof useSession> | null;
@@ -79,6 +85,7 @@ export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Set
 
   return (
     <div className="stack">
+      {rightsFor && <RightsDialog version={rightsFor} onClose={() => setRightsFor(null)} onSaved={() => { setRightsFor(null); reloadBibles(); }} />}
       <section className="card stack">
         <h2>{t('Worship languages')}</h2>
         <p className="muted small" style={{ margin: 0 }}>{t('Every title, hymn, prayer and creed can be entered in each language. The first is the primary language. Simplified and Traditional Chinese convert automatically, so text only needs entering once.')}</p>
@@ -125,8 +132,12 @@ export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Set
                               <span className="muted">{x.verses.toLocaleString()} {t('verses')}</span>
                               <span className={`badge ${x.source === 'upload' ? 'reed' : 'lapis'}`} title={x.notes ?? x.license}>{x.source === 'upload' ? t('Uploaded') : t('Public domain')}</span>
                               {!other && x.code === chosen && <span className="badge ok">{t('Default')}</span>}
+                              {x.rights && BIBLE_USES.some((u) => !x.rights![u]) && (
+                                <span className="badge warn" title={t('What the licence allows')}>{BIBLE_USES.filter((u) => !x.rights![u]).map((u) => t(NOT_USE[u])).join(' · ')}</span>
+                              )}
                               {isAdmin && (
                                 <span className="acts">
+                                  <button className="btn ghost sm icon" title={t('Licence and allowed uses')} onClick={() => setRightsFor(x)}><Icon name="lock" /></button>
                                   <a className="btn ghost sm icon" href={`/api/bible/translations/${encodeURIComponent(x.code)}/export.csv`} download title={t('Export CSV')}><Icon name="download" /></a>
                                   <button className="btn ghost sm icon" title={t('Delete')} onClick={() => remove(x)}><Icon name="trash" /></button>
                                 </span>

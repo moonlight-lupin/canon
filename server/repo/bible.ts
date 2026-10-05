@@ -4,10 +4,12 @@ import * as OpenCC from 'opencc-js';
 import type { Lang } from '../../shared/types.ts';
 import { BOOKS, bookName, formatRef, parseRef, type RefSegment } from '../../shared/bible.ts';
 import { BIBLE_SOURCES, isChinese, langInfo } from '../../shared/languages.ts';
-import { all, db, get, tx } from '../db.ts';
+import { all, db, get, run, tx } from '../db.ts';
+import { NotFound } from '../lib/table.ts';
 import { config } from '../config.ts';
 import { bibleFor } from './settings.ts';
 import { toSimplified, toTraditional } from '../lib/chinese.ts';
+import { type BibleRights, parseRights } from '../../shared/bible-rights.ts';
 
 export interface Verse {
   book: number;
@@ -24,9 +26,22 @@ export interface Passage {
 }
 
 export function translations() {
-  return all<{ code: string; lang: string; name: string; license: string; source: 'catalog' | 'upload'; notes: string | null; created_at: string | null; verses: number }>(
+  return all<{ code: string; lang: string; name: string; license: string; source: 'catalog' | 'upload'; notes: string | null; created_at: string | null; verses: number; edition: string | null; rights: string }>(
     `SELECT t.*, (SELECT COUNT(*) FROM bible_verses v WHERE v.translation = t.code) AS verses FROM bible_translations t ORDER BY lang, code`,
-  );
+  ).map((t) => ({ ...t, rights: parseRights(t.rights) }));
+}
+
+/** What the church may do with a version's text (a version not in the list: everything, as before 0.13). */
+export const rightsOf = (code: string): BibleRights => parseRights(get<{ rights: string }>('SELECT rights FROM bible_translations WHERE code = ?', code)?.rights);
+
+/** Record a version's edition, licence and allowed uses (administrators). */
+export function setTranslationRights(code: string, b: { edition?: string | null; license?: string; rights?: Partial<BibleRights> }) {
+  const row = get<{ rights: string }>('SELECT rights FROM bible_translations WHERE code = ?', code);
+  if (!row) throw new NotFound('That Bible version is not installed.');
+  const rights = { ...parseRights(row.rights), ...b.rights };
+  run('UPDATE bible_translations SET edition = COALESCE(?, edition), license = COALESCE(?, license), rights = ? WHERE code = ?',
+    b.edition === undefined ? null : b.edition ?? '', b.license ?? null, JSON.stringify(rights), code);
+  return translations().find((t) => t.code === code);
 }
 
 const hasTranslation = (code: string) => !!get('SELECT 1 FROM bible_verses WHERE translation = ? LIMIT 1', code);

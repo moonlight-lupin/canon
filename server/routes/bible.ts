@@ -15,6 +15,10 @@ import {
 } from '../repo/bible-upload.ts';
 import { uiLang } from './csv.ts';
 import { h } from './helpers.ts';
+import { z } from 'zod';
+import { setTranslationRights } from '../repo/bible.ts';
+import { BIBLE_USES } from '../../shared/bible-rights.ts';
+import { logChange } from '../repo/changelog.ts';
 
 export const bibleRoutes = express.Router();
 
@@ -53,6 +57,19 @@ bibleRoutes.post('/bible/uploads', requireAdmin, rawBible, h((req) =>
 bibleRoutes.get('/bible/translations/:code/usage', requireAdmin, h((req) => ({ translation: translationRow(code(req)) ?? null, ...translationUsage(code(req)) })));
 
 bibleRoutes.delete('/bible/translations/:code', requireAdmin, h((req) => deleteTranslation(code(req), uiLang(req))));
+
+/** A version's edition, licence and what it may be used for: printed, projected, online (administrators). */
+bibleRoutes.patch('/bible/translations/:code', requireAdmin, h((req) => {
+  const b = z.object({
+    edition: z.string().max(100).nullable().optional(),
+    license: z.string().max(300).optional(),
+    rights: z.object({ print: z.boolean(), project: z.boolean(), online: z.boolean() }).partial().optional(),
+  }).parse(req.body);
+  const c = code(req);
+  const out = setTranslationRights(c, b);
+  logChange({ entity: 'settings', entity_id: null, action: 'update', summary: `Bible version ${c}: ${BIBLE_USES.map((u) => `${u} ${out!.rights[u] ? 'allowed' : 'not allowed'}`).join(', ')}${out!.edition ? ` (${out!.edition})` : ''}` });
+  return out;
+}));
 
 bibleRoutes.get('/bible/translations/:code/export.csv', requireAdmin, h((req, res) => {
   const c = code(req);

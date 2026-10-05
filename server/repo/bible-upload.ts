@@ -10,6 +10,7 @@ import { all, db, get, tx } from '../db.ts';
 import { decodeCsv, detectDelimiter, matchHeaders, parseRecords, readCell, writeCsv } from '../lib/csv.ts';
 import { M, say, type Msg } from '../csv/engine.ts';
 import { getSettings } from './settings.ts';
+import { UPLOAD_RIGHTS } from '../../shared/bible-rights.ts';
 
 /** 2–12 characters: capital letters, digits and hyphens, e.g. ESV, CUNP, RCUV-S, TB2. */
 export const BIBLE_CODE_RE = /^[A-Z0-9][A-Z0-9-]{1,11}$/;
@@ -407,10 +408,11 @@ export function uploadBible(
     ), l);
   }
   const license = (meta.notes.split(/\r?\n/)[0] || 'Used with permission').slice(0, 200);
+  const before = db.prepare('SELECT edition, rights FROM bible_translations WHERE code = ?').get(meta.code) as { edition: string | null; rights: string } | undefined;
   tx(() => {
     db.prepare('DELETE FROM bible_verses WHERE translation = ?').run(meta.code);
-    db.prepare('INSERT OR REPLACE INTO bible_translations (code, lang, name, license, source, notes, created_at) VALUES (?,?,?,?,?,?,?)').run(
-      meta.code, meta.lang, meta.name, license, 'upload', meta.notes || null, new Date().toISOString(),
+    db.prepare('INSERT OR REPLACE INTO bible_translations (code, lang, name, license, source, notes, created_at, edition, rights) VALUES (?,?,?,?,?,?,?,?,?)').run(
+      meta.code, meta.lang, meta.name, license, 'upload', meta.notes || null, new Date().toISOString(), before?.edition ?? null, before?.rights ?? JSON.stringify(UPLOAD_RIGHTS),
     );
     const ins = db.prepare('INSERT INTO bible_verses (translation, book, chapter, verse, text) VALUES (?,?,?,?,?)');
     for (const v of p.verses) ins.run(meta.code, v.book, v.chapter, v.verse, v.text);

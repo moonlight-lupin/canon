@@ -1,5 +1,6 @@
 import type { CoverOptions, ItemKind, L10n, Lang, Posture, Season } from './types.ts';
 import type { BulletinBlock, BulletinFull, BulletinOptions } from './presentation.ts';
+import type { BibleRights, BibleUse } from './bible-rights.ts';
 
 export interface Line {
   who: 'L' | 'C' | 'A' | null; // leader / congregation / all / plain
@@ -75,7 +76,14 @@ export interface RenderedItem {
   scripture?: {
     ref: L10n;
     /** per language: translation code + verses (empty if the reference is invalid or the Bible is not imported) */
-    passages: Partial<Record<Lang, { translation: string; verses: RenderedVerse[] }>>;
+    passages: Partial<Record<Lang, {
+      translation: string;
+      verses: RenderedVerse[];
+      /** what the version's licence allows (shared/bible-rights.ts) */
+      rights?: BibleRights;
+      /** the text was left out: the licence doesn't allow this use */
+      withheld?: BibleUse;
+    }>>;
     error?: string;
   };
   /** responsive / liturgical text per language */

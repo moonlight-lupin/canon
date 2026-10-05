@@ -47,6 +47,7 @@ import { fileForToken } from './repo/downloads.ts';
 import { isAdmin, listRoles, roleDef } from './lib/permissions.ts';
 import { hashCode, newRecoveryCodes, newSecret, otpauthUri, verifyTotp } from './lib/totp.ts';
 import QRCode from 'qrcode';
+import { withRights } from '../shared/bible-rights.ts';
 
 export const api = express.Router();
 
@@ -120,7 +121,8 @@ api.post('/logout', (req, res) => {
 // Public read-only share page for a service (names only, no contact details).
 api.get('/share/:token', h((req) => {
   const full = svc.serviceByShareToken(String(req.params.token));
-  return renderService(full);
+  // a licensed version's text goes online only if its licence allows it (Library → Bible); else the reference only
+  return withRights(renderService(full), 'online');
 }));
 
 // Short-lived download links (made by AI agents: canon_get_service format "downloads"): one file each, no sign-in needed.

@@ -7,7 +7,7 @@ import type { Paras, RenderedItem, RenderedService, RenderedSlideBlock } from '.
 import { formatRef, parseRef } from '../../shared/bible.ts';
 import { partsLabel } from '../../shared/labels.ts';
 import { partRuns } from '../../shared/parts.ts';
-import { passage, pickTranslation } from './bible.ts';
+import { passage, pickTranslation, rightsOf } from './bible.ts';
 import { hymnals, selectParts, singingOrder, songs, texts } from './library.ts';
 import { getServiceFull, itemTimes } from './services.ts';
 import { getSettings } from './settings.ts';
@@ -214,7 +214,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
             if (it.body?.[lang]?.trim()) continue;
             try {
               const p = passage(ref, lang, pickTranslation(lang, it.bibles?.[lang], svc.bibles?.[lang]));
-              out.scripture.passages[lang] = { translation: p.translation, verses: p.verses.map(({ chapter, verse, text }) => ({ chapter, verse, text })) };
+              out.scripture.passages[lang] = { translation: p.translation, verses: p.verses.map(({ chapter, verse, text }) => ({ chapter, verse, text })), rights: rightsOf(p.translation) };
             } catch (e) {
               out.scripture.error = (e as Error).message;
             }

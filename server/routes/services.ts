@@ -17,6 +17,8 @@ import { serviceDocx } from '../export/docx.ts';
 import { freeshowProject } from '../export/freeshow.ts';
 import { buildFile } from '../repo/downloads.ts';
 import { h, id, sendFile, str } from './helpers.ts';
+import { BIBLE_USES, withRights } from '../../shared/bible-rights.ts';
+import { rightsWarnings } from '../repo/bible-rights.ts';
 
 export const serviceRoutes = express.Router();
 
@@ -83,14 +85,21 @@ serviceRoutes.post('/services/:id/duplicate', h((req) => {
   return svc.duplicateService(id(req), b.date, b.with_roster);
 }));
 serviceRoutes.post('/services/:id/save-as-template', h((req) => svc.saveAsTemplate(id(req), S.L10nSchema.parse(req.body.name))));
-serviceRoutes.get('/services/:id/render', h((req) => renderService(id(req))));
+// ?for=print (bulletin) / project (slides): passages whose licence doesn't allow it keep only their reference
+serviceRoutes.get('/services/:id/render', h((req) => {
+  const r = renderService(id(req));
+  const use = BIBLE_USES.find((u) => u === req.query.for);
+  return use ? withRights(r, use) : r;
+}));
+/** Licence warnings for the planner: passages whose version doesn't allow how this service uses them. */
+serviceRoutes.get('/services/:id/rights', h((req) => rightsWarnings(id(req))));
 // approved, dated versions of the bulletin and slides (approving needs edit access to the service or meeting)
 serviceRoutes.get('/services/:id/approvals', h((req) => appr.listApprovals(id(req))));
 serviceRoutes.post('/services/:id/approvals', h((req) => appr.approve(id(req), { user_id: req.user?.id ?? null, name: req.user?.display_name ?? '' }, z.object({ note: z.string().max(300).nullable().optional() }).parse(req.body ?? {}).note)));
 serviceRoutes.get('/services/:id/approvals/:approval', h((req) => appr.getApproval(id(req), id(req, 'approval'))));
 serviceRoutes.post('/services/:id/share', h((req) => ({ token: svc.setShare(id(req), !!req.body.enabled) })));
 serviceRoutes.get('/services/:id/export.docx', h(async (req, res) => {
-  const r = renderService(id(req));
+  const r = withRights(renderService(id(req)), 'print');
   const buf = await serviceDocx(r);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', `attachment; filename="order-of-service-${r.date}.docx"`);
@@ -101,7 +110,7 @@ serviceRoutes.get('/services/:id/slides.pptx', h(async (req, res) => {
   sendFile(res, await buildFile(id(req), 'slides_pptx', langs));
 }));
 serviceRoutes.get('/services/:id/freeshow.project', h(async (req, res) => {
-  const r = renderService(id(req));
+  const r = withRights(renderService(id(req)), 'project');
   const file = await freeshowProject(r);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="canon-${r.date}.project"`);

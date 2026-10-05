@@ -735,6 +735,12 @@ export const MIGRATIONS: (string | Migration)[] = [
 
     -- a member whose personal data was erased (repo/pdpa.ts): the row stays, anonymised, so history still counts
     ALTER TABLE people ADD COLUMN erased_at TEXT;
+
+    -- what the church may do with a Bible version's text (shared/bible-rights.ts): the edition, and print / project /
+    -- online. Public-domain versions allow everything; uploaded (licensed) ones start without "online".
+    ALTER TABLE bible_translations ADD COLUMN edition TEXT;
+    ALTER TABLE bible_translations ADD COLUMN rights TEXT NOT NULL DEFAULT '{"print":true,"project":true,"online":true}';
+    UPDATE bible_translations SET rights = '{"print":true,"project":true,"online":false}' WHERE source = 'upload';
     `,
     run: (d) => {
       const put = d.prepare(`INSERT OR IGNORE INTO access_roles (key, name, description, builtin, admin, access, member_details, sensitive_fields, reopen_counts, sort)

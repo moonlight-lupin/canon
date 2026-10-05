@@ -300,3 +300,43 @@ test('delete reports usage; export and template download as CSV', async () => {
   assert.equal((await DEL('admin', '/bible/translations/ITMC')).status, 404);
   svc.services.remove(service.id);
 });
+
+// ---------------------------------------------------------------- licence: edition, allowed uses (0.13)
+
+test('licence rights: an upload starts without "online"; outputs not allowed show the reference only; the planner warns', async () => {
+  const send = (user: string, method: string, url: string, body: unknown) => fetch(`${base}/api${url}`, {
+    method, headers: { Cookie: sessions[user].cookie, 'X-CSRF-Token': sessions[user].csrf, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  assert.equal((await upload(JOHN('Licensed text'), { code: 'LICV', name: 'Licensed Version' })).status, 200);
+  assert.deepEqual(bible.translations().find((x) => x.code === 'LICV')!.rights, { print: true, project: true, online: false });
+  const { service } = svc.createService({ date: '2026-11-15', languages: ['en'] });
+  svc.addItem(service.id, { kind: 'scripture', title: { en: 'Reading' }, scripture_ref: 'John 3:16', bibles: { en: 'LICV' } });
+  const passage = async (url: string, user: string | null = 'editor') => {
+    const r = await fetch(`${base}/api${url}`, user ? { headers: { Cookie: sessions[user].cookie } } : {});
+    assert.equal(r.status, 200, url);
+    return ((await r.json()) as Json).items.find((x: Json) => x.scripture).scripture.passages.en;
+  };
+  assert.equal((await passage(`/services/${service.id}/render`)).verses.length, 1, 'the planner sees the text');
+  assert.equal((await (await GET('editor', `/services/${service.id}/rights`)).json() as Json[]).length, 0, 'no share link yet: nothing to warn about');
+
+  // the share page (online) gives the reference only
+  const token = ((await (await send('editor', 'POST', `/services/${service.id}/share`, { enabled: true })).json()) as Json).token;
+  const shared = await passage(`/share/${token}`, null);
+  assert.deepEqual(shared.verses, []);
+  assert.equal(shared.withheld, 'online');
+  assert.deepEqual(((await (await GET('editor', `/services/${service.id}/rights`)).json()) as Json[]).map((w) => [w.translation, w.uses]), [['LICV', ['online']]]);
+
+  // administrators record the licence; projection not allowed → slides give the reference only, the bulletin the text
+  assert.equal((await send('editor', 'PATCH', '/bible/translations/LICV', { rights: { project: false } })).status, 403);
+  const set = await send('admin', 'PATCH', '/bible/translations/LICV', { edition: '2020 text', rights: { project: false, online: true } });
+  assert.equal(set.status, 200);
+  assert.equal(((await set.json()) as Json).edition, '2020 text');
+  assert.deepEqual((await passage(`/services/${service.id}/render?for=project`)).verses, []);
+  assert.equal((await passage(`/services/${service.id}/render?for=print`)).verses.length, 1);
+  assert.equal((await passage(`/share/${token}`, null)).verses.length, 1, 'online now allowed');
+  assert.deepEqual(((await (await GET('editor', `/services/${service.id}/rights`)).json()) as Json[]).map((w) => w.uses), [['project']]);
+
+  // uploading the version again keeps what the administrator recorded
+  assert.equal((await upload(JOHN('Licensed text v2'), { code: 'LICV', name: 'Licensed Version', replace: 1 })).status, 200);
+  assert.deepEqual(bible.translations().find((x) => x.code === 'LICV')!.rights, { print: true, project: false, online: true });
+});

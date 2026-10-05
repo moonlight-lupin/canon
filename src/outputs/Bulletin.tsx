@@ -23,6 +23,7 @@ import './bulletin-layout.css';
 import { buildBulletin, COVER_LABEL, COVER_STYLES, type CoverStyle, NotesPage } from './bulletin-build.tsx';
 import type { ItemShow } from './bulletin-order.tsx';
 import { type Block, FOOT_MM, impose, type PageSpec, paginate, PAPER_ORDER, PAPERS, type PaperSpec, PX_PER_MM } from './bulletin-paper.tsx';
+import { withRights } from '../../shared/bible-rights.ts';
 
 // ---------------------------------------------------------------- paper geometry (mm)
 
@@ -31,10 +32,11 @@ export default function Bulletin() {
   const { t, lt } = useI18n();
   // an approved version (?approved=…) is drawn from the copy kept when it was approved
   const { approvedId, approval, error: apError } = useApproved(id);
-  const live = useApi<RenderedService>(approvedId ? null : `/services/${id}/render`);
+  // printed: a Bible version whose licence doesn't allow printing gives the reference only
+  const live = useApi<RenderedService>(approvedId ? null : `/services/${id}/render?for=print`);
   const liveTemplates = useApi<BulletinTemplate[]>(approvedId ? null : '/bulletin-templates');
   const liveBlocks = useApi<BulletinBlock[]>(approvedId ? null : '/bulletin-blocks');
-  const r = approvedId ? approval?.snapshot.render : live.data;
+  const r = approvedId ? (approval ? withRights(approval.snapshot.render, 'print') : undefined) : live.data;
   const error = apError ?? live.error;
   const templates = approvedId ? (approval ? (approval.snapshot.bulletin_template ? [approval.snapshot.bulletin_template] : []) : undefined) : liveTemplates.data;
   const blockList = approvedId ? approval?.snapshot.blocks : liveBlocks.data;
