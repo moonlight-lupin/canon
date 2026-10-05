@@ -91,6 +91,12 @@ Only when members is readable and the administrator exposes personal data.
 3. Suggest who follows up: `canon_list_coworkers` (elders, deacons, pastors), cell-group leaders via `canon_find_groups`.
 4. Answer name → occasion → suggested person. No phone numbers, addresses, ages or birth years unless asked; nothing copied elsewhere; no messages sent.
 
+## monthly_report — a month for the leaders
+
+1. `canon_attendance_report {"from","to"}` (average, same month last year, per congregation, visitors' follow-up) and `canon_list_service_records` for services with nothing recorded — list gaps, don't guess.
+2. If allowed: `canon_offerings_report` (totals by fund and method in cents ÷ 100; other currencies separately; unverified counts), `canon_serving_report` (short roles, overload, idle team members), `canon_songs_scripture_report` (books, songs under copyright), `canon_membership_stats` (joined, baptised).
+3. Write a short report: headline numbers, one section per topic, 2–4 points to pray about or act on. Totals only for money; visitors by name only. Changes nothing.
+
 ## group_overview — groups and committees
 
 1. `canon_find_groups {"kind"}`, then `canon_find_groups {"id"}` per group.

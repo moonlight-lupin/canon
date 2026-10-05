@@ -1,10 +1,10 @@
 # Roadmap
 
-What is planned for Canon after v0.9.1. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
+What is planned for Canon after v0.10.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
 
 | Version | Theme |
 |---|---|
-| 0.10.0 | Reporting |
+| 0.10.0 | Reporting — done |
 | 0.11.0 | Hardening: archiving, storage, privacy |
 | 0.12.0 | Lending library |
 | 0.13.0 | Asset register |
@@ -15,7 +15,7 @@ What is planned for Canon after v0.9.1. Plans change: each release is scoped in 
 
 Roles and permissions come before the finance modules, because book-keeping and claims need roles such as treasurer and claims approver. Until then, each new module gets its own on/off permission within the current administrator / editor / read-only roles.
 
-## 0.10.0 — Reporting
+## 0.10.0 — Reporting (done)
 
 - A **Reports** page: pick a period and a congregation; print or export to CSV.
 - **Attendance**: trends with a moving average, the same period last year, children and online.

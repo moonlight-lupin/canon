@@ -30,7 +30,7 @@ type Level = 'off' | 'read' | 'write';
 let server: Server;
 let base = '';
 
-const ALL_WRITE = { members: 'write', coworkers: 'write', groups: 'write', volunteers: 'write', services: 'write', library: 'write', templates: 'write' } as const;
+const ALL_WRITE = { members: 'write', coworkers: 'write', groups: 'write', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'write', contributions: 'write' } as const;
 function setMcp(modules: Partial<Record<keyof typeof ALL_WRITE, Level>>, pii: boolean) {
   const cur = getSettings().mcp;
   updateSettings({ mcp: { ...cur, enabled: true, modules: { ...cur.modules, ...modules }, expose_member_pii: pii } });

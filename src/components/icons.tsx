@@ -51,6 +51,7 @@ const P: Record<string, string> = {
   refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
   file: 'M14 3H6v18h12V7zM14 3v4h4',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  chart: 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM7 7h.01M17 7h.01M7 17h.01M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h3v3M20 20v.01',
 };
 

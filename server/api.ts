@@ -31,6 +31,8 @@ import * as bible from './repo/bible.ts';
 import * as svc from './repo/services.ts';
 import * as cong from './repo/congregations.ts';
 import * as rec from './repo/records.ts';
+import * as reports from './repo/reports.ts';
+import { Forbidden } from './lib/table.ts';
 import * as bg from './repo/backgrounds.ts';
 import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
@@ -365,7 +367,7 @@ api.get('/bible/search', h((req) => bible.searchBible(z.string().min(2).parse(re
 // ---------------------------------------------------------------- service records (attendance, visitors, offerings)
 
 const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: req.user?.role === 'admin' });
-const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional() });
+const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional() });
 const RecordInput = z.object({
   attendance: z.number().int().min(0).max(100000).nullable().optional(),
   children: z.number().int().min(0).max(100000).nullable().optional(),
@@ -380,6 +382,18 @@ const RecordInput = z.object({
 });
 api.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined })
   .map((r) => (req.user?.role === 'viewer' ? { ...r, offering_total: null, cash_counted: null } : r))));
+// reports (Records → Reports): offerings for editors and administrators only; visitors' contact details likewise
+const reportPeriod = (req: Request) => reports.period({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined });
+const canSeeMoney = (req: Request) => req.user?.role === 'admin' || req.user?.role === 'editor';
+api.get('/reports/attendance', h((req) => reports.attendanceReport(reportPeriod(req))));
+api.get('/reports/offerings', h((req) => {
+  if (!canSeeMoney(req)) throw new Forbidden('Offerings are only shown to editors and administrators.');
+  return reports.offeringsReport(reportPeriod(req));
+}));
+api.get('/reports/visitors', h((req) => reports.visitorsReport(reportPeriod(req), { contact: canSeeMoney(req) })));
+api.get('/reports/serving', h((req) => reports.servingReport(reportPeriod(req))));
+api.get('/reports/songs', h((req) => reports.songsReport(reportPeriod(req))));
+api.get('/reports/membership', h((req) => reports.membershipReport(reportPeriod(req))));
 api.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));
   return req.user?.role === 'viewer' ? rec.forViewer(r) : r;

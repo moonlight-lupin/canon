@@ -37,7 +37,8 @@ The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3;
 - **Volunteer rota:** teams and members, roles, away dates, fair auto-fill, warnings, and manual e-mail reminders through your own SMTP server.
 
 **Records**
-- **Service records:** attendance, new visitors, notes for the team and offerings for each service, with a cash count by denomination and a printable cash-count declaration for the counters to sign. Once verified, only an administrator can change the money.
+- **Service records:** attendance, new visitors (with follow-up), notes for the team and offerings for each service — including the odd gift in another currency — with a cash count by denomination and a cash-count declaration the counters sign on paper or on screen. Once verified, only an administrator can change the money.
+- **Reports:** attendance trends (with last year), offerings by fund, month and method (and a monthly summary for the treasurer), new visitors' follow-up, serving load and hard-to-fill roles, songs sung (for licence reports) and books of the Bible read and preached, and membership — for a period and congregation, printable and exportable to Excel.
 
 **Everywhere**
 - **Languages.** The church chooses its worship languages, primary first: English, 简体中文, 繁體中文, Bahasa Melayu, Bahasa Indonesia, Tamil and more. Each service shows up to three side by side. Simplified and Traditional Chinese convert automatically, and the interface is in English, 简体 and 繁體.
@@ -71,7 +72,7 @@ npm run dev          # API on :3000, web app on :5173 (proxied)
 ## Documentation
 
 - **User guide** for church office staff: [English](docs/guide/en.md) · [简体中文](docs/guide/zh.md) · [繁體中文](docs/guide/zh-Hant.md). It is also built into the app: **Guide**, at the bottom of the sidebar.
-- **Agent handbook** for Claude and other MCP agents: [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md). The MCP server serves it as the resource `canon://guide/agents`, and offers its playbooks as prompts (`plan_service`, `suggest_hymns`, `roster_check`, `proofread_service`, `catechism_series`, `translate_library`, `member_care`, `group_overview`).
+- **Agent handbook** for Claude and other MCP agents: [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md). The MCP server serves it as the resource `canon://guide/agents`, and offers its playbooks as prompts (`plan_service`, `suggest_hymns`, `roster_check`, `proofread_service`, `catechism_series`, `translate_library`, `member_care`, `group_overview`, `monthly_report`).
 - **Claude skill**: [skills/](skills/README.md) — upload `skills/canon` to claude.ai or copy it into Claude Code.
 - **Docker**: [docs/DOCKER.md](docs/DOCKER.md) · **Content to review before first use**: [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md).
 - **Roadmap**: [docs/ROADMAP.md](docs/ROADMAP.md) — what is planned after the current release.

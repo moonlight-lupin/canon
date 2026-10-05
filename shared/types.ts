@@ -366,9 +366,21 @@ export interface Template {
 
 // ---------------------------------------------------------------- MCP control
 
-export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates';
+export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions';
 export type ModuleAccess = 'off' | 'read' | 'write';
-export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates'];
+export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions'];
+/** Modules that live inside another: they are off whenever their parent is off. */
+export const MODULE_PARENT: Partial<Record<ModuleKey, ModuleKey>> = { contributions: 'records' };
+/** Modules agents may only ever read (offerings: agents never change money). */
+export const READ_ONLY_MODULES: ModuleKey[] = ['contributions'];
+
+/** The level an administrator's settings give a module, after nesting and read-only caps. */
+export function configuredAccess(module: ModuleKey, modules: Partial<Record<ModuleKey, ModuleAccess>>): ModuleAccess {
+  const parent = MODULE_PARENT[module];
+  if (parent && configuredAccess(parent, modules) === 'off') return 'off';
+  const lvl = modules[module] ?? 'off';
+  return lvl === 'write' && READ_ONLY_MODULES.includes(module) ? 'read' : lvl;
+}
 
 export interface McpConfig {
   enabled: boolean;

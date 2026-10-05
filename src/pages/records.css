@@ -9,6 +9,8 @@
 .rec-page .card h3 { margin: 0; }
 .rec-visitors input, .rec-lines input, .rec-lines select { min-width: 0; width: 100%; }
 .rec-lines td, .rec-visitors td { padding: 4px 6px; }
+.rec-visitors td:nth-child(1) input { min-width: 140px; }
+.rec-visitors td input, .rec-visitors td select { min-width: 110px; }
 .rec-cash { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .rec-cash td { padding: 3px 6px; }
 .rec-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; position: sticky; bottom: 0; padding: 10px 0; background: linear-gradient(transparent, var(--paper) 30%); }
@@ -48,15 +50,15 @@ input.invalid { border-color: var(--danger, #a33); }
 .rec-lines td:nth-child(1) select { min-width: 120px; }
 .rec-lines td:nth-child(2) select { min-width: 110px; }
 .rec-lines td:nth-child(4) input { min-width: 90px; }
-.rec-foreign { border-top: 1px dashed var(--line); padding-top: 10px; }
+.rec-foreign { border-top: 1px dashed var(--rule); padding-top: 10px; }
 .rec-foreign h4 { margin: 0; }
 .rec-signing { margin-top: 12px; }
 .rec-sigs { display: flex; gap: 12px; flex-wrap: wrap; }
-.rec-sig { margin: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; color: #1e2430; }
+.rec-sig { margin: 0; border: 1px solid var(--rule); border-radius: 8px; padding: 6px 8px; background: #fff; color: #1e2430; }
 .rec-sig img { display: block; width: 220px; height: auto; }
 .rec-sig figcaption { display: flex; gap: 8px; align-items: center; }
 .sig-pad { position: relative; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.sig-pad canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; background: #fff; border: 1px dashed var(--line); border-radius: 8px; touch-action: none; cursor: crosshair; }
+.sig-pad canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; background: #fff; border: 1px dashed var(--rule); border-radius: 8px; touch-action: none; cursor: crosshair; }
 .sig-hint { position: absolute; left: 14px; bottom: 12px; color: #9aa; pointer-events: none; font-size: 13px; }
 .decl-sig { padding: 0 6px !important; }
 .decl-sig img { display: block; max-height: 13mm; max-width: 70mm; }

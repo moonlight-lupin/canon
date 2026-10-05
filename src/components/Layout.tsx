@@ -30,7 +30,7 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
       { to: '/volunteers', label: 'Volunteers', icon: 'hands' },
     ],
   },
-  { group: 'Records', items: [{ to: '/records', label: 'Service records', icon: 'list' }] },
+  { group: 'Records', items: [{ to: '/records', label: 'Service records', icon: 'list' }, { to: '/reports', label: 'Reports', icon: 'chart' }] },
   { group: 'Administration', items: [{ to: '/settings', label: 'Settings', icon: 'settings' }] },
 ];
 

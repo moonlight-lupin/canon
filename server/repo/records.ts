@@ -165,7 +165,7 @@ export function listRecords(q: RecordsQuery) {
 export function forViewer(r: ServiceRecord & { saved?: boolean }) {
   return {
     ...r,
-    visitors: r.visitors.map((v) => ({ name: v.name, source: v.source })),
+    visitors: r.visitors.map((v) => ({ name: v.name, source: v.source, status: v.status })),
     offerings: [], cash: {}, counters: [], foreign_cash: {}, signatures: [],
     hidden: ['offerings', 'cash', 'counters', 'visitor contact'],
   };

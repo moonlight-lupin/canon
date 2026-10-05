@@ -42,8 +42,9 @@ Each has an MCP prompt of the same name when your access allows it — use the p
 | Fill missing translations | `translate_library` |
 | Birthdays and visitors to follow up | `member_care` |
 | Groups and committees overview | `group_overview` |
+| Monthly report for the leaders (attendance, visitors, offerings, serving, songs) | `monthly_report` |
 
 ## References
 
-- `references/playbooks.md` — the ten playbooks step by step.
+- `references/playbooks.md` — the eleven playbooks step by step.
 - `references/tools.md` — the tool catalogue by module, precedent lookups, item kinds, the Reformed order of worship and troubleshooting.

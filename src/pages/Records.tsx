@@ -12,8 +12,8 @@ import { InfoTip } from '../components/InfoTip.tsx';
 import { HistoryButton } from '../components/LogTools.tsx';
 import { CONG_LABEL, CongregationBadge, CongregationFilter, useCongregationFilter, useCongregations } from '../components/Congregations.tsx';
 import {
-  CURRENCIES, DENOMINATIONS, OFFERING_METHODS, cashTotal, countProblems, denomLabel, foreignCounted, foreignCurrencies, methodTotal, money, parseMoney,
-  type ForeignCash, type OfferingLine, type OfferingMethod, type ServiceRecord, type Visitor,
+  CURRENCIES, DENOMINATIONS, METHOD_LABEL, OFFERING_METHODS, cashTotal, countProblems, denomLabel, foreignCounted, foreignCurrencies, methodTotal, money, parseMoney,
+  VISITOR_STATUSES, VISITOR_STATUS_LABEL, type ForeignCash, type OfferingLine, type OfferingMethod, type ServiceRecord, type Visitor, type VisitorStatus,
 } from '../../shared/records.ts';
 import type { L10n, ServiceFull } from '../types-client.ts';
 import './records.css';
@@ -38,7 +38,6 @@ interface Row {
   has_notes: boolean;
 }
 
-const METHOD_LABEL: Record<OfferingMethod, string> = { cash: 'Cash', cheque: 'Cheque', transfer: 'Bank transfer', paynow: 'PayNow', card: 'Card', other: 'Other' };
 
 // ================================================================= the list
 
@@ -247,7 +246,7 @@ export function RecordEditor() {
           {d.visitors.length === 0 ? <div className="small muted">{t('No new visitors recorded.')}</div> : (
             <div className="table-wrap">
               <table className="t rec-visitors">
-                <thead><tr><th>{t('Name')}</th>{!restricted && <th>{t('Contact')}</th>}<th>{t('How they came')}</th>{!restricted && <th>{t('Follow-up by')}</th>}{!restricted && <th>{t('Notes')}</th>}{!restricted && <th />}</tr></thead>
+                <thead><tr><th>{t('Name')}</th>{!restricted && <th>{t('Contact')}</th>}<th>{t('How they came')}</th>{!restricted && <th>{t('Follow-up by')}</th>}<th>{t('Follow-up')} <InfoTip text={t('How far the follow-up has come. Records → Reports → New visitors counts each step.')} /></th>{!restricted && <th>{t('Notes')}</th>}{!restricted && <th />}</tr></thead>
                 <tbody>
                   {d.visitors.map((v, i) => {
                     const upd = (p: Partial<Visitor>) => set({ visitors: d.visitors.map((x, j) => (j === i ? { ...x, ...p } : x)) });
@@ -257,6 +256,7 @@ export function RecordEditor() {
                         {!restricted && <td><input value={v.contact ?? ''} onChange={(e) => upd({ contact: e.target.value })} placeholder={t('Phone or e-mail')} /></td>}
                         <td><input value={v.source ?? ''} onChange={(e) => upd({ source: e.target.value })} placeholder={t('e.g. invited by a friend')} disabled={restricted} /></td>
                         {!restricted && <td><input value={v.follow_up_by ?? ''} onChange={(e) => upd({ follow_up_by: e.target.value })} /></td>}
+                        <td><select value={v.status ?? 'new'} disabled={restricted} onChange={(e) => upd({ status: e.target.value === 'new' ? undefined : (e.target.value as VisitorStatus) })}>{VISITOR_STATUSES.map((s) => <option key={s} value={s}>{t(VISITOR_STATUS_LABEL[s])}</option>)}</select></td>
                         {!restricted && <td><input value={v.notes ?? ''} onChange={(e) => upd({ notes: e.target.value })} /></td>}
                         {!restricted && <td><button className="btn sm ghost icon danger" onClick={() => set({ visitors: d.visitors.filter((_, j) => j !== i) })} aria-label={t('Remove')}><Icon name="trash" /></button></td>}
                       </tr>

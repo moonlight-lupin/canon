@@ -1,0 +1,41 @@
+/* Records → Reports */
+.rep-bar-top { display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.rep-bar-top .seg { flex-wrap: wrap; }
+.rep-period { margin: 4px 0 12px; color: var(--ink-3); font-size: 13px; }
+.rep-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.rep-stat { padding: 10px 14px; }
+.rep-page .rep-big { font: 600 24px var(--serif); margin: 2px 0; }
+.rep-sect { margin-bottom: 12px; min-width: 0; overflow-x: auto; }
+.rep-sect h3 { margin: 0; }
+.rep-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.rep-grid > .rep-sect { margin-bottom: 0; }
+.rep-grid + .rep-sect, .rep-grid + .rep-grid { margin-top: 12px; }
+.rep-month { gap: 12px; align-items: flex-end; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 12px; }
+.ok-text { color: var(--ok); }
+
+.rep-bars { width: 100%; border-collapse: collapse; }
+.rep-bars th { text-align: left; font-weight: 400; padding: 3px 10px 3px 0; width: 38%; max-width: 260px; }
+.rep-bars td { padding: 3px 0; }
+.rep-bar-cell { width: 50%; }
+.rep-bar { height: 12px; min-width: 2px; border-radius: 3px; background: var(--lapis); opacity: 0.8; }
+.rep-bars td.right { padding-left: 10px; }
+
+.rep-chart { width: 100%; height: auto; display: block; }
+.rep-chart text { font: 11px var(--sans); fill: var(--ink-3); }
+.rep-chart .grid { stroke: var(--rule); stroke-width: 1; }
+.rep-chart .line { fill: none; stroke: var(--lapis); stroke-width: 2; }
+.rep-chart .avg { fill: none; stroke: var(--reed); stroke-width: 2; stroke-dasharray: 5 4; }
+.rep-chart .dot { fill: var(--lapis); }
+
+.rep-cols { display: grid; gap: 4px; align-items: end; height: 150px; margin-top: 6px; }
+.rep-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.rep-col .b { width: 70%; min-height: 1px; background: var(--reed); border-radius: 3px 3px 0 0; }
+.rep-col .v { font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+.rep-col .l { font-size: 10.5px; color: var(--ink-3); margin-top: 3px; }
+
+@media print {
+  body:has(.rep-page) .side, body:has(.rep-page) .mobile-bar { display: none !important; }
+  body:has(.rep-page) .main { margin: 0 !important; padding: 0 !important; }
+  .rep-page .card { box-shadow: none; break-inside: avoid; }
+  .rep-page .rep-bar, .rep-col .b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

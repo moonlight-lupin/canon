@@ -226,6 +226,9 @@ export const McpConfigSchema = z.object({
     services: z.enum(['off', 'read', 'write']),
     library: z.enum(['off', 'read', 'write']),
     templates: z.enum(['off', 'read', 'write']),
+    records: z.enum(['off', 'read', 'write']).default('off'),
+    // agents never change money: stored as read at most
+    contributions: z.enum(['off', 'read', 'write']).default('off').transform((v) => (v === 'write' ? 'read' : v)),
   }),
   expose_member_pii: z.boolean(),
 });

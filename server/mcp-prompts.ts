@@ -475,6 +475,47 @@ export const PROMPTS: PromptDef[] = [
       );
     },
   },
+  {
+    name: 'monthly_report',
+    title: 'Monthly report for the leaders',
+    description: 'A short report on a month (or another period) for the pastor, elders or church council: attendance and new visitors, and — where this connection may see them — offerings, serving, songs and Scripture, membership.',
+    needs: { records: 'read' },
+    args: { month: 'The month, YYYY-MM (default: last month)', compare: '"yes" to compare with the same month last year (default yes)' },
+    build: (a, c) => {
+      const m = /^\d{4}-\d{2}$/.test((a.month ?? '').trim()) ? a.month!.trim() : (() => {
+        const d = new Date(c.today + 'T00:00:00');
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 1);
+        return d.toISOString().slice(0, 7);
+      })();
+      const last = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).getDate();
+      const from = `${m}-01`;
+      const to = `${m}-${String(last).padStart(2, '0')}`;
+      const period = `{"from":"${from}","to":"${to}"}`;
+      let n = 1;
+      const step = (s: string) => `${n++}. ${s}`;
+      return lines(
+        ...header(`write the report for ${m}`, c),
+        '',
+        '## Steps',
+        step(`canon_attendance_report ${period}: average, highest, children and online, the same month last year (\`previous\`), per-congregation averages, and the new visitors' follow-up (new → contacted → came back → joined).`),
+        step(`canon_list_service_records ${period} for services with no attendance recorded — list them as gaps rather than guessing.`),
+        can(c, 'contributions', 'read')
+          ? step(`canon_offerings_report ${period}: total by fund and payment method (amounts are in cents — divide by 100), other currencies separately (never add them to the total), and cash counts still not verified. Report totals only; do not single out services or people.`)
+          : null,
+        can(c, 'volunteers', 'read') ? step(`canon_serving_report ${period}: roles that were short of people, people serving very often, and team members not rostered.`) : null,
+        can(c, 'services', 'read') ? step(`canon_songs_scripture_report ${period}: books read and preached, and how many songs under copyright were sung (for the licence report).`) : null,
+        can(c, 'members', 'read') ? step(`canon_membership_stats ${period}: who joined or was baptised this month.`) : null,
+        step('Write the report: a few headline numbers, then one short section per topic, then 2–4 points for the leaders to pray about or act on (e.g. visitors waiting for follow-up, a role that keeps being short). Plain language; no charts unless asked.'),
+        step('Offer the user the report to copy. Staff can print the full figures from Records → Reports (and the treasurer the monthly offerings summary).'),
+        '',
+        '## Notes',
+        '- Visitors are listed by name only; never ask for or add their contact details.',
+        '- Read only: this playbook changes nothing.',
+        ...ETIQUETTE,
+      );
+    },
+  },
 ];
 
 // ---------------------------------------------------------------- exposure control

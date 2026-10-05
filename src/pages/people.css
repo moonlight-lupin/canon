@@ -85,6 +85,7 @@ table.teams-table th:nth-child(4) { width: 52px; }
 /* settings */
 .mod-row { border-bottom: 1px solid var(--rule); padding: 12px 0; }
 .mod-row:last-child { border-bottom: 0; }
+.mod-row.nested { padding-left: 22px; border-left: 2px solid var(--rule); margin-left: 6px; }
 .tool-list { margin: 8px 0 0; display: grid; gap: 4px; }
 .tool { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; font-size: 12.5px; align-items: start; }
 .tool.off { color: var(--ink-3); }

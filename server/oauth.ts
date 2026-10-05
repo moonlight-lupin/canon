@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import { publicUrl, trustProxy } from './lib/public-url.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type { ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
-import { MODULES } from '../shared/types.ts';
+import { MODULES, configuredAccess } from '../shared/types.ts';
 import { getUser, sessionUser, sha256, type User } from './auth.ts';
 import { config } from './config.ts';
 import { all, get, run, tx } from './db.ts';
@@ -211,6 +211,8 @@ const MODULE_LABEL: Record<ModuleKey, [string, string]> = {
   services: ['Service planner', '聚会程序'],
   library: ['Song & liturgy library', '诗歌与礼文库'],
   templates: ['Service templates', '聚会模板'],
+  records: ['Service records (attendance, visitors, notes)', '聚会记录（出席、新朋友、备注）'],
+  contributions: ['Offerings and cash counts', '奉献与现金点算'],
 };
 const ACCESS_LABEL: Record<ModuleAccess, [string, string]> = {
   off: ['Hidden', '隐藏'],
@@ -235,7 +237,7 @@ function consentPage(res: Response, a: ValidAuthz, user: User & { csrf: string }
   })();
   const canWrite = a.scopes.includes('canon:write');
   const rows = MODULES.map((m) => {
-    let lvl = s.modules[m];
+    let lvl = configuredAccess(m, s.modules);
     const capped = lvl === 'write' && !canWrite;
     if (capped) lvl = 'read';
     const [en, zh] = MODULE_LABEL[m];

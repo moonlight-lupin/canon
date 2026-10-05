@@ -85,7 +85,7 @@ export const DEFAULT_SETTINGS: Settings = {
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {
     enabled: false,
-    modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read' },
+    modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off' },
     expose_member_pii: false,
   },
 };

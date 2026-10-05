@@ -3,6 +3,8 @@
 
 export type OfferingMethod = 'cash' | 'cheque' | 'transfer' | 'paynow' | 'card' | 'other';
 export const OFFERING_METHODS: OfferingMethod[] = ['cash', 'cheque', 'transfer', 'paynow', 'card', 'other'];
+/** English UI labels (translated with t()). */
+export const METHOD_LABEL: Record<OfferingMethod, string> = { cash: 'Cash', cheque: 'Cheque', transfer: 'Bank transfer', paynow: 'PayNow', card: 'Card', other: 'Other' };
 
 export interface OfferingLine {
   fund: string;
@@ -36,8 +38,16 @@ export interface Signature {
   hash: string;
 }
 
+/** How far a new visitor has come: contacted by the church, came back, joined. */
+export type VisitorStatus = 'new' | 'contacted' | 'returning' | 'joined';
+export const VISITOR_STATUSES: VisitorStatus[] = ['new', 'contacted', 'returning', 'joined'];
+/** English UI labels (translated with t()). */
+export const VISITOR_STATUS_LABEL: Record<VisitorStatus, string> = { new: 'New', contacted: 'Contacted', returning: 'Came back', joined: 'Joined the church' };
+
 export interface Visitor {
   name: string;
+  /** follow-up progress (absent = new) */
+  status?: VisitorStatus;
   contact?: string;
   /** how they heard of the church / who brought them */
   source?: string;

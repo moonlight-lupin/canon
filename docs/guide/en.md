@@ -51,6 +51,8 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 | Service records: attendance and notes | ✓ | ✓ | see only |
 | Service records: offerings and visitors' contact details | ✓ | ✓ (until the cash count is verified) | — |
 | Reopen a verified cash count | ✓ | — | — |
+| Reports: attendance, visitors, serving, songs and Scripture, membership | ✓ | ✓ | ✓ (visitors without contact details) |
+| Reports: offerings, and the monthly summary for the treasurer | ✓ | ✓ | — |
 | Import CSV; export personal data | ✓ | ✓ | — |
 | Send reminder e-mails | ✓ | ✓ | — |
 | Church defaults (slide, bulletin and service templates) | ✓ | — | — |
@@ -240,7 +242,7 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 [Service records](/records) (under **Records** in the sidebar) keeps what happened at each service held: attendance, new visitors, notes for the team and the offerings. The list shows the last 8 weeks, 6 months or 12 months (and a congregation, if your church has several), with the average attendance, the number of new visitors and the offering total. Click a service to open its record.
 
 - **Attendance**: **People present** (adults and children), **of whom children**, and **Online** if you stream.
-- **New visitors**: name, contact, **How they came**, **Follow-up by** and notes. Visitors' details are personal data: record only what the church needs to follow up.
+- **New visitors**: name, contact, **How they came**, **Follow-up by**, **Follow-up** (New, Contacted, Came back, Joined the church) and notes. Visitors' details are personal data: record only what the church needs to follow up.
 - **Notes for the team**: what went well, what to fix, prayer needs.
 - **Offerings**: one line per fund and method (cash, cheque, bank transfer, PayNow, card), with totals per method. Administrators set the **Currency and funds** at the top of the list.
 - **Another currency**: when a gift comes in another currency (say a USD note in an SGD church), set that line's **Currency** (pick **Other…** to type any three-letter code, e.g. THB). Each currency is totalled on its own and never converted: the list and the totals show the church's currency, with the others listed underneath (“+ USD 20.00”).
@@ -253,6 +255,17 @@ Most lists have **Download template**, **Export** and **Import CSV…**.
 - **Print cash-count declaration** prints an A4 page with the count (each currency separately), the totals by method, a short declaration, and the counters' signatures — drawn on screen, or blank name, signature and date lines to sign on paper. Churches that sign on screen can still print blank lines as a fallback before anyone has signed.
 
 Read-only users see attendance and notes only, without offerings or visitors' contact details. Every change is in **Settings → Change log** (an administrator's **History** button on the record shows just that service).
+
+## Reports {#reports}
+
+[Reports](/reports) (under **Records** in the sidebar) sums up a period: choose **Last 3 / 6 / 12 months**, **This year**, **Last year** or **Choose dates…**, and a congregation if your church has several. **Print** prints the report on the screen; the **CSV** button on each table downloads it for Excel.
+
+- **Attendance**: the average, the same period last year (with the change in %), the highest service, children and online, a chart of each service with a four-week average (dashed), and averages per month and congregation.
+- **Offerings** (editors and administrators): totals by fund and month and by payment method, in the church's currency; other currencies listed separately and never converted; cash counts still waiting to be verified, with how many days they have waited. **Monthly summary for the treasurer** opens one printable A4 page for a month: totals by fund and method, each service with its cash count, other currencies, and lines to sign.
+- **New visitors**: how many came, and how many were contacted, came back and joined the church (set on each service record under **Follow-up**), how they came, and per month. Read-only users see names only.
+- **Serving**: how often each person served (and declined), team members who were not rostered, and **Roles that are hard to fill** — short of people at some services, or with too few qualified people.
+- **Songs & Scripture**: how often each song was sung, with its copyright and CCLI number (export the list for your licence report), songs not sung in the period, and which books of the Bible were read and preached.
+- **Membership**: members and regulars, by status, age, gender and congregation, and who joined or was baptised in the period.
 
 ## Settings
 
@@ -272,10 +285,10 @@ Canon can connect to Claude (claude.ai) so you can ask, for example, "plan next 
 
 1. Claude needs a public **https** address for Canon, usually through a tunnel set up by your IT helper.
 2. **Settings → AI / MCP**: turn on **Enable MCP server**, paste the **Public address**, press **Check**, then **Save**.
-3. Set each module under **Module access** to **Off**, **Read only** or **Read & write**, and press **Save AI access**.
+3. Set each module under **Module access** to **Off**, **Read only** or **Read & write**, and press **Save AI access**. **Service records** (attendance, visitors' names and follow-up, notes) and, inside it, **Offerings (contributions)** are off until you switch them on; offerings can only ever be read — Claude never changes money, signs or verifies a count, and read-only accounts never see offerings.
 4. In claude.ai: **Settings → Connectors → Add custom connector**, paste the **Connector URL**, leave the client ID blank, sign in to Canon and approve.
 
-Claude also gets ready-made playbooks (plan a service, suggest hymns, check the rota, proofread a service, plan a catechism series, bring in an existing bulletin or slide deck…). For the last one, share your current bulletin (PDF, Word or a photo) or PowerPoint with Claude: it matches the hymns and liturgy with the Library, builds the service for you to check, and lists the settings to choose in the template editors.
+Claude also gets ready-made playbooks (plan a service, suggest hymns, check the rota, proofread a service, plan a catechism series, bring in an existing bulletin or slide deck, write a monthly report for the leaders…). For the last one, share your current bulletin (PDF, Word or a photo) or PowerPoint with Claude: it matches the hymns and liturgy with the Library, builds the service for you to check, and lists the settings to choose in the template editors.
 
 Claude looks at your past services first: the same Sunday last year, the same season, earlier sermons on the same book, when each hymn was last sung and which catechism question you reached. It follows your church's usual order, hymns and rota, avoids hymns sung in the last few weeks, and tells you which past services it based a plan on.
 

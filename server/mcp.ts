@@ -13,7 +13,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { MODULES } from '../shared/types.ts';
+import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../shared/types.ts';
 import type { McpConfig, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
 import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
@@ -31,6 +31,7 @@ import { LIBRARY_TOOLS } from './mcp-tools/library.ts';
 import { VOLUNTEER_TOOLS } from './mcp-tools/volunteers.ts';
 import { PEOPLE_TOOLS } from './mcp-tools/people.ts';
 import { GROUP_TOOLS } from './mcp-tools/groups.ts';
+import { RECORD_TOOLS } from './mcp-tools/records.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
 export type { ToolDef } from './mcp-tools/common.ts';
 
@@ -45,12 +46,18 @@ const ROLE_TEXT: Record<Role, string> = {
 const MODULE_TEXT: Record<ModuleKey, string> = {
   services: 'services, the order of service and downloads', templates: 'service templates', library: 'songs, liturgy, hymnals and Bibles',
   volunteers: 'teams, roles, rota and away dates', members: 'the member register', coworkers: 'co-workers', groups: 'groups, committees and serving teams',
+  records: 'service records: attendance, new visitors (names and follow-up) and notes for the team, and their reports',
+  contributions: 'offerings and cash counts on service records, and the offerings report (read only; part of records)',
 };
 
 /** Why a module is at this level on this connection (admin setting ∩ connection scope ∩ the person's role). */
 function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): string {
-  const setting = cfg.modules[module] ?? 'off';
+  const setting = configuredAccess(module, cfg.modules);
+  const parent = MODULE_PARENT[module];
+  if (parent && configuredAccess(parent, cfg.modules) === 'off') return `it is part of ${parent}, which is not shared with AI agents`;
   if (setting === 'off') return 'the administrator has not shared this module with AI agents';
+  if (module === 'contributions' && role === 'viewer') return 'read-only accounts do not see offerings';
+  if (READ_ONLY_MODULES.includes(module)) return 'read only: AI agents never change offerings or cash counts';
   const lvl = effectiveAccess(module, cfg, scopes, role);
   if (lvl === 'write') return 'the administrator allows read & write, this connection may write, and your role may write';
   if (setting === 'read') return 'the administrator shares it read-only';
@@ -80,7 +87,9 @@ const WHOAMI: ToolDef = {
       playbooks: allowedPrompts(levels, cfg.expose_member_pii).map((p) => p.name),
       never: [
         'send e-mail or messages', 'delete people', 'see user accounts, passwords, settings or connection data',
-        'see service records (attendance, offerings, visitors)', 'type hymn words that are under copyright unless the church holds a licence',
+        ...(levels.records === 'off' ? ['see service records (attendance, visitors, notes)'] : []),
+        ...(levels.contributions === 'off' ? ['see offerings or cash counts'] : []),
+        'change offerings, cash counts or signatures, or verify a count', 'type hymn words that are under copyright unless the church holds a licence',
         'remove or overwrite anything without asking the user first',
       ],
       instructions: instructions(levels, cfg.expose_member_pii, settings.languages),
@@ -89,7 +98,7 @@ const WHOAMI: ToolDef = {
   },
 };
 
-export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS];
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
@@ -109,8 +118,10 @@ export function toolCatalog() {
 
 /** Effective access to a module for this request = min(admin setting, token scope, user role). */
 export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): ModuleAccess {
-  const setting = cfg.modules[module] ?? 'off';
+  const setting = configuredAccess(module, cfg.modules);
   if (!cfg.enabled || setting === 'off') return 'off';
+  // as in the web app: read-only users never see offerings
+  if (module === 'contributions' && role === 'viewer') return 'off';
   if (!scopes.has('canon:read') && !scopes.has('canon:write')) return 'off';
   if (setting === 'write' && scopes.has('canon:write') && role !== 'viewer') return 'write';
   return 'read';

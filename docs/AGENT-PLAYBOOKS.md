@@ -105,6 +105,9 @@ Read tools are safe to call freely. Write tools change church data: confirm firs
 | members | `canon_find_people`, `canon_get_person` | `canon_save_person`, `canon_save_household` |
 | coworkers | `canon_list_coworkers` | `canon_save_coworker` |
 | groups | `canon_find_groups` | `canon_save_group`, `canon_update_group_members` (batch) |
+| records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |
+| contributions (inside records; read only) | `canon_offerings_report`, plus offerings in the two record tools above | — |
+| reports in other modules | `canon_serving_report` (volunteers), `canon_songs_scripture_report` (services), `canon_membership_stats` (members) | — |
 
 Patterns:
 - `find_*` / `search_*` return summaries; `get_*` returns detail. `canon_get_service` returns hymn words, Bible text and liturgy only with `include_text: true`; `format: "text"` gives a plain-text run sheet.
@@ -117,6 +120,7 @@ Patterns:
 - **Congregations** (one church, several congregations — e.g. English / Chinese / Indonesian services): `canon_find_services`, `canon_find_people` and `canon_find_groups` take `congregation` (id, short label or name); service summaries show `congregation`; `canon_create_service` / `canon_update_service` take `congregation_id` (a new service then starts with that congregation's languages). Plan and proofread within the user's congregation, and compare with past services of the same congregation.
 - `canon_get_templates` marks the church's usual template with `church_default: true`; start from it unless the user or the precedent says otherwise.
 - Precedent (section 5): `canon_find_services` with `similar_to` / `like`, `canon_get_service` with `include_similar`, song usage (`last_used`, `times_12m`, `sort`) in `canon_search_library`, and catechism `history` / `next_suggested_label` in `canon_get_library_item`.
+- **Service records and reports**: `records` (attendance, new visitors with follow-up status `new` / `contacted` / `returning` / `joined`, notes for the team) and `contributions` (offerings and cash counts) are **off by default**. `contributions` lives inside `records` — it is off whenever records is off — and is **always read only**: agents never change offerings or cash counts, never sign or verify a count; read-only accounts never get it. Amounts are in **cents** of the church currency (divide by 100); other currencies are kept apart and never converted — never add them to the church-currency total. `canon_save_service_record` replaces the notes: read them first and keep what is there; ask before overwriting numbers someone entered. Report tools take a period (`from`, `to`, default the last 12 months) and optionally `congregation_id`.
 - Dates are `YYYY-MM-DD`, times `HH:MM` (24h). Results are `{"ok":true,"data":…}` or `{"ok":false,"error":…,"errors":[…]}`.
 
 ## 7. Batch semantics (all-or-nothing)
@@ -141,6 +145,7 @@ Patterns:
 - Member contact details, addresses, birth dates and notes are returned **only** if the administrator has turned on "Expose member contact details & birthdays". Otherwise they are withheld: do not try to obtain or infer them.
 - Even when exposed, use the minimum: names and dates for the task at hand. Don't copy personal data into chats, documents or other tools unless the user asked for it. Don't include ages or birth years unless asked.
 - Rota, group and service tools return names only, never contact details.
+- Service records: visitors are returned by name, how they came and follow-up only; their contact details and notes only when personal data is exposed. Signature images are never returned. Report totals for offerings; do not single out individual services or people in summaries.
 - Agents cannot send e-mail. Volunteer reminders are sent by staff from the service's **Team & roster** tab after a preview.
 - Every tool call is written to an audit log the administrator can read (argument names only for the registers).
 
@@ -164,12 +169,14 @@ The MCP server offers these as prompts; each is offered only when your access al
 - **check_library** `{focus?}` — `canon_search_library {"type":"checks"}` gives a report of languages that drift apart (verses or parts missing a language, different line or paragraph counts, Leader / People lines that do not match), likely duplicates (same title, a hymnal number used twice) and Bible chapters with fewer verses; level `check` probably needs fixing, `note` may be fine. Group and explain the findings, look at the items with `canon_get_library_item`, suggest which duplicate to keep (deleting is done by a person), fill missing words only for public-domain or church-owned texts (as translate_library), and end with a short to-do list.
 - **translate_library** `{type: songs|texts, lang}` — only public-domain or church-owned texts; never copyrighted hymns; small batches shown side by side; after a yes, `canon_save_song` / `canon_save_text` with only the new language (updates merge by language — the existing languages are kept), tagged `translation-draft` for review.
 - **member_care** `{days?}` — only with members readable and personal data exposed: birthdays (`canon_find_people` view `birthdays`) and visitors to follow up, with suggested follow-up people (`canon_list_coworkers`, `canon_find_groups`) and privacy reminders.
+- **monthly_report** `{month?, compare?}` — needs records readable: `canon_attendance_report` and `canon_list_service_records` for the month (gaps listed, not guessed); where allowed, `canon_offerings_report` (totals only, other currencies separate), `canon_serving_report`, `canon_songs_scripture_report`, `canon_membership_stats`; then a short report with headline numbers, one section per topic and 2–4 points for the leaders. Changes nothing.
 - **group_overview** `{kind?}` — `canon_find_groups` for each kind and each group; sizes, leaders, terms ending soon, groups without a leader, people on many groups; propose changes only.
 
 ## 12. Troubleshooting
 
 - **A tool or playbook is missing**: the administrator has set that module to off or read-only in Settings → AI / MCP, your connection was approved with read-only scope, or the signed-in user is a viewer. Ask the user to check with the administrator; don't work around it.
 - **member_care is missing**: members is off, or "Expose member contact details & birthdays" is off (the default).
+- **No service-record or offerings tools**: Service records and Offerings are off by default; offerings also need Service records on and an editor or administrator account.
 - **"N of M operations failed — nothing was applied"**: read the per-op errors, fix them, resend the whole batch.
 - **"No Bible is set up for language …"**: the church has no Bible for that language; an administrator adds one under Settings → Languages.
 - **A catechism is not in the library**: an administrator imports the Westminster Standards in the Library.

@@ -67,7 +67,7 @@ test('records: save, verify (two counters, matching count), lock for editors, ad
   // read-only users see no money or contact details
   const v = R.forViewer(R.recordFor(s.id));
   assert.deepEqual(v.offerings, []);
-  assert.deepEqual(v.visitors, [{ name: 'New Friend', source: undefined }]);
+  assert.deepEqual(v.visitors, [{ name: 'New Friend', source: undefined, status: undefined }]);
 
   // the change log has the changes, under the service
   const hist = log.listChanges({ entity: 'services', entity_id: s.id });

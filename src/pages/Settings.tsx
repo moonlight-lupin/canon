@@ -15,7 +15,8 @@ import { Icon } from '../components/icons.tsx';
 import { CongregationsCard } from '../components/Congregations.tsx';
 import { ChangeList, FilterBar, Pager, useLogQuery, type ChangeRow, type Paged } from '../components/LogTools.tsx';
 import type { Lang, McpConfig, ModuleAccess, ModuleKey, PaperSize, Role, Settings as SettingsT } from '../types-client.ts';
-import { MODULES } from '../types-client.ts';
+import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../types-client.ts';
+import { InfoTip } from '../components/InfoTip.tsx';
 import './people.css';
 
 type Tab = 'church' | 'languages' | 'users' | 'email' | 'backups' | 'mcp' | 'changelog';
@@ -349,6 +350,12 @@ const MOD_LABEL: Record<ModuleKey, string> = {
   services: 'Services & planner',
   library: 'Library (hymns, texts, Bible)',
   templates: 'Templates',
+  records: 'Service records',
+  contributions: 'Offerings (contributions)',
+};
+const MOD_TIP: Partial<Record<ModuleKey, string>> = {
+  records: 'Attendance, new visitors (names and follow-up; contact details only with the personal-data switch below) and notes for the team, and the attendance report. With Read & write, agents may record attendance, notes and visitors — never money.',
+  contributions: 'Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.',
 };
 const toolExposed = (tool: Tool, level: ModuleAccess, pii: boolean) =>
   level !== 'off' && (tool.access === 'read' || level === 'write') && (!tool.requires_pii || pii);
@@ -390,7 +397,7 @@ function McpTab() {
       window.prompt(t('Copy'), s);
     }
   };
-  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? d.modules[x.module] : 'off', d.expose_member_pii)).length;
+  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? configuredAccess(x.module, d.modules) : 'off', d.expose_member_pii)).length;
 
   return (
     <div className="stack">
@@ -431,20 +438,27 @@ function McpTab() {
         </div>
         {!d.enabled && <div className="callout small" style={{ marginBottom: 8 }}>{t('The MCP server is off — no tools are available until you enable it.')}</div>}
         {MODULES.map((m) => {
-          const level = d.modules[m];
+          const parent = MODULE_PARENT[m];
+          const parentOff = !!parent && configuredAccess(parent, d.modules) === 'off';
+          const readOnly = READ_ONLY_MODULES.includes(m);
+          const level = configuredAccess(m, d.modules);
           const mt = (tools.data ?? []).filter((x) => x.module === m);
           const on = mt.filter((x) => toolExposed(x, level, d.expose_member_pii)).length;
           return (
-            <div key={m} className="mod-row">
+            <div key={m} className={`mod-row${parent ? ' nested' : ''}`}>
               <div className="row between">
                 <div>
                   <strong>{t(MOD_LABEL[m])}</strong>
+                  {MOD_TIP[m] && <InfoTip text={t(MOD_TIP[m]!)} />}
+                  {parentOff && <span className="small muted"> · {t('switch on {m} first').replace('{m}', t(MOD_LABEL[parent!]))}</span>}
                   <button className="btn ghost sm" onClick={() => setOpen({ ...open, [m]: !open[m] })} aria-expanded={!!open[m]}>
                     <Icon name={open[m] ? 'chevronDown' : 'chevronRight'} />{on}/{mt.length} {t('tools')}
                   </button>
                 </div>
-                <Seg<ModuleAccess> value={level} onChange={(v) => setD((x) => x && { ...x, modules: { ...x.modules, [m]: v } })}
-                  options={[{ value: 'off', label: t('Off') }, { value: 'read', label: t('Read only') }, { value: 'write', label: t('Read & write') }]} />
+                {parentOff ? <span className="badge">{t('Off')}</span> : (
+                  <Seg<ModuleAccess> value={level} onChange={(v) => setD((x) => x && { ...x, modules: { ...x.modules, [m]: v } })}
+                    options={[{ value: 'off', label: t('Off') }, { value: 'read', label: t('Read only') }, ...(readOnly ? [] : [{ value: 'write' as const, label: t('Read & write') }])]} />
+                )}
               </div>
               {open[m] && (
                 <div className="tool-list">

@@ -31,7 +31,7 @@ type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-ex
 let server: Server;
 let base = '';
 
-const ALL_ON = { members: 'read', coworkers: 'read', volunteers: 'write', services: 'write', library: 'write', templates: 'write' } as const;
+const ALL_ON = { members: 'read', coworkers: 'read', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'off', contributions: 'off' } as const;
 function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean }>) {
   const cur = getSettings().mcp;
   updateSettings({ mcp: { ...cur, ...patch, modules: { ...cur.modules, ...(patch.modules ?? {}) } } });
@@ -789,6 +789,57 @@ test('viewer role is capped to read-only', async () => {
   assert.ok(names.includes('canon_find_services'));
   assert.ok(!names.includes('canon_create_service'));
   assert.ok(!names.includes('canon_edit_order'));
+});
+
+test('service records and offerings: nested modules, offerings read-only, never for viewers, money never written', async () => {
+  const rec = await import('../server/repo/records.ts');
+  const svcRepo = await import('../server/repo/services.ts');
+  const sid = svcRepo.createService({ date: '2031-05-04' }).service.id;
+  rec.saveRecord(sid, { attendance: 90, visitors: [{ name: 'Sam Example', contact: '9000 0009' }], offerings: [{ fund: 'General', method: 'cash', amount: 4200 }], cash: { '1000': 4, '100': 2 } }, { name: 'Ed', admin: false });
+
+  // off by default; contributions alone does nothing while records is off
+  setMcp({ modules: { records: 'off', contributions: 'read' } });
+  let names = await toolNames(tokens.access_token);
+  assert.ok(!names.some((n) => ['canon_get_service_record', 'canon_offerings_report', 'canon_attendance_report'].includes(n)));
+
+  // records read: attendance and visitor names, no money, no contact details
+  setMcp({ modules: { records: 'read', contributions: 'off' } });
+  names = await toolNames(tokens.access_token);
+  assert.ok(names.includes('canon_get_service_record') && names.includes('canon_attendance_report'));
+  assert.ok(!names.includes('canon_save_service_record') && !names.includes('canon_offerings_report'));
+  let r = await call(tokens.access_token, 'canon_get_service_record', { service_id: sid });
+  assert.equal(r.json?.data.attendance, 90, r.text);
+  assert.equal(r.json?.data.visitors[0].name, 'Sam Example');
+  assert.ok(!('contact' in r.json!.data.visitors[0]));
+  assert.ok(!JSON.stringify(r.json).includes('4200'));
+  const list = await call(tokens.access_token, 'canon_list_service_records', { from: '2031-05-01', to: '2031-05-31' });
+  assert.ok(!('offering_total' in list.json!.data.services[0]));
+
+  // contributions on: offerings readable — but "write" is stored as read, and the save tool cannot touch money
+  setMcp({ modules: { records: 'write', contributions: 'write' } });
+  assert.equal(getSettings().mcp.modules.contributions, 'write');
+  names = await toolNames(tokens.access_token);
+  assert.ok(names.includes('canon_offerings_report') && names.includes('canon_save_service_record'));
+  r = await call(tokens.access_token, 'canon_get_service_record', { service_id: sid });
+  assert.equal(r.json?.data.offerings[0].amount, 4200);
+  const rep = await call(tokens.access_token, 'canon_offerings_report', { from: '2031-05-01', to: '2031-05-31' });
+  assert.equal(rep.json?.data.total, 4200);
+  const saved = await call(tokens.access_token, 'canon_save_service_record', { service_id: sid, attendance: 95, offerings: [], add_visitors: [{ name: 'Alex Example' }], visitor_updates: [{ index: 0, status: 'contacted' }] });
+  assert.equal(saved.isError, false, saved.text);
+  const after = rec.recordFor(sid);
+  assert.equal(after.attendance, 95);
+  assert.equal(after.offerings[0].amount, 4200, 'money unchanged');
+  assert.deepEqual(after.visitors.map((v) => [v.name, v.status ?? 'new']), [['Sam Example', 'contacted'], ['Alex Example', 'new']]);
+  const who = await call(tokens.access_token, 'canon_whoami');
+  assert.equal(who.json?.data.modules.contributions.access, 'read');
+
+  // a read-only account never sees offerings
+  const viewer = await login('viewer', 'correct-horse-2');
+  const vt = await fullFlow(client.client_id, viewer);
+  const vnames = await toolNames(vt.access_token);
+  assert.ok(vnames.includes('canon_get_service_record'));
+  assert.ok(!vnames.includes('canon_offerings_report') && !vnames.includes('canon_save_service_record'));
+  setMcp({ modules: { records: 'off', contributions: 'off' } });
 });
 
 test('member PII redaction and audit log without member values', async () => {
