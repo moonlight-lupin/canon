@@ -18,6 +18,7 @@ import { BadRequest, Conflict, NotFound } from '../lib/table.ts';
 import { logChange } from './changelog.ts';
 import { getSettings } from './settings.ts';
 import type { Visitor } from '../../shared/records.ts';
+import { backupKey, encryptFile } from '../lib/backup-crypto.ts';
 
 export const archiveDir = () => path.join(path.dirname(config.dbPath), 'archives');
 const archiveFile = (year: number) => path.join(archiveDir(), `canon-archive-${year}.db`);
@@ -338,11 +339,13 @@ export function copyArchivesTo(dir: string) {
   let n = 0;
   for (const name of fs.readdirSync(src).filter((x) => FILE_RE.test(x))) {
     const a = path.join(src, name);
-    const b = path.join(dest, name);
+    const key = backupKey();
+    const b = path.join(dest, key ? `${name}.enc` : name);
     // copied again when it changed (archiving adds to it; erasing visitors' details edits it in place)
-    if (fs.existsSync(b) && fs.statSync(b).size === fs.statSync(a).size && fs.statSync(b).mtimeMs >= fs.statSync(a).mtimeMs) continue;
+    if (fs.existsSync(b) && (key || fs.statSync(b).size === fs.statSync(a).size) && fs.statSync(b).mtimeMs >= fs.statSync(a).mtimeMs) continue;
     fs.mkdirSync(dest, { recursive: true });
-    fs.copyFileSync(a, b);
+    if (key) encryptFile(a, b, key);
+    else fs.copyFileSync(a, b);
     n++;
   }
   return n;

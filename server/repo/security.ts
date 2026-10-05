@@ -15,6 +15,7 @@ import { likeTerm } from '../lib/table.ts';
 import { formSettings } from './visitor-form.ts';
 import { archivableYears } from './archive.ts';
 import { isAdmin } from '../lib/permissions.ts';
+import { backupKey } from '../lib/backup-crypto.ts';
 
 // ---------------------------------------------------------------- member record views
 
@@ -176,7 +177,9 @@ export function securityChecklist(): CheckItem[] {
     : inside
       ? { key: 'backup_place', status: 'warn', title: 'Where backups are kept', detail: `Backups are in Canon’s own folder (${dir}), on the same drive as the database. If that drive fails, both are lost: copy them regularly to a USB drive or another computer the office controls.`, link: '/settings?tab=backups' }
       : { key: 'backup_place', status: 'ok', title: 'Where backups are kept', detail: `Backups go to ${dir}.` });
-  items.push({ key: 'backup_encryption', status: 'info', title: 'Backup encryption', detail: 'Backups are not encrypted yet. Anyone who gets a backup file can read it: keep the files where only the office can reach them.' });
+  items.push(backupKey()
+    ? { key: 'backup_encryption', status: 'ok', title: 'Backup encryption', detail: 'Backups (and the archive copies with them) are encrypted with the church’s backup password. Keep that password with the church’s records: without it, a backup can’t be restored on another computer.' }
+    : { key: 'backup_encryption', status: 'warn', title: 'Backup encryption', detail: 'Backups are not encrypted: anyone who gets a backup file can read it. Set a backup password in Settings → Backups.', link: '/settings?tab=backups' });
 
   const pub = s.public_url;
   items.push(!pub

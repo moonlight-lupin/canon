@@ -2,7 +2,7 @@
 import { StorageCard } from './SecurityTab.tsx';
 import '../reports.css';
 import { useEffect, useRef, useState } from 'react';
-import { api, useApi } from '../../api.ts';
+import { ApiError, api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
 import { ErrorBox, Field, Loading, Seg, confirmAction, fmtDate, useAction } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
@@ -17,6 +17,8 @@ interface Status {
   folder_problem: string | null;
   items: BackupFile[];
   last_restore: { at: string; from: string; safety: string } | null;
+  /** backups are encrypted with the church's backup password */
+  encrypted: boolean;
 }
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
@@ -30,6 +32,11 @@ export default function BackupsTab() {
   const [keep, setKeep] = useState(8);
   const [check, setCheck] = useState<{ ok: boolean; message: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // a backup made with another backup password: ask for it, then restore
+  const [askPw, setAskPw] = useState<{ label: string; go: (pw: string) => Promise<{ safety: string }>; error: string } | null>(null);
+  const [restorePw, setRestorePw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [newPw2, setNewPw2] = useState('');
 
   useEffect(() => {
     if (!st.data) return;
@@ -64,15 +71,44 @@ export default function BackupsTab() {
     window.alert(`${t('Backup restored.')}\n${t('A copy of the data from before the restore was saved as')} ${r.safety}.`);
     window.location.reload();
   };
+  // try without a password first (this computer's key opens its own backups); ask only when the server needs one
+  const tryRestore = (label: string, go: (pw: string) => Promise<{ safety: string }>) => run(async () => {
+    try {
+      afterRestore(await go(''));
+    } catch (e) {
+      if (e instanceof ApiError && e.needsPassword) {
+        setRestorePw('');
+        setAskPw({ label, go, error: '' });
+        return;
+      }
+      throw e;
+    }
+  });
+  const restoreWithPw = () => askPw && run(async () => {
+    try {
+      afterRestore(await askPw.go(restorePw));
+    } catch (e) {
+      if (e instanceof ApiError && e.needsPassword) return setAskPw({ ...askPw, error: e.message });
+      throw e;
+    }
+  });
   const restore = (b: BackupFile) => {
     if (!confirmAction(restoreWarning(`${when(b.created)} · ${b.name}`))) return;
-    run(async () => afterRestore(await api.post<{ safety: string }>(`/backups/${encodeURIComponent(b.name)}/restore`)));
+    tryRestore(b.name, (pw) => api.post<{ safety: string }>(`/backups/${encodeURIComponent(b.name)}/restore`, pw ? { password: pw } : {}));
   };
   const restoreFile = (file: File | undefined) => {
     if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
     if (!confirmAction(restoreWarning(file.name))) return;
-    run(async () => afterRestore(await api.post<{ safety: string }>('/backups/restore-upload', file)));
+    tryRestore(file.name, (pw) => api.upload<{ safety: string }>('/backups/restore-upload', file, pw ? { 'X-Backup-Password': encodeURIComponent(pw) } : undefined));
+  };
+  const setPassword = (password: string | null) => {
+    if (password === null && !confirmAction(t('Stop encrypting backups? New backups are plain copies again; the encrypted ones still need their password.'))) return;
+    run(async () => {
+      st.setData(await api.put<Status>('/backups/password', { password }));
+      setNewPw('');
+      setNewPw2('');
+    }, password === null ? t('Backups are no longer encrypted.') : t('Backup password saved. New backups are encrypted.'));
   };
   const remove = (b: BackupFile) => {
     if (!confirmAction(`${t('Delete this backup?')} ${b.name}`)) return;
@@ -97,6 +133,25 @@ export default function BackupsTab() {
         <p className="small muted" style={{ margin: 0 }}>
           {t('A backup is a complete copy of Canon’s database — members, services, library and settings. It is made safely while Canon is running.')}
         </p>
+      </section>
+
+      <section className="card stack">
+        <div className="row between">
+          <h3>{t('Encryption')}</h3>
+          {s.encrypted ? <span className="badge ok"><Icon name="lock" />{t('Encrypted')}</span> : <span className="badge warn">{t('Not encrypted')}</span>}
+        </div>
+        <p className="small muted" style={{ margin: 0 }}>
+          {t('With a backup password, every backup (and the archive copies with it) is encrypted: a lost USB drive or a shared cloud folder doesn’t expose members’ data. This computer remembers the key, so automatic backups need no one, and they restore here without the password. On another computer, the password is needed — keep it with the church’s records. Without it, an encrypted backup can’t be opened by anyone.')}
+        </p>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder={s.encrypted ? t('New backup password') : t('Backup password')} autoComplete="new-password" style={{ maxWidth: 220 }} />
+          <input type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder={t('Again')} autoComplete="new-password" style={{ maxWidth: 220 }} />
+          <button className="btn primary sm" onClick={() => setPassword(newPw)} disabled={busy || newPw.length < 10 || newPw !== newPw2}>
+            <Icon name="lock" />{s.encrypted ? t('Change password') : t('Encrypt backups')}
+          </button>
+          {s.encrypted && <button className="btn sm ghost" onClick={() => setPassword(null)} disabled={busy}>{t('Stop encrypting')}</button>}
+        </div>
+        <div className="small muted">{newPw && newPw.length < 10 ? t('At least 10 characters.') : newPw2 && newPw !== newPw2 ? t('The two passwords differ.') : s.encrypted ? t('A new password applies to new backups; older ones keep the password they were made with.') : ''}</div>
       </section>
 
       <section className="card stack">
@@ -151,6 +206,17 @@ export default function BackupsTab() {
         <p className="small" style={{ margin: 0 }}>
           {t('Press Restore next to a saved backup above, or restore a backup file from this computer (for example from a USB drive or another Canon). Canon saves a copy of the current data first, so a restore can be undone.')}
         </p>
+        {askPw && (
+          <div className="callout warn stack tight">
+            <div><strong>{askPw.label}</strong> — {t('this backup is encrypted with another backup password. Enter that password to restore it.')}</div>
+            <div className="row" style={{ gap: 8 }}>
+              <input type="password" value={restorePw} onChange={(e) => setRestorePw(e.target.value)} placeholder={t('Backup password')} autoComplete="off" autoFocus style={{ maxWidth: 240 }} onKeyDown={(e) => e.key === 'Enter' && restorePw && restoreWithPw()} />
+              <button className="btn primary sm" onClick={restoreWithPw} disabled={busy || !restorePw}>{t('Restore')}</button>
+              <button className="btn sm ghost" onClick={() => setAskPw(null)}>{t('Cancel')}</button>
+            </div>
+            {askPw.error && <div className="small">{askPw.error}</div>}
+          </div>
+        )}
         {s.last_restore && (
           <div className="callout small">
             {t('Last restore')}: <strong>{when(s.last_restore.at)}</strong> · {s.last_restore.from}. {t('The data from before it was saved as')} <span className="code">{s.last_restore.safety}</span>.
@@ -158,14 +224,14 @@ export default function BackupsTab() {
         )}
         <div className="row">
           <button className="btn" onClick={() => fileRef.current?.click()} disabled={busy}><Icon name="upload" />{t('Restore from a file…')}</button>
-          <input ref={fileRef} type="file" accept=".db,application/octet-stream,application/x-sqlite3" hidden onChange={(e) => restoreFile(e.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept=".db,.enc,application/octet-stream,application/x-sqlite3" hidden onChange={(e) => restoreFile(e.target.files?.[0])} />
         </div>
         <details className="small">
           <summary>{t('If Canon will not start: restore by hand')}</summary>
         <ol className="small" style={{ margin: '8px 0 0', paddingLeft: 18, lineHeight: 1.7 }}>
           <li>{t('Close the “Canon server” window (or stop the Docker container).')}</li>
           <li>{t('In the Canon folder, open “data”. Delete canon.db-wal and canon.db-shm if they are there.')}</li>
-          <li>{t('Copy the backup file into “data” and rename it to canon.db (replace the old one).')}</li>
+          <li>{t('Copy the backup file into “data” and rename it to canon.db (replace the old one).')} {t('An encrypted backup (.db.enc) is decrypted first: npm run decrypt-backup -- <file> (see docs/ADMINISTRATION.md).')}</li>
           <li>{t('Start Canon again (start-canon.bat, or docker compose up -d).')}</li>
         </ol>
         <div className="small muted">{t('Docker: see docs/DOCKER.md → Restoring a backup.')}</div>

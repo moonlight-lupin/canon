@@ -417,5 +417,5 @@ api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     return res.status(409).json({ error: e.message });
   }
   if (!e.status || e.status >= 500) console.error(err);
-  res.status(e.status ?? 500).json({ error: e.message ?? 'Server error' });
+  res.status(e.status ?? 500).json({ error: e.message ?? 'Server error', ...((e as { needs_password?: boolean }).needs_password ? { needs_password: true } : {}) });
 });

@@ -10,9 +10,11 @@ import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
 import { copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
 import { createAllMeetingsAhead } from './services.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
+import { backupKey, decryptFile, encryptFile, isEncrypted } from '../lib/backup-crypto.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
-const NAME_RE = /^canon-\d{4}-\d{2}-\d{2}-\d{4}(-\d+|-upload\d*)?\.db$/;
+// .db.enc: encrypted with the church's backup password (lib/backup-crypto.ts)
+const NAME_RE = /^canon-\d{4}-\d{2}-\d{2}-\d{4}(-\d+|-upload\d*)?\.db(\.enc)?$/;
 
 export interface BackupFile {
   name: string;
@@ -56,9 +58,22 @@ export function listBackups(dir = backupDir()): BackupFile[] {
 /** Write a backup now. Returns the new file. */
 export function createBackup(dir = backupDir()): BackupFile & { path: string } {
   fs.mkdirSync(dir, { recursive: true });
-  let file = path.join(dir, `canon-${stamp()}.db`);
-  for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-${i}.db`);
-  db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+  const key = backupKey();
+  const ext = key ? '.db.enc' : '.db';
+  let file = path.join(dir, `canon-${stamp()}${ext}`);
+  for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-${i}${ext}`);
+  if (key) {
+    // a plain copy only for as long as it takes to encrypt it, in the data folder (not the backup folder)
+    const tmp = path.join(path.dirname(config.dbPath), `.backup-${process.pid}-${Date.now()}.db`);
+    try {
+      db.exec(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
+      encryptFile(tmp, file, key);
+    } finally {
+      fs.rmSync(tmp, { force: true });
+    }
+  } else {
+    db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+  }
   // archive files (one per archived year) go along with every backup
   copyArchivesTo(dir);
   setMeta('last_backup_at', new Date().toISOString());
@@ -95,6 +110,21 @@ export const lastBackupAt = () => getMeta('last_backup_at') ?? null;
 /** Tables every Canon database has; a file without them is not a Canon backup. */
 const CANON_TABLES = ['settings', 'users', 'services', 'service_items', 'songs', 'texts', 'people'];
 
+/**
+ * Run fn on the plain database of a backup: the file itself, or (encrypted) a decrypted copy in the data folder that
+ * is removed afterwards. The password is needed only for a backup made with another backup password.
+ */
+export async function withPlainBackup<T>(file: string, password: string | null | undefined, fn: (plain: string) => T | Promise<T>): Promise<T> {
+  if (!isEncrypted(file)) return fn(file);
+  const tmp = path.join(path.dirname(config.dbPath), `.restore-${process.pid}-${Date.now()}.db`);
+  try {
+    decryptFile(file, tmp, password);
+    return await fn(tmp);
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
 /** Check that a file is a readable Canon database this version can open. Returns a plain-language problem, or null. */
 export function checkBackupFile(file: string): string | null {
   let src: DatabaseSync | null = null;
@@ -119,7 +149,12 @@ export function checkBackupFile(file: string): string | null {
  * copied into the live database with SQLite's backup API, then the schema is brought up to date. Everyone is
  * signed out unless their sign-in also exists in the backup.
  */
-export async function restoreBackup(file: string): Promise<{ safety: string; restored_schema: number }> {
+export async function restoreBackup(file: string, password?: string | null): Promise<{ safety: string; restored_schema: number }> {
+  if (isEncrypted(file)) return withPlainBackup(file, password, (plain) => restorePlain(plain, path.basename(file)));
+  return restorePlain(file, path.basename(file));
+}
+
+async function restorePlain(file: string, name: string): Promise<{ safety: string; restored_schema: number }> {
   const problem = checkBackupFile(file);
   if (problem) throw Object.assign(new Error(problem), { status: 400 });
   // settings that belong to this computer, not to the data: kept as they are
@@ -142,16 +177,17 @@ export async function restoreBackup(file: string): Promise<{ safety: string; res
   syncArchiveIndex();
   eraseVisitorContacts(getSettings().retention.visitor_contact_months);
   setMeta('last_backup_at', safety.created);
-  setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: path.basename(file), safety: safety.name }));
-  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${path.basename(file)} (the data before it was saved as ${safety.name})` });
+  setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: name, safety: safety.name }));
+  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${name} (the data before it was saved as ${safety.name})` });
   return { safety: safety.name, restored_schema: restored };
 }
 
 /** Save an uploaded backup file into the backup folder (under a backup-style name) and return its path. */
 export function saveUpload(data: Buffer, dir = backupDir()): string {
   fs.mkdirSync(dir, { recursive: true });
-  let file = path.join(dir, `canon-${stamp()}-upload.db`);
-  for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-upload${i}.db`);
+  const ext = data.subarray(0, 9).toString() === 'CANONENC1' ? '.db.enc' : '.db';
+  let file = path.join(dir, `canon-${stamp()}-upload${ext}`);
+  for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-upload${i}${ext}`);
   fs.writeFileSync(file, data);
   return file;
 }

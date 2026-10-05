@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from '../server/config.ts';
+import { backupKey, encryptFile } from '../server/lib/backup-crypto.ts';
 
 const db = new DatabaseSync(config.dbPath);
 db.exec('PRAGMA busy_timeout = 5000');
@@ -20,17 +21,33 @@ fs.mkdirSync(dir, { recursive: true });
 const d = new Date();
 const p2 = (n: number) => String(n).padStart(2, '0');
 const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`;
-let file = path.join(dir, `canon-${stamp}.db`);
-for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp}-${i}.db`);
-db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+// encrypted when the church set a backup password (Settings → Backups)
+const key = backupKey();
+const ext = key ? '.db.enc' : '.db';
+let file = path.join(dir, `canon-${stamp}${ext}`);
+for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp}-${i}${ext}`);
+if (key) {
+  const tmp = path.join(path.dirname(config.dbPath), `.backup-${process.pid}.db`);
+  try {
+    db.exec(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
+    encryptFile(tmp, file, key);
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+} else {
+  db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+}
 db.prepare("INSERT INTO settings (key, value) VALUES ('_last_backup_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(new Date().toISOString());
 // archive files (one per archived year) go along with every backup
 const archives = path.join(path.dirname(config.dbPath), 'archives');
 if (fs.existsSync(archives)) {
   fs.mkdirSync(path.join(dir, 'archives'), { recursive: true });
   for (const name of fs.readdirSync(archives).filter((n) => /^canon-archive-\d{4}\.db$/.test(n))) {
-    const to = path.join(dir, 'archives', name);
-    if (!fs.existsSync(to) || fs.statSync(to).size !== fs.statSync(path.join(archives, name)).size) fs.copyFileSync(path.join(archives, name), to);
+    const from = path.join(archives, name);
+    const to = path.join(dir, 'archives', key ? `${name}.enc` : name);
+    if (fs.existsSync(to) && fs.statSync(to).mtimeMs >= fs.statSync(from).mtimeMs) continue;
+    if (key) encryptFile(from, to, key);
+    else fs.copyFileSync(from, to);
   }
 }
 const version = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;

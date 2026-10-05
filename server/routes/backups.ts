@@ -5,9 +5,11 @@ import { z } from 'zod';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import {
   DEFAULT_BACKUP_DIR, backupDir, backupPath, checkBackupFile, checkFolder, createBackup, deleteBackup, lastBackupAt, lastRestore, listBackups, nextDue, prune,
-  restoreBackup, saveUpload,
+  restoreBackup, saveUpload, withPlainBackup,
 } from '../repo/backups.ts';
 import { isAdmin } from '../lib/permissions.ts';
+import { backupKey, clearBackupPassword, setBackupPassword } from '../lib/backup-crypto.ts';
+import { logChange } from '../repo/changelog.ts';
 
 export const backupRoutes = express.Router();
 
@@ -25,6 +27,7 @@ const status = () => ({
   folder_problem: checkFolder(backupDir()),
   items: listBackups(),
   last_restore: lastRestore(),
+  encrypted: !!backupKey(),
 });
 
 backupRoutes.get('/backups', adminOnly, (_req, res) => res.json(status()));
@@ -74,7 +77,7 @@ backupRoutes.post('/backups/:name/restore', adminOnly, async (req, res, next) =>
   try {
     const p = backupPath(String(req.params.name));
     if (!p) return res.status(404).json({ error: 'Backup not found' });
-    const r = await restoreBackup(p);
+    const r = await restoreBackup(p, typeof req.body?.password === 'string' ? req.body.password : null);
     await seed();
     res.json({ ...r, ...status() });
   } catch (e) {
@@ -86,18 +89,40 @@ backupRoutes.post('/backups/:name/restore', adminOnly, async (req, res, next) =>
 backupRoutes.post('/backups/restore-upload', adminOnly, express.raw({ type: () => true, limit: '500mb' }), async (req, res, next) => {
   try {
     const data = req.body as Buffer;
-    if (!Buffer.isBuffer(data) || data.length < 512 || data.subarray(0, 15).toString() !== 'SQLite format 3') {
-      return res.status(400).json({ error: 'Choose a Canon backup file (.db).' });
+    const encrypted = Buffer.isBuffer(data) && data.subarray(0, 9).toString() === 'CANONENC1';
+    if (!Buffer.isBuffer(data) || data.length < 512 || (!encrypted && data.subarray(0, 15).toString() !== 'SQLite format 3')) {
+      return res.status(400).json({ error: 'Choose a Canon backup file (.db or .db.enc).' });
     }
+    // the password of an encrypted backup comes in a header (not in the address)
+    const password = req.get('x-backup-password') ? decodeURIComponent(req.get('x-backup-password')!) : null;
     const file = saveUpload(data);
-    const problem = checkBackupFile(file);
+    let problem: string | null;
+    try {
+      problem = await withPlainBackup(file, password, (plain) => checkBackupFile(plain));
+    } catch (e) {
+      deleteBackup(file.split(/[\\/]/).pop()!);
+      throw e;
+    }
     if (problem) {
       deleteBackup(file.split(/[\\/]/).pop()!);
       return res.status(400).json({ error: problem });
     }
-    const r = await restoreBackup(file);
+    const r = await restoreBackup(file, password);
     await seed();
     res.json({ ...r, ...status() });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Encrypt backups with a password (or change it), or stop encrypting (null). */
+backupRoutes.put('/backups/password', adminOnly, (req, res, next) => {
+  try {
+    const b = z.object({ password: z.string().max(200).nullable() }).parse(req.body);
+    if (b.password === null) clearBackupPassword();
+    else setBackupPassword(b.password);
+    logChange({ entity: 'backups', entity_id: null, action: 'update', summary: b.password === null ? 'Backups no longer encrypted' : 'Backup password set: backups are encrypted' });
+    res.json(status());
   } catch (e) {
     next(e);
   }

@@ -8,9 +8,12 @@ export const setCsrf = (t: string | null) => {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** the server asks for a password (an encrypted backup) */
+  needsPassword: boolean;
+  constructor(status: number, message: string, needsPassword = false) {
     super(message);
     this.status = status;
+    this.needsPassword = needsPassword;
   }
 }
 
@@ -24,8 +27,8 @@ export const onUnauthorised = (fn: Listener) => {
   };
 };
 
-async function request<T>(method: string, path: string, body?: unknown, raw = false, version?: string | null): Promise<T> {
-  const headers: Record<string, string> = {};
+async function request<T>(method: string, path: string, body?: unknown, raw = false, version?: string | null, extra?: Record<string, string>): Promise<T> {
+  const headers: Record<string, string> = { ...extra };
   // the version this screen started from: the server refuses the save if someone else changed it since (409)
   if (version) headers['X-Base-Version'] = version;
   if (csrf && method !== 'GET') headers['X-CSRF-Token'] = csrf;
@@ -45,12 +48,15 @@ async function request<T>(method: string, path: string, body?: unknown, raw = fa
   if (res.status === 401 && !path.startsWith('/login') && !path.startsWith('/me')) unauthorised.forEach((f) => f());
   if (!res.ok) {
     let msg = res.statusText;
+    let needsPassword = false;
     try {
-      msg = (await res.json()).error ?? msg;
+      const j = await res.json();
+      msg = j.error ?? msg;
+      needsPassword = !!j.needs_password;
     } catch {
       /* not JSON */
     }
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, needsPassword);
   }
   if (raw) return res as unknown as T;
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -62,6 +68,8 @@ export const api = {
   patch: <T>(p: string, b: unknown, version?: string | null) => request<T>('PATCH', p, b, false, version),
   put: <T>(p: string, b: unknown, version?: string | null) => request<T>('PUT', p, b, false, version),
   del: <T = { ok: true }>(p: string) => request<T>('DELETE', p),
+  /** a file as the raw body, with extra headers (e.g. an encrypted backup's password) */
+  upload: <T>(p: string, file: Blob, headers?: Record<string, string>) => request<T>('POST', p, file, false, null, headers),
 };
 
 /** Build a query string, skipping empty values. */

@@ -25,6 +25,14 @@ npm run backup                      # → backups/canon-YYYY-MM-DD-HHMM.db
 npm run backup -- D:\CanonBackups   # to a USB drive or synced folder
 ```
 
+With a backup password (Settings → Backups → Encryption), backups are AES-256-GCM encrypted (`.db.enc`). The key lives in `data/backup-key.json` — never inside a backup — so this computer restores its own backups without the password. To restore an encrypted backup by hand, decrypt it first:
+
+```bash
+npm run decrypt-backup -- D:\CanonBackups\canon-2026-01-04-0900.db.enc
+```
+
+Add the password after the file for a backup from another computer or made before the password changed.
+
 Archive files are copied with every backup. To restore by hand, or to update Canon and go back, see [UPGRADING.md](UPGRADING.md). For Docker, see [DOCKER.md](DOCKER.md).
 
 ## Connecting Claude (MCP)

@@ -31,6 +31,7 @@
     "import:standards": "node --disable-warning=ExperimentalWarning scripts/import-standards.ts",
     "test": "node --disable-warning=ExperimentalWarning --test \"tests/**/*.test.ts\"",
     "backup": "node --disable-warning=ExperimentalWarning scripts/backup.ts",
+    "decrypt-backup": "node --disable-warning=ExperimentalWarning scripts/decrypt-backup.ts",
     "i18n": "node --disable-warning=ExperimentalWarning scripts/gen-i18n-hant.ts",
     "prebuild": "npm run i18n"
   },

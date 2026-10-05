@@ -900,5 +900,23 @@ const zh: Record<string, string> = {
   "Scan this with your authenticator app (or type the key), then enter the code it shows.": "用身份验证应用扫描这个二维码（或输入密钥），然后输入应用显示的验证码。",
   "Turn on": "开启",
   "Set up two-step sign-in": "设定两步登入",
+  // encrypted backups (0.13)
+  "Stop encrypting backups? New backups are plain copies again; the encrypted ones still need their password.": "停止加密备份？新的备份会恢复为未加密的副本；已加密的备份仍需要原来的密码。",
+  "Backups are no longer encrypted.": "备份不再加密。",
+  "Backup password saved. New backups are encrypted.": "备份密码已保存。新的备份会加密。",
+  "Encryption": "加密",
+  "Encrypted": "已加密",
+  "Not encrypted": "未加密",
+  "With a backup password, every backup (and the archive copies with it) is encrypted: a lost USB drive or a shared cloud folder doesn’t expose members’ data. This computer remembers the key, so automatic backups need no one, and they restore here without the password. On another computer, the password is needed — keep it with the church’s records. Without it, an encrypted backup can’t be opened by anyone.": "设置备份密码后，每份备份（以及随备份复制的归档文件）都会加密：即使 U 盘遗失或云端文件夹被分享，会友资料也不会外泄。这台电脑会记住密钥，所以自动备份不需要有人输入，在这里还原也不需要密码。在另一台电脑上则需要密码——请把它和教会的记录一起保存。没有它，任何人都无法打开加密的备份。",
+  "New backup password": "新的备份密码",
+  "Backup password": "备份密码",
+  "Again": "再输入一次",
+  "Encrypt backups": "加密备份",
+  "Stop encrypting": "停止加密",
+  "At least 10 characters.": "至少 10 个字符。",
+  "The two passwords differ.": "两次输入的密码不同。",
+  "A new password applies to new backups; older ones keep the password they were made with.": "新密码只用于之后的备份；较早的备份仍使用当时的密码。",
+  "this backup is encrypted with another backup password. Enter that password to restore it.": "这份备份是用另一个备份密码加密的。请输入该密码来还原。",
+  "An encrypted backup (.db.enc) is decrypted first: npm run decrypt-backup -- <file> (see docs/ADMINISTRATION.md).": "加密的备份（.db.enc）要先解密：npm run decrypt-backup -- <文件>（见 docs/ADMINISTRATION.md）。",
 };
 export default zh;
