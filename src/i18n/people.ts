@@ -852,5 +852,13 @@ const zh: Record<string, string> = {
   "Service records and reports": "聚会记录与报表",
   "Limited to": "限定于",
   "An account limited to one congregation sees its services, meetings, records, members and groups, and the whole church’s — not those of other congregations. Administrators always see everything.": "限定于某个堂的帐户，只看到该堂以及全教会的聚会、聚会活动、记录、会友和群组——看不到其他堂的资料。管理员始终可以看到全部。",
+  "Counters approve from their own accounts": "点算同工以本人帐户核准",
+  "Each counter signs in to Canon on their own account and presses Approve: the record then shows that different people approved the count (signatures drawn on one device can’t show that). The minimum counters must approve this way before the count can be finished.": "每位点算同工以本人的 Canon 帐户登入并按“核准”：记录会显示是不同的人核准了点算（在同一部设备上画的签名无法证明这一点）。至少要有规定人数以这种方式核准，才能完成点算。",
+  "Approved.": "已核准。",
+  "Approved from own account": "已以本人帐户核准",
+  "on {name}’s screen": "在 {name} 的屏幕上",
+  "Approve from my account ({name})": "以我的帐户核准（{name}）",
+  "Each counter signs in to Canon on their own account and approves the count here.": "每位点算同工以本人的 Canon 帐户登入，在这里核准点算。",
+  "{n} approved from own accounts · at least {m} needed": "已有 {n} 人以本人帐户核准 · 至少需要 {m} 人",
 };
 export default zh;

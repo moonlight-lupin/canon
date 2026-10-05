@@ -97,11 +97,15 @@ recordRoutes.put('/services/:id/record', h((req) => {
   return rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req));
 }));
 recordRoutes.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));
+recordRoutes.post('/services/:id/record/approve', h((req) => rec.approve(id(req), { ...recWho(req), user_id: req.user!.id })));
 recordRoutes.post('/services/:id/record/finish', h((req) => rec.finishSigning(id(req), recWho(req))));
 recordRoutes.post('/services/:id/record/unsign', h((req) => rec.unsign(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name, recWho(req))));
 recordRoutes.post('/services/:id/record/verify', h((req) => rec.setVerified(id(req), z.object({ verified: z.boolean() }).parse(req.body).verified, recWho(req))));
 recordRoutes.put('/offering-settings', requireAdmin, h((req) => {
-  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30), signing: z.enum(['paper', 'screen']).optional(), min_counters: z.number().int().min(2).max(6).optional() }).parse(req.body);
+  const b = z.object({ currency: z.string().max(5), funds: z.array(z.string().min(1).max(100)).min(1).max(30), signing: z.enum(['paper', 'screen']).optional(), min_counters: z.number().int().min(2).max(6).optional(), own_accounts: z.boolean().optional() }).parse(req.body);
   const cur = getSettings().offering;
-  return updateSettings({ offering: { currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))], signing: b.signing ?? cur.signing ?? 'paper', min_counters: b.min_counters ?? cur.min_counters ?? 2 } }).offering;
+  return updateSettings({ offering: {
+    currency: b.currency, funds: [...new Set(b.funds.map((f) => f.trim()).filter(Boolean))], signing: b.signing ?? cur.signing ?? 'paper',
+    min_counters: b.min_counters ?? cur.min_counters ?? 2, own_accounts: b.own_accounts ?? cur.own_accounts ?? false,
+  } }).offering;
 }));

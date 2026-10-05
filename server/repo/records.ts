@@ -144,7 +144,29 @@ export function sign(serviceId: number, input: { name: string; image: string }, 
   checkCount(cur);
   const hash = hashOf(cur);
   const sigs = (cur.signatures ?? []).filter((s) => s.hash === hash && s.name.toLowerCase() !== name.toLowerCase());
-  const next: Signature[] = [...sigs, { name: name.slice(0, 120), image: input.image, signed_at: new Date().toISOString(), by: who.name, hash }];
+  const next: Signature[] = [...sigs, { name: name.slice(0, 120), image: input.image, signed_at: new Date().toISOString(), by: who.name, hash, via: 'device' }];
+  return records.update(cur.id, { signatures: next, counters: next.map((s) => s.name) });
+}
+
+/** Counters approve from their own accounts (Settings → Offerings): only such approvals count towards the minimum. */
+export const ownAccounts = () => signingMode() === 'screen' && !!getSettings().offering.own_accounts;
+
+/**
+ * A counter approves the count from their own Canon account (no drawing): the record keeps which account it was, so
+ * two approvals are known to be two people. Replaces an earlier signature under the same name.
+ */
+export function approve(serviceId: number, who: Who & { user_id: number }): ServiceRecord {
+  if (signingMode() !== 'screen') throw new BadRequest('This church signs the declaration on paper (Currency and funds → Signing).');
+  assertNotArchived(serviceId);
+  assertMoney(who);
+  const cur = recordFor(serviceId);
+  if (!cur.saved || !cur.offerings.length) throw new BadRequest('Enter the offerings first.');
+  if (cur.verified_at) throw new BadRequest('The cash count is already verified.');
+  checkCount(cur);
+  const hash = hashOf(cur);
+  const name = who.name.trim().slice(0, 120);
+  const sigs = (cur.signatures ?? []).filter((s) => s.hash === hash && s.account_id !== who.user_id && s.name.toLowerCase() !== name.toLowerCase());
+  const next: Signature[] = [...sigs, { name, image: '', signed_at: new Date().toISOString(), by: who.name, hash, via: 'account', account_id: who.user_id }];
   return records.update(cur.id, { signatures: next, counters: next.map((s) => s.name) });
 }
 
@@ -160,7 +182,11 @@ export function finishSigning(serviceId: number, who: Who): ServiceRecord {
   const hash = hashOf(cur);
   const sigs = (cur.signatures ?? []).filter((s) => s.hash === hash);
   const min = minCounters();
-  if (sigs.length < min) throw new BadRequest(`At least ${min} counters must sign before the count can be finished (${sigs.length} so far).`);
+  if (ownAccounts()) {
+    // only approvals from different accounts show that different people counted
+    const accounts = new Set(sigs.filter((s) => s.via === 'account' && s.account_id).map((s) => s.account_id));
+    if (accounts.size < min) throw new BadRequest(`At least ${min} counters must approve from their own accounts before the count can be finished (${accounts.size} so far).`);
+  } else if (sigs.length < min) throw new BadRequest(`At least ${min} counters must sign before the count can be finished (${sigs.length} so far).`);
   void who;
   return records.update(cur.id, { signatures: sigs, counters: sigs.map((s) => s.name), verified_at: new Date().toISOString(), verified_by: sigs.map((s) => s.name).join(', ') });
 }

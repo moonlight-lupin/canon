@@ -187,7 +187,7 @@ export function CashDeclaration() {
           <thead><tr><th>{both('Name', '姓名')}</th><th>{both('Signature', '签名')}</th><th>{both('Date', '日期')}</th></tr></thead>
           <tbody>
             {signed.length
-              ? signed.map((g) => <tr key={g.name}><td>{g.name}</td><td className="decl-sig"><img src={g.image} alt="" /></td><td>{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN', { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)
+              ? signed.map((g) => <tr key={g.name}><td>{g.name}</td><td className="decl-sig">{g.via === 'account' ? <span className="small">{both('Approved in Canon from own account', '已在 Canon 以本人帐户核准')}</span> : <img src={g.image} alt="" />}</td><td>{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN', { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)
               : counters.map((n, i) => <tr key={i}><td>{n}</td><td /><td>{n ? fmtDate(r.counted_on ?? s.date, lang, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td></tr>)}
           </tbody>
         </table>

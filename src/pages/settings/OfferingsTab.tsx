@@ -16,8 +16,9 @@ export function OfferingsTab() {
   const [funds, setFunds] = useState(cur.funds.join('\n'));
   const [signing, setSigning] = useState<'paper' | 'screen'>(cur.signing ?? 'paper');
   const [min, setMin] = useState(cur.min_counters ?? 2);
+  const [own, setOwn] = useState(!!(cur as { own_accounts?: boolean }).own_accounts);
   const save = () => run(async () => {
-    await api.put('/offering-settings', { currency, funds: funds.split('\n').map((f) => f.trim()).filter(Boolean), signing, min_counters: min });
+    await api.put('/offering-settings', { currency, funds: funds.split('\n').map((f) => f.trim()).filter(Boolean), signing, min_counters: min, own_accounts: signing === 'screen' && own });
     reloadSettings();
   }, t('Saved.'));
   return (
@@ -37,6 +38,12 @@ export function OfferingsTab() {
           <select value={min} onChange={(e) => setMin(Number(e.target.value))} style={{ width: 90 }}>{[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select>
         </Field>
       </div>
+      {signing === 'screen' && (
+        <label className="check">
+          <input type="checkbox" checked={own} onChange={(e) => setOwn(e.target.checked)} />
+          {t('Counters approve from their own accounts')} <InfoTip text={t('Each counter signs in to Canon on their own account and presses Approve: the record then shows that different people approved the count (signatures drawn on one device can’t show that). The minimum counters must approve this way before the count can be finished.')} />
+        </label>
+      )}
       <div><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></div>
     </div>
   );

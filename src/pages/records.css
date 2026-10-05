@@ -91,3 +91,5 @@ input.invalid { border-color: var(--danger, #a33); }
   .rec-lines td input, .rec-lines td select, .rec-visitors td input, .rec-visitors td select { width: 100% !important; min-width: 0; }
   .rec-lines td:last-child, .rec-visitors td:last-child { grid-column: 1 / -1; justify-self: end; }
 }
+
+.rec-sig-approved { display: flex; align-items: center; justify-content: center; gap: 6px; height: 70px; color: var(--ok); font-size: 13px; background: var(--ok-wash); border-radius: var(--r); }

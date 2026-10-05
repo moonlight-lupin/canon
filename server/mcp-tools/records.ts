@@ -42,7 +42,7 @@ function recordOut(serviceId: number, ctx: Ctx) {
     Object.assign(out, {
       currency: r.currency, offerings: r.offerings, cash_count: r.cash, foreign_cash: r.foreign_cash,
       counters: r.counters, verified_at: r.verified_at, verified_by: r.verified_by,
-      signed_by: (r.signatures ?? []).map((s) => ({ name: s.name, signed_at: s.signed_at })),
+      signed_by: (r.signatures ?? []).map((s) => ({ name: s.name, signed_at: s.signed_at, via: s.via === 'account' ? 'own account' : 'on screen' })),
     });
   } else out.offerings = 'not shared with AI agents on this connection';
   return out;

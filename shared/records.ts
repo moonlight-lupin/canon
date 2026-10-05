@@ -29,11 +29,17 @@ export interface ForeignCash {
 /** A counter's signature drawn on screen. */
 export interface Signature {
   name: string;
-  /** PNG data URL of the drawn signature */
+  /** PNG data URL of the drawn signature ('' for an approval from the counter's own account) */
   image: string;
   signed_at: string;
   /** the Canon account that was signed in */
   by: string;
+  /**
+   * how it was given: drawn on a screen (possibly one device passed round: `by` is whoever was signed in), or
+   * approved by the counter from their own Canon account (`account_id`) — which is what proves two people
+   */
+  via?: 'device' | 'account';
+  account_id?: number;
   /** fingerprint of the money when signed: a later change makes the signature stale */
   hash: string;
 }

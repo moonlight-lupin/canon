@@ -26,7 +26,7 @@ export function RecordEditor() {
   const sid = Number(id);
   const nav = useNavigate();
   const { t, lang } = useI18n();
-  const { canEdit: editor, isAdmin, settings } = useSession();
+  const { canEdit: editor, isAdmin, settings, user } = useSession();
   const canRecord = useCanRecord();
   const congs = useCongregations();
   const svc = useApi<ServiceFull>(`/services/${sid}`);
@@ -40,6 +40,8 @@ export function RecordEditor() {
   // the visitor form's answers, suggested when typing "How they came"
   const sourceOptions = (settings?.visitor_form?.sources ?? []).map((o) => sourceLabel(o, settings?.languages?.[0])).filter(Boolean);
   const onScreen = settings?.offering?.signing === 'screen';
+  // the church asks counters to approve from their own accounts (Settings → Offerings)
+  const ownOnly = onScreen && !!(settings?.offering as { own_accounts?: boolean } | undefined)?.own_accounts;
   const minCount = Math.min(6, Math.max(2, settings?.offering?.min_counters ?? 2));
   const [signer, setSigner] = useState('');
   const [ink, setInk] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function RecordEditor() {
   const foreign = foreignCurrencies(d.offerings, cur);
   const problems = countProblems(d);
   const sigs = d.signatures ?? [];
+  const approvedAccounts = new Set(sigs.filter((g) => g.via === 'account' && g.account_id).map((g) => g.account_id)).size;
   const setForeign = (c: string, p: Partial<ForeignCash>) => set({ foreign_cash: { ...d.foreign_cash, [c]: { ...d.foreign_cash?.[c], ...p } } });
 
   const body = () => restricted
@@ -99,6 +102,12 @@ export function RecordEditor() {
     const r = await api.post<Rec>(`/services/${sid}/record/finish`, {});
     rec.setData({ ...r, saved: true });
   }, t('Signing finished: the count is verified.'));
+  // a counter approves from their own account (who is signed in is what counts)
+  const approve = () => run(async () => {
+    if (dirty || !d.saved) await put();
+    const r = await api.post<Rec>(`/services/${sid}/record/approve`, {});
+    rec.setData({ ...r, saved: true });
+  }, t('Approved.'));
   const sign = () => run(async () => {
     if (dirty || !d.saved) await put();
     const r = await api.post<Rec>(`/services/${sid}/record/sign`, { name: signer, image: ink });
@@ -315,10 +324,12 @@ export function RecordEditor() {
             <div className="rec-sigs">
               {sigs.map((g) => (
                 <figure key={g.name} className="rec-sig">
-                  <img src={g.image} alt={t('Signature of {name}').replace('{name}', g.name)} />
+                  {g.via === 'account'
+                    ? <div className="rec-sig-approved"><Icon name="check" />{t('Approved from own account')}</div>
+                    : <img src={g.image} alt={t('Signature of {name}').replace('{name}', g.name)} />}
                   <figcaption>
                     <strong>{g.name}</strong>
-                    <span className="small muted">{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</span>
+                    <span className="small muted">{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}{g.via !== 'account' && g.by ? ` · ${t('on {name}’s screen').replace('{name}', g.by)}` : ''}</span>
                     {canEdit && (!d.verified_at || isAdmin) && <button className="btn sm ghost icon danger" onClick={() => unsign(g.name)} disabled={busy} aria-label={t('Remove')}><Icon name="trash" /></button>}
                   </figcaption>
                 </figure>
@@ -330,14 +341,21 @@ export function RecordEditor() {
           ) : (
             <div className="stack">
               <div className="small muted">
-                {sigs.length === 0 ? t('First counter: type your name and sign below.') : t('Next counter: type your name and sign below.')}
-                {' '}{t('{n} signed · at least {m} needed').replace('{n}', String(sigs.length)).replace('{m}', String(minCount))}
+                {ownOnly
+                  ? t('Each counter signs in to Canon on their own account and approves the count here.')
+                  : sigs.length === 0 ? t('First counter: type your name and sign below.') : t('Next counter: type your name and sign below.')}
+                {' '}{(ownOnly ? t('{n} approved from own accounts · at least {m} needed') : t('{n} signed · at least {m} needed')).replace('{n}', String(ownOnly ? approvedAccounts : sigs.length)).replace('{m}', String(minCount))}
               </div>
-              <input value={signer} onChange={(e) => setSigner(e.target.value)} placeholder={t('Your name')} style={{ maxWidth: 320 }} />
-              <SignaturePad key={padKey} onChange={setInk} />
+              {!ownOnly && (
+                <>
+                  <input value={signer} onChange={(e) => setSigner(e.target.value)} placeholder={t('Your name')} style={{ maxWidth: 320 }} />
+                  <SignaturePad key={padKey} onChange={setInk} />
+                </>
+              )}
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                <button className="btn" onClick={sign} disabled={busy || !signer.trim() || !ink}><Icon name="edit" />{t('Sign the count')}</button>
-                {sigs.length >= minCount && <button className="btn primary" onClick={finish} disabled={busy || !!signer.trim() || !!ink}><Icon name="check" />{t('Finish – all counters have signed')}</button>}
+                {!ownOnly && <button className="btn" onClick={sign} disabled={busy || !signer.trim() || !ink}><Icon name="edit" />{t('Sign the count')}</button>}
+                <button className={ownOnly ? 'btn primary' : 'btn'} onClick={approve} disabled={busy || (!ownOnly && (!!signer.trim() || !!ink))}><Icon name="check" />{t('Approve from my account ({name})').replace('{name}', user.display_name)}</button>
+                {(ownOnly ? approvedAccounts : sigs.length) >= minCount && <button className="btn primary" onClick={finish} disabled={busy || !!signer.trim() || !!ink}><Icon name="check" />{t('Finish – all counters have signed')}</button>}
               </div>
               {sigs.length >= minCount && (!!signer.trim() || !!ink) && <div className="small muted">{t('Sign or clear the pad before finishing.')}</div>}
             </div>

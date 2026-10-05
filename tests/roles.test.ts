@@ -196,3 +196,36 @@ test('an account limited to one congregation sees it and the whole church — no
   await call(as.admin, 'PATCH', `/users/${adminId}`, { congregation_id: en });
   assert.equal((await call(as.admin, 'GET', `/services/${sZh}`)).status, 200);
 });
+
+test('approvals from counters\' own accounts are told apart from signatures on one device', async () => {
+  assert.equal((await call(as.admin, 'PUT', '/offering-settings', { currency: 'SGD', funds: ['General'], signing: 'screen', min_counters: 2, own_accounts: true })).status, 200);
+  createUser({ username: 'counter2', display_name: 'Test counter two', password: 'correct-horse-5', role: 'treasurer' });
+  const c2 = await login('counter2');
+  const sid = svc.createService({ date: '2036-04-05' }).service.id;
+  const MONEY = { offerings: [{ fund: 'General', method: 'cash', amount: 5000 }], cash: { '5000': 1 } };
+  assert.equal((await call(as.treasurer, 'PUT', `/services/${sid}/record`, MONEY)).status, 200);
+  const ink = 'data:image/png;base64,iVBORw0KGgo=';
+  // two drawn signatures on one device: not enough when counters must approve from their own accounts
+  await call(as.treasurer, 'POST', `/services/${sid}/record/sign`, { name: 'Ann', image: ink });
+  await call(as.treasurer, 'POST', `/services/${sid}/record/sign`, { name: 'Ben', image: ink });
+  assert.equal((await call(as.treasurer, 'POST', `/services/${sid}/record/finish`, {})).status, 400);
+  // the same account approving twice is still one person
+  const a1 = await call(as.treasurer, 'POST', `/services/${sid}/record/approve`, {});
+  assert.equal(a1.status, 200, JSON.stringify(a1.body));
+  await call(as.treasurer, 'POST', `/services/${sid}/record/approve`, {});
+  const finish1 = await call(as.treasurer, 'POST', `/services/${sid}/record/finish`, {});
+  assert.equal(finish1.status, 400);
+  assert.match(finish1.body.error, /own accounts .*\(1 so far\)/);
+  // a second account: two people
+  assert.equal((await call(c2, 'POST', `/services/${sid}/record/approve`, {})).status, 200);
+  const done = await call(as.treasurer, 'POST', `/services/${sid}/record/finish`, {});
+  assert.equal(done.status, 200, JSON.stringify(done.body));
+  const sigs = done.body.signatures as Json[];
+  assert.deepEqual(sigs.filter((g) => g.via === 'account').map((g) => g.name).sort(), ['Test counter two', 'Test treasurer']);
+  assert.ok(sigs.filter((g) => g.via === 'account').every((g) => g.account_id && g.image === ''));
+  // roles without the Offerings permission can't approve
+  const sid2 = svc.createService({ date: '2036-04-12' }).service.id;
+  await call(as.treasurer, 'PUT', `/services/${sid2}/record`, MONEY);
+  assert.equal((await call(as.secretary, 'POST', `/services/${sid2}/record/approve`, {})).status, 403);
+  await call(as.admin, 'PUT', '/offering-settings', { currency: 'SGD', funds: ['General'], signing: 'paper', min_counters: 2, own_accounts: false });
+});

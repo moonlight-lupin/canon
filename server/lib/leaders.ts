@@ -29,7 +29,7 @@ export function leadsMeeting(personId: number | null | undefined, serviceId: num
 type Req = { method: string; path: string; body?: unknown };
 
 const RECORD = /^\/services\/(\d+)\/record$/;
-const RECORD_ACTION = /^\/services\/(\d+)\/record\/(sign|finish|unsign|verify)$/;
+const RECORD_ACTION = /^\/services\/(\d+)\/record\/(sign|approve|finish|unsign|verify)$/;
 const DETAILS = /^\/services\/(\d+)$/;
 const NEXT = /^\/services\/(\d+)\/duplicate$/;
 

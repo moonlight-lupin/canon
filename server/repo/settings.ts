@@ -52,7 +52,7 @@ export interface Settings {
   /** the service template New service starts from; null = the first one */
   default_service_template_id: number | null;
   /** service records: the currency counted and the funds offerings go to */
-  offering: { currency: string; funds: string[]; signing?: 'paper' | 'screen'; min_counters?: number };
+  offering: { currency: string; funds: string[]; signing?: 'paper' | 'screen'; min_counters?: number; /** on screen: counters approve from their own accounts */ own_accounts?: boolean };
   /** Settings → Visitor form (see shared/visitor-form.ts) */
   visitor_form: VisitorFormSettings;
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
