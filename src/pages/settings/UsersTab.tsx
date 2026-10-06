@@ -6,7 +6,7 @@ import { ErrorBox, Field, Loading, Modal, confirmAction, useAction, useSession }
 import { Icon } from '../../components/icons.tsx';
 import type { Lang, Role } from '../../types-client.ts';
 import { fmtStamp } from './common.tsx';
-import { RolesCard, useRoles } from './RolesCard.tsx';
+import { useRoles } from './RolesCard.tsx';
 import { useCongregations } from '../../components/Congregations.tsx';
 import type { RoleDef } from '../../../shared/permissions.ts';
 import { Combo, type ComboOption } from '../../components/Combo.tsx';
@@ -103,7 +103,7 @@ export function UsersTab() {
           </table>
         </div>
       )}
-      <RolesCard data={roles.data} reload={() => { roles.reload(); reload(); }} />
+      <p className="small muted" style={{ margin: 0 }}>{t('What each role may see and change is set in')} <a href="/settings?tab=roles">{t('Roles & permissions')}</a>.</p>
       {adding && <AddUserModal roles={roles.data?.roles ?? []} people={personOptions} onClose={() => setAdding(false)} onSaved={() => { reload(); roles.reload(); }} />}
       {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />}
     </div>

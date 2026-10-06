@@ -1,4 +1,4 @@
-// Settings → Users & access → Roles: what each role may see and change, per part of Canon. The ready-made roles can
+// Settings → Roles & permissions (administrators): what each role may see and change, per part of Canon. The ready-made roles can
 // be changed (the Administrator always has everything); a church can add its own. The same roles decide what AI
 // assistants may do for a person.
 import { useState } from 'react';
@@ -22,7 +22,7 @@ export function RolesCard({ data, reload }: { data: RolesData | undefined; reloa
   return (
     <section className="card stack">
       <div className="row between">
-        <h3 style={{ margin: 0 }}>{t('Roles')} <InfoTip text={t('What each role may see and change. Canon’s ready-made roles can be adjusted to your church; add a role for anything else. AI assistants acting for a person follow the same role.')} /></h3>
+        <h3 style={{ margin: 0 }}>{t('Roles & permissions')} <InfoTip text={t('What each role may see and change. Canon’s ready-made roles can be adjusted to your church; add a role for anything else. AI assistants acting for a person follow the same role.')} /></h3>
         <button className="btn sm" onClick={() => setEditing('new')}><Icon name="plus" />{t('New role')}</button>
       </div>
       <div className="table-wrap">
@@ -103,4 +103,10 @@ function RoleEditor({ role, canDelete, onClose, onSaved }: { role: RoleDef | nul
       </div>
     </Modal>
   );
+}
+
+/** Settings → Roles & permissions: the roles table on its own (administrators change roles here). */
+export function RolesTab() {
+  const roles = useRoles();
+  return <RolesCard data={roles.data} reload={roles.reload} />;
 }

@@ -1,4 +1,4 @@
-// Congregation walls (0.13): an account can be limited to one congregation (Settings → Users & access). It then sees
+// Congregation walls (0.13): an account can be limited to one congregation (Settings → User accounts). It then sees
 // that congregation's services, meetings, records, members, groups and events, and the whole church's (those with no
 // congregation), but nothing of other congregations. Administrators are never walled.
 //

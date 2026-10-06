@@ -191,7 +191,7 @@ function MemberLinkReminder() {
     <div className="callout warn row no-print member-link-reminder" role="status">
       <span className="grow small">
         <strong>{t('Your account is not linked to your member record.')}</strong>{' '}
-        {t('Every other account belongs to a church member. Add yourself in Members if you are not there yet, then choose yourself under Member in Settings → Users & access.')}
+        {t('Every other account belongs to a church member. Add yourself in Members if you are not there yet, then choose yourself under Member in Settings → User accounts.')}
       </span>
       <Link className="btn sm primary" to="/settings?tab=users">{t('Link my account')}</Link>
       <button className="btn sm ghost" onClick={hide}>{t('Remind me later')}</button>

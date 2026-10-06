@@ -1,4 +1,4 @@
-// Roles for accounts (Settings → Users & access → Roles), administrators only. Canon's ready-made roles can be
+// Roles for accounts (Settings → Roles & permissions), administrators only. Canon's ready-made roles can be
 // changed (not deleted); the Administrator role always keeps everything. A church can add its own roles. Not to be
 // confused with rota roles (Volunteers), which are positions people serve in.
 import { GUEST_ROLE } from '../../shared/permissions.ts';

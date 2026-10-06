@@ -17,11 +17,12 @@ import { ChangeLogTab } from './settings/ChangeLogTab.tsx';
 import { ChurchTab } from './settings/ChurchTab.tsx';
 import { McpTab } from './settings/McpTab.tsx';
 import { UsersTab } from './settings/UsersTab.tsx';
+import { RolesTab } from './settings/RolesCard.tsx';
 import { ModulesPanel } from './settings/ModulesTab.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { Icon } from '../components/icons.tsx';
 
-type Tab = 'profile' | 'church' | 'languages' | 'modules' | 'users' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
+type Tab = 'profile' | 'church' | 'languages' | 'modules' | 'users' | 'roles' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -30,7 +31,7 @@ export default function Settings() {
   const groups: [Tab, string][][] = [
     [['profile', 'My profile']],
     [['church', 'Church'], ['languages', 'Languages'], ['modules', 'Modules'], ['offerings', 'Offerings']],
-    [['users', 'Users & access'], ['member-fields', 'Member fields'], ['visitor-form', 'Visitor form']],
+    [['users', 'User accounts'], ['roles', 'Roles & permissions'], ['member-fields', 'Member fields'], ['visitor-form', 'Visitor form']],
     [['security', 'Security & privacy'], ['backups', 'Backups'], ['email', 'E-mail'], ['mcp', 'AI / MCP'], ['changelog', 'Change log']],
   ];
   const groupTitles = ['My account', 'Church', 'People and access', 'Canon'];
@@ -76,6 +77,7 @@ export default function Settings() {
             {tab === 'languages' && settings && <LanguagesPanel settings={settings} onSaved={reloadSettings} />}
             {tab === 'modules' && settings && <div className="card"><ModulesPanel initial={settings.modules} onSaved={reloadSettings} /></div>}
             {tab === 'users' && <UsersTab />}
+            {tab === 'roles' && <RolesTab />}
             {tab === 'member-fields' && <MemberFieldsTab />}
             {tab === 'offerings' && <OfferingsTab />}
             {tab === 'visitor-form' && <VisitorFormTab />}

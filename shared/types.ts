@@ -9,7 +9,7 @@ export type Lang = string;
 /** A localised string: one entry per language that has a value. */
 export type L10n = { [lang: string]: string | undefined };
 
-/** a role's key (Settings → Users & access → Roles); admin, editor and viewer are built in */
+/** a role's key (Settings → Roles & permissions); admin, editor and viewer are built in */
 export type Role = string;
 
 // ---------------------------------------------------------------- registers

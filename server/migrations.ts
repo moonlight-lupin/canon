@@ -879,7 +879,7 @@ export const MIGRATIONS: (string | Migration)[] = [
     `,
     run: (d) => {
       // existing roles: Canon's own get the access they ship with; a church's own roles start without (an
-      // administrator gives it in Settings → Users & access → Roles)
+      // administrator gives it in Settings → Roles & permissions)
       const roles = d.prepare('SELECT key, builtin, access FROM access_roles').all() as { key: string; builtin: number; access: string }[];
       const set = d.prepare('UPDATE access_roles SET access = ? WHERE key = ?');
       for (const r of roles) {

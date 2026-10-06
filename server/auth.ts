@@ -234,7 +234,7 @@ const TWO_STEP_SETUP = (method: string, path: string) =>
   (method === 'POST' && (path === '/me/two-step/setup' || path === '/me/two-step/enable')) || (method === 'GET' && path === '/settings') || (method === 'PATCH' && path === '/me');
 
 /**
- * Every account belongs to a church member (Settings → Users & access → Member), except an external guest's
+ * Every account belongs to a church member (Settings → User accounts → Member), except an external guest's
  * (read-only, e.g. an auditor) and — with a reminder until they do — the first administrator's.
  */
 export function memberLinkProblem(uid: number | null, role: string, personId: number | null | undefined): string | null {

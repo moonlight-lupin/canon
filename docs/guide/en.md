@@ -48,7 +48,7 @@ A church with one congregation leaves the list empty and sees none of this. Dele
 
 ### Adding colleagues
 
-**Settings → Users & access → Add user**. Every account belongs to a church member: choose them under **Member** (add them in [Members](/members) first if they aren't there). Only an **External guest** account is without one. The administrator who set Canon up may start without one; until they link their own account, a reminder sits above every page (**Link my account**, or **Remind me later** until the next sign-in).
+**Settings → User accounts → Add user**. Every account belongs to a church member: choose them under **Member** (add them in [Members](/members) first if they aren't there). Only an **External guest** account is without one. The administrator who set Canon up may start without one; until they link their own account, a reminder sits above every page (**Link my account**, or **Remind me later** until the next sign-in).
 
 Choose a role:
 - **Administrator**: everything, including settings, accounts and roles.
@@ -61,7 +61,7 @@ Choose a role:
 - **Librarian** and **Asset keeper**: the [Lending library](#lending-library) or the [Asset register](#asset-register) only (when the church has switched it on).
 - **External guest (read-only)**: for someone outside the church, such as an auditor. It reads services, the library, service records and offerings, changes nothing and never sees members' contact details or notes. It is not linked to a member. You can let it read more (Roles → **Edit**), but never change anything.
 
-**Roles** (below the accounts) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. **Edit** a ready-made role to fit your church (the Administrator always keeps everything), or **New role** for anything else, e.g. a worship leader who edits services and the library. A role in use can't be deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role. A role that doesn't see sensitive fields can't change them either: they aren't on its member form, so saving a member leaves them as they are.
+**Settings → Roles & permissions** (administrators) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. **Edit** a ready-made role to fit your church (the Administrator always keeps everything), or **New role** for anything else, e.g. a worship leader who edits services and the library. A role in use can't be deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role. A role that doesn't see sensitive fields can't change them either: they aren't on its member form, so saving a member leaves them as they are.
 
 **Signing in safely**:
 - Five wrong passwords in a row lock an account for 15 minutes (the list shows **Locked**); **Reset password** unlocks it.
@@ -202,7 +202,7 @@ For a Mac, choose **Files** → **PowerPoint for Keynote (Mac)**: the same slide
 
 **Record this meeting** opens its record. An order of service, bulletin and slides are optional (**Add an order of service**).
 
-The group's leaders record its meetings with their own accounts, even read-only ones: an administrator links the account to its member (Settings → Users & access), and the group marks who **Leads** it (see [People](#people)). A meeting's own **Leader** can record it too.
+The group's leaders record its meetings with their own accounts, even read-only ones: an administrator links the account to its member (Settings → User accounts), and the group marks who **Leads** it (see [People](#people)). A meeting's own **Leader** can record it too.
 
 ### Recurring meetings
 
@@ -407,7 +407,7 @@ The [Asset register](/equipment) is for the church's equipment and property. It 
 Open [Settings](/settings). Administrators see its sections listed down the left in four groups (**My account**, **Church**, **People and access**, **Canon**); on a phone, choose a section from the list at the top.
 
 - **My profile** (everyone; for administrators it is the first section): display name, interface language, **Change password**.
-- **Church**, **Languages**, **Users & access**: see [Getting started](#getting-started).
+- **Church**, **Languages**, **User accounts**, **Roles & permissions**: see [Getting started](#getting-started).
 - **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library** and the **Asset register** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it; values already entered are kept and come back if the field is added again.
 - **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).

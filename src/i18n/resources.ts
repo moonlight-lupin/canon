@@ -153,6 +153,8 @@ const zh: Record<string, string> = {
   'Lending library: on loan': '图书馆：借出中',
   'Asset register: items': '资产登记：物品',
   'Maintenance due: {n}': '需要保养：{n}',
+  "Roles & permissions": "角色与权限",
+  "What each role may see and change is set in": "每个角色可查看和更改的内容在",
   "Self-service is paused at the moment. Please see the librarian.": "自助借阅暂时停用，请找图书管理员。",
   "Your e-mail address (as the church has it)": "您的电邮地址（教会记录中的）",
   "Send me a code": "发送验证码给我",

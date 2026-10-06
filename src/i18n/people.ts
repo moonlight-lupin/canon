@@ -903,7 +903,7 @@ const zh: Record<string, string> = {
   "This church requires two-step sign-in for every account. Set it up to continue: you need an authenticator app on your phone.": "本教会要求每个帐户使用两步登入。请先设置才能继续：您需要手机上的验证器应用。",
   "This church requires two-step sign-in for administrators. Set it up to continue: you need an authenticator app on your phone.": "本教会要求管理员使用两步登入。请先设置才能继续：您需要手机上的验证器应用。",
   "Your account is not linked to your member record.": "您的帐户尚未连结到您的会友资料。",
-  "Every other account belongs to a church member. Add yourself in Members if you are not there yet, then choose yourself under Member in Settings → Users & access.": "其他帐户都属于教会会友。若名单中还没有您，请先在 会友 中加入自己，然后在 设置 → 用户与权限 的「会友」栏选择自己。",
+  "Every other account belongs to a church member. Add yourself in Members if you are not there yet, then choose yourself under Member in Settings → User accounts.": "其他帐户都属于教会会友。若名单中还没有您，请先在 会友 中加入自己，然后在 设置 → 用户帐户 的「会友」栏选择自己。",
   "Link my account": "连结我的帐户",
   "Remind me later": "稍后提醒",
   "Locked after too many wrong passwords; a new password unlocks it": "因多次输入错误密码而锁定；设定新密码即可解锁",
