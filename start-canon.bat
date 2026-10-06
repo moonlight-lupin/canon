@@ -17,7 +17,11 @@ if not exist data\canon.db call npm run import:bible
 set NODE_ENV=production
 echo.
 echo Canon is starting. Open http://localhost:%CANON_PORT% on this PC,
-echo or http://%COMPUTERNAME%:%CANON_PORT% from other computers on the office network.
+REM this PC's address on the office network (falls back to its name when none is found)
+set CANON_LAN=
+for /f "usebackq delims=" %%a in (`node scripts\lan-address.mjs`) do if not defined CANON_LAN set CANON_LAN=%%a
+if not defined CANON_LAN set CANON_LAN=%COMPUTERNAME%
+echo or http://%CANON_LAN%:%CANON_PORT% from other computers on the office network.
 echo Keep this window open while Canon is in use.
 echo.
 call npm start

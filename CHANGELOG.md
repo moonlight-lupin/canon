@@ -4,6 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.14.3 — language tabs and the launcher
+
+- **Resting the pointer on a field's language tab** (**EN**, **简** …) shows the field's whole text in that language, with its line breaks, in a panel that scrolls when the text is long. It works the same in every browser, on Windows and on a Mac, and with the keyboard. Before, the browser's own tooltip showed only the first 200 characters.
+- **The line under a field that repeated the first language is gone.** It showed two lines at most, and only the first language. Use **Side by side** to see every language together while translating.
+- **start-canon.bat shows the office PC's network address** (e.g. `http://192.168.1.20:5018`) for other computers, instead of its name. If no address is found it shows the name as before.
+- No database change.
+
 ## 0.14.2 — Canon's library
 
 - **Canon's library is a choice.** A new Canon starts without bundled hymns, texts or templates. In **Getting started**, the first administrator ticks what to add and presses **Add to the library**:

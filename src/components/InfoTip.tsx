@@ -1,7 +1,7 @@
 // A small "?" that explains a setting. The explanation is drawn in a layer above the page (a portal with fixed
 // position), so tables and panels that scroll or clip their contents can't cut it off. It opens on hover and on
 // keyboard focus, flips below the "?" near the top of the window and stays inside the window's edges.
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 const GAP = 8;
@@ -74,6 +74,71 @@ export function InfoTip({ text }: { text: string }) {
           style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0, visibility: 'hidden' }}
         >
           {text}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/**
+ * Shows `content` in a panel above (or below) its children while the pointer rests on them or they have keyboard
+ * focus — the same on every system, unlike a browser's own title tooltip (slow on a Mac, cut short on Windows).
+ * Long content scrolls inside the panel; the panel stays open while the pointer is on it.
+ */
+export function HoverTip({ content, children, lang }: { content: ReactNode; children: ReactNode; lang?: string }) {
+  const id = useId();
+  const ref = useRef<HTMLSpanElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  const later = (v: boolean, ms: number) => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setOpen(v), ms);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const place = useCallback(() => {
+    const el = ref.current;
+    const b = box.current;
+    if (!el || !b) return;
+    const r = el.getBoundingClientRect();
+    const w = b.offsetWidth;
+    const h = b.offsetHeight;
+    const below = r.top - GAP - h < MARGIN;
+    const left = Math.min(Math.max(MARGIN, r.left), window.innerWidth - MARGIN - w);
+    setPos({ left, top: below ? r.bottom + GAP : r.top - GAP - h, below });
+  }, []);
+  useLayoutEffect(() => {
+    if (open) place();
+    else setPos(null);
+  }, [open, place, content]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    window.addEventListener('keydown', close);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('keydown', close);
+    };
+  }, [open, place]);
+
+  return (
+    <>
+      <span ref={ref} className="hover-tip" aria-describedby={open ? id : undefined}
+        onMouseEnter={() => later(true, 250)} onMouseLeave={() => later(false, 150)}
+        onFocus={() => later(true, 0)} onBlur={() => later(false, 0)} onClick={() => later(false, 0)}>
+        {children}
+      </span>
+      {open && createPortal(
+        <div ref={box} id={id} role="tooltip" lang={lang} className={`tp-tipbox hover-tipbox${pos?.below ? ' below' : ''}`}
+          style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0, visibility: 'hidden' }}
+          onMouseEnter={() => later(true, 0)} onMouseLeave={() => later(false, 150)}>
+          {content}
         </div>,
         document.body,
       )}

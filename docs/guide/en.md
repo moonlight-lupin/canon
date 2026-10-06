@@ -2,13 +2,13 @@
 
 Canon helps the church office plan the Sunday service, print the bulletin, project the slides and keep the registers. This guide follows the weekly routine. Labels in **bold** are exactly what you see on screen.
 
-> **Tip:** Everything you type in one language can be typed in each of the church's languages. Simplified and Traditional Chinese convert automatically, so type Chinese only once. Where a dialog or a section has several such fields, the language switch at its top right (**EN** / **简** …) turns all of them to one language at once, and **Side by side** shows every language together. Each field also keeps its own small language tabs: click one to switch just that field, or hover over it to read the field in that language without switching.
+> **Tip:** Everything you type in one language can be typed in each of the church's languages. Simplified and Traditional Chinese convert automatically, so type Chinese only once. Where a dialog or a section has several such fields, the language switch at its top right (**EN** / **简** …) turns all of them to one language at once, and **Side by side** shows every language together. Each field also keeps its own small language tabs: click one to switch just that field, or rest the pointer on it to read the field's whole text in that language without switching.
 
 ## Getting started
 
 ### First sign-in
 
-1. Open Canon in your browser (on the office PC: `http://localhost:3000`; other computers use the office PC's name instead of localhost). The number after the colon is the port: to use another one, your IT helper puts a line such as `set CANON_PORT=5018` in a file `canon.local.bat` next to `start-canon.bat`.
+1. Open Canon in your browser (on the office PC: `http://localhost:3000`; other computers use the address Canon's window shows, the office PC's network address such as `http://192.168.1.20:3000`). If the router gives the PC a new address, the window shows the new one; your IT helper can reserve a fixed address for it in the router. The number after the colon is the port: to use another one, your IT helper puts a line such as `set CANON_PORT=5018` in a file `canon.local.bat` next to `start-canon.bat`.
 2. The first time, Canon shows **Welcome to Canon**. Choose the **Worship languages** (primary first), type the **Church name**, then your **Display name**, **Username** and **Password** (8 characters or more).
 3. Press **Create administrator**. You can switch the interface between **EN**, **简体中文** and **繁體中文** at the top.
 

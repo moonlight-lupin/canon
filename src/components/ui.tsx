@@ -1,4 +1,5 @@
 // Shared UI primitives: modal, toast, fields, bilingual input, page header, confirm.
+import { HoverTip } from './InfoTip.tsx';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { L10n, Lang, Role } from '../../shared/types.ts';
 import type { Settings } from '../types-client.ts';
@@ -312,8 +313,6 @@ export function L10nInput({
 
   const field = (lang: Lang, withTag: boolean) => {
     const info = langInfo(lang);
-    const primary = shown[0];
-    const ref = lang !== primary && v[primary]?.trim() ? v[primary]!.trim() : '';
     const auto = !v[lang]?.trim() && ((lang === 'zh-Hant' && !!v.zh?.trim()) || (lang === 'zh' && !!v['zh-Hant']?.trim()));
     const ph = auto ? `${t('Automatic from')} ${langInfo(lang === 'zh' ? 'zh-Hant' : 'zh').native}` : placeholder?.[lang];
     return (
@@ -323,11 +322,6 @@ export function L10nInput({
           <textarea className={serif ? 'serif' : ''} rows={rows} value={v[lang] ?? ''} placeholder={ph} onChange={(e) => set(lang, e.target.value)} lang={info.htmlLang} />
         ) : (
           <input value={v[lang] ?? ''} placeholder={ph} onChange={(e) => set(lang, e.target.value)} lang={info.htmlLang} />
-        )}
-        {!withTag && ref && (
-          <div className="l10n-ref" lang={langInfo(primary).htmlLang} title={ref}>
-            <span className="l10n-ref-tag">{langInfo(primary).short}</span>{ref}
-          </div>
         )}
       </div>
     );
@@ -347,20 +341,27 @@ export function L10nInput({
   // One language at a time: this field's own tab, else the dialog's or section's language, else the first
   const want = ctx ? peek ?? ctx.lang : localLang;
   const active = shown.includes(want) ? want : shown[0];
-  // hovering a tab shows this field's text in that language, to check the wording without switching
+  // resting on a tab shows this field's whole text in that language, to check the wording without switching
   const tip = (l: Lang) => {
     const text = v[l]?.trim();
-    return `${langInfo(l).name}: ${text ? (text.length > 200 ? `${text.slice(0, 200)}…` : text) : t('(empty)')}`;
+    return (
+      <>
+        <div className="hover-tip-head">{langInfo(l).name}</div>
+        {text ? <div className="hover-tip-text">{text}</div> : <div className="hover-tip-text" style={{ opacity: 0.7, fontStyle: 'italic' }}>{t('(empty)')}</div>}
+      </>
+    );
   };
   return (
     <div className="l10n single">
       <div className="l10n-tabs" role="tablist">
         {shown.map((l) => (
-          <button key={l} type="button" role="tab" aria-selected={active === l} className={active === l ? 'on' : ''}
-            onClick={() => (ctx ? setPeek(l) : setLocalLang(l))} title={tip(l)}>
-            {langInfo(l).short}
-            {filledLangs.length > 0 && !covered(filledLangs, l) && <span className="l10n-gap" aria-hidden="true" />}
-          </button>
+          <HoverTip key={l} content={tip(l)} lang={langInfo(l).htmlLang}>
+            <button type="button" role="tab" aria-selected={active === l} className={active === l ? 'on' : ''}
+              aria-label={langInfo(l).name} onClick={() => (ctx ? setPeek(l) : setLocalLang(l))}>
+              {langInfo(l).short}
+              {filledLangs.length > 0 && !covered(filledLangs, l) && <span className="l10n-gap" aria-hidden="true" />}
+            </button>
+          </HoverTip>
         ))}
       </div>
       {field(active, false)}
