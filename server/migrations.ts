@@ -939,4 +939,18 @@ export const MIGRATIONS: (string | Migration)[] = [
     CREATE INDEX events_space ON events(space_id, date);
     `,
   },
+  // 29 (0.15.5): short-lived links to add a song's sheet music from a phone (made in Canon or by an AI assistant):
+  // anyone with the link may add pages to that one song until it expires.
+  {
+    sql: `
+    CREATE TABLE upload_links (
+      token TEXT PRIMARY KEY,
+      song_id INTEGER NOT NULL REFERENCES songs(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      expires_at TEXT NOT NULL,
+      uploads INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    `,
+  },
 ];

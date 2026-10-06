@@ -186,3 +186,28 @@ test('sheet music: pages in order, checked by content, library edit to change; l
   assert.equal(get('SELECT 1 FROM assets WHERE key = ?', `score-${p2.id}`), undefined);
   assert.equal(get('SELECT 1 FROM song_scores WHERE song_id = ?', song.id), undefined);
 });
+
+test('upload links (0.15.5): an editor makes one; anyone with it adds pages to that song until it expires', async () => {
+  const song = lib.songs.insert({ title: { en: 'An Upload Hymn' }, stanzas: [], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  assert.equal((await call(as.viewer, 'POST', `/songs/${song.id}/upload-link`, {})).status, 403);
+  const made = await call(as.editor, 'POST', `/songs/${song.id}/upload-link`, { hours: 2 });
+  assert.equal(made.status, 200, JSON.stringify(made.body));
+  const token = String(made.body.url).split('/upload/')[1];
+  assert.ok(token);
+  if (lanAddress()) assert.ok(!/localhost|127\.0\.0\.1/.test(made.body.url), made.body.url);
+  // the public page: no session
+  const info = await call(null, 'GET', `/upload/${token}`);
+  assert.equal(info.status, 200);
+  assert.equal(info.body.title.en, 'An Upload Hymn');
+  assert.equal(info.body.pages, 0);
+  const up = (type: string, data: Buffer, name = 'p.png') => call(null, 'POST', `/upload/${token}?name=${name}`, undefined, { type, data });
+  assert.equal((await up('image/png', PNG)).status, 200);
+  assert.equal((await up('image/png', PDF)).status, 400, 'checked by content');
+  assert.equal((await up('application/pdf', PDF, 'p2.pdf')).body.pages, 2);
+  assert.deepEqual((await call(as.viewer, 'GET', `/songs/${song.id}/scores`)).body.map((s: Json) => s.name), ['p.png', 'p2.pdf']);
+  // expired: gone
+  db.prepare("UPDATE upload_links SET expires_at = '2000-01-01T00:00:00.000Z' WHERE token = ?").run(token);
+  assert.equal((await call(null, 'GET', `/upload/${token}`)).status, 404);
+  assert.equal((await up('image/png', PNG)).status, 404);
+  assert.equal((await call(null, 'GET', '/upload/not-a-real-token-123')).status, 404);
+});

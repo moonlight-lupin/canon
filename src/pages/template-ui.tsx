@@ -1,5 +1,6 @@
 // Building blocks shared by the Slide templates and Bulletin templates pages: a gallery card with its actions,
 // numbered editor steps that fold away, a sticky save bar, small "?" tooltips and links into the user guide.
+import { useKeepOnScreen } from '../components/onscreen.ts';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n.tsx';
@@ -118,6 +119,8 @@ export function TemplateCard({ thumb, name, desc, badges, primary, actions, mute
 export function CardMenu({ label, actions, trigger, down, fixed }: { label: string; actions: CardAction[]; trigger?: ReactNode; down?: boolean; fixed?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  useKeepOnScreen(listRef, open);
   // `fixed`: the list floats over the page (inside a scrolling table it would be cut off); placed below the button,
   // or above it near the bottom of the window
   const [at, setAt] = useState<CSSProperties | undefined>();
@@ -161,7 +164,7 @@ export function CardMenu({ label, actions, trigger, down, fixed }: { label: stri
         </button>
       )}
       {open && (
-        <div className={`tp-menu-list${down ? ' down' : ''}`} role="menu" style={fixed ? at : undefined}>
+        <div ref={listRef} className={`tp-menu-list${down ? ' down' : ''}`} role="menu" style={fixed ? at : undefined}>
           {actions.map((a) => (
             <button key={a.label} type="button" role="menuitem" className={a.danger ? 'danger' : ''} disabled={a.disabled} title={a.title}
               onClick={() => { setOpen(false); a.onClick(); }}>

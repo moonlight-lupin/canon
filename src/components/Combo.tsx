@@ -66,7 +66,11 @@ export function Combo({ value, options, onChange, placeholder, noneLabel, disabl
     const below = window.innerHeight - r.bottom - 12;
     const above = r.top - 12;
     const up = below < 220 && above > below;
-    setRect({ left: r.left, top: up ? r.top - 4 : r.bottom + 4, width: Math.max(r.width, 280), up, max: Math.min(360, up ? above : below) });
+    // at least 280px wide, but never wider than the window, and moved left when it would stick out (phones)
+    const vw = document.documentElement.clientWidth;
+    const width = Math.min(Math.max(r.width, 280), vw - 16);
+    const left = Math.max(8, Math.min(r.left, vw - 8 - width));
+    setRect({ left, top: up ? r.top - 4 : r.bottom + 4, width, up, max: Math.min(360, up ? above : below) });
   };
   useLayoutEffect(() => {
     if (open) place();

@@ -7,6 +7,7 @@ import { useI18n } from '../i18n.tsx';
 import { useAction, useToast } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import { qrPreviewUrl } from '../../shared/presentation.ts';
+import { useKeepOnScreen } from '../components/onscreen.ts';
 import './outputs.css';
 
 export type LinkBase = { base: string; public: boolean };
@@ -25,6 +26,8 @@ export function ShareButton({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  useKeepOnScreen(popRef, open);
   const attendee = useApi<AttendeeInfo>(`/services/${serviceId}/attendee-link`);
   useEffect(() => {
     if (!open) return;
@@ -55,7 +58,7 @@ export function ShareButton({
         title={t('Share links: the team’s, and the bulletin for the congregation')}>
         <Icon name="link" />{t('Share')}{on && <span className="badge ok" style={{ marginLeft: 4 }}>{t('On')}</span>}
       </button>
-      {open && <div className="tp-menu-list down share-pop" role="dialog" aria-label={t('Share link')}>{boxes}</div>}
+      {open && <div ref={popRef} className="tp-menu-list down share-pop" role="dialog" aria-label={t('Share link')}>{boxes}</div>}
     </div>
   );
 }

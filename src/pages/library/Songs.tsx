@@ -8,7 +8,8 @@ import { Bi, Empty, Field, L10nInput, Loading, Modal, SearchBox, confirmAction, 
 import { Icon } from '../../components/icons.tsx';
 import { CsvTools } from '../../components/CsvTools.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
-import { scoreUrl } from '../../../shared/presentation.ts';
+import { BulkSheetMusic } from './BulkSheetMusic.tsx';
+import { qrPreviewUrl, scoreUrl } from '../../../shared/presentation.ts';
 import type { Hymnal, Song, SongCategory, Stanza } from '../../types-client.ts';
 import { type HymnalRow, LangBadges, langsIn, numbersOf, SONG_CAT_LABEL, SONG_CATS, songMatches } from './common.tsx';
 
@@ -22,6 +23,7 @@ export function Songs() {
   const [cat, setCat] = useState<SongCategory | ''>('');
   const [hymnal, setHymnal] = useState<string>('');
   const [edit, setEdit] = useState<Partial<Song> | null>(null);
+  const [bulk, setBulk] = useState(false);
   const hid = Number(hymnal) || 0;
   const numIn = (s: Song) => s.hymnals?.find((h) => h.hymnal_id === hid)?.number;
   const rows = useMemo(() => {
@@ -47,6 +49,7 @@ export function Songs() {
         )}
         <div className="grow" />
         <CsvTools entity="songs" label={t('Hymns & songs')} onImported={reload} />
+        {canEdit && <button className="btn" onClick={() => setBulk(true)}><Icon name="music" />{t('Upload sheet music')}</button>}
         {canEdit && <button className="btn primary" onClick={() => setEdit({ title: {}, stanzas: [{ label: '1', text: {} }], category: 'hymn', tags: [], public_domain: false, refrain_after_each: false, hymnals: [] })}><Icon name="plus" />{t('New song')}</button>}
       </div>
       {!data ? <Loading /> : (
@@ -79,6 +82,7 @@ export function Songs() {
           {!rows.length && <Empty title="—" />}
         </div>
       )}
+      {bulk && data && <BulkSheetMusic songs={data} hymnals={hymnals ?? []} onClose={() => setBulk(false)} onDone={() => scoreCounts.reload()} />}
       {edit && <SongEditor song={edit} hymnals={hymnals ?? []} canEdit={canEdit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} onScores={scoreCounts.reload} />}
     </>
   );
@@ -327,6 +331,9 @@ function SheetMusicSection({ songId, canEdit, onChanged }: { songId?: number; ca
     }
     onChanged?.();
   };
+  // a link (and QR code) to add pages from a phone: take photos of the hymnal there, no sign-in needed
+  const [phone, setPhone] = useState<{ url: string; expires_at: string } | null>(null);
+  const phoneLink = () => run(async () => setPhone(await api.post<{ url: string; expires_at: string }>(`/songs/${songId}/upload-link`, {})));
   const act = (p: Promise<Score[]>) => run(async () => {
     scores.setData(await p);
     onChanged?.();
@@ -337,6 +344,7 @@ function SheetMusicSection({ songId, canEdit, onChanged }: { songId?: number; ca
         <h3>{t('Sheet music')}</h3>
         <InfoTip text={t('Scans or photos of the music (PNG, JPEG or WebP) or a PDF, up to 10 MB each, in page order. Musicians open them from the service planner (Outputs → Sheet music). They stay inside Canon: never on the share pages, the slides or for AI assistants.')} />
         <div className="grow" />
+        {canEdit && songId && <button type="button" className="btn sm ghost" disabled={busy} onClick={() => void phoneLink()}><Icon name="qr" />{t('From a phone')}</button>}
         {canEdit && songId && (
           <label className={`btn sm${busy ? ' disabled' : ''}`}>
             <Icon name="upload" />{t('Add pages')}
@@ -344,6 +352,16 @@ function SheetMusicSection({ songId, canEdit, onChanged }: { songId?: number; ca
           </label>
         )}
       </div>
+      {phone && (
+        <div className="score-phone">
+          <img src={qrPreviewUrl(phone.url)} alt={t('QR code of the upload link')} />
+          <div className="stack tight small">
+            <span>{t('Scan with a phone to take photos of the music (or choose files): each becomes the next page. No sign-in needed; the link works for 24 hours.')}</span>
+            <span className="code" style={{ wordBreak: 'break-all' }}>{phone.url}</span>
+            <button type="button" className="btn sm" onClick={() => { setPhone(null); scores.reload(); onChanged?.(); }}>{t('Done — show the new pages')}</button>
+          </div>
+        </div>
+      )}
       {!songId ? <div className="field-hint">{t('Save the song first, then add its sheet music.')}</div>
         : !list.length ? <div className="field-hint">{t('No sheet music yet.')}</div>
         : (

@@ -39,6 +39,7 @@ const Slides = lazy(() => import('./outputs/Slides.tsx'));
 const RunSheet = lazy(() => import('./outputs/RunSheet.tsx'));
 const SheetMusic = lazy(() => import('./outputs/SheetMusic.tsx'));
 const Share = lazy(() => import('./outputs/Share.tsx'));
+const UploadPage = lazy(() => import('./outputs/UploadPage.tsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.tsx'));
 const About = lazy(() => import('./pages/About.tsx'));
 const Guide = lazy(() => import('./pages/Guide.tsx'));
@@ -73,12 +74,13 @@ function App() {
   }, []);
 
   // Public share pages need no session: the team's (/share/…) and the attendees' bulletin (/b/…).
-  if (loc.pathname.startsWith('/share/') || loc.pathname.startsWith('/b/')) {
+  if (loc.pathname.startsWith('/share/') || loc.pathname.startsWith('/b/') || loc.pathname.startsWith('/upload/')) {
     return (
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/share/:token/*" element={<Share />} />
           <Route path="/b/:token/*" element={<Share attendee />} />
+          <Route path="/upload/:token" element={<UploadPage />} />
         </Routes>
       </Suspense>
     );

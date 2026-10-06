@@ -415,6 +415,16 @@
   .rs-sheet, .rs-sheet.landscape { width: auto; margin: 0; padding: 0; box-shadow: none; }
 }
 
+/* ---------------------------------------------------------------- sheet music upload link (public) */
+.up-root { max-width: 520px; }
+.up-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+.up-buttons .btn { flex: 1 1 160px; justify-content: center; min-height: 48px; }
+.up-done { list-style: none; padding: 0; margin: 8px 0; font-size: 13.5px; }
+.up-done li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.up-done svg { width: 16px; height: 16px; flex: none; }
+.up-done li.ok svg { color: var(--ok, #2e7d4f); }
+.up-done li.bad { color: var(--danger, #a5452f); }
+
 /* ---------------------------------------------------------------- sheet music (Outputs → Sheet music) */
 .sm-sheet { width: 210mm; box-sizing: border-box; margin: 20px auto 48px; padding: 14mm 12mm; background: #fff; color: #1e2430; box-shadow: 0 1px 2px rgb(30 36 48 / 0.12), 0 6px 20px rgb(30 36 48 / 0.12); }
 .sm-head { padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1.5px solid #a8893c; }

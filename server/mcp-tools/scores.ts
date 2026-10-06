@@ -4,7 +4,8 @@
 // sent: the assistant gets the page in Canon where musicians open them.
 import { z } from 'zod';
 import { InputError } from './common.ts';
-import { Id, RO, WithImages, canRead, type ToolDef } from './common.ts';
+import { Id, RO, WRITE, WithImages, canRead, type ToolDef } from './common.ts';
+import { addressForOthers } from '../lib/lan.ts';
 import * as sc from '../repo/scores.ts';
 import { get } from '../db.ts';
 
@@ -49,6 +50,36 @@ export const SCORE_TOOLS: ToolDef[] = [
         }
       }
       return new WithImages({ ...data, pictures: sent.length ? `${sent.length} picture(s) follow, in the order of the pages listed (ids ${sent.join(', ')})` : 'no pictures to send (only PDFs or very large scans: open them in Canon)' }, images);
+    },
+  },
+  {
+    name: 'canon_sheet_music_upload_link', module: 'library', access: 'write', title: 'Sheet music upload link', annotations: WRITE,
+    description: 'A short-lived link (default 24 hours, max 72) to add a song’s sheet music from a phone or computer without signing in: the person opens it, takes photos or picks scans / PDFs, and they are added to that song in page order. You cannot upload files yourself through this connector — give the user this link instead. Name the song by song_id or hymnal number (e.g. "HP 178"; a bare number uses the first hymnal that has it). Give the link only to the user who asked. Example: {"number":"HP 178"}.',
+    input: {
+      song_id: Id.optional(),
+      number: z.string().max(30).optional(),
+      hours: z.number().int().min(1).max(sc.MAX_LINK_HOURS).default(24),
+    },
+    handler: (a, ctx) => {
+      let songId = a.song_id as number | undefined;
+      if (!songId && a.number) {
+        const m = String(a.number).trim().match(/^([A-Za-z一-鿿]*)\s*#?\s*(\w+)$/);
+        if (!m) throw new InputError('Give the number like "HP 178" or "178".');
+        const all = sc.songsByNumber();
+        const hit = all.find((x) => x.number.toLowerCase() === m[2].toLowerCase() && (!m[1] || x.abbr.toLowerCase() === m[1].toLowerCase()));
+        if (!hit) throw new InputError(`No song has the number ${a.number}.`);
+        songId = hit.song_id;
+      }
+      if (!songId) throw new InputError('Give song_id or number.');
+      const l = sc.createUploadLink(songId, a.hours, ctx.auth.user.id);
+      const info = sc.uploadLinkInfo(l.token);
+      return {
+        song: { id: songId, title: info.title, numbers: info.numbers, pages_now: info.pages },
+        url: `${addressForOthers(ctx.base)}/upload/${l.token}`,
+        expires_at: l.expires_at,
+        up_to_pages: info.left,
+        note: 'Anyone with this link can add pages to this song until it expires; share it only with the user.',
+      };
     },
   },
 ];

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { uploadLinkInfo, uploadViaLink } from './repo/scores.ts';
 import { roleOffered } from './repo/access-roles.ts';
 import { forAttendees, serviceByAttendeeToken } from './repo/attendee-link.ts';
 import { publicUrl } from './lib/public-url.ts';
@@ -143,6 +144,15 @@ api.get('/share/:token', h((req) => {
 
 // Public bulletin for attendees (one link per service): the order, words and announcements — no serving team or notes.
 api.get('/bulletin/:token', h((req) => withRights(forAttendees(renderService(serviceByAttendeeToken(String(req.params.token)))), 'online')));
+
+// Sheet music from a phone through an upload link (0.15.5): the song it is for, and one page per request.
+api.get('/upload/:token', h((req) => uploadLinkInfo(String(req.params.token))));
+api.post('/upload/:token', express.raw({ type: () => true, limit: '11mb' }), h((req) => {
+  const data = req.body as Buffer;
+  if (!Buffer.isBuffer(data) || !data.length) throw Object.assign(new Error('Choose a file.'), { status: 400 });
+  const name = typeof req.query.name === 'string' && req.query.name ? req.query.name : 'sheet music';
+  return uploadViaLink(String(req.params.token), { name, mime: String(req.get('content-type') ?? '').split(';')[0].trim(), data });
+}));
 
 // Short-lived download links (made by AI agents: canon_get_service format "downloads"): one file each, no sign-in needed.
 api.get('/dl/:token', h(async (req, res) => sendFile(res, await fileForToken(String(req.params.token)))));

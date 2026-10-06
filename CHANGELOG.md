@@ -4,6 +4,18 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.5 — Sheet music from a phone or in bulk; menus that fit a phone
+
+- **Sheet music from a phone.** A song's **Sheet music** has a **From a phone** button that shows a QR code.
+  - Scan it, take photos of the hymnal page by page (or choose files), and they become the song's next pages.
+  - No sign-in is needed. The link lasts 24 hours and takes up to 30 pages.
+- **Upload sheet music in bulk** (Library → Hymns & songs).
+  - Choose many scans named by hymnal number, e.g. `HP 178.jpg`, and `HP 178-2.jpg` for page 2.
+  - Canon matches them to the hymns. You check the list, change or skip any, and add them after a hymn's pages or replace them.
+- **AI assistants**: Claude can't upload files through the connector, but with the Library at Read & write, `canon_sheet_music_upload_link` gives you an upload link for a hymn (e.g. "add sheet music for HP 178").
+- **Phones**: the ⋯ menus, the **Share** popover and the searchable pickers now stay on the screen instead of opening past its edge. Tall ones scroll inside.
+- Database: upgraded to version 29 (upload links).
+
 ## 0.15.4 — Church spaces and double bookings; notes under the announcements
 
 - **Spaces** (new in Settings, for administrators): the church's halls, rooms and other places.

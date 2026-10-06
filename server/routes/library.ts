@@ -1,4 +1,5 @@
 // REST routes for hymnals, song hymnal numbers, text parts import (Westminster Standards). Mounted inside /api after authentication (see server/api.ts).
+import { addressForOthers } from '../lib/lan.ts';
 import express from 'express';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
@@ -55,6 +56,12 @@ libraryRoutes.get('/songs/scores/:id', (req, res, next) => {
     next(e);
   }
 });
+// a link to add this song's pages from a phone (no sign-in, for a few hours): the QR code in the song's Sheet music
+libraryRoutes.post('/songs/:id/upload-link', h((req) => {
+  const hours = z.object({ hours: z.number().int().min(1).max(sc.MAX_LINK_HOURS).optional() }).parse(req.body ?? {}).hours ?? 24;
+  const l = sc.createUploadLink(id(req), hours, req.user?.id ?? null);
+  return { url: `${addressForOthers(`${req.protocol}://${req.get('host')}`)}/upload/${l.token}`, expires_at: l.expires_at };
+}));
 libraryRoutes.post('/songs/scores/:id/move', h((req) => sc.moveScore(id(req), z.object({ by: z.union([z.literal(-1), z.literal(1)]) }).parse(req.body).by)));
 libraryRoutes.delete('/songs/scores/:id', h((req) => sc.removeScore(id(req))));
 

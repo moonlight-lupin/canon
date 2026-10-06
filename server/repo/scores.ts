@@ -1,6 +1,7 @@
 // Sheet music (0.15.2): scanned pages or photos of a song's music, kept with the song in the Library (PNG, JPEG, WebP
 // or PDF, up to 10 MB each, in the order they were added). The files are in the assets table (key 'score-<id>'), so
 // backups include them. They are for the church's musicians inside Canon: never on share pages, slides or AI tools.
+import crypto from 'node:crypto';
 import type { L10n } from '../../shared/types.ts';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
@@ -82,4 +83,55 @@ export function serviceScores(serviceId: number) {
       scores: scoresFor(it.song!.id),
     })),
   };
+}
+
+// ---------------------------------------------------------------- upload links (0.15.5)
+
+/** Pages one link may add, and how long links last (hours). */
+export const MAX_LINK_UPLOADS = 30;
+export const MAX_LINK_HOURS = 72;
+
+const songTitle = (songId: number) => {
+  const r = get<{ title: string }>('SELECT title FROM songs WHERE id = ?', songId);
+  if (!r) throw new NotFound('That song does not exist.');
+  return JSON.parse(r.title || '{}') as L10n;
+};
+const songNumbers = (songId: number) =>
+  all<{ abbr: string; number: string }>('SELECT h.abbr, sh.number FROM song_hymnals sh JOIN hymnals h ON h.id = sh.hymnal_id WHERE sh.song_id = ? ORDER BY h.sort, h.id', songId).map((r) => `${r.abbr} ${r.number}`);
+
+/** A link to add a song's sheet music from a phone, without signing in, for `hours` hours. */
+export function createUploadLink(songId: number, hours = 24, userId: number | null = null) {
+  songTitle(songId);
+  if (!(hours >= 1 && hours <= MAX_LINK_HOURS)) throw new BadRequest(`Links last 1 to ${MAX_LINK_HOURS} hours.`);
+  run("DELETE FROM upload_links WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");
+  const token = crypto.randomBytes(18).toString('base64url');
+  const expires = new Date(Date.now() + hours * 3600_000).toISOString();
+  run('INSERT INTO upload_links (token, song_id, user_id, expires_at) VALUES (?, ?, ?, ?)', token, songId, userId, expires);
+  return { token, expires_at: expires };
+}
+
+function linkRow(token: string) {
+  const r = /^[\w-]{10,60}$/.test(token) ? get<{ song_id: number; expires_at: string; uploads: number }>('SELECT song_id, expires_at, uploads FROM upload_links WHERE token = ?', token) : undefined;
+  if (!r || r.expires_at < new Date().toISOString()) throw new NotFound('This upload link has expired or does not exist. Ask for a new one.');
+  return r;
+}
+
+/** What the upload page shows: the song, its numbers, the pages it has, and how many more this link takes. */
+export function uploadLinkInfo(token: string) {
+  const r = linkRow(token);
+  return { title: songTitle(r.song_id), numbers: songNumbers(r.song_id), pages: scoresFor(r.song_id).length, expires_at: r.expires_at, left: MAX_LINK_UPLOADS - r.uploads };
+}
+
+/** Add one page through a link (appended after the song's pages). */
+export function uploadViaLink(token: string, f: { name: string; mime: string; data: Buffer }) {
+  const r = linkRow(token);
+  if (r.uploads >= MAX_LINK_UPLOADS) throw Object.assign(new Error(`This link has taken its ${MAX_LINK_UPLOADS} pages. Ask for a new one.`), { status: 429 });
+  const list = addScore(r.song_id, f);
+  run('UPDATE upload_links SET uploads = uploads + 1 WHERE token = ?', token);
+  return { pages: list.length, left: MAX_LINK_UPLOADS - r.uploads - 1 };
+}
+
+/** Songs by hymnal number ("HP 178", "178"), for the bulk upload and AI assistants. */
+export function songsByNumber(): { song_id: number; abbr: string; number: string }[] {
+  return all<{ song_id: number; abbr: string; number: string }>('SELECT sh.song_id, h.abbr, sh.number FROM song_hymnals sh JOIN hymnals h ON h.id = sh.hymnal_id ORDER BY h.sort, h.id');
 }

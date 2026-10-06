@@ -13,6 +13,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.15.1 | AI access: personal-data switches beside the data they protect (members' contact details; visitors) — done |
 | 0.15.2 | Slide numbers on the cue sheet, a bulletin link for attendees, sheet music, links that phones can open, a role menu — done |
 | 0.15.4 | Church spaces and double bookings (with a report); notes under the announcements on the bulletin — done |
+| 0.15.5 | Sheet music from a phone (upload link, also from AI assistants) and in bulk; phone-sized menus — done |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
 | 0.17.0 | Third hardening round |

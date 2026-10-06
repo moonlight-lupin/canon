@@ -327,7 +327,7 @@ test('MCP: initialize, tools/list, tools/call over Streamable HTTP', async () =>
     assert.ok(names.includes(n), n);
   }
   const listed = (await mcp(tokens.access_token, 'tools/list')).body.result.tools as Json[];
-  assert.ok(listed.length <= 26, `${listed.length} tools`);
+  assert.ok(listed.length <= 27, `${listed.length} tools`);
   const rm = listed.find((t) => t.name === 'canon_edit_order')!;
   assert.equal(rm.annotations.destructiveHint, true);
   assert.equal(listed.find((t) => t.name === 'canon_find_services')!.annotations.readOnlyHint, true);
@@ -936,6 +936,13 @@ test('sheet music for agents: off by default, a nested switch under the Library;
   assert.equal(content[0].type, 'text');
   assert.deepEqual(content.slice(1).map((c) => [c.type, c.mimeType]), [['image', 'image/png']]);
   assert.ok(Buffer.from(content[1].data, 'base64').equals(PNG));
+  // the agent cannot upload itself: it hands out a link (Library at Read & write)
+  assert.ok(!(await toolNames(tokens.access_token)).includes('canon_sheet_music_upload_link'), 'read only: no link');
+  setMcp({ modules: { library: 'write' } });
+  const link = await call(tokens.access_token, 'canon_sheet_music_upload_link', { song_id: song.id });
+  assert.equal(link.isError, false, link.text);
+  assert.match(link.json!.data.url, /\/upload\/[\w-]+$/);
+  assert.equal(link.json!.data.song.pages_now, 2);
   setMcp({ sheet_music: false, modules: { library: 'write', services: 'write' } });
 });
 
