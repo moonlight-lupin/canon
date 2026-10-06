@@ -49,9 +49,14 @@ The [user guide](docs/guide/en.md) describes all of it.
 **Windows office PC**
 1. Install **Node.js 24 or newer** (LTS) from <https://nodejs.org>.
 2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs and builds everything.
-3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Other computers on the office network open `http://<office-pc-name>:3000`.
+3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Other computers on the office network open the address the Canon window shows, e.g. `http://192.168.1.20:3000`.
 
 Keep the "Canon server" window open while Canon is in use.
+
+**Mac**
+1. Install **Node.js 24 or newer** (LTS) from <https://nodejs.org>.
+2. Download or clone this repository. The first time, **right-click** **`start-canon.command`** and choose **Open** (macOS asks once about a file from the internet); after that, double-click it. Choose **Allow** when macOS asks whether Node may accept incoming connections, so other computers can reach Canon.
+3. Open <http://localhost:3000>. The Terminal window shows the address for other computers and keeps the Mac awake while Canon runs.
 
 **Docker** (server, NAS or cloud VM): run `docker compose up -d`. See [docs/DOCKER.md](docs/DOCKER.md).
 

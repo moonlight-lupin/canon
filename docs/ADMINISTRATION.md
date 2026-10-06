@@ -8,13 +8,22 @@ Environment variables are optional overrides:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CANON_PORT` | `3000` | HTTP port. On Windows, put e.g. `set CANON_PORT=5018` in a file `canon.local.bat` next to `start-canon.bat`. It is read at start-up and is not part of the repository. |
+| `CANON_PORT` | `3000` | HTTP port. On Windows, put e.g. `set CANON_PORT=5018` in a file `canon.local.bat` next to `start-canon.bat`; on a Mac, `export CANON_PORT=5018` in `canon.local.sh` next to `start-canon.command`. It is read at start-up and is not part of the repository. |
 | `CANON_HOST` | `0.0.0.0` | Interface to listen on. The default lets the office network reach Canon. |
 | `CANON_DB` | `data/canon.db` | The SQLite database file. Archives (`archives/`) and pre-upgrade copies (`pre-upgrade/`) sit next to it. |
 | `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
 | `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*`. Automatic once a public address is set. |
 
 To start Canon when Windows starts, add `start-canon.bat` to Task Scheduler with the trigger "At log on".
+
+### On a Mac
+
+`start-canon.command` does what `start-canon.bat` does, in a Terminal window:
+- **The first time:** macOS blocks a script downloaded from the internet. Right-click it, choose **Open**, then **Open** again; after that a double-click is enough.
+- **Firewall:** when macOS asks whether `node` may accept incoming connections, choose **Allow**, or other computers can't reach Canon. It can be changed later in System Settings → Network → Firewall → Options.
+- **Sleep:** the launcher runs Canon under `caffeinate`, so the Mac doesn't sleep while Canon is running (the screen still can). Closing a laptop's lid still sleeps it.
+- **Starting with the Mac:** add `start-canon.command` to System Settings → General → Login Items.
+- Node.js from nodejs.org or from Homebrew both work.
 
 ## Backups
 

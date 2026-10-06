@@ -14,14 +14,14 @@ What changed in each version: [CHANGELOG.md](../CHANGELOG.md).
 
 Tests run on Windows and Linux, on Node.js 24, for every change ([CI](../.github/workflows/ci.yml)).
 
-## Windows office PC
+## Windows PC or Mac
 
 1. **Make a backup.** Use Settings → Backups → **Back up now**, or `npm run backup` (safe while Canon is running).
 2. **Stop Canon:** close the "Canon server" window.
 3. **Get the new version:**
    - with git: `git pull`;
-   - with a download: unzip the new version *over* the Canon folder, replacing files. Do not delete the folder first. `data/`, `backups/` and `canon.local.bat` are not in the download, so they are kept.
-4. **Start Canon:** double-click `start-canon.bat`. Before Canon starts, it:
+   - with a download: unzip the new version *over* the Canon folder, replacing files. Do not delete the folder first. `data/`, `backups/`, `canon.local.bat` and `canon.local.sh` are not in the download, so they are kept.
+4. **Start Canon:** double-click `start-canon.bat` (on a Mac, `start-canon.command`). Before Canon starts, it:
    - checks the Node.js version;
    - installs new dependencies, if there are any;
    - rebuilds the web app, if it changed;

@@ -4,6 +4,18 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.14.4 — Canon on a Mac; slides for Keynote
+
+- **A Mac can run Canon:** double-click **start-canon.command**, the Mac twin of start-canon.bat.
+  - It installs, builds and upgrades like the Windows launcher, and shows the address for other computers.
+  - It keeps the Mac awake while Canon runs.
+  - Settings such as the port go in `canon.local.sh`.
+
+  The first time, right-click it and choose **Open**, and allow incoming connections when macOS asks. See `docs/ADMINISTRATION.md`. Canon's tests now also run on a Mac, where CI starts Canon with this launcher.
+- **Files → PowerPoint for Keynote (Mac):** the same slides with fonts every Mac has (Songti, PingFang, Helvetica Neue …), to open in Keynote and save as a Keynote file. CI checks on a Mac that each of these fonts is there.
+- **The PowerPoint download uses fonts the computer has.** For each language it takes the first font of the slide template's list that Windows has; before, it always took the first one, which could be a Mac font. Traditional Chinese now defaults to Microsoft JhengHei, which every Windows PC has; PMingLiU comes only with Windows' optional Traditional Chinese fonts.
+- No database change.
+
 ## 0.14.3 — language tabs and the launcher
 
 - **Resting the pointer on a field's language tab** (**EN**, **简** …) shows the field's whole text in that language, with its line breaks, in a panel that scrolls when the text is long. It works the same in every browser, on Windows and on a Mac, and with the keyboard. Before, the browser's own tooltip showed only the first 200 characters.

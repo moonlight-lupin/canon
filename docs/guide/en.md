@@ -166,7 +166,9 @@ Open the **Team & roster** tab.
 | **O** | Overview of all slides |
 | number + Enter | Jump to that slide |
 
-**Files** → **PowerPoint** in the **Outputs** bar downloads the slides as a PowerPoint file, for a computer without Canon or to send to the AV team. It uses the service's slide template (colours, background picture, fonts, text size, lines per slide, footer and screen shape); **Custom CSS** is not carried over. Open it in PowerPoint and press **F5**.
+**Files** → **PowerPoint** in the **Outputs** bar downloads the slides as a PowerPoint file, for a computer without Canon or to send to the AV team. It uses the service's slide template (colours, background picture, fonts, text size, lines per slide, footer and screen shape); **Custom CSS** is not carried over. Open it in PowerPoint and press **F5**. Each language's text uses the first of the template's fonts that a Windows PC has (else Georgia, SimSun or Microsoft JhengHei).
+
+For a Mac, choose **Files** → **PowerPoint for Keynote (Mac)**: the same slides with fonts every Mac has (Songti, PingFang, Helvetica Neue …). Open it in Keynote (**File → Open**) and press **Play**; **File → Save As** keeps it as a Keynote file.
 
 **Approve** (in the **Outputs** bar; anyone who may edit the service): keeps a copy of the bulletin and slides as they are now — the words, order, people, bulletin template and slide template — with the date and who approved it, and an optional note. The button then shows **Approved**, or **Changed since approved** once the service changes. **Approved versions** lists them; **Bulletin** or **Slides** next to one opens that version exactly as it was approved (a green line at the top says so), even after the service has changed. Pictures are referred to, not copied.
 
@@ -428,7 +430,7 @@ Print double-sided and choose **flip on short edge**, then fold the stack in hal
 That is normal if the address or port changed, after 14 days, or when your password was reset. Just sign in again; nothing is lost. If pages look old after an update, press Ctrl+F5.
 
 **Canon doesn't open.**
-On the office PC, the "Canon server" window must stay open. Double-click `start-canon.bat` again.
+On the office PC, the "Canon server" window must stay open. Double-click `start-canon.bat` again (on a Mac, `start-canon.command`).
 
 **A hymn has no words.**
 It was imported from a hymnal index. Open it in the Library and type the words (under your licence).

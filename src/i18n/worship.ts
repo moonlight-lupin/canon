@@ -64,7 +64,7 @@ const zh: Record<string, string> = {
   'Use the full catechism': '改用完整要理问答',
   Questions: '问答',
   'Empty = all': '留空 = 全部',
-  'PowerPoint for Keynote (Mac)': 'PowerPoint（供 Mac 的 Keynote 使用）',
+  'PowerPoint for Keynote (Mac)': 'PowerPoint 幻灯片（Mac 的 Keynote）',
   'The same slides with fonts every Mac has: open the file in Keynote': '同样的投影片，使用每台 Mac 都有的字体：用 Keynote 打开此文件',
   'Choose the parts of Canon you use, add Canon’s library, and choose the languages your church worships in and their Bibles. You can change all of this later.': '请选择教会使用的 Canon 功能，加入 Canon 自带资料库，并选择聚会所用的语言及其圣经。这些之后都可以更改。',
   'Canon’s library': 'Canon 自带资料库',
