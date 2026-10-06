@@ -17,6 +17,7 @@ import { ChangeLogTab } from './settings/ChangeLogTab.tsx';
 import { ChurchTab } from './settings/ChurchTab.tsx';
 import { SpacesTab } from './settings/SpacesTab.tsx';
 import { ExportTab } from './settings/ExportTab.tsx';
+import { SampleDataTab } from './settings/SampleDataTab.tsx';
 import { McpTab } from './settings/McpTab.tsx';
 import { UsersTab } from './settings/UsersTab.tsx';
 import { RolesTab } from './settings/RolesCard.tsx';
@@ -24,7 +25,7 @@ import { ModulesPanel } from './settings/ModulesTab.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { Icon } from '../components/icons.tsx';
 
-type Tab = 'profile' | 'church' | 'spaces' | 'export' | 'languages' | 'modules' | 'users' | 'roles' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
+type Tab = 'profile' | 'church' | 'spaces' | 'export' | 'languages' | 'modules' | 'users' | 'roles' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog' | 'sample';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -34,7 +35,7 @@ export default function Settings() {
     [['profile', 'My profile']],
     [['church', 'Church'], ['spaces', 'Spaces'], ['languages', 'Languages'], ['modules', 'Modules'], ['offerings', 'Offerings']],
     [['users', 'User accounts'], ['roles', 'Roles & permissions'], ['member-fields', 'Member fields'], ['visitor-form', 'Visitor form']],
-    [['security', 'Security & privacy'], ['backups', 'Backups'], ['export', 'Export data'], ['email', 'E-mail'], ['mcp', 'AI / MCP'], ['changelog', 'Change log']],
+    [['security', 'Security & privacy'], ['backups', 'Backups'], ['export', 'Export data'], ['email', 'E-mail'], ['mcp', 'AI / MCP'], ['changelog', 'Change log'], ['sample', 'Sample data']],
   ];
   const groupTitles = ['My account', 'Church', 'People and access', 'Canon'];
   const all = groups.flat().map(([k]) => k);
@@ -78,6 +79,7 @@ export default function Settings() {
             {tab === 'spaces' && <SpacesTab />}
             {tab === 'export' && <ExportTab />}
             {tab === 'changelog' && <ChangeLogTab />}
+            {tab === 'sample' && <SampleDataTab />}
             {tab === 'languages' && settings && <LanguagesPanel settings={settings} onSaved={reloadSettings} />}
             {tab === 'modules' && settings && <div className="card"><ModulesPanel initial={settings.modules} onSaved={reloadSettings} /></div>}
             {tab === 'users' && <UsersTab />}

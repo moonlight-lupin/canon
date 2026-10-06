@@ -13,6 +13,7 @@ import { logMemberView } from '../repo/security.ts';
 import { zip } from '../lib/zip.ts';
 import { h } from './helpers.ts';
 import { uiLang } from './csv.ts';
+import { addSampleData, removeSampleData, sampleDataStatus } from '../repo/sample-data.ts';
 
 export const exportRoutes = express.Router();
 const SECTIONS: LibrarySection[] = ['songs', 'texts', 'blocks', 'backgrounds', 'bibles'];
@@ -97,3 +98,9 @@ exportRoutes.post('/export/library/import', express.raw({ type: () => true, limi
   if (!Buffer.isBuffer(req.body) || !req.body.length) throw Object.assign(new Error('Choose a library file.'), { status: 400 });
   return importLibrary(req.body, { dryRun: flag(req.query.dry_run, false), biblePermission: flag(req.query.bibles, false) });
 }));
+
+// Settings → Sample data (0.15.8): a fictional church to try Canon with, and taking it out again
+exportRoutes.use('/sample-data', requireAdmin);
+exportRoutes.get('/sample-data', h(() => sampleDataStatus()));
+exportRoutes.post('/sample-data', h((req) => addSampleData({ rota: (req.body as { rota?: boolean } | undefined)?.rota !== false })));
+exportRoutes.delete('/sample-data', h(() => removeSampleData()));

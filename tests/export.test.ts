@@ -177,3 +177,55 @@ test('library sections (0.15.7): one hymnal, songs in no hymnal, texts, one Bibl
   const list = await (await fetch(`${base}/api/export`, { headers: { Cookie: as.admin.cookie } })).json() as Json;
   assert.ok(list.hymnals.some((h: Json) => h.abbr === 'S1'));
 });
+
+test('sample data (0.15.8): a fictional church in, then exactly that out again', async () => {
+  const sd = await import('../server/repo/sample-data.ts');
+  const reg = await import('../server/repo/registers.ts');
+  const svc = await import('../server/repo/services.ts');
+  const vol = await import('../server/repo/volunteers.ts');
+  const grp = await import('../server/repo/groups.ts');
+  // a real member, on a team, and the church's next service with one place already filled by them
+  const real = reg.people.insert({ first_name: 'Real', last_name: 'Member', status: 'member' } as never) as { id: number };
+  const teamId = grp.createTeam({ name: { en: 'Sample test team' } } as never) as number;
+  const role = vol.roles.insert({ team_id: teamId, name: { en: 'Usher' }, needed: 2 } as never) as { id: number };
+  vol.roles.insert({ team_id: teamId, name: { en: 'Reader' }, needed: 1 } as never);
+  vol.setRoleMembers(role.id, [real.id]);
+  const sunday = (svc.createService({ date: '2031-03-02' }) as { service: { id: number } }).service;
+  vol.assign(sunday.id, role.id, real.id);
+  const before = get<{ n: number }>('SELECT COUNT(*) n FROM people')!.n;
+
+  // editors may not; administrators may
+  const denied = await fetch(`${base}/api/sample-data`, { method: 'POST', headers: { Cookie: as.editor.cookie, 'x-csrf-token': as.editor.csrf, 'Content-Type': 'application/json' }, body: '{}' });
+  assert.equal(denied.status, 403);
+  assert.deepEqual(sd.sampleDataStatus(), { present: false });
+
+  const st = sd.addSampleData({ today: '2031-02-28' }) as Json;
+  assert.equal(st.present, true);
+  assert.ok(st.people >= 35 && st.households >= 12 && st.groups >= 10, JSON.stringify(st));
+  const tan = get<Json>("SELECT * FROM people WHERE first_name = 'Grace' AND last_name = 'Tan'")!;
+  assert.equal(tan.native_name, '林美玲', 'her own Chinese name, not a translation');
+  assert.equal(tan.household_role, 'spouse');
+  assert.ok(tan.birth_date);
+  assert.ok(get("SELECT 1 FROM groups WHERE json_extract(name, '$.zh') = '东区小组'"));
+  // the next service and a copy a week later: only sample people fill empty places; the real member stays
+  const next = get<{ id: number }>("SELECT id FROM services WHERE date = '2031-03-09'")!;
+  assert.ok(next, 'a copy a week later');
+  const onSunday = get<{ n: number }>('SELECT COUNT(*) n FROM assignments WHERE service_id = ?', sunday.id)!.n;
+  assert.ok(onSunday > 1);
+  assert.ok(get('SELECT 1 FROM assignments WHERE service_id = ? AND person_id = ?', sunday.id, real.id));
+  assert.throws(() => sd.addSampleData(), /already there/);
+
+  // someone real joins a sample group: the group stays when the sample data goes
+  const council = get<{ id: number }>("SELECT id FROM groups WHERE json_extract(name, '$.en') = 'Church Council'")!;
+  grp.addGroupMember(council.id, { person_id: real.id });
+
+  const r = await fetch(`${base}/api/sample-data`, { method: 'DELETE', headers: { Cookie: as.admin.cookie, 'x-csrf-token': as.admin.csrf } });
+  assert.equal(r.status, 200);
+  assert.equal(get<{ n: number }>('SELECT COUNT(*) n FROM people')!.n, before);
+  assert.ok(get('SELECT 1 FROM services WHERE id = ?', sunday.id), 'the real service stays');
+  assert.ok(!get("SELECT 1 FROM services WHERE date = '2031-03-09'"), 'the copy goes');
+  assert.equal(get<{ n: number }>('SELECT COUNT(*) n FROM assignments WHERE service_id = ?', sunday.id)!.n, 1, 'the real rota as it was');
+  assert.ok(get('SELECT 1 FROM groups WHERE id = ?', council.id), 'a group someone real joined stays');
+  assert.ok(!get("SELECT 1 FROM groups WHERE json_extract(name, '$.zh') = '东区小组'"));
+  assert.deepEqual(sd.sampleDataStatus(), { present: false });
+});
