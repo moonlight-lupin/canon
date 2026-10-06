@@ -4,8 +4,14 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.15.6 — Paper-sized pages fit a phone; the bulletin QR code on the title slide
+## 0.15.6 — Export data in one place; the library as one file; pages that fit a phone; the bulletin QR code on the title slide
 
+- **Settings → Export data** (administrators):
+  - one click for each part of Canon's CSVs, with the ones holding personal data marked;
+  - **Download everything (zip)**: all of them plus the library file, with a note on what's inside (it is not a backup).
+- **The library as one file** (`.canonlib`): hymnals, songs with words, numbers and sheet music, liturgical texts, QR codes & notes and, if you choose, uploaded Bibles.
+  - **Import a library file…** on another Canon previews what it would add, then adds only what is missing. Songs and texts match by key or title, hymnals by abbreviation.
+  - Uploaded Bibles are imported only with the church's confirmation that it may use them.
 - **Share → Bulletin for the congregation**: its QR code is now in a corner of the **title slide**, the slide on screen while people arrive, instead of a slide of its own after it. This applies in Canon's slides and the PowerPoint file. The FreeShow project, which has no title slide, keeps it as its first show.
 - On a phone or a narrow window, these pages now shrink to fit the screen's width instead of running off its edge: the bulletin preview, the run sheet, sheet music, printable visitor cards, the cash declaration, a month's offerings summary and QR labels. Printing is unchanged: always the real paper size.
 - Database: no change.

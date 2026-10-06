@@ -106,6 +106,8 @@ const RULES: Rule[] = [
   [/^\/me\//, 'signed_in'],
   // the church's spaces: everyone signed in reads them (pickers, clashes, report); changes are for administrators
   [/^\/spaces(\/|$)/, 'signed_in'],
+  // Settings → Export data: one-click downloads of every part, the library file and its import
+  [/^\/export(\/|$)/, 'admin'],
   [/^\/self\//, 'signed_in'], // lending self-service: public, handled before sign-in
   [/^\/(me|settings|dashboard|calendar|about|congregations|presentation\/defaults|reports\/archived-years|link-base)$/, 'signed_in'],
   [/^\/(users|access-roles|modules|backups|archives|security|member-views|storage|change-log|log-retention|mcp|email\/(settings|test)|offering-settings)(\/|\.|$)/, 'admin'],

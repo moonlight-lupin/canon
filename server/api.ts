@@ -19,6 +19,7 @@ import { RefError } from '../shared/bible.ts';
 import { BIBLE_SOURCES, MAX_SERVICE_LANGS, langInfo } from '../shared/languages.ts';
 import { libraryRoutes } from './routes/library.ts';
 import { spaceRoutes } from './routes/spaces.ts';
+import { exportRoutes } from './routes/export.ts';
 import { groupRoutes } from './routes/groups.ts';
 import { emailRoutes } from './routes/email.ts';
 import { backupRoutes } from './routes/backups.ts';
@@ -457,6 +458,7 @@ api.use(calendarRoutes);
 
 api.use(libraryRoutes);
 api.use(spaceRoutes);
+api.use(exportRoutes);
 api.use(lendingRoutes);
 api.use(equipmentRoutes);
 api.use(groupRoutes);
