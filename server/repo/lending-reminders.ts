@@ -2,6 +2,7 @@
 // is overdue (then once a week). Sent each day with Canon's daily housekeeping when the library is switched on, its
 // rules say so and e-mail is set up; the librarian can also send them now. One message per borrower and kind, in
 // their language; logged in the e-mail log.
+import { renewUrl } from './lending-self.ts';
 import type { L10n, Lang } from '../../shared/types.ts';
 import { all, run } from '../db.ts';
 import { pick, toTraditional } from '../lib/chinese.ts';
@@ -12,7 +13,7 @@ import { addDays, localToday } from './lending.ts';
 
 type Kind = 'loan_due' | 'loan_overdue';
 
-interface Words { due_subject: string; overdue_subject: string; greeting: string; due_intro: string; overdue_intro: string; due: string; renew: string; signoff: string }
+interface Words { due_subject: string; overdue_subject: string; greeting: string; due_intro: string; overdue_intro: string; due: string; renew: string; renew_link: string; signoff: string }
 const WORDS: Record<string, Words> = {
   en: {
     due_subject: 'Library reminder: due back on {date}',
@@ -22,6 +23,7 @@ const WORDS: Record<string, Words> = {
     overdue_intro: 'What you borrowed from the church library is now overdue. Please bring it back as soon as you can:',
     due: 'due {date}',
     renew: 'If you need it for longer, ask the librarian to renew it.',
+    renew_link: 'Renew online',
     signoff: 'Thank you,',
   },
   zh: {
@@ -32,6 +34,7 @@ const WORDS: Record<string, Words> = {
     overdue_intro: '您向教会图书馆借阅的物品已经逾期，请尽快归还：',
     due: '{date} 到期',
     renew: '如需延长借期，请联络图书管理员续借。',
+    renew_link: '在线续借',
     signoff: '谢谢！',
   },
   ms: {
@@ -42,6 +45,7 @@ const WORDS: Record<string, Words> = {
     overdue_intro: 'Barang yang anda pinjam dari perpustakaan gereja sudah lewat. Sila pulangkan secepat mungkin:',
     due: 'perlu dipulangkan {date}',
     renew: 'Jika anda perlukannya lebih lama, minta pustakawan untuk melanjutkannya.',
+    renew_link: 'Lanjutkan dalam talian',
     signoff: 'Terima kasih,',
   },
 };
@@ -51,6 +55,7 @@ const words = (lang: Lang): Words => (lang === 'zh-Hant'
 
 interface Due {
   loan_id: number;
+  lent_on: string;
   person_id: number;
   email: string;
   first_name: string;
@@ -68,9 +73,9 @@ export function dueReminders(today = localToday()) {
   const soon = addDays(today, rules.remind_days_before);
   const weekAgo = addDays(today, -7);
   const sql = (extra: string) => `
-    SELECT l.id AS loan_id, p.id AS person_id, p.email, p.first_name, p.preferred_name, p.native_name, p.preferred_lang, b.title, c.number, l.due_on
+    SELECT l.id AS loan_id, l.lent_on, p.id AS person_id, p.email, p.first_name, p.preferred_name, p.native_name, p.preferred_lang, b.title, c.number, l.due_on
     FROM lending_loans l JOIN lending_copies c ON c.id = l.copy_id JOIN lending_books b ON b.id = c.book_id JOIN people p ON p.id = l.person_id
-    WHERE l.returned_on IS NULL AND p.erased_at IS NULL AND p.email IS NOT NULL AND p.email <> '' AND ${extra}
+    WHERE l.returned_on IS NULL AND l.return_pending_on IS NULL AND p.erased_at IS NULL AND p.email IS NOT NULL AND p.email <> '' AND ${extra}
     ORDER BY p.id, l.due_on`;
   return {
     due: rules.remind_days_before > 0 ? all<Due>(sql('l.due_on >= ? AND l.due_on <= ? AND l.reminded_on IS NULL'), today, soon) : [],
@@ -89,11 +94,12 @@ function render(kind: Kind, list: Due[], langs: Lang[], church: L10n) {
     const w = words(lang);
     const date = kind === 'loan_due' ? list[0].due_on : list.map((x) => x.due_on).sort()[0];
     subjects.push((kind === 'loan_due' ? w.due_subject : w.overdue_subject).replace('{date}', date));
+    const links = list.map((x) => renewUrl({ id: x.loan_id, lent_on: x.lent_on }));
     const lines = list.map((x) => `${x.title} (${x.number}) — ${w.due.replace('{date}', x.due_on)}`);
     const name = pick(church, lang) || '';
     const intro = kind === 'loan_due' ? w.due_intro : w.overdue_intro;
-    texts.push([w.greeting.replace('{name}', greet(first, lang)), '', intro, ...lines.map((l) => `• ${l}`), '', w.renew, '', w.signoff, name].join('\n'));
-    htmls.push(`<p>${esc(w.greeting.replace('{name}', greet(first, lang)))}</p><p>${esc(intro)}</p><ul>${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`
+    texts.push([w.greeting.replace('{name}', greet(first, lang)), '', intro, ...lines.map((l, i) => `• ${l}${links[i] ? `\n  ${w.renew_link}: ${links[i]}` : ''}`), '', w.renew, '', w.signoff, name].join('\n'));
+    htmls.push(`<p>${esc(w.greeting.replace('{name}', greet(first, lang)))}</p><p>${esc(intro)}</p><ul>${lines.map((l, i) => `<li>${esc(l)}${links[i] ? ` — <a href="${esc(links[i]!)}">${esc(w.renew_link)}</a>` : ''}</li>`).join('')}</ul>`
       + `<p>${esc(w.renew)}</p><p>${esc(w.signoff)}<br>${esc(name)}</p>`);
   }
   return {

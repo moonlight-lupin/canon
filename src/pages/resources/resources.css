@@ -53,3 +53,12 @@
   .label-page { box-shadow: none; margin: 0; }
   .label { outline: none; }
 }
+
+/* self-service: the phone page members use (pages/self/SelfService.tsx) */
+.self-page { max-width: 480px; margin: 0 auto; padding: 14px 14px 40px; min-height: 100vh; }
+.self-head { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.self-card { padding: 16px; }
+.self-label { font-size: 14px; font-weight: 600; }
+.self-page input { font-size: 17px; padding: 11px 12px; width: 100%; box-sizing: border-box; }
+.self-code { letter-spacing: 0.4em; font-size: 22px !important; text-align: center; }
+.self-btn { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }

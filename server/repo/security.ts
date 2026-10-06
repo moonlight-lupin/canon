@@ -4,6 +4,8 @@
 //  - a security checklist in plain words (disk encryption, backups, public address, accounts, AI access, keep
 //    periods), each item with what to do;
 //  - how much space Canon uses, what uses it, how fast it grows, and the free space on the drive.
+import { gates, selfServiceWeek } from './lending-self.ts';
+import { publicUrl } from '../lib/public-url.ts';
 import { firstAdminId, memberLinkProblem } from '../auth.ts';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -236,6 +238,14 @@ export function securityChecklist(): CheckItem[] {
 
   const vf = formSettings();
   items.push({ key: 'visitor_form', status: 'info', title: 'Visitor form', detail: vf.enabled ? 'On: services with a form have a public page visitors can fill in.' : 'Off.', link: '/settings?tab=visitor-form' });
+  // lending self-service: public pages members use on their phones (gates in repo/lending-self.ts)
+  if (s.modules.lending !== false && s.lending.self_service) {
+    const week = selfServiceWeek();
+    const broken = gates().filter((g) => !g.ok).map((g) => g.key.replace('_', ' '));
+    items.push(broken.length
+      ? { key: 'self_service', status: 'warn', title: 'Lending library self-service', detail: `Switched on but paused: ${broken.join(', ')} not ready. Members are asked to see the librarian until it is fixed.`, link: '/lending?tab=rules' }
+      : { key: 'self_service', status: 'info', title: 'Lending library self-service', detail: `On: members borrow, renew and return on their phones from the internet (${publicUrl()}), signing in with a code e-mailed to their address on the register. This week: ${week.codes} sign-in code(s) sent, ${week.self_loans} self-service loan(s).`, link: '/lending?tab=rules' });
+  }
   items.push({ key: 'retention', status: 'info', title: 'How long logs are kept', detail: `Change log and member record views: ${s.retention.change_log_months || 'all'} months; AI activity: ${s.retention.mcp_audit_months || 'all'} months.`, link: '/settings?tab=changelog' });
   items.push(s.retention.visitor_contact_months
     ? { key: 'visitor_contacts', status: 'ok', title: 'Visitors’ contact details', detail: `Erased ${s.retention.visitor_contact_months} months after the service (names and follow-up stay).` }

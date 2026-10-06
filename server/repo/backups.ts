@@ -245,6 +245,8 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       if (v.visitors || v.log) log(`records: erased the details of ${v.visitors} visitors (and ${v.log} change-log copies) past the keep period`);
       const m = createAllMeetingsAhead();
       if (m) log(`meetings: created ${m} meetings ahead from the groups' meeting patterns`);
+      // lending self-service: check the public address again (a gate), drop old sign-in codes
+      void import('./lending-self.ts').then((s) => { s.pruneCodes(); return s.checkPublicAddress(true); }).catch(() => undefined);
       // the lending library's due-date and overdue e-mails (when it is on and its rules say so)
       void import('./lending-reminders.ts').then((r) => r.dailyLoanReminders())
         .then((r) => { if (r && (r.sent || r.failed)) log(`library: sent ${r.sent} loan reminders${r.failed ? `, ${r.failed} failed` : ''}`); })

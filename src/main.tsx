@@ -11,6 +11,7 @@ import { Layout } from './components/Layout.tsx';
 import Login from './pages/Login.tsx';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.tsx'));
+const SelfService = lazy(() => import('./pages/self/SelfService.tsx'));
 const TwoStepRequired = lazy(() => import('./pages/TwoStepRequired.tsx'));
 const Services = lazy(() => import('./pages/Services.tsx'));
 const ServiceEditor = lazy(() => import('./pages/ServiceEditor.tsx'));
@@ -77,6 +78,14 @@ function App() {
         <Routes>
           <Route path="/share/:token/*" element={<Share />} />
         </Routes>
+      </Suspense>
+    );
+  }
+  // lending library self-service: members on their phones, no account; a copy's QR label when not signed in
+  if (loc.pathname.startsWith('/self/') || (me && !me.user && /^\/lending\/copy\/[^/]+$/.test(loc.pathname))) {
+    return (
+      <Suspense fallback={<Loading />}>
+        <SelfService />
       </Suspense>
     );
   }

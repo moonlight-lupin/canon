@@ -84,7 +84,7 @@ test('both modules are off until the church turns them on', async () => {
   assert.equal((await call(as.admin, 'PUT', '/modules', { lending: true })).status, 200);
   assert.equal((await call(as.admin, 'PUT', '/modules', { equipment: true })).status, 200);
   assert.equal((await call(as.admin, 'GET', '/lending/books')).status, 200);
-  assert.deepEqual((await call(as.admin, 'GET', '/dashboard')).body.lending, { on_loan: 0, overdue: 0, titles: 0 });
+  assert.deepEqual((await call(as.admin, 'GET', '/dashboard')).body.lending, { on_loan: 0, overdue: 0, to_check_in: 0, titles: 0 });
 });
 
 test('the catalogue: a book with numbered copies; ISBNs are checked and found', async () => {
@@ -114,7 +114,7 @@ test('lending: lend, scan, renew (up to the rules), return; one loan per copy', 
   const scan = await call(as.librarian, 'GET', `/lending/scan?q=${encodeURIComponent('http://office:5018/lending/copy/B0001')}`);
   assert.equal(scan.body.copy.number, 'B0001');
   assert.match(scan.body.loan.borrower, /Ruth Koh/);
-  updateSettings({ lending: { loan_days: 21, max_renewals: 1, remind_days_before: 3, send_reminders: false } });
+  updateSettings({ lending: { loan_days: 21, max_renewals: 1, remind_days_before: 3, send_reminders: false, self_service: false, rules_saved: true } });
   assert.equal((await call(as.librarian, 'POST', `/lending/loans/${ids.loan}/renew`, {})).status, 200);
   const twice = await call(as.librarian, 'POST', `/lending/loans/${ids.loan}/renew`, {});
   assert.equal(twice.status, 400);

@@ -51,6 +51,8 @@ export interface Loan {
   overdue_reminded_on: string | null;
   notes: string | null;
   lent_by: number | null;
+  via: 'desk' | 'self';
+  return_pending_on: string | null;
   created_at: string;
 }
 
@@ -67,7 +69,7 @@ export const copies = table<Copy>({
 });
 export const loans = table<Loan>({
   name: 'lending_loans',
-  cols: ['copy_id', 'person_id', 'lent_on', 'due_on', 'returned_on', 'renewals', 'reminded_on', 'overdue_reminded_on', 'notes', 'lent_by'],
+  cols: ['copy_id', 'person_id', 'lent_on', 'due_on', 'returned_on', 'renewals', 'reminded_on', 'overdue_reminded_on', 'notes', 'lent_by', 'via', 'return_pending_on'],
   guard: { refs: { person_id: 'people' } },
   log: { parent: (r) => ({ entity: 'lending_books', id: get<{ book_id: number }>('SELECT book_id FROM lending_copies WHERE id = ?', Number(r.copy_id))?.book_id ?? 0 }) },
 });
@@ -279,7 +281,7 @@ export function borrowers(q: string, limit = 20) {
   );
 }
 
-export function lend(input: { copy_id: number; person_id: number; due_on?: string | null; notes?: string | null }, userId: number | null): Loan {
+export function lend(input: { copy_id: number; person_id: number; due_on?: string | null; notes?: string | null }, userId: number | null, via: 'desk' | 'self' = 'desk'): Loan {
   const c = copies.get(input.copy_id);
   if (c.status !== 'in') throw new BadRequest(`Copy ${c.number} is marked ${c.status === 'lost' ? 'lost' : 'withdrawn'}.`);
   const p = get<{ erased_at: string | null }>('SELECT erased_at FROM people WHERE id = ?', input.person_id);
@@ -289,14 +291,14 @@ export function lend(input: { copy_id: number; person_id: number; due_on?: strin
   if (due < today) throw new BadRequest('The due date is in the past.');
   return tx(() => {
     if (openLoanOf(c.id)) throw new Conflict(`Copy ${c.number} is already on loan: take it back first.`);
-    return loans.insert({ copy_id: c.id, person_id: input.person_id, lent_on: today, due_on: due, notes: input.notes ?? null, lent_by: userId, renewals: 0 });
+    return loans.insert({ copy_id: c.id, person_id: input.person_id, lent_on: today, due_on: due, notes: input.notes ?? null, lent_by: userId, renewals: 0, via });
   });
 }
 
 export function returnLoan(loanId: number): Loan {
   const l = loans.get(loanId);
   if (l.returned_on) throw new BadRequest('This loan was already returned.');
-  return loans.update(loanId, { returned_on: localToday() });
+  return loans.update(loanId, { returned_on: localToday(), return_pending_on: null });
 }
 
 export function renewLoan(loanId: number, dueOn?: string | null): Loan {
@@ -325,17 +327,20 @@ export interface LoanRow {
   returned_on: string | null;
   renewals: number;
   overdue_days: number;
+  via: 'desk' | 'self';
+  return_pending_on: string | null;
 }
 
 /** Loans: open ones (overdue first), or the history; for one borrower or book, or matching a search. */
-export function listLoans(q: { status?: 'open' | 'overdue' | 'returned' | 'all'; person_id?: number; book_id?: number; q?: string; limit?: number } = {}): LoanRow[] {
+export function listLoans(q: { status?: 'open' | 'overdue' | 'returned' | 'pending' | 'all'; person_id?: number; book_id?: number; q?: string; limit?: number } = {}): LoanRow[] {
   const today = localToday();
   const where: string[] = [];
   const params: SqlValue[] = [];
   const status = q.status ?? 'open';
   if (status === 'open') where.push('l.returned_on IS NULL');
+  if (status === 'pending') where.push('l.returned_on IS NULL AND l.return_pending_on IS NOT NULL');
   if (status === 'overdue') {
-    where.push('l.returned_on IS NULL AND l.due_on < ?');
+    where.push('l.returned_on IS NULL AND l.return_pending_on IS NULL AND l.due_on < ?');
     params.push(today);
   }
   if (status === 'returned') where.push('l.returned_on IS NOT NULL');
@@ -354,16 +359,16 @@ export function listLoans(q: { status?: 'open' | 'overdue' | 'returned' | 'all';
   }
   const rows = all<Record<string, unknown>>(
     `SELECT l.id, l.copy_id, c.number, c.book_id, b.title, b.authors, l.person_id, ${PERSON_NAME} AS borrower, p.email IS NOT NULL AND p.email <> '' AS has_email,
-       l.lent_on, l.due_on, l.returned_on, l.renewals
+       l.lent_on, l.due_on, l.returned_on, l.renewals, l.via, l.return_pending_on
      FROM lending_loans l JOIN lending_copies c ON c.id = l.copy_id JOIN lending_books b ON b.id = c.book_id LEFT JOIN people p ON p.id = l.person_id
      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-     ORDER BY ${status === 'open' || status === 'overdue' ? 'l.due_on, l.id' : 'l.lent_on DESC, l.id DESC'} LIMIT ?`,
+     ORDER BY ${status === 'open' || status === 'overdue' || status === 'pending' ? 'l.return_pending_on IS NULL, l.due_on, l.id' : 'l.lent_on DESC, l.id DESC'} LIMIT ?`,
     ...params, Math.min(q.limit ?? 500, 2000),
   );
   return rows.map((r) => {
     const due = String(r.due_on);
     const open = r.returned_on == null;
-    const overdue = open && due < today ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86400_000) : 0;
+    const overdue = open && !r.return_pending_on && due < today ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86400_000) : 0;
     return { ...r, has_email: !!r.has_email, borrower: (r.borrower as string | null) ?? null, overdue_days: overdue } as LoanRow;
   });
 }
@@ -373,7 +378,8 @@ export function lendingCounts() {
   const today = localToday();
   return {
     on_loan: get<{ n: number }>('SELECT COUNT(*) n FROM lending_loans WHERE returned_on IS NULL')!.n,
-    overdue: get<{ n: number }>('SELECT COUNT(*) n FROM lending_loans WHERE returned_on IS NULL AND due_on < ?', today)!.n,
+    overdue: get<{ n: number }>('SELECT COUNT(*) n FROM lending_loans WHERE returned_on IS NULL AND return_pending_on IS NULL AND due_on < ?', today)!.n,
+    to_check_in: get<{ n: number }>('SELECT COUNT(*) n FROM lending_loans WHERE returned_on IS NULL AND return_pending_on IS NOT NULL')!.n,
     titles: get<{ n: number }>('SELECT COUNT(*) n FROM lending_books')!.n,
   };
 }

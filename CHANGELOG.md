@@ -16,13 +16,20 @@ Two new optional parts of Canon, under **Resources** in the sidebar. Both start 
 - **Asset register**: the church's equipment and property. It records what each item is, its number (E0001 …), where it is, who looks after it, when it was bought and for how much, the warranty, its condition and status.
   - **Photos and receipts**: PNG, JPEG, WebP or PDF, up to 10 MB, kept in the database and so in backups.
   - **Maintenance**: a log, and the next maintenance date, which moves on with a regular interval. Maintenance due within two weeks is flagged and counted on the dashboard.
+- **Self-service** (Loan rules): members borrow, renew and say they've returned books on their own phones, without a Canon account.
+  - **Sign-in**: they scan a book's QR label and sign in with a 6-digit code e-mailed to their address on the member register. The code is valid for 10 minutes and works once.
+  - **Renewal links**: reminder e-mails get a **Renew online** link. Opening it changes nothing; the button on the page renews.
+  - **Returns**: a returned book waits under **On loan → To check in** for the librarian. Reminders stop meanwhile.
+  - **Gates**: it switches on only when e-mail works (a test e-mail succeeded since the e-mail settings last changed), the public https address reaches this very Canon (Canon checks by calling itself), and the library is on with its rules saved. A gate that breaks pauses self-service, and phones are asked to see the librarian; it resumes by itself when the gate passes again.
+  - **Limits and checklist**: code requests are limited per address and per e-mail. The security checklist shows it, with the sign-in codes sent this week.
 - **QR labels** for copies and items, on A4 sticker sheets (24, 21 or 65 to a page, starting part-way through a used sheet) or a 62 mm label printer. The QR code holds the office computer's network address even when Canon is opened as localhost.
 - **CSV import and export** for the catalogue (one row per title, with its copies) and the register.
 - **Roles**: new ready-made **Librarian** and **Asset keeper** roles. They choose borrowers and custodians by name, without the member register. The other ready-made roles get sensible access: for example, the Secretary edits the library, the Treasurer edits the register, and the External guest reads the register. A church's own roles start without access.
 - **AI assistants**: `canon_lending`, `canon_save_book`, `canon_equipment`, `canon_save_equipment`. They are off for agents until the administrator allows them. Agents add books and equipment and record maintenance; lending and returns stay at the desk.
 - **Dashboard**: what is on loan and overdue, and maintenance due, when the modules are on.
 - **Members' personal data** (PDPA export) lists their loans and the equipment they look after. Erasing them keeps past loans anonymised and clears them as custodian.
-- Database: version 26 adds the lending library and asset register tables, the two new roles, and every role's access to the new modules.
+- **E-mail**: a successful test e-mail is remembered for the current settings, and an error that would stop every message (sign-in, connection) is remembered until a message goes through. These feed self-service's e-mail check.
+- Database: version 26 adds the lending library, self-service and asset register tables, the two new roles, and every role's access to the new modules.
 
 ## 0.14.5 — accounts and the Settings page
 

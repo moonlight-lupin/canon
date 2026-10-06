@@ -1,5 +1,7 @@
 // REST routes for the lending library (0.15, optional module "lending"; switched off = 404, shared/modules.ts).
 // Mounted inside /api after authentication; reading needs the role's Lending library access, changes need edit.
+import { selfServiceOn, selfServiceStatus } from '../repo/lending-self.ts';
+import { publicUrl } from '../lib/public-url.ts';
 import express from 'express';
 import { z } from 'zod';
 import { get, run } from '../db.ts';
@@ -107,7 +109,7 @@ const base = (v: unknown) => {
 };
 lendingRoutes.get('/lending/labels', h(async (req) => {
   const ids = (str(req.query.copies) ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
-  const origin = addressForOthers(base(req.query.base));
+  const origin = selfServiceOn() ? publicUrl() : addressForOthers(base(req.query.base));
   const rows = ids.length
     ? (await import('../db.ts')).all<{ id: number; number: string; title: string; shelf: string | null }>(
       `SELECT c.id, c.number, b.title, b.shelf FROM lending_copies c JOIN lending_books b ON b.id = c.book_id WHERE c.id IN (${ids.map(() => '?').join(',')}) ORDER BY c.number`, ...ids)
@@ -120,7 +122,7 @@ lendingRoutes.get('/lending/borrowers', h((req) => L.borrowers(str(req.query.q) 
 lendingRoutes.get('/lending/loans', h((req) => {
   const status = str(req.query.status);
   return L.listLoans({
-    status: status === 'overdue' || status === 'returned' || status === 'all' ? status : 'open',
+    status: status === 'overdue' || status === 'returned' || status === 'pending' || status === 'all' ? status : 'open',
     person_id: Number(req.query.person) || undefined, book_id: Number(req.query.book) || undefined, q: str(req.query.q),
   });
 }));
@@ -133,14 +135,21 @@ lendingRoutes.post('/lending/loans/:id/renew', h((req) => L.renewLoan(id(req), z
 
 // ---- the rules and reminders
 lendingRoutes.get('/lending/settings', h(() => getSettings().lending));
-lendingRoutes.put('/lending/settings', h((req) => {
+lendingRoutes.put('/lending/settings', h(async (req) => {
   const b = z.object({
     loan_days: z.number().int().optional(), max_renewals: z.number().int().optional(),
-    remind_days_before: z.number().int().optional(), send_reminders: z.boolean().optional(),
+    remind_days_before: z.number().int().optional(), send_reminders: z.boolean().optional(), self_service: z.boolean().optional(),
   }).parse(req.body);
   L.checkRules(b);
-  return updateSettings({ lending: { ...getSettings().lending, ...b } }).lending;
+  // self-service switches on only when every gate passes (repo/lending-self.ts)
+  if (b.self_service && !getSettings().lending.self_service) {
+    const st = await selfServiceStatus(true);
+    const wanting = st.gates.filter((g) => !g.ok && !(g.key === 'library' && g.problem === 'rules'));
+    if (wanting.length) throw new BadRequest('Self-service can be switched on once every check passes (see the list).');
+  }
+  return updateSettings({ lending: { ...getSettings().lending, ...b, rules_saved: true } }).lending;
 }));
+lendingRoutes.get('/lending/self-service', h((req) => selfServiceStatus(req.query.check === '1')));
 lendingRoutes.get('/lending/reminders', h(() => {
   const d = dueReminders();
   const people = (list: typeof d.due) => new Set(list.map((x) => x.person_id)).size;

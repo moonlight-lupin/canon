@@ -23,9 +23,9 @@ interface BookRow extends Book { copies: number; available: number; on_loan: num
 interface CopyLoan { id: number; person_id: number | null; borrower: string | null; lent_on: string; due_on: string; renewals: number }
 interface Copy { id: number; book_id: number; number: string; status: 'in' | 'lost' | 'withdrawn'; condition: string | null; acquired_on: string | null; notes: string | null; loan: CopyLoan | null }
 interface BookFull extends Book { copies: Copy[]; history: { id: number; number: string; borrower: string | null; lent_on: string; due_on: string; returned_on: string | null }[] }
-interface Loan { id: number; copy_id: number; number: string; book_id: number; title: string; authors: string | null; person_id: number | null; borrower: string | null; has_email: boolean; lent_on: string; due_on: string; returned_on: string | null; renewals: number; overdue_days: number }
+interface Loan { id: number; copy_id: number; number: string; book_id: number; title: string; authors: string | null; person_id: number | null; borrower: string | null; has_email: boolean; lent_on: string; due_on: string; returned_on: string | null; renewals: number; overdue_days: number; via: 'desk' | 'self'; return_pending_on: string | null }
 interface Scan { copy: { id: number; number: string; status: Copy['status']; book_id: number }; book: Book; loan: (CopyLoan & { borrower: string | null }) | null }
-interface Rules { loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean }
+interface Rules { loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean; self_service: boolean; rules_saved: boolean }
 
 type Tab = 'lend' | 'loans' | 'catalogue' | 'rules';
 const TABS: [Tab, string][] = [['lend', 'Lend & return'], ['loans', 'On loan'], ['catalogue', 'Catalogue'], ['rules', 'Loan rules']];
@@ -207,7 +207,7 @@ function LoansTab() {
   const { can } = useSession();
   const canEdit = can('lending', 'edit');
   const { run, busy } = useAction();
-  const [status, setStatus] = useState<'open' | 'overdue' | 'returned'>('open');
+  const [status, setStatus] = useState<'open' | 'overdue' | 'pending' | 'returned'>('open');
   const [q, setQ] = useState('');
   const dq = useDebounced(q, 250);
   const { data, error, reload } = useApi<Loan[]>(`/lending/loans?status=${status}&q=${encodeURIComponent(dq)}`);
@@ -217,12 +217,12 @@ function LoansTab() {
   return (
     <div className="stack">
       <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-        <Seg value={status} onChange={setStatus} options={[{ value: 'open', label: t('On loan') }, { value: 'overdue', label: t('Overdue') }, { value: 'returned', label: t('Returned') }]} />
+        <Seg value={status} onChange={setStatus} options={[{ value: 'open', label: t('On loan') }, { value: 'overdue', label: t('Overdue') }, { value: 'pending', label: t('To check in') }, { value: 'returned', label: t('Returned') }]} />
         <div className="grow" style={{ maxWidth: 320 }}><SearchBox value={q} onChange={setQ} placeholder={t('Title, number or borrower')} /></div>
       </div>
       {canEdit && status !== 'returned' && <RemindersCard />}
       {error && <ErrorBox error={error} />}
-      {!data ? <Loading /> : !data.length ? <Empty title={status === 'overdue' ? t('Nothing is overdue.') : status === 'open' ? t('Nothing is on loan.') : t('No returned loans yet.')} /> : (
+      {!data ? <Loading /> : !data.length ? <Empty title={status === 'overdue' ? t('Nothing is overdue.') : status === 'open' ? t('Nothing is on loan.') : status === 'pending' ? t('Nothing to check in.') : t('No returned loans yet.')} /> : (
         <div className="card flush table-wrap">
           <table className="t">
             <thead><tr><th>{status === 'returned' ? t('Returned') : t('Due')}</th><th>{t('Copy number')}</th><th>{t('Title')}</th><th>{t('Borrower')}</th><th>{t('Lent')}</th><th /></tr></thead>
@@ -231,13 +231,13 @@ function LoansTab() {
                 <tr key={l.id} className={l.overdue_days ? 'loan-overdue' : ''}>
                   <td className="nowrap">{fmtDate(l.returned_on ?? l.due_on, lang)}{l.overdue_days > 0 && <div className="small" style={{ color: 'var(--warn)' }}>{t('{n} days overdue').replace('{n}', String(l.overdue_days))}</div>}</td>
                   <td className="nowrap"><span className="code">{l.number}</span></td>
-                  <td>{l.title}</td>
+                  <td>{l.title}{l.return_pending_on && !l.returned_on && <div><span className="badge lapis">{t('Returned by the borrower: check it in')}</span></div>}{l.via === 'self' && <div className="small muted">{t('Borrowed on a phone')}</div>}</td>
                   <td>{l.borrower ?? <span className="muted">{t('(erased)')}</span>}{!l.has_email && !l.returned_on && l.borrower && <div className="small muted">{t('no e-mail address')}</div>}</td>
                   <td className="nowrap small muted">{fmtDate(l.lent_on, lang)}{l.renewals ? ` · ${t('renewed {n}×').replace('{n}', String(l.renewals))}` : ''}</td>
                   <td className="right nowrap">
                     {canEdit && !l.returned_on && <>
-                      <button className="btn sm" disabled={busy} onClick={() => act(l, 'return')}>{t('Take back')}</button>{' '}
-                      <button className="btn sm ghost" disabled={busy} onClick={() => act(l, 'renew')}>{t('Renew')}</button>
+                      <button className="btn sm" disabled={busy} onClick={() => act(l, 'return')}>{l.return_pending_on ? t('Check in') : t('Take back')}</button>{' '}
+                      {!l.return_pending_on && <button className="btn sm ghost" disabled={busy} onClick={() => act(l, 'renew')}>{t('Renew')}</button>}
                     </>}
                   </td>
                 </tr>
@@ -512,6 +512,7 @@ function RulesTab() {
   const set = (p: Partial<Rules>) => setData({ ...data, ...p });
   const save = () => run(async () => setData(await api.put<Rules>('/lending/settings', data)), t('Saved.'));
   return (
+    <div className="stack">
     <section className="card stack" style={{ maxWidth: 640 }}>
       <div className="form-grid">
         <Field label={t('Loan period (days)')}><input type="number" min={1} max={365} value={data.loan_days} onChange={(e) => set({ loan_days: Number(e.target.value) || 1 })} style={{ width: 100 }} /></Field>
@@ -523,6 +524,75 @@ function RulesTab() {
         <span><strong>{t('Send reminders by e-mail each day')}</strong><br /><span className="small muted">{t('A “due soon” e-mail once, and an “overdue” e-mail once a week, to borrowers with an e-mail address, in their language. Uses the church’s e-mail account (Settings → E-mail).')}</span></span>
       </label>
       <div className="row end"><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></div>
+    </section>
+    <SelfServiceCard rules={data} onChanged={setData} />
+    </div>
+  );
+}
+
+interface Gate { key: 'email' | 'public_address' | 'library'; ok: boolean; problem?: string; detail?: string }
+const GATE_TEXT: Record<Gate['key'], { name: string; fix: Record<string, string>; link: string }> = {
+  email: {
+    name: 'E-mail works',
+    fix: { not_tested: 'Send a test e-mail in Settings → E-mail (needed again after the e-mail settings change).', failing: 'E-mail stopped working. Check Settings → E-mail and send a test e-mail.' },
+    link: '/settings?tab=email',
+  },
+  public_address: {
+    name: 'A public https address that reaches this Canon',
+    fix: { none: 'Set the public address in Settings → AI / MCP.', http: 'The public address must start with https:// (codes would otherwise cross the internet unencrypted).', unreachable: 'The public address doesn’t reach this Canon. Check the address, the tunnel or the reverse proxy.', unchecked: 'Not checked yet.' },
+    link: '/settings?tab=mcp',
+  },
+  library: {
+    name: 'The lending library is on and its rules are saved',
+    fix: { off: 'Switch the Lending library on in Settings → Modules.', rules: 'Save the loan rules above.' },
+    link: '/lending?tab=rules',
+  },
+};
+
+function SelfServiceCard({ rules, onChanged }: { rules: Rules; onChanged: (r: Rules) => void }) {
+  const { t } = useI18n();
+  const { isAdmin } = useSession();
+  const { run, busy } = useAction();
+  const [check, setCheck] = useState(0);
+  const { data, reload } = useApi<{ wanted: boolean; on: boolean; gates: Gate[] }>(`/lending/self-service${check ? '?check=1' : ''}`);
+  useEffect(() => {
+    if (check) reload();
+  }, [check]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!data) return <section className="card"><Loading /></section>;
+  // switching it on needs every gate (the rules are saved by the same click)
+  const ready = data.gates.every((g) => g.ok || (g.key === 'library' && g.problem === 'rules'));
+  const set = (on: boolean) => run(async () => {
+    onChanged(await api.put<Rules>('/lending/settings', { ...rules, self_service: on }));
+    reload();
+  }, on ? t('Self-service is on.') : t('Self-service is off.'));
+  return (
+    <section className="card stack" style={{ maxWidth: 640 }}>
+      <div className="row" style={{ alignItems: 'center' }}>
+        <h3 style={{ margin: 0 }} className="grow">{t('Self-service')} <InfoTip text={t('Members borrow, renew and say they’ve returned books on their own phones, without a Canon account: they scan a book’s QR label and sign in with a code e-mailed to the address on the member register. Reminder e-mails get a Renew link. A returned book waits for the librarian to check it in.')} /></h3>
+        {data.wanted ? (data.on ? <span className="badge ok">{t('On')}</span> : <span className="badge warn">{t('Paused')}</span>) : <span className="badge">{t('Off')}</span>}
+      </div>
+      <div className="sec-list">
+        {data.gates.map((g) => (
+          <div key={g.key} className={`sec-item ${g.ok ? 'ok' : 'warn'}`}>
+            <span className={`badge ${g.ok ? 'ok' : 'warn'} sec-mark`} aria-hidden="true">{g.ok ? '✓' : '!'}</span>
+            <div className="grow">
+              <strong>{t(GATE_TEXT[g.key].name)}</strong>
+              {g.ok && g.detail && <div className="small muted">{g.detail}</div>}
+              {!g.ok && <div className="small">{t(GATE_TEXT[g.key].fix[g.problem ?? ''] ?? '')}{g.detail && g.problem !== 'http' ? <span className="muted"> ({g.detail})</span> : null}</div>}
+              {!g.ok && (isAdmin || g.key === 'library') && <a className="small" href={GATE_TEXT[g.key].link}>{t('Open')} →</a>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {data.wanted && !data.on && <p className="small callout warn" style={{ margin: 0 }}>{t('Self-service is switched on but paused until every check passes. Phones are asked to see the librarian meanwhile; it resumes by itself.')}</p>}
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn sm ghost" onClick={() => setCheck((n) => n + 1)} disabled={busy}><Icon name="refresh" />{t('Check again')}</button>
+        <div className="grow" />
+        {data.wanted
+          ? <button className="btn" onClick={() => set(false)} disabled={busy}>{t('Switch self-service off')}</button>
+          : <button className="btn primary" onClick={() => set(true)} disabled={busy || !ready} title={ready ? undefined : t('Every check must pass first')}>{t('Switch self-service on')}</button>}
+      </div>
+      {data.on && <p className="small muted" style={{ margin: 0 }}>{t('Print the labels again after switching it on: new labels carry the public address, so they work away from church Wi-Fi.')}</p>}
     </section>
   );
 }

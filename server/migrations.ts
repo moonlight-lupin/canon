@@ -808,6 +808,10 @@ export const MIGRATIONS: (string | Migration)[] = [
       overdue_reminded_on TEXT,
       notes TEXT,
       lent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      -- 'desk' (the librarian) or 'self' (the borrower, on a phone: self-service)
+      via TEXT NOT NULL DEFAULT 'desk',
+      -- the borrower said it is back (self-service); the librarian checks it in
+      return_pending_on TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX lending_loans_copy ON lending_loans(copy_id);
@@ -860,6 +864,18 @@ export const MIGRATIONS: (string | Migration)[] = [
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX equipment_files_item ON equipment_files(equipment_id);
+
+    -- self-service sign-in: a 6-digit code e-mailed to a member (only its hash is kept), valid for 10 minutes
+    CREATE TABLE lending_self_codes (
+      id INTEGER PRIMARY KEY,
+      person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX lending_self_codes_person ON lending_self_codes(person_id);
     `,
     run: (d) => {
       // existing roles: Canon's own get the access they ship with; a church's own roles start without (an

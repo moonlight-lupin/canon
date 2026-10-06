@@ -1,8 +1,9 @@
 // Outgoing e-mail over the church's own SMTP server (Settings → E-mail).
 // The SMTP password is write-only: it lives in the internal meta store and is never returned by the API.
 // PDPA: recipient addresses go only to the SMTP server; message bodies are never logged.
+import crypto from 'node:crypto';
 import nodemailer from 'nodemailer';
-import { getMeta, getSettings, type SmtpSettings } from '../repo/settings.ts';
+import { deleteMeta, getMeta, getSettings, setMeta, type SmtpSettings } from '../repo/settings.ts';
 
 export interface MailMessage {
   to: string;
@@ -122,7 +123,7 @@ export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> 
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(m.to)) throw new MailError('recipient', 'Not a valid e-mail address.');
   const transport = factory(transportOptions(s));
   try {
-    return await transport.sendMail({
+    const r = await transport.sendMail({
       from: { name: s.from_name.trim() || s.from_email.trim(), address: s.from_email.trim() },
       to: m.to,
       replyTo: s.reply_to.trim() || undefined,
@@ -130,8 +131,13 @@ export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> 
       text: m.text,
       html: m.html,
     });
+    if (getMeta('smtp_failing')) deleteMeta('smtp_failing');
+    return r;
   } catch (err) {
-    throw mapMailError(err, s);
+    const me = mapMailError(err, s);
+    // an error that would hit every message (sign-in, connection …): self-service pauses until e-mail works again
+    if (isFatal(me.code)) setMeta('smtp_failing', JSON.stringify({ at: new Date().toISOString(), error: me.message }));
+    throw me;
   } finally {
     try {
       transport.close?.();
@@ -139,4 +145,20 @@ export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> 
       /* ignore */
     }
   }
+}
+
+/** The e-mail settings as one value (the password hashed): a successful test e-mail is remembered for these. */
+export function smtpFingerprint(s: SmtpSettings = getSettings().smtp): string {
+  const pw = crypto.createHash('sha256').update(getMeta('smtp_password') ?? '').digest('hex');
+  return crypto.createHash('sha256').update(JSON.stringify([s.host.trim(), s.port, s.secure, s.user.trim(), s.from_email.trim(), pw])).digest('hex').slice(0, 32);
+}
+
+/** E-mail is known to work: a test e-mail succeeded with the current settings, and nothing has failed since. */
+export function smtpHealth(): { tested: boolean; failing: { at: string; error: string } | null } {
+  const tested = smtpConfigured() && getMeta('smtp_tested') === smtpFingerprint();
+  let failing: { at: string; error: string } | null = null;
+  try {
+    failing = JSON.parse(getMeta('smtp_failing') ?? 'null');
+  } catch { /* none */ }
+  return { tested, failing };
 }

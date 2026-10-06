@@ -16,7 +16,7 @@ interface Dash {
   coworkers: number;
   library: { songs: number; texts: number; bibles?: { code: string; lang: string; name: string }[] };
   /** the optional modules, when on and readable (null otherwise) */
-  lending?: { on_loan: number; overdue: number; titles: number } | null;
+  lending?: { on_loan: number; overdue: number; titles: number; to_check_in?: number } | null;
   equipment?: { items: number; maintenance_due: number } | null;
 }
 
@@ -148,6 +148,7 @@ export default function Dashboard() {
                 <span className="n">{data.lending.on_loan}</span>
                 <span className="l">{t('Lending library: on loan')}</span>
                 {data.lending.overdue > 0 && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('{n} overdue').replace('{n}', String(data.lending.overdue))}</span>}
+                {!!data.lending.to_check_in && <span className="badge lapis" style={{ alignSelf: 'flex-start' }}>{t('To check in: {n}').replace('{n}', String(data.lending.to_check_in))}</span>}
               </div>
             </Link>
           )}

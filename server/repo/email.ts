@@ -5,8 +5,8 @@ import { isChinese, langInfo } from '../../shared/languages.ts';
 import { all, get, run } from '../db.ts';
 import { NotFound } from '../lib/table.ts';
 import { pick, toTraditional } from '../lib/chinese.ts';
-import { MailError, isFatal, mapMailError, sendMail, smtpConfigured } from '../lib/mailer.ts';
-import { getSettings } from './settings.ts';
+import { MailError, isFatal, mapMailError, sendMail, smtpConfigured, smtpFingerprint } from '../lib/mailer.ts';
+import { getSettings, setMeta } from './settings.ts';
 import { services, items as serviceItems, itemTimes } from './services.ts';
 import { songs } from './library.ts';
 
@@ -432,6 +432,8 @@ export async function sendTestEmail(to: string, userId: number) {
   try {
     await sendMail({ to, subject, text, html });
     logEmail({ user_id: userId, to_addr: to, subject, kind: 'test', ok: true });
+    // remembered for these settings: the lending library's self-service needs e-mail that works
+    setMeta('smtp_tested', smtpFingerprint());
     return { ok: true };
   } catch (err) {
     const me = mapMailError(err);

@@ -60,7 +60,13 @@ export interface Settings {
   /** optional parts of Canon switched on or off (shared/modules.ts) */
   modules: ModuleSwitches;
   /** the lending library's rules (0.15) */
-  lending: { loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean };
+  lending: {
+    loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean;
+    /** members borrow, renew and return on their phones (only while its gates pass: repo/lending-self.ts) */
+    self_service: boolean;
+    /** the rules were saved at least once (a gate for self-service) */
+    rules_saved: boolean;
+  };
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
   member_fields: MemberField[];
   /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
@@ -102,7 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   visitor_form: DEFAULT_VISITOR_FORM,
   modules: DEFAULT_MODULES,
-  lending: { loan_days: 21, max_renewals: 2, remind_days_before: 3, send_reminders: false },
+  lending: { loan_days: 21, max_renewals: 2, remind_days_before: 3, send_reminders: false, self_service: false, rules_saved: false },
   member_fields: [],
   security: { disk_encryption: false, require_admin_2fa: false, require_all_2fa: false },
   trust_proxy: false,

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { lendingSelfRoutes } from './routes/lending-self.ts';
 import { lendingRoutes } from './routes/lending.ts';
 import { equipmentRoutes } from './routes/equipment.ts';
 import { lendingCounts } from './repo/lending.ts';
@@ -154,6 +155,9 @@ api.get('/about', (_req, res) => {
 });
 
 // ---------------------------------------------------------------- everything below needs a session
+
+// lending library self-service: members on their phones, no Canon account (routes/lending-self.ts)
+api.use(lendingSelfRoutes);
 
 api.use(requireUser);
 // the change log records who is making each change
