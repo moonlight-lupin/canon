@@ -17,6 +17,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 - **The Bible card** lists the installed versions by language, instead of a verse count.
 - **The library cards** open their own Library tab: Hymns & songs, Liturgical texts or Bible.
 - **Canon's mark:** the gold reed now stands in front of the white crossbar.
+- **The user guide** has sections of its own for **Meetings** and **Service templates** (they were bullet points inside other sections, so they were missing from the guide's contents). The service template editor's name field says **Template name**, as in the other editors.
 - No database change.
 
 ## 0.14.0 — UI/UX audit of the core
