@@ -11,6 +11,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.14.0 | UI/UX audit of the core (worship and records) — done |
 | 0.15.0 | Lending library and asset register (two optional modules, one release) — done |
 | 0.15.1 | AI access: personal-data switches beside the data they protect (members' contact details; visitors) — done |
+| 0.15.2 | Slide numbers on the cue sheet, a bulletin link for attendees, duplicating and archiving roles |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
 | 0.17.0 | Third hardening round |
@@ -131,6 +132,15 @@ In Settings → AI / MCP, the separate **Expose member contact details & birthda
   - With contact details: also phone, e-mail and prayer request (what the keep period erased stays gone).
 - A nested switch is off whenever its parent module is off — stricter than today for co-workers' and visitors' details; say so in the changelog.
 - Existing settings carry over: the old box on → Contact details on and Visitors with contact details (when Service records is on); off → Contact details off and Visitors names & follow-up.
+
+## 0.15.2 — Cue sheet slide numbers, attendee bulletin link, role menu
+
+- **Slide numbers on the run sheet (AV cues)**: each item gives its slide range and where each part starts, e.g. "Slides 7–14 · 1 → 7 · R → 8, 11, 14 · 2 → 10" (a refrain sung after each stanza lists every place it comes). Numbers are counted the way the deck is built (the service's slide template and languages), so they match the slide-number footer and **number + Enter** on the slides (which already works, in the slides window and the presenter view). The sheet says the numbers hold for the service as it is now: print it once the service is final.
+- **Bulletin link for attendees, one per service**: a public, read-only, phone-friendly page — the order of service with full hymn words, readings and announcements, with a language switch — and no serving team, leaders' contact details or notes. Switched on per service, with its QR code printed on that week's bulletin and/or shown on a slide (like the visitor form); needs the public https address. Separate from the team's **Share** link, which keeps showing who is serving.
+- **Roles: a ⋯ menu as on templates**:
+  - **Duplicate** any role (ready-made ones too) as a starting point for the church's own.
+  - **Archive** a role no account uses: it leaves the role picker for accounts; **Restore** brings it back. A role still in use asks to move its accounts first; Administrator can't be archived.
+  - **Delete** stays for the church's own roles that were never used.
 
 ## 0.16.0 — Book-keeping
 
