@@ -17,9 +17,9 @@ export const services = table<Service>({
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
     'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
-    'congregation_id', 'ref', 'visitor_form', 'kind', 'group_id', 'place', 'chair', 'leader_id', 'topic', 'offering',
+    'congregation_id', 'ref', 'visitor_form', 'attendee', 'kind', 'group_id', 'place', 'chair', 'leader_id', 'topic', 'offering',
   ],
-  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form', 'topic'],
+  json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form', 'attendee', 'topic'],
   bool: ['offering'],
   touch: true,
   revision: true,
@@ -359,8 +359,8 @@ export function duplicateService(id: number, date: string, withRoster = false) {
   const src = getServiceFull(id);
   return tx(() => {
     // a copy gets no share link, reference or visitor form of its own (they are unique to the original)
-    const { id: _id, items: its, assignments: as, share_token: _t, created_at: _c, updated_at: _u, ref: _r, visitor_form: _vf, ...rest } = src;
-    const svc = services.insert({ ...rest, date, status: 'draft', share_token: null, ref: null, visitor_form: {} });
+    const { id: _id, items: its, assignments: as, share_token: _t, created_at: _c, updated_at: _u, ref: _r, visitor_form: _vf, attendee: _at, ...rest } = src;
+    const svc = services.insert({ ...rest, date, status: 'draft', share_token: null, ref: null, visitor_form: {}, attendee: {} });
     for (const it of its) {
       const { id: _iid, service_id: _sid, ...r } = it;
       items.insert({ ...r, service_id: svc.id });

@@ -4,6 +4,28 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.2 — Slide numbers on the run sheet, the bulletin on attendees' phones, sheet music
+
+- **Run sheet: slide numbers.**
+  - A **Slide** column gives each item's slides.
+  - The AV cue says where each part starts, e.g. "1 → 3 · 2 → 6 · 3 → 9 · Refrain → 5, 8, 11" for a hymn with its refrain after every stanza, and where the QR code or note slide is.
+  - The numbers match the slide footer, so the operator types one and presses Enter (which already worked, in the slides window and the presenter view).
+- **The bulletin for the congregation.** **Share** in the Outputs bar has a second link, one per service, for attendees to read the bulletin on their phones. The page has:
+  - the order of service, the words of the hymns and readings, and the announcements, with a language switch;
+  - no serving team, team notes or contact details.
+
+  Its QR code can go on that week's bulletin, on a slide after the Announcements, or anywhere else with **Download QR code**. The team's share link is unchanged.
+- **Sheet music.** In the Library, a song takes scans or photos of its music (PNG, JPEG, WebP) or a PDF, up to 10 MB a page, in page order.
+  - **Outputs → Sheet music**, beside the run sheet, shows the service's songs in order with the stanzas sung and their music, to print or open on a tablet.
+  - Sheet music stays inside Canon and its backups: never on share pages, slides or for AI assistants.
+- **Links phones can open.** The team's share link, the bulletin link, the visitor form, the team e-mails and the QR labels use the **Public address**. Without one they use this computer's address on the church network, no longer "localhost" or the computer's name.
+- **Settings → Roles & permissions: a ⋯ menu on each role**, as on templates:
+  - **Edit**.
+  - **Duplicate**: a new role starting from a copy.
+  - **Archive**: a role no account has. It is kept, but not offered for accounts, and waits under **Archived roles** until **Restore**.
+  - **Delete**: your own unused roles.
+- Database: upgraded to version 27. It adds the bulletin link per service, archived roles and a table for sheet music. The files themselves are kept with the church logo's, so backups include them.
+
 ## 0.15.1 — Settings: roles, and AI access beside the data it protects
 
 - **Settings → Roles & permissions** is its own section, next to **User accounts**. Administrators edit the roles there; User accounts keeps the accounts and points to it. In Chinese the section is now 角色与权限, no longer the rota word 岗位.

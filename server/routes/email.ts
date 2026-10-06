@@ -1,6 +1,7 @@
 // REST routes for SMTP settings, test e-mail, manual volunteer reminders. Mounted inside /api after authentication (see server/api.ts).
 // Nothing here sends automatically: reminders go out only when an editor presses "Send reminders".
 // There are deliberately no MCP tools for e-mail — agents must not send e-mail.
+import { addressForOthers } from '../lib/lan.ts';
 import express, { type Request } from 'express';
 import { z } from 'zod';
 import { getSettings, updateSettings, setMeta, deleteMeta } from '../repo/settings.ts';
@@ -75,7 +76,7 @@ emailRoutes.get('/email/log', h((req) => {
 emailRoutes.get('/services/:id/reminders/preview', h((req) => {
   editorOnly(req);
   const note = typeof req.query.note === 'string' && req.query.note.trim() ? req.query.note.slice(0, 1000) : undefined;
-  return reminderPreview(serviceId(req), { baseUrl: externalBase(req), note });
+  return reminderPreview(serviceId(req), { baseUrl: addressForOthers(externalBase(req)), note });
 }));
 
 emailRoutes.post('/services/:id/reminders', h(async (req) => {
@@ -85,7 +86,7 @@ emailRoutes.post('/services/:id/reminders', h(async (req) => {
     note: z.string().max(1000).optional(),
   }).parse(req.body ?? {});
   return sendReminders(serviceId(req), {
-    baseUrl: externalBase(req),
+    baseUrl: addressForOthers(externalBase(req)),
     userId: req.user!.id,
     personIds: b.person_ids,
     note: b.note?.trim() ? b.note : undefined,

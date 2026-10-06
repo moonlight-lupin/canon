@@ -1,4 +1,5 @@
-// Public, read-only order of service for volunteers (no session; names only, no contact details).
+// Public, read-only order of service: the team's share link (/share/…, with who is serving) and the attendees'
+// bulletin link (/b/…, without the serving team). No session; names only, no contact details.
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ApiError, api } from '../api.ts';
@@ -27,7 +28,7 @@ function useNarrow(q = '(max-width: 640px)') {
   return m;
 }
 
-export default function Share() {
+export default function Share({ attendee = false }: { attendee?: boolean }) {
   const { token } = useParams();
   const { t, lang, setLang } = useI18n();
   const [r, setR] = useState<RenderedService | null>(null);
@@ -40,13 +41,13 @@ export default function Share() {
   useEffect(() => {
     let live = true;
     api
-      .get<RenderedService>(`/share/${encodeURIComponent(token ?? '')}`)
+      .get<RenderedService>(`/${attendee ? 'bulletin' : 'share'}/${encodeURIComponent(token ?? '')}`)
       .then((d) => live && setR(d))
       .catch((e: Error) => live && setErr({ status: e instanceof ApiError ? e.status : 0, message: e.message }));
     return () => {
       live = false;
     };
-  }, [token]);
+  }, [token, attendee]);
 
   useEffect(() => {
     if (r) document.title = `${biText(r.title, [lang])} — ${r.date}`;
@@ -210,7 +211,7 @@ export default function Share() {
       {r.notices.length > 0 && <div className="sh-notices">{r.notices.map((n, i) => <div key={i}>{n}</div>)}</div>}
       <footer className="sh-foot">
         <Tagline lang={UI_LANGS.includes(lang) ? lang : 'en'} />
-        <span className="sh-foot-brand"><ReedMark className="sh-mark-sm" /> Canon · {t('Read-only view for the service team')}</span>
+        <span className="sh-foot-brand"><ReedMark className="sh-mark-sm" /> Canon{!attendee && <> · {t('Read-only view for the service team')}</>}</span>
       </footer>
     </div>
   );

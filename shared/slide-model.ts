@@ -229,6 +229,33 @@ export function slideText(s: SlideDef, langs: Lang[], max = 90): string {
   return full.length > max ? full.slice(0, max - 1) + '…' : full;
 }
 
+/** Where an item's slides are in the deck (numbered from 1, as the slide footer and "number + Enter" count). */
+export interface ItemSlideNumbers {
+  first: number;
+  last: number;
+  /** where each stanza starts (a refrain sung after each stanza lists every place), and the QR code / note slide */
+  parts: { key: string; label: L10n; refrain?: boolean; blocks?: boolean; at: number[] }[];
+}
+
+/** Slide numbers per item, for the run sheet's AV cues. */
+export function slideNumbers(slides: SlideDef[]): Map<number, ItemSlideNumbers> {
+  const out = new Map<number, ItemSlideNumbers>();
+  slides.forEach((s, i) => {
+    if (s.itemId == null) return;
+    const n = i + 1;
+    let e = out.get(s.itemId);
+    if (!e) out.set(s.itemId, (e = { first: n, last: n, parts: [] }));
+    e.last = n;
+    // the stanza label is on a stanza's first slide only (later slides of a long stanza carry `cont`)
+    const key = s.type === 'blocks' ? '#blocks' : s.label ? JSON.stringify(s.label) : null;
+    if (!key) return;
+    let p = e.parts.find((x) => x.key === key);
+    if (!p) e.parts.push((p = { key, label: s.label ?? {}, ...(s.refrain ? { refrain: true } : {}), ...(s.type === 'blocks' ? { blocks: true } : {}), at: [] }));
+    p.at.push(n);
+  });
+  return out;
+}
+
 /**
  * Where to go in a re-chunked deck (the language mode changed, so slides hold more or fewer lines): the same slide
  * if it still exists, else the same position within the same item, else the nearest index.

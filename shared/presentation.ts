@@ -342,6 +342,9 @@ export const blockQrSrc = (id: number, version: string, value?: string) =>
   id < 0 ? `/api/bulletin-blocks/qr.svg?text=${encodeURIComponent(value ?? '')}` : blockQrUrl(id, version);
 
 /** A QR code for any text (live preview while typing, downloads). */
+/** A page of a song's sheet music (Library → song → Sheet music); `download` saves it instead of opening it. */
+export const scoreUrl = (id: number, download = false) => `/api/songs/scores/${id}${download ? '?download=1' : ''}`;
+
 export const qrPreviewUrl = (text: string, ext: 'svg' | 'png' = 'svg', download = false) =>
   `/api/bulletin-blocks/qr.${ext}?text=${encodeURIComponent(text)}${download ? '&download=1' : ''}`;
 

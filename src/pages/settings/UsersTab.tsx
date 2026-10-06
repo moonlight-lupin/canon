@@ -71,7 +71,7 @@ export function UsersTab() {
                   <td className="nowrap"><span className="code">{u.username}</span></td>
                   <td>
                     <select className="mini" value={u.role} disabled={u.id === me.id || busy} onChange={(e) => setRole(u, e.target.value as Role)} aria-label={t('Role')}>
-                      {(roles.data?.roles ?? []).map((r) => <option key={r.key} value={r.key}>{lt(r.name)}</option>)}
+                      {(roles.data?.roles ?? []).filter((r) => !r.archived || r.key === u.role).map((r) => <option key={r.key} value={r.key}>{lt(r.name)}</option>)}
                       {!roles.data?.roles.some((r) => r.key === u.role) && <option value={u.role}>{u.role}</option>}
                     </select>
                   </td>
@@ -104,7 +104,7 @@ export function UsersTab() {
         </div>
       )}
       <p className="small muted" style={{ margin: 0 }}>{t('What each role may see and change is set in')} <a href="/settings?tab=roles">{t('Roles & permissions')}</a>.</p>
-      {adding && <AddUserModal roles={roles.data?.roles ?? []} people={personOptions} onClose={() => setAdding(false)} onSaved={() => { reload(); roles.reload(); }} />}
+      {adding && <AddUserModal roles={(roles.data?.roles ?? []).filter((r) => !r.archived)} people={personOptions} onClose={() => setAdding(false)} onSaved={() => { reload(); roles.reload(); }} />}
       {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />}
     </div>
   );

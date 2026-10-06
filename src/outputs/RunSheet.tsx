@@ -1,4 +1,4 @@
-// Printable timed cue sheet for the service team: times, leaders, AV cues, notes, roster.
+// Printable timed cue sheet for the service team: times, leaders, AV cues with slide numbers, notes, roster.
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
@@ -6,10 +6,10 @@ import { tr, useI18n } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { L10n, Lang, RenderedItem, RenderedService } from '../types-client.ts';
-import { Bi, LABEL, biText, formatDate, hasAny, itemSubtitles, langOptions, timeRange, type LangMode } from './content.tsx';
+import { Bi, LABEL, biText, formatDate, hasAny, itemSubtitles, langOptions, langsFor, modeFor, timeRange, type LangMode } from './content.tsx';
 import { isChinese } from '../../shared/languages.ts';
 import { postureL10n } from '../../shared/labels.ts';
-import { buildSlides } from './slideModel.ts';
+import { buildSlides, slideNumbers, type ItemSlideNumbers } from './slideModel.ts';
 import type { SlideTheme } from '../../shared/slide-theme.ts';
 import './outputs.css';
 
@@ -17,7 +17,7 @@ type Orientation = 'portrait' | 'landscape';
 
 /** The AV cue for an item in a label language (fixed phrases translated with tr()). */
 function avCue(it: RenderedItem, n: number, l: Lang): string {
-  if (!it.on_slides) return '—';
+  if (!it.on_slides) return n ? tr('QR code / note slide', l) : '—';
   const fill = (key: string, ref = '') => tr(key, l).replace('{n}', String(n)).replace('{ref}', ref);
   const one = n === 1;
   if (it.kind === 'section') return tr('Section slide', l);
@@ -56,12 +56,22 @@ export default function RunSheet() {
   const L = (en: string) => labelLangs.map((l) => tr(en, l)).filter((v, i, a) => a.indexOf(v) === i).join(' ');
   const cueText = (it: RenderedItem, n: number) => labelLangs.map((l) => avCue(it, n, l)).filter((x, i, a) => x && a.indexOf(x) === i).join(' / ');
 
-  const slideCounts = useMemo(() => {
-    const m = new Map<number, number>();
-    if (!r) return m;
-    for (const s of buildSlides(r, r.languages, limits)) if (s.itemId) m.set(s.itemId, (m.get(s.itemId) ?? 0) + 1);
-    return m;
-  }, [r, limits]);
+  // the deck as the slides window opens it (its usual languages, the service's slide theme): the same numbers as the
+  // slide footer and "number + Enter"
+  const deck = useMemo(() => (r ? buildSlides(r, langsFor(modeFor(r.languages), r.languages), limits) : []), [r, limits]);
+  const numbers = useMemo(() => slideNumbers(deck), [deck]);
+  const count = (n?: ItemSlideNumbers) => (n ? n.last - n.first + 1 : 0);
+  const range = (n?: ItemSlideNumbers) => (!n ? '' : n.first === n.last ? String(n.first) : `${n.first}–${n.last}`);
+  /** Where each stanza starts: "1 → 7", "2 → 10", "Refrain → 8, 11, 14"; only when an item has more than one part. */
+  const partsText = (n?: ItemSlideNumbers): string[] => {
+    if (!n || n.parts.length < 2 && !n.parts.some((p) => p.blocks)) return [];
+    // the stanzas in order, then the refrain (every place it comes), then a QR code / note slide
+    const rank = (p: ItemSlideNumbers['parts'][number]) => (p.blocks ? 2 : p.refrain ? 1 : 0);
+    return [...n.parts].sort((a, b) => rank(a) - rank(b)).map((p) => {
+      const label = p.blocks ? L('QR code / note') : [...new Set(labelLangs.map((l) => p.label[l]).filter(Boolean))].join(' ');
+      return `${label} → ${p.at.join(', ')}`;
+    });
+  };
 
   const teams = useMemo(() => {
     const out: { team: L10n; rows: RenderedService['roster'] }[] = [];
@@ -110,6 +120,7 @@ export default function RunSheet() {
             {hasAny(r.sermon_title) && (
               <div><span className="rs-k">{L('Sermon')}</span> <Bi v={r.sermon_title} langs={langs} sep=" · " />{hasAny(r.sermon_ref) && <> ({biText(r.sermon_ref, langs.slice(0, 1))})</>}</div>
             )}
+            {deck.length > 0 && <div><span className="rs-k">{L('Slides')}</span> {deck.length}</div>}
             {r.status !== 'final' && <div className="rs-draft">{L('Draft')}</div>}
           </div>
         </header>
@@ -121,6 +132,7 @@ export default function RunSheet() {
               <th className="c-dur">{L('min')}</th>
               <th className="c-item">{L('Item')}</th>
               <th className="c-who">{L('Leader / role')}</th>
+              <th className="c-slide">{L('Slide')}</th>
               <th className="c-av">{L('AV cue')}</th>
               <th className="c-notes">{L('Notes')}</th>
             </tr>
@@ -130,9 +142,10 @@ export default function RunSheet() {
               it.kind === 'section' ? (
                 <tr key={it.id} className="rs-section">
                   <td className="c-time">{it.start}</td>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <Bi v={it.title} langs={langs} sep="  ·  " />
                     {it.notes && <span className="rs-secnote"> — {it.notes}</span>}
+                    {numbers.get(it.id) && <span className="rs-secslide">{L('Slide')} {range(numbers.get(it.id))}</span>}
                   </td>
                 </tr>
               ) : (
@@ -151,14 +164,18 @@ export default function RunSheet() {
                     {it.leader && <div className="rs-leader">{it.leader}</div>}
                     {it.role_name && <div className="rs-role"><Bi v={it.role_name} langs={labelLangs} /></div>}
                   </td>
-                  <td className="c-av">{cueText(it, slideCounts.get(it.id) ?? 0)}</td>
+                  <td className="c-slide">{range(numbers.get(it.id))}</td>
+                  <td className="c-av">
+                    {cueText(it, count(numbers.get(it.id)))}
+                    {partsText(numbers.get(it.id)).length > 0 && <div className="rs-parts">{partsText(numbers.get(it.id)).map((p) => <span key={p} className="rs-part">{p}</span>)}</div>}
+                  </td>
                   <td className="c-notes">{it.notes}</td>
                 </tr>
               ),
             )}
             <tr className="rs-end">
               <td className="c-time">{r.end_time}</td>
-              <td colSpan={5}>{L('End')}</td>
+              <td colSpan={6}>{L('End')}</td>
             </tr>
           </tbody>
         </table>
@@ -181,6 +198,7 @@ export default function RunSheet() {
             </div>
           </section>
         )}
+        {deck.length > 0 && <p className="rs-slidenote">{L('Slide numbers count the title slide as 1 and follow the service as it is now: print again after changes.')}</p>}
         {r.notes && (
           <section className="rs-roster">
             <h2 className="rs-h2">{L('Notes')}</h2>

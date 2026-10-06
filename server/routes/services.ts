@@ -1,4 +1,6 @@
 // REST routes for service templates and services. Mounted inside /api after authentication.
+import { serviceScores } from '../repo/scores.ts';
+import { attendeeInfo, setAttendee } from '../repo/attendee-link.ts';
 import express from 'express';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
@@ -98,6 +100,12 @@ serviceRoutes.get('/services/:id/approvals', h((req) => appr.listApprovals(id(re
 serviceRoutes.post('/services/:id/approvals', h((req) => appr.approve(id(req), { user_id: req.user?.id ?? null, name: req.user?.display_name ?? '' }, z.object({ note: z.string().max(300).nullable().optional() }).parse(req.body ?? {}).note)));
 serviceRoutes.get('/services/:id/approvals/:approval', h((req) => appr.getApproval(id(req), id(req, 'approval'))));
 serviceRoutes.post('/services/:id/share', h((req) => ({ token: svc.setShare(id(req), !!req.body.enabled) })));
+// the songs of the service in order, with their sheet music (Outputs → Sheet music)
+serviceRoutes.get('/services/:id/scores', h((req) => serviceScores(id(req))));
+// the attendees' bulletin link (one per service) and where its QR code shows
+const origin = (req: express.Request) => `${req.protocol}://${req.get('host')}`;
+serviceRoutes.get('/services/:id/attendee-link', h((req) => attendeeInfo(id(req), origin(req))));
+serviceRoutes.put('/services/:id/attendee-link', h((req) => setAttendee(id(req), z.object({ enabled: z.boolean(), bulletin: z.boolean().optional(), slides: z.boolean().optional() }).parse(req.body), origin(req))));
 serviceRoutes.get('/services/:id/export.docx', h(async (req, res) => {
   const r = withRights(renderService(id(req)), 'print');
   const buf = await serviceDocx(r);

@@ -74,7 +74,7 @@ test('every API route belongs to a part of Canon (or is knowingly for administra
   };
   walk(api.stack as unknown as Json[]);
   // before sign-in, or administrators only by the default (fail closed)
-  const PUBLIC = /^\/(login|logout|setup|share|dl|assets)(\/|$)/;
+  const PUBLIC = /^\/(login|logout|setup|share|bulletin|dl|assets)(\/|$)/;
   const unruled = [...paths].filter((p) => !PUBLIC.test(p) && !P.hasRule(p));
   assert.deepEqual(unruled, [], `routes without a rule (administrators only by default): ${unruled.join(', ')}`);
 });

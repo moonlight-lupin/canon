@@ -337,3 +337,28 @@ test('FreeShow: hymns, readings and liturgy chunked like the slides', async () =
   const first = show.slides[layout[0].id];
   assert.deepEqual(first.items.map((i) => i.lines!.length), [2, 2]);
 });
+
+test('run sheet slide numbers: range per item, where each stanza starts, every place a repeated refrain comes', async () => {
+  const { slideNumbers } = await import('../src/outputs/slideModel.ts');
+  const R = { label: 'R', text: { en: 'Sing, sing, sing to the Lord\nSing, sing, sing to the Lord' } };
+  const r = service([
+    item(1, 'section', { title: { en: 'Gathering' } }),
+    // stanzas 1–3 with the refrain after each (as the server expands "Refrain after each stanza")
+    song(2, [{ label: '1', text: { en: FOUR_EN } }, R, { label: '2', text: { en: FOUR_EN } }, R, { label: '3', text: { en: FOUR_EN } }, R]),
+    item(3, 'prayer', { slide_blocks: [{ id: 9, kind: 'qr', caption: { en: 'Give' }, has_image: false, v: '1', value: 'https://example.org/give' }] }),
+  ], ['en']);
+  const slides = buildSlides(r, ['en']);
+  const m = slideNumbers(slides);
+  // slide 1 is the service title, 2 the section
+  assert.deepEqual([m.get(1)!.first, m.get(1)!.last], [2, 2]);
+  const s = m.get(2)!;
+  // one language: each 4-line stanza is 2 slides, the 2-line refrain 1 → 1 (3,4) R (5) 2 (6,7) R (8) 3 (9,10) R (11)
+  assert.deepEqual([s.first, s.last], [3, 11]);
+  assert.deepEqual(s.parts.map((p) => [p.label.en, p.at]), [['1', [3]], ['Refrain', [5, 8, 11]], ['2', [6]], ['3', [9]]]);
+  assert.equal(s.parts[1].refrain, true);
+  // the slide numbers are the deck's own positions
+  assert.equal(slides[s.parts[1].at[2] - 1].refrain, true);
+  // the QR code slide is a part of its item
+  const q = m.get(3)!;
+  assert.deepEqual(q.parts.map((p) => [!!p.blocks, p.at]), [[true, [q.last]]]);
+});

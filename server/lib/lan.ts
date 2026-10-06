@@ -1,5 +1,5 @@
 // This computer's address on the office network (as scripts/lan-address.mjs prints for the launchers), for links
-// that other devices open: QR labels made while Canon is open as "localhost" on the office PC.
+// that other devices open: share links, the visitor form, the bulletin link, QR labels and team e-mails.
 import os from 'node:os';
 import { config } from '../config.ts';
 import { publicUrl } from './public-url.ts';
@@ -18,19 +18,19 @@ export function lanAddress(): string | null {
 }
 
 /**
- * The address to put in a QR label: the one the browser used, unless that only works on this computer
- * (localhost); then the church's public address, else this computer's network address and port.
+ * The address for links other people open (share links, the visitor form, the bulletin link, QR labels, team
+ * e-mails): the church's public address; else this computer's network address and port — never "localhost" or the
+ * computer's name, which other devices may not reach; else (no network) the address the browser used.
  */
-export function addressForOthers(browserBase: string): string {
-  let u: URL;
-  try {
-    u = new URL(browserBase);
-  } catch {
-    return browserBase;
-  }
-  if (!/^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/i.test(u.hostname)) return `${u.protocol}//${u.host}`;
+export function addressForOthers(browserBase = ''): string {
   const pub = publicUrl();
   if (pub) return pub;
   const ip = lanAddress();
-  return ip ? `http://${ip}:${config.port}` : `${u.protocol}//${u.host}`;
+  if (ip) return `http://${ip}:${config.port}`;
+  try {
+    const u = new URL(browserBase);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return browserBase.replace(/\/+$/, '');
+  }
 }

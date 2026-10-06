@@ -1,6 +1,7 @@
 // The visitor form (Settings → Visitor form): one short public form per service. Visitors' entries wait as visitor
 // cards until an editor accepts them into the service record's New visitors, or discards them. Nothing a visitor
 // sends is shown publicly; the public page shows only the church name and the service's title and date.
+import { addressForOthers } from '../lib/lan.ts';
 import crypto from 'node:crypto';
 import { type ServiceVisitorForm, type VisitorCard, type VisitorFormSettings, CARD_LIMITS, DEFAULT_VISITOR_FORM, MAX_SOURCES, VISITOR_QR_BLOCK_ID, sourceLabel } from '../../shared/visitor-form.ts';
 import type { L10n } from '../../shared/types.ts';
@@ -38,10 +39,9 @@ const serviceForm = (serviceId: number): ServiceVisitorForm => {
   }
 };
 
-/** The form's web address: the public address when set (Settings → AI / MCP), else the address Canon was reached at. */
+/** The form's web address: the public address when set (Settings → AI / MCP), else this computer's network address. */
 export function formUrl(token: string, origin?: string): string {
-  const base = publicUrl() || (origin ?? '').replace(/\/+$/, '');
-  return `${base}/v/${token}`;
+  return `${addressForOthers(origin)}/v/${token}`;
 }
 /** "localhost" and the like only work on the computer itself: a phone cannot open them. */
 const isLocalOnly = (url: string) => /^https?:\/\/(localhost|127\.|\[::1\]|0\.0\.0\.0)/i.test(url);

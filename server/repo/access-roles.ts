@@ -1,5 +1,6 @@
 // Roles for accounts (Settings → Roles & permissions), administrators only. Canon's ready-made roles can be
-// changed (not deleted); the Administrator role always keeps everything. A church can add its own roles. Not to be
+// changed (not deleted); the Administrator role always keeps everything. A church can add its own roles (or duplicate
+// one as a start), and archive a role no account uses: it stays, but is not offered for accounts until restored. Not to be
 // confused with rota roles (Volunteers), which are positions people serve in.
 import { GUEST_ROLE } from '../../shared/permissions.ts';
 import { PERM_MODULES, type Access, type PermModule, type RoleDef } from '../../shared/permissions.ts';
@@ -80,6 +81,25 @@ export function deleteRole(key: string) {
   clearRoleCache();
   logChange({ entity: 'access_roles', entity_id: null, action: 'delete', before: asRow(cur), summary: `Role ${cur.name.en ?? key} deleted` });
   return { deleted: true };
+}
+
+/** Archive a role no account has (it is no longer offered for accounts), or restore it. */
+export function setArchived(key: string, archived: boolean): RoleDef {
+  const cur = listRoles().find((r) => r.key === key);
+  if (!cur) throw new NotFound('That role does not exist.');
+  if (archived && cur.admin) throw new BadRequest('The Administrator role cannot be archived.');
+  const n = get<{ n: number }>('SELECT COUNT(*) AS n FROM users WHERE role = ?', key)?.n ?? 0;
+  if (archived && n) throw new Conflict(`${n} account${n === 1 ? ' has' : 's have'} this role. Give ${n === 1 ? 'it' : 'them'} another role first.`);
+  run('UPDATE access_roles SET archived = ? WHERE key = ?', archived ? 1 : 0, key);
+  clearRoleCache();
+  logChange({ entity: 'access_roles', entity_id: null, action: 'update', before: { archived: !!cur.archived }, after: { archived }, summary: `Role ${cur.name.en ?? key} ${archived ? 'archived' : 'restored'}` });
+  return listRoles().find((x) => x.key === key)!;
+}
+
+/** A role that can be given to an account: it exists and is not archived (an account keeps an archived role it has). */
+export function roleOffered(key: string, current?: string | null): boolean {
+  const r = listRoles().find((x) => x.key === key);
+  return !!r && (!r.archived || key === current);
 }
 
 /** How many accounts have each role (for the roles list). */

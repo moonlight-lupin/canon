@@ -15,7 +15,7 @@ import { Bi, Loading, ErrorBox, PageHead, Seg, confirmAction, fmtDate, useAction
 import { Icon } from '../components/icons.tsx';
 import { partsLabel, postureLabel } from '../../shared/labels.ts';
 import { partRuns } from '../../shared/parts.ts';
-import ShareButton from '../outputs/ShareButton.tsx';
+import ShareButton, { shareUrl, useLinkBase } from '../outputs/ShareButton.tsx';
 import { SeasonChip } from '../components/brand.tsx';
 import type { L10n, LiturgyText, ServiceFull, ServiceItem, Song, TeamWithRoles } from '../types-client.ts';
 import { ServiceBulletinTab } from './ServiceBulletinTab.tsx';
@@ -57,6 +57,8 @@ export default function ServiceEditor() {
   const roleMap = useMemo(() => new Map((teams ?? []).flatMap((tm) => tm.roles.map((r) => [r.id, r] as const))), [teams]);
 
   // ---- debounced item saves (typing in a field patches the item after a pause)
+  // links in the team e-mail point at the public address, else this computer's network address
+  const linkBase = useLinkBase();
   const pending = useRef(new Map<number, { patch: Partial<ServiceItem>; timer: number }>());
   const flush = useCallback(async (itemId: number) => {
     const p = pending.current.get(itemId);
@@ -238,7 +240,7 @@ export default function ServiceEditor() {
     }
     const subject = `${both(svc.title, langs)} — ${svc.date}`;
     const lines = svc.items.filter((i) => i.kind !== 'section').map((it) => `${fmtMin(times[svc.items.indexOf(it)] ?? 0)}  ${both(it.title, langs)}${leaderOf(it) ? ` — ${leaderOf(it)}` : ''}`);
-    const share = svc.share_token ? `\n\n${location.origin}/share/${svc.share_token}` : '';
+    const share = svc.share_token ? `\n\n${shareUrl(svc.share_token, linkBase?.base)}` : '';
     const body = `${subject}\n\n${lines.join('\n')}${share}`;
     location.href = `mailto:?bcc=${encodeURIComponent(emails.join(','))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
   };
@@ -273,6 +275,7 @@ export default function ServiceEditor() {
           <Link className="btn sm" to={`/services/${sid}/bulletin`}><Icon name="print" />{t('Bulletin')}</Link>
           <Link className="btn sm" to={`/services/${sid}/slides`} target="_blank"><Icon name="monitor" />{t('Slides')}</Link>
           <Link className="btn sm" to={`/services/${sid}/runsheet`}><Icon name="list" />{t('Run sheet')}</Link>
+          <Link className="btn sm" to={`/services/${sid}/sheet-music`}><Icon name="music" />{t('Sheet music')}</Link>
           <CardMenu down label={t('Download the service as a file')} trigger={<><Icon name="download" />{t('Files')}<Icon name="chevronDown" /></>} actions={[
             { label: t('PowerPoint'), title: t('The slides as a PowerPoint file, styled by the slide template'), onClick: () => { window.location.href = `/api/services/${sid}/slides.pptx`; } },
             { label: t('PowerPoint for Keynote (Mac)'), title: t('The same slides with fonts every Mac has: open the file in Keynote'), onClick: () => { window.location.href = `/api/services/${sid}/slides.pptx?system=mac`; } },

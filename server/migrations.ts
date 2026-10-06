@@ -896,4 +896,27 @@ export const MIGRATIONS: (string | Migration)[] = [
       }
     },
   },
+  // 27 (0.15.2): the bulletin link for attendees (one per service, like the visitor form: token and where its QR code
+  // shows), roles a church can archive (kept, but not offered for accounts), and sheet music for songs (scans or
+  // photos; the files are in assets, key 'score-<id>', so backups include them).
+  {
+    sql: `
+    ALTER TABLE services ADD COLUMN attendee TEXT NOT NULL DEFAULT '{}';
+    ALTER TABLE access_roles ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE song_scores (
+      id INTEGER PRIMARY KEY,
+      song_id INTEGER NOT NULL REFERENCES songs(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX song_scores_song ON song_scores(song_id);
+    -- a page's file goes with it (also when its song is deleted)
+    CREATE TRIGGER song_scores_file AFTER DELETE ON song_scores BEGIN
+      DELETE FROM assets WHERE key = 'score-' || OLD.id;
+    END;
+    `,
+  },
 ];

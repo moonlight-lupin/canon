@@ -4,7 +4,7 @@
 import { BUILTIN_ROLES, CSV_MODULE, PERM_MODULES, allows, routeAccess, type Access, type PermModule, type RoleDef } from '../../shared/permissions.ts';
 import { all, get } from '../db.ts';
 
-type Row = { key: string; name: string; description: string; builtin: number; admin: number; access: string; member_details: number; sensitive_fields: number; reopen_counts: number; sort: number };
+type Row = { key: string; name: string; description: string; builtin: number; admin: number; access: string; member_details: number; sensitive_fields: number; reopen_counts: number; sort: number; archived?: number };
 
 const decode = (r: Row): RoleDef => {
   const access = JSON.parse(r.access || '{}') as Partial<Record<PermModule, Access>>;
@@ -13,6 +13,7 @@ const decode = (r: Row): RoleDef => {
     // a module added after the role was saved starts with no access (administrators have everything anyway)
     access: Object.fromEntries(PERM_MODULES.map((m) => [m, access[m] ?? 'none'])) as Record<PermModule, Access>,
     member_details: !!r.member_details, sensitive_fields: !!r.sensitive_fields, reopen_counts: !!r.reopen_counts, sort: r.sort,
+    ...(r.archived ? { archived: true } : {}),
   };
 };
 

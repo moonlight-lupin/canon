@@ -1,7 +1,8 @@
 // Resolve a service into a fully expanded, bilingual structure used by every output
 // (bulletin, slides, run sheet, docx, share page, MCP).
 import { visitorQrBlock } from './visitor-form.ts';
-import { VISITOR_QR_BLOCK_ID } from '../../shared/visitor-form.ts';
+import { ATTENDEE_QR_BLOCK_ID, VISITOR_QR_BLOCK_ID } from '../../shared/visitor-form.ts';
+import { attendeeQrBlock } from './attendee-link.ts';
 import type { L10n, Lang, LiturgyText, Person, ServiceFull } from '../../shared/types.ts';
 import type { Paras, RenderedItem, RenderedService, RenderedSlideBlock } from '../../shared/render-types.ts';
 import { formatRef, parseRef } from '../../shared/bible.ts';
@@ -141,10 +142,14 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
   };
 
   // the visitor form's QR code: on a slide after the Announcements item (else the last item), when the planner chose it
+  // (and the attendees' bulletin link's QR code, the same way)
   const visitorQr = visitorQrBlock(svc.id);
-  const qrAfter = visitorQr?.slides ? (svc.items.find((x) => x.kind === 'announcements' && x.on_slides) ?? [...svc.items].reverse().find((x) => x.on_slides))?.id : undefined;
-  const visitorSlideBlock = (): RenderedSlideBlock[] =>
-    visitorQr ? [{ id: VISITOR_QR_BLOCK_ID, kind: 'qr', caption: complete(visitorQr.caption, langs), has_image: false, v: 'visitor', value: visitorQr.value }] : [];
+  const attendeeQr = attendeeQrBlock(svc.id);
+  const qrAfter = visitorQr?.slides || attendeeQr?.slides ? (svc.items.find((x) => x.kind === 'announcements' && x.on_slides) ?? [...svc.items].reverse().find((x) => x.on_slides))?.id : undefined;
+  const visitorSlideBlock = (): RenderedSlideBlock[] => [
+    ...(attendeeQr?.slides ? [{ id: ATTENDEE_QR_BLOCK_ID, kind: 'qr' as const, caption: complete(attendeeQr.caption, langs), has_image: false, v: 'attendee', value: attendeeQr.value }] : []),
+    ...(visitorQr?.slides ? [{ id: VISITOR_QR_BLOCK_ID, kind: 'qr' as const, caption: complete(visitorQr.caption, langs), has_image: false, v: 'visitor', value: visitorQr.value }] : []),
+  ];
 
   const items: RenderedItem[] = svc.items.map((it, i) => {
     const role = it.role_id ? roles.find(it.role_id) : undefined;
@@ -372,8 +377,10 @@ function bulletinPart(svc: ServiceFull, b: ResolvedBulletin, langs: Lang[]): Ren
   }
   // the visitor form's QR code on the back page, when the planner chose it
   const visitorQr = visitorQrBlock(svc.id);
-  if (visitorQr?.bulletin) {
-    page_layout.push({ id: 'visitor-form', type: 'blocks', blocks: [VISITOR_QR_BLOCK_ID], last_page: true, keep_together: true });
+  const attendeeQr = attendeeQrBlock(svc.id);
+  const backQr = [...(attendeeQr?.bulletin ? [ATTENDEE_QR_BLOCK_ID] : []), ...(visitorQr?.bulletin ? [VISITOR_QR_BLOCK_ID] : [])];
+  if (backQr.length) {
+    page_layout.push({ id: 'visitor-form', type: 'blocks', blocks: backQr, last_page: true, keep_together: true });
   }
   const want = layoutBlockIds(page_layout).filter((x) => x > 0);
   const blocks = want.length
@@ -381,6 +388,9 @@ function bulletinPart(svc: ServiceFull, b: ResolvedBulletin, langs: Lang[]): Ren
         .filter((x) => want.includes(x.id))
         .map((x) => ({ ...x, data: { ...x.data, ...(x.data.caption ? { caption: c(x.data.caption) } : {}), ...(x.data.text ? { text: c(x.data.text) } : {}) } }))
     : [];
+  if (attendeeQr?.bulletin) {
+    blocks.push({ id: ATTENDEE_QR_BLOCK_ID, kind: 'qr', name: 'Bulletin link', sort: 0, updated_at: 'attendee', data: { value: attendeeQr.value, caption: c(attendeeQr.caption) } });
+  }
   if (visitorQr?.bulletin) {
     blocks.push({ id: VISITOR_QR_BLOCK_ID, kind: 'qr', name: 'Visitor form', sort: 0, updated_at: 'visitor', data: { value: visitorQr.value, caption: c(visitorQr.caption) } });
   }

@@ -1,6 +1,6 @@
 // Building blocks shared by the Slide templates and Bulletin templates pages: a gallery card with its actions,
 // numbered editor steps that fold away, a sticky save bar, small "?" tooltips and links into the user guide.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n.tsx';
 import { Icon } from '../components/icons.tsx';
@@ -115,9 +115,30 @@ export function TemplateCard({ thumb, name, desc, badges, primary, actions, mute
  * A menu button: "⋯" by default (a template's other actions — archive, restore, church default, delete …), or a
  * labelled button (`trigger`, e.g. "Files ▾"). The list opens above the button, or below it with `down`.
  */
-export function CardMenu({ label, actions, trigger, down }: { label: string; actions: CardAction[]; trigger?: ReactNode; down?: boolean }) {
+export function CardMenu({ label, actions, trigger, down, fixed }: { label: string; actions: CardAction[]; trigger?: ReactNode; down?: boolean; fixed?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // `fixed`: the list floats over the page (inside a scrolling table it would be cut off); placed below the button,
+  // or above it near the bottom of the window
+  const [at, setAt] = useState<CSSProperties | undefined>();
+  const toggle = () => {
+    if (!open && fixed && ref.current) {
+      const b = ref.current.getBoundingClientRect();
+      const right = window.innerWidth - b.right;
+      setAt(b.bottom > window.innerHeight - 260 ? { position: 'fixed', right, bottom: window.innerHeight - b.top + 4, top: 'auto' } : { position: 'fixed', right, top: b.bottom + 4, bottom: 'auto' });
+    }
+    setOpen((o) => !o);
+  };
+  useEffect(() => {
+    if (!open || !fixed) return;
+    const close = () => setOpen(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open, fixed]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
@@ -133,14 +154,14 @@ export function CardMenu({ label, actions, trigger, down }: { label: string; act
   return (
     <div className="tp-menu" ref={ref}>
       {trigger ? (
-        <button type="button" className={`btn sm${open ? ' on' : ''}`} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{trigger}</button>
+        <button type="button" className={`btn sm${open ? ' on' : ''}`} title={label} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>{trigger}</button>
       ) : (
-        <button type="button" className={`tp-more${open ? ' on' : ''}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <button type="button" className={`tp-more${open ? ' on' : ''}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><circle cx="5" cy="12" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="12" r="2.2" /></svg>
         </button>
       )}
       {open && (
-        <div className={`tp-menu-list${down ? ' down' : ''}`} role="menu">
+        <div className={`tp-menu-list${down ? ' down' : ''}`} role="menu" style={fixed ? at : undefined}>
           {actions.map((a) => (
             <button key={a.label} type="button" role="menuitem" className={a.danger ? 'danger' : ''} disabled={a.disabled} title={a.title}
               onClick={() => { setOpen(false); a.onClick(); }}>

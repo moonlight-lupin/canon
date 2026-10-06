@@ -1,4 +1,8 @@
 import fs from 'node:fs';
+import { roleOffered } from './repo/access-roles.ts';
+import { forAttendees, serviceByAttendeeToken } from './repo/attendee-link.ts';
+import { publicUrl } from './lib/public-url.ts';
+import { addressForOthers } from './lib/lan.ts';
 import { lendingSelfRoutes } from './routes/lending-self.ts';
 import { lendingRoutes } from './routes/lending.ts';
 import { equipmentRoutes } from './routes/equipment.ts';
@@ -50,7 +54,7 @@ import { renderService } from './repo/render.ts';
 import { songUsage } from './repo/history.ts';
 import { getSettings, setMeta, updateSettings, type Settings } from './repo/settings.ts';
 import { fileForToken } from './repo/downloads.ts';
-import { isAdmin, listRoles, roleDef } from './lib/permissions.ts';
+import { isAdmin, roleDef } from './lib/permissions.ts';
 import { hashCode, newRecoveryCodes, newSecret, otpauthUri, verifyTotp } from './lib/totp.ts';
 import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
@@ -136,6 +140,9 @@ api.get('/share/:token', h((req) => {
   return withRights(renderService(full), 'online');
 }));
 
+// Public bulletin for attendees (one link per service): the order, words and announcements — no serving team or notes.
+api.get('/bulletin/:token', h((req) => withRights(forAttendees(renderService(serviceByAttendeeToken(String(req.params.token)))), 'online')));
+
 // Short-lived download links (made by AI agents: canon_get_service format "downloads"): one file each, no sign-in needed.
 api.get('/dl/:token', h(async (req, res) => sendFile(res, await fileForToken(String(req.params.token)))));
 
@@ -164,6 +171,11 @@ api.use(requireUser);
 api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web', congregation_id: wallOf(req.user), sensitive: seesSensitiveFields(req.user) }, next));
 // read-only accounts: no members' contact details, notes or birth years (server/lib/viewer-scrub.ts)
 api.use(viewerScrub);
+
+// where links for other people point (share links, e-mails): the public address, else this computer's network address
+api.get('/link-base', (req, res) => {
+  res.json({ base: addressForOthers(`${req.protocol}://${req.get('host')}`), public: !!publicUrl() });
+});
 
 api.patch('/me', h((req) => {
   const b = z.object({ lang: S.LangSchema.optional(), display_name: z.string().min(1).optional(), current_password: z.string().optional(), new_password: z.string().min(8).optional() }).parse(req.body);
@@ -217,7 +229,7 @@ api.post('/users', requireAdmin, h((req) => {
     /** the church member the account belongs to (required, except for an external guest) */
     person_id: z.number().int().nullable().optional(),
   }).parse(req.body);
-  if (!listRoles().some((r) => r.key === b.role)) throw Object.assign(new Error('That role does not exist.'), { status: 400 });
+  if (!roleOffered(b.role)) throw Object.assign(new Error('That role does not exist or is archived.'), { status: 400 });
   const personId = b.person_id ?? null;
   const problem = (personId && personLinkProblem(personId, null)) || memberLinkProblem(null, b.role, personId);
   if (problem) throw Object.assign(new Error(problem), { status: 400 });
@@ -239,9 +251,9 @@ api.patch('/users/:id', requireAdmin, h((req) => {
   if (b.reset_two_step) run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]' WHERE id = ?", id(req));
   const uid = id(req);
   if (b.role && !roleDef(b.role).admin && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
-  if (b.role && !listRoles().some((r) => r.key === b.role)) throw Object.assign(new Error('That role does not exist.'), { status: 400 });
   const before = getUser(uid);
   if (!before) throw Object.assign(new Error('That account does not exist.'), { status: 404 });
+  if (b.role && !roleOffered(b.role, before.role)) throw Object.assign(new Error('That role does not exist or is archived.'), { status: 400 });
   // a change of role or member keeps the account a church member's (or an external guest's)
   if (b.role !== undefined || b.person_id !== undefined) {
     const role = b.role ?? before.role;

@@ -83,3 +83,5 @@ export interface VisitorCard {
 export const CARD_LIMITS = { name: 120, contact: 200, source: 200, prayer: 1500 } as const;
 /** The virtual block id used for the visitor-form QR on the bulletin and slides (real blocks have positive ids). */
 export const VISITOR_QR_BLOCK_ID = -1;
+/** The same for the attendees' bulletin link (server/repo/attendee-link.ts). */
+export const ATTENDEE_QR_BLOCK_ID = -2;

@@ -175,7 +175,8 @@ test('ISBN lookup: Open Library, else Google Books', async () => {
 test('labels: QR codes that open the copy in Canon', async () => {
   const r = await call(as.librarian, 'GET', `/lending/labels?copies=${ids.copy1}&base=${encodeURIComponent('http://192.168.1.20:3000')}`);
   assert.equal(r.status, 200);
-  assert.equal(r.body.base, 'http://192.168.1.20:3000');
+  // the public address, else this computer's network address (never the name or address the browser happened to use)
+  assert.equal(r.body.base, (await import('../server/lib/lan.ts')).addressForOthers('http://192.168.1.20:3000'));
   assert.equal(r.body.labels[0].number, 'B0001');
   assert.match(r.body.labels[0].qr, /^<svg/);
   assert.equal((await call(as.librarian, 'GET', `/lending/labels?copies=${ids.copy1}&base=javascript:alert(1)`)).status, 400);

@@ -7,6 +7,8 @@ import { useI18n } from '../../i18n.tsx';
 import { Bi, Empty, Field, L10nInput, Loading, Modal, SearchBox, confirmAction, useAction, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { CsvTools } from '../../components/CsvTools.tsx';
+import { InfoTip } from '../../components/InfoTip.tsx';
+import { scoreUrl } from '../../../shared/presentation.ts';
 import type { Hymnal, Song, SongCategory, Stanza } from '../../types-client.ts';
 import { type HymnalRow, LangBadges, langsIn, numbersOf, SONG_CAT_LABEL, SONG_CATS, songMatches } from './common.tsx';
 
@@ -14,6 +16,7 @@ export function Songs() {
   const { t, lt } = useI18n();
   const { canEdit } = useSession();
   const { data, reload } = useApi<Song[]>('/songs');
+  const scoreCounts = useApi<Record<number, number>>('/songs/scores/counts');
   const { data: hymnals } = useApi<HymnalRow[]>('/hymnals');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<SongCategory | ''>('');
@@ -60,6 +63,7 @@ export function Songs() {
                       <strong className="serif"><Bi v={s.title} /></strong>
                       {s.psalm ? <span className="badge reed" style={{ marginLeft: 6 }}>Ps {s.psalm}</span> : null}
                       {!s.stanzas.length && <span className="badge warn" style={{ marginLeft: 6 }}>{t('No words yet')}</span>}
+                      {scoreCounts.data?.[s.id] ? <span className="badge" style={{ marginLeft: 6 }} title={t('Sheet music')}><Icon name="music" width={12} height={12} /> {scoreCounts.data[s.id]}</span> : null}
                     </td>
                     <td className="small">{s.author}</td>
                     <td className="small muted">{s.tune}{s.meter ? ` · ${s.meter}` : ''}</td>
@@ -75,12 +79,12 @@ export function Songs() {
           {!rows.length && <Empty title="—" />}
         </div>
       )}
-      {edit && <SongEditor song={edit} hymnals={hymnals ?? []} canEdit={canEdit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
+      {edit && <SongEditor song={edit} hymnals={hymnals ?? []} canEdit={canEdit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} onScores={scoreCounts.reload} />}
     </>
   );
 }
 
-export function SongEditor({ song, hymnals, canEdit, onClose, onSaved }: { song: Partial<Song>; hymnals: Hymnal[]; canEdit: boolean; onClose: () => void; onSaved: () => void }) {
+export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores }: { song: Partial<Song>; hymnals: Hymnal[]; canEdit: boolean; onClose: () => void; onSaved: () => void; onScores?: () => void }) {
   const { t, lt } = useI18n();
   const { run, busy } = useAction();
   const [s, setS] = useState<Partial<Song>>(song);
@@ -153,6 +157,8 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved }: { song:
             ))}
           </div>
         </div>
+
+        <SheetMusicSection songId={s.id} canEdit={canEdit} onChanged={onScores} />
 
         <div className="row">
           <label className="check"><input type="checkbox" checked={!!s.public_domain} onChange={(e) => set('public_domain', e.target.checked)} />{t('Public domain')}</label>
@@ -303,3 +309,62 @@ export function HymnalEditor({ hymnal, canEdit, onClose, onSaved }: { hymnal: Pa
 }
 
 // ------------------------------------------------------------------ texts
+
+interface Score { id: number; name: string; mime: string; size: number }
+
+/** A song's sheet music: scans or photos of the music (or a PDF), in page order. Added and removed at once. */
+function SheetMusicSection({ songId, canEdit, onChanged }: { songId?: number; canEdit: boolean; onChanged?: () => void }) {
+  const { t } = useI18n();
+  const { run, busy } = useAction();
+  const scores = useApi<Score[]>(songId ? `/songs/${songId}/scores` : null);
+  const list = scores.data ?? [];
+  const upload = async (files: FileList | null) => {
+    if (!songId || !files?.length) return;
+    for (const f of Array.from(files)) {
+      const r = await run(() => api.upload<Score[]>(`/songs/${songId}/scores?name=${encodeURIComponent(f.name)}`, f));
+      if (!r) break;
+      scores.setData(r);
+    }
+    onChanged?.();
+  };
+  const act = (p: Promise<Score[]>) => run(async () => {
+    scores.setData(await p);
+    onChanged?.();
+  });
+  return (
+    <div>
+      <div className="row" style={{ marginBottom: 6 }}>
+        <h3>{t('Sheet music')}</h3>
+        <InfoTip text={t('Scans or photos of the music (PNG, JPEG or WebP) or a PDF, up to 10 MB each, in page order. Musicians open them from the service planner (Outputs → Sheet music). They stay inside Canon: never on the share pages, the slides or for AI assistants.')} />
+        <div className="grow" />
+        {canEdit && songId && (
+          <label className={`btn sm${busy ? ' disabled' : ''}`}>
+            <Icon name="upload" />{t('Add pages')}
+            <input type="file" hidden multiple accept="image/png,image/jpeg,image/webp,application/pdf" disabled={busy} onChange={(e) => { void upload(e.target.files); e.target.value = ''; }} />
+          </label>
+        )}
+      </div>
+      {!songId ? <div className="field-hint">{t('Save the song first, then add its sheet music.')}</div>
+        : !list.length ? <div className="field-hint">{t('No sheet music yet.')}</div>
+        : (
+          <div className="score-list">
+            {list.map((f, i) => (
+              <div key={f.id} className="score-item">
+                <a href={scoreUrl(f.id)} target="_blank" rel="noreferrer" className="score-thumb" title={t('Open')}>
+                  {f.mime === 'application/pdf' ? <span className="score-pdf">PDF</span> : <img src={scoreUrl(f.id)} alt={f.name} loading="lazy" />}
+                </a>
+                <div className="score-name small">{i + 1}. {f.name}</div>
+                {canEdit && (
+                  <div className="row tight">
+                    <button type="button" className="btn sm ghost icon" disabled={busy || i === 0} onClick={() => act(api.post<Score[]>(`/songs/scores/${f.id}/move`, { by: -1 }))} aria-label={t('Move up')}><Icon name="chevronLeft" /></button>
+                    <button type="button" className="btn sm ghost icon" disabled={busy || i === list.length - 1} onClick={() => act(api.post<Score[]>(`/songs/scores/${f.id}/move`, { by: 1 }))} aria-label={t('Move down')}><Icon name="chevronRight" /></button>
+                    <button type="button" className="btn sm ghost icon danger" disabled={busy} onClick={() => { if (confirmAction(t('Remove this page of sheet music?'))) void act(api.del<Score[]>(`/songs/scores/${f.id}`)); }} aria-label={t('Delete')}><Icon name="trash" /></button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+    </div>
+  );
+}

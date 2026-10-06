@@ -79,5 +79,9 @@ const zh: Record<string, string> = {
   'Text: {n} slides': '礼文：{n} 张',
   'Reading: {ref} · {n} slide': '读经：{ref} · {n} 张',
   'Reading: {ref} · {n} slides': '读经：{ref} · {n} 张',
+  'QR code / note slide': '二维码／短句投影',
+  'QR code / note': '二维码／短句',
+  Slide: '投影片',
+  'Slide numbers count the title slide as 1 and follow the service as it is now: print again after changes.': '投影片编号以标题投影为第 1 张，按聚会目前的内容计算：内容更改后请重新打印。',
 };
 export default zh;

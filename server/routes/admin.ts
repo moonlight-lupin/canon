@@ -153,3 +153,4 @@ adminRoutes.get('/access-roles', requireAdmin, h(() => ({ roles: listRoles(), us
 adminRoutes.post('/access-roles', requireAdmin, h((req) => ar.createRole(RoleInput.parse(req.body))));
 adminRoutes.patch('/access-roles/:key', requireAdmin, h((req) => ar.updateRole(String(req.params.key), RoleInput.partial().parse(req.body))));
 adminRoutes.delete('/access-roles/:key', requireAdmin, h((req) => ar.deleteRole(String(req.params.key))));
+adminRoutes.put('/access-roles/:key/archived', requireAdmin, h((req) => ar.setArchived(String(req.params.key), z.object({ archived: z.boolean() }).parse(req.body).archived)));

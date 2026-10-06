@@ -37,6 +37,7 @@ const OfferingsMonth = lazy(() => import('./pages/reports/OfferingsTab.tsx').the
 const Bulletin = lazy(() => import('./outputs/Bulletin.tsx'));
 const Slides = lazy(() => import('./outputs/Slides.tsx'));
 const RunSheet = lazy(() => import('./outputs/RunSheet.tsx'));
+const SheetMusic = lazy(() => import('./outputs/SheetMusic.tsx'));
 const Share = lazy(() => import('./outputs/Share.tsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.tsx'));
 const About = lazy(() => import('./pages/About.tsx'));
@@ -71,12 +72,13 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Public share pages need no session.
-  if (loc.pathname.startsWith('/share/')) {
+  // Public share pages need no session: the team's (/share/…) and the attendees' bulletin (/b/…).
+  if (loc.pathname.startsWith('/share/') || loc.pathname.startsWith('/b/')) {
     return (
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/share/:token/*" element={<Share />} />
+          <Route path="/b/:token/*" element={<Share attendee />} />
         </Routes>
       </Suspense>
     );
@@ -134,6 +136,7 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
           <Route path="/services/:id/visitor-cards" element={<VisitorCardsPrint />} />
           <Route path="/services/:id/slides" element={<Slides />} />
           <Route path="/services/:id/runsheet" element={<RunSheet />} />
+          <Route path="/services/:id/sheet-music" element={<SheetMusic />} />
           <Route path="/lending/labels" element={<LabelsPage kind="lending" />} />
           <Route path="/equipment/labels" element={<LabelsPage kind="equipment" />} />
           <Route element={<Layout />}>

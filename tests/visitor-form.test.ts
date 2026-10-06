@@ -84,7 +84,9 @@ test('off for the church: no form; administrators switch it on, editors switch a
   assert.equal((await call(as.viewer, 'PUT', `/services/${sid}/visitor-form`, { enabled: false })).status, 403);
   info = await call(as.viewer, 'GET', `/services/${sid}/visitor-form`);
   assert.equal(info.body.url.endsWith(`/v/${token}`), true);
-  assert.equal(info.body.local_only, true, '127.0.0.1 only works on this computer: the tab warns');
+  // the link uses this computer's network address; only without a network does it fall back to 127.0.0.1 (and warn)
+  const { lanAddress } = await import('../server/lib/lan.ts');
+  assert.equal(info.body.local_only, !lanAddress(), 'a link phones can open, or a warning');
 });
 
 test('protections: trap field, too fast, missing name, consent for contact details, closed window', async () => {
@@ -138,7 +140,7 @@ test('the QR code goes on the bulletin back page and on a slide when chosen; cop
   const r = renderService(sid);
   const qr = (r.bulletin.blocks ?? []).find((b) => b.id < 0);
   assert.ok(qr && qr.data.value?.endsWith(`/v/${token}`));
-  assert.match(qr!.data.value ?? '', /^http:\/\/127\.0\.0\.1:\d+\/v\//, 'a full address (where Canon was opened), not a bare path');
+  assert.match(qr!.data.value ?? '', /^http:\/\/[\d.]+:\d+\/v\//, 'a full address (this computer on the network), not a bare path');
   assert.ok(r.bulletin.options.page_layout.some((s) => s.id === 'visitor-form' && s.last_page));
   const ann = r.items.find((x) => x.kind === 'announcements')!;
   assert.equal(ann.slide_blocks.at(-1)?.value?.endsWith(`/v/${token}`), true);
