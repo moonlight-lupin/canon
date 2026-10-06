@@ -1,4 +1,5 @@
 // Records: the cash count by denomination, signing it, and the printable declaration.
+import { FitToScreen } from '../../components/onscreen.ts';
 import { useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../../api.ts';
@@ -126,7 +127,7 @@ export function CashDeclaration() {
         <Link className="btn sm ghost" to={`/records/${sid}`}><Icon name="chevronLeft" />{t('Back')}</Link>
         <button className="btn sm primary" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
-      <div className="decl-page">
+      <FitToScreen className="decl-page">
         <h1>{lt(settings?.church_name ?? { en: 'Church' })}</h1>
         <h2>{both('Offering Count Declaration', '奉献点算声明')}</h2>
         <table className="decl-meta">
@@ -194,7 +195,7 @@ export function CashDeclaration() {
         {r.verified_at && (signed.length
           ? <p className="small muted">{both('Signed on screen in Canon; the signatures belong to the count above.', '已在 Canon 屏幕上签名；签名对应以上点算。')}</p>
           : <p className="small muted">{both('Marked as verified in Canon by', '已在 Canon 中由以下人员确认')} {r.verified_by}, {new Date(r.verified_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</p>)}
-      </div>
+      </FitToScreen>
     </div>
   );
 }

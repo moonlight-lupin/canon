@@ -1,4 +1,5 @@
 // Printable timed cue sheet for the service team: times, leaders, AV cues with slide numbers, notes, roster.
+import { FitToScreen } from '../components/onscreen.ts';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
@@ -107,6 +108,7 @@ export default function RunSheet() {
         <button className="btn primary sm" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
 
+      <FitToScreen deps={[orientation, r]}>
       <div className={`rs-sheet ${orientation}`}>
         <header className="rs-head">
           <div>
@@ -206,6 +208,7 @@ export default function RunSheet() {
           </section>
         )}
       </div>
+      </FitToScreen>
     </div>
   );
 }

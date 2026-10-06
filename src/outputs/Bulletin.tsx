@@ -5,6 +5,7 @@
 // The bulletin template's page layout decides the shape: an ordered list of sections (cover or banner, the order
 // as a list or a three-column table, full texts, the weekly announcements, a pastor's note, fixed texts, serving
 // tables, QR codes …) with page breaks and a back-cover group that always lands on the last page.
+import { useFitWidth } from '../components/onscreen.ts';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
@@ -192,6 +193,8 @@ export function BulletinPages({
 
   const measureRef = useRef<HTMLDivElement>(null);
   const [plan, setPlan] = useState<{ pages: PageSpec[]; oversize: boolean; blanks: number; heights: Map<string, number> } | null>(null);
+  // the preview on a phone: zoomed to the screen's width (printing is unchanged)
+  const fitRef = useFitWidth<HTMLDivElement>([plan, showSheets, pw, spec]);
   const hasSermon = spareNotes && r.items.some((i) => i.kind === 'sermon');
 
   useLayoutEffect(() => {
@@ -306,7 +309,7 @@ export function BulletinPages({
         <>
           <div className="bl-screen no-print">
             {info}
-            <div className="bl-doc bl-preview" style={docStyle}>
+            <div ref={fitRef} className="bl-doc bl-preview fit-w" style={docStyle}>
               {showSheets
                 ? sheets.map((s, i) => (
                     <div key={i} className="bl-sheet-wrap">

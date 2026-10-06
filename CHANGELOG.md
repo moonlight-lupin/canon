@@ -4,6 +4,11 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.6 — Paper-sized pages fit a phone
+
+- On a phone or a narrow window, these pages now shrink to fit the screen's width instead of running off its edge: the bulletin preview, the run sheet, sheet music, printable visitor cards, the cash declaration, a month's offerings summary and QR labels. Printing is unchanged: always the real paper size.
+- Database: no change.
+
 ## 0.15.5 — Sheet music from a phone or in bulk; menus that fit a phone
 
 - **Sheet music from a phone.** A song's **Sheet music** has a **From a phone** button that shows a QR code.

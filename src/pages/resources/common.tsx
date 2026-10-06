@@ -1,5 +1,6 @@
 // Shared by the lending library and the asset register (0.15): a names-only member search (a librarian or asset
 // keeper needs no access to the member register), and QR label sheets (A4 sticker sheets or a label printer).
+import { FitToScreen } from '../../components/onscreen.ts';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
@@ -133,6 +134,7 @@ export function LabelsPage({ kind }: { kind: 'lending' | 'equipment' }) {
         <button className="btn sm primary" disabled={!labels.length} onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
       <p className="small muted no-print labels-tip">{t('Print at 100% (not “fit to page”). The QR code opens the item in Canon at {address}, on a phone on the church network.').replace('{address}', raw.data?.base ?? '')}</p>
+      <FitToScreen deps={[pages.length, s.page[0]]}>
       {pages.map((page, pi) => (
         <div key={pi} className="label-page" style={{ width: `${s.page[0]}mm`, height: `${s.page[1]}mm`, paddingTop: `${s.top}mm`, paddingLeft: `${s.left}mm` }}>
           <div className="label-grid" style={{ gridTemplateColumns: `repeat(${s.cols}, ${s.w}mm)`, gridAutoRows: `${s.h}mm`, columnGap: `${s.gapX}mm`, rowGap: `${s.gapY}mm` }}>
@@ -155,6 +157,7 @@ export function LabelsPage({ kind }: { kind: 'lending' | 'equipment' }) {
           </div>
         </div>
       ))}
+      </FitToScreen>
     </div>
   );
 }

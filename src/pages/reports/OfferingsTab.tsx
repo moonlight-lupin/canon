@@ -1,4 +1,5 @@
 // Reports: offerings by fund, month and method, and the treasurer's monthly summary.
+import { FitToScreen } from '../../components/onscreen.ts';
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { qs, useApi } from '../../api.ts';
@@ -102,7 +103,7 @@ export function OfferingsMonth() {
         <Link className="btn sm ghost" to="/reports?tab=offerings"><Icon name="chevronLeft" />{t('Reports')}</Link>
         <button className="btn sm primary" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
-      <div className="decl-page">
+      <FitToScreen className="decl-page">
         <h1>{lt(settings?.church_name ?? { en: 'Church' })}</h1>
         <h2>{bi('Monthly Offerings Summary', '每月奉献汇总')} · {month}{c ? ` · ${lt(c.name)}` : ''}</h2>
         <h3>{bi('By fund', '奉献项目')}</h3>
@@ -148,7 +149,7 @@ export function OfferingsMonth() {
           <tbody><tr><td /><td /><td /></tr><tr><td /><td /><td /></tr></tbody>
         </table>
         <p className="small muted">{bi('From Canon service records; amounts in', '根据 Canon 聚会记录；金额单位')} {cur}. {new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</p>
-      </div>
+      </FitToScreen>
     </div>
   );
 }

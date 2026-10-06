@@ -1,7 +1,7 @@
 // Keep an opened menu or popover inside the window (phones especially): shift it sideways when it would stick out on
 // the left or right, narrow it to the window when it is wider, and let it scroll inside when it would run past the
 // top or bottom.
-import { useLayoutEffect, type RefObject } from 'react';
+import { createElement, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
 
 const GAP = 8;
 
@@ -34,4 +34,39 @@ export function useKeepOnScreen(ref: RefObject<HTMLElement | null>, open: boolea
     window.addEventListener('resize', again);
     return () => window.removeEventListener('resize', again);
   }, [open, ref]);
+}
+
+/**
+ * Paper-sized previews (bulletin, run sheet, sheet music, declarations, labels) on a phone: zoom the content down
+ * so the page fits the screen's width, instead of the page running off the edge. Never when printing (CSS).
+ */
+export function useFitWidth<T extends HTMLElement>(deps: unknown[] = []) {
+  const ref = useRef<T>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.setProperty('--fit-zoom', '1');
+      // centred pages overflow on both sides, which scrollWidth doesn't count: take the widest child too
+      const natural = Math.max(el.scrollWidth, ...Array.from(el.children).map((c) => c.getBoundingClientRect().width));
+      // the screen, not a layout viewport a phone may have widened to fit the page
+      const screenW = window.matchMedia('(pointer: coarse)').matches && window.screen?.width ? window.screen.width : Infinity;
+      // inside the parent's padding
+      const parent = el.parentElement;
+      const ps = parent ? getComputedStyle(parent) : null;
+      const parentW = parent && ps ? parent.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight) : Infinity;
+      const avail = Math.min(parentW || Infinity, document.documentElement.clientWidth - 8, screenW - 8);
+      el.style.setProperty('--fit-zoom', natural > avail + 1 ? String(Math.max(0.25, avail / natural)) : '1');
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+  return ref;
+}
+
+/** A block that zooms its paper-sized content to the screen's width (see useFitWidth). */
+export function FitToScreen({ children, deps = [], className }: { children: ReactNode; deps?: unknown[]; className?: string }) {
+  const ref = useFitWidth<HTMLDivElement>(deps);
+  return createElement('div', { ref, className: className ? `${className} fit-w` : 'fit-w' }, children);
 }

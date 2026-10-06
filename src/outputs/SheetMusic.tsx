@@ -1,5 +1,6 @@
 // Outputs → Sheet music: the service's songs in order, each with the sheet music kept with it in the Library (scans
 // or photos; a PDF opens on its own). For the musicians: print it, or open it on a tablet at the piano.
+import { FitToScreen } from '../components/onscreen.ts';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -30,7 +31,7 @@ export default function SheetMusic() {
         {missing > 0 && <span className="small muted">{t('{n} without sheet music').replace('{n}', String(missing))}</span>}
         <button className="btn primary sm" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
-      <div className="sm-sheet">
+      <FitToScreen className="sm-sheet" deps={[data]}>
         <header className="sm-head">
           <h1 className="rs-title"><Bi v={data.service.title} langs={langs} sep="  " /></h1>
           <div className="rs-date">{formatDate(data.service.date, langs)}</div>
@@ -67,7 +68,7 @@ export default function SheetMusic() {
             ))}
           </section>
         ))}
-      </div>
+      </FitToScreen>
     </div>
   );
 }

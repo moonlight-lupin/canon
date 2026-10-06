@@ -186,6 +186,7 @@ For a Mac, choose **Files** → **PowerPoint for Keynote (Mac)**: the same slide
   - **Bulletin for the congregation**: one link per service for attendees to read the bulletin on their phones — the order of service, the words of the hymns and readings, and the announcements, with a language switch; no serving team, team notes or contact details. Tick **Print the QR code on the bulletin's back page** and / or **Show the QR code on a slide at the start, after the title slide** (slide 2, to show as people arrive; the run sheet says so), or **Download QR code** to use it elsewhere. **Disable link** stops it.
   - Both links (and the visitor form, the e-mails to the team and the QR labels) use the church's **Public address** (Settings → AI / MCP). Without one they use this computer's address on the church network, never "localhost" or the computer's name, so they open only on the church's own network.
 - **Files** → **PowerPoint**, **Word document** and **FreeShow project** download files for other programs.
+- **On a phone or a narrow window**, the bulletin, run sheet, sheet music, visitor cards, cash declaration and labels are shown smaller so the whole page fits the screen. They always print at their real size.
 - An AI assistant connected to Canon can also make **download links** for these files (they stop working after a day or so). Anyone with such a link can download that file without signing in, so send it only to the people who need it.
 - **Email the team** opens your own e-mail program with the team in BCC.
 

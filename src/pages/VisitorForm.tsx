@@ -1,5 +1,6 @@
 // The visitor form in the web app: the service's Visitor form tab (switch it on, choose where its QR code shows,
 // print cards), the review of visitors' entries (also on the service record), and the printable cards.
+import { FitToScreen } from '../components/onscreen.ts';
 import { useParams, Link } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -129,7 +130,7 @@ export function VisitorCardsPrint() {
   const info = useApi<FormInfo>(`/services/${sid}/visitor-form`);
   if (svc.error || info.error) return <ErrorBox error={(svc.error ?? info.error)!} />;
   if (!svc.data || !info.data) return <Loading />;
-  if (!info.data.url) return <div className="decl"><div className="decl-page"><p>{t('Switch the visitor form on for this service first.')}</p></div></div>;
+  if (!info.data.url) return <div className="decl"><FitToScreen className="decl-page"><p>{t('Switch the visitor form on for this service first.')}</p></FitToScreen></div>;
   const url = info.data.url;
   return (
     <div className="decl">
@@ -137,7 +138,7 @@ export function VisitorCardsPrint() {
         <Link className="btn sm ghost" to={`/services/${sid}`}><Icon name="chevronLeft" />{t('Back')}</Link>
         <button className="btn sm primary" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button>
       </div>
-      <div className="decl-page vf-sheet">
+      <FitToScreen className="decl-page vf-sheet">
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="vf-print-card">
             <div className="vf-church">{lt(settings?.church_name ?? { en: 'Church' })}</div>
@@ -146,7 +147,7 @@ export function VisitorCardsPrint() {
             <div className="vf-svc"><Bi v={svc.data!.title} /> · {fmtDate(svc.data!.date, 'en', { day: 'numeric', month: 'short' })}</div>
           </div>
         ))}
-      </div>
+      </FitToScreen>
     </div>
   );
 }
