@@ -15,11 +15,13 @@ import zhWorship from './i18n/worship.ts';
 import zhEmail from './i18n/email.ts';
 import zhPresentation from './i18n/presentation.ts';
 import zhGuide from './i18n/guide.ts';
+import zhResources from './i18n/resources.ts';
 import zhHant from './i18n/zh-Hant.generated.ts';
 
 export const DICTS: Record<Lang, Record<string, string>> = {
   en: {},
-  zh: { ...zhCore, ...zhOutputs, ...zhPeople, ...zhWorship, ...zhEmail, ...zhPresentation, ...zhGuide },
+  // the newest file first: a word already translated elsewhere keeps its translation
+  zh: { ...zhResources, ...zhCore, ...zhOutputs, ...zhPeople, ...zhWorship, ...zhEmail, ...zhPresentation, ...zhGuide },
   'zh-Hant': zhHant,
 };
 

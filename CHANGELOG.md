@@ -4,6 +4,26 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.0 — Lending library and asset register
+
+Two new optional parts of Canon, under **Resources** in the sidebar. Both start switched off: an administrator turns them on in **Settings → Modules**.
+
+- **Lending library**: the church's books, DVDs and curricula, lent to members. It is separate from the Library of songs and liturgy.
+  - **Catalogue**: type or scan an ISBN and **Look up** fills in the title, author, publisher, year and cover. It uses Open Library, else Google Books, and sends only the ISBN. Without internet, type the details. Each copy is numbered B0001 … with a QR label.
+  - **Lend & return**: type or scan a copy's number. Lend to a member by name, with a due date from the loan rules; take it back or renew it. A copy's QR label opens the same card on a phone.
+  - **On loan**: overdue first, with who has what. A member with something on loan can't be deleted or erased until it is back.
+  - **Loan rules**: loan period, renewals, and e-mail reminders. Borrowers get a "due soon" e-mail once and an "overdue" e-mail weekly, in their language, sent with the daily housekeeping, or **Send now**.
+- **Asset register**: the church's equipment and property. It records what each item is, its number (E0001 …), where it is, who looks after it, when it was bought and for how much, the warranty, its condition and status.
+  - **Photos and receipts**: PNG, JPEG, WebP or PDF, up to 10 MB, kept in the database and so in backups.
+  - **Maintenance**: a log, and the next maintenance date, which moves on with a regular interval. Maintenance due within two weeks is flagged and counted on the dashboard.
+- **QR labels** for copies and items, on A4 sticker sheets (24, 21 or 65 to a page, starting part-way through a used sheet) or a 62 mm label printer. The QR code holds the office computer's network address even when Canon is opened as localhost.
+- **CSV import and export** for the catalogue (one row per title, with its copies) and the register.
+- **Roles**: new ready-made **Librarian** and **Asset keeper** roles. They choose borrowers and custodians by name, without the member register. The other ready-made roles get sensible access: for example, the Secretary edits the library, the Treasurer edits the register, and the External guest reads the register. A church's own roles start without access.
+- **AI assistants**: `canon_lending`, `canon_save_book`, `canon_equipment`, `canon_save_equipment`. They are off for agents until the administrator allows them. Agents add books and equipment and record maintenance; lending and returns stay at the desk.
+- **Dashboard**: what is on loan and overdue, and maintenance due, when the modules are on.
+- **Members' personal data** (PDPA export) lists their loans and the equipment they look after. Erasing them keeps past loans anonymised and clears them as custodian.
+- Database: version 26 adds the lending library and asset register tables, the two new roles, and every role's access to the new modules.
+
 ## 0.14.5 — accounts and the Settings page
 
 - **Settings lists its sections down the left**, in four groups: **My account**, **Church** (church, languages, modules, offerings), **People and access** (users & access, member fields, visitor form) and **Canon** (security & privacy, backups, e-mail, AI / MCP, change log). On a phone it is a list at the top. The address follows the section (e.g. `/settings?tab=backups`), so a link opens it.

@@ -1,6 +1,8 @@
 // REST routes for CSV templates, exports and imports of every entity (members, co-workers, groups, team
 // members, unavailability, songs, texts, templates, hymnal index). Mounted inside /api after authentication.
 // Not exposed over MCP: bulk imports are for staff in the web app only.
+import { getSettings } from '../repo/settings.ts';
+import { moduleOff } from '../../shared/modules.ts';
 import { logMemberView } from '../repo/security.ts';
 import { asActor } from '../lib/actor.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -63,7 +65,9 @@ function sendCsv(res: Response, name: string, body: string) {
 
 const stem = (e: Entity, req: Request) => `canon-${e.fileName ? e.fileName(makeCtx(uiLang(req), query(req))) : e.key.replace(/_/g, '-')}`;
 
-csvRoutes.get('/csv', h(() => Object.values(CSV_ENTITIES).map((e) => ({ key: e.key, label: e.label, pii: e.pii, needs: e.needs ?? [] }))));
+// a switched-off part of Canon (Settings → Modules) has no import or export
+csvRoutes.get('/csv', h(() => Object.values(CSV_ENTITIES).filter((e) => !moduleOff('GET', `/csv/${e.key}`, getSettings().modules))
+  .map((e) => ({ key: e.key, label: e.label, pii: e.pii, needs: e.needs ?? [] }))));
 
 csvRoutes.get('/csv/:entity/guide', h((req) => {
   const e = entity(req);

@@ -32,6 +32,7 @@ import { VOLUNTEER_TOOLS } from './mcp-tools/volunteers.ts';
 import { PEOPLE_TOOLS } from './mcp-tools/people.ts';
 import { GROUP_TOOLS } from './mcp-tools/groups.ts';
 import { RECORD_TOOLS } from './mcp-tools/records.ts';
+import { RESOURCE_TOOLS } from './mcp-tools/resources.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
 import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
 import type { PermModule } from '../shared/permissions.ts';
@@ -98,7 +99,7 @@ const WHOAMI: ToolDef = {
   },
 };
 
-export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS];
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 

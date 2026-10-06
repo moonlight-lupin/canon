@@ -58,6 +58,7 @@ Choose a role:
 - **Treasurer**: service records and offerings — enters, verifies and reopens cash counts; reads the rest.
 - **Secretary**: the registers — members, co-workers, groups, meetings and service records (not offerings).
 - **Read-only**: can view and print; no money, no members' contact details or notes.
+- **Librarian** and **Asset keeper**: the [Lending library](#lending-library) or the [Asset register](#asset-register) only (when the church has switched it on).
 - **External guest (read-only)**: for someone outside the church, such as an auditor. It reads services, the library, service records and offerings, changes nothing and never sees members' contact details or notes. It is not linked to a member. You can let it read more (Roles → **Edit**), but never change anything.
 
 **Roles** (below the accounts) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. **Edit** a ready-made role to fit your church (the Administrator always keeps everything), or **New role** for anything else, e.g. a worship leader who edits services and the library. A role in use can't be deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role. A role that doesn't see sensitive fields can't change them either: they aren't on its member form, so saving a member leaves them as they are.
@@ -365,13 +366,42 @@ The form is a public page: anyone with the service's link or QR code can open it
 - **Scripture**: every book and chapter of the Bible as a grid of small squares — blue where a chapter was read in a service, gold where it was preached on, half and half for both, darker when more often. Click a square to see when. Choose one or more **Years** (they need not follow each other, e.g. 2023 and 2025) instead of the period, and tick **Only books with readings or sermons** for a shorter list. The totals show how much of the Bible, and of each Testament, the church has read or preached; useful for planning a series on books not yet covered.
 - **Membership**: members and regulars, by status, age, gender and congregation, and who joined or was baptised in the period.
 
+## Lending library {#lending-library}
+
+The [Lending library](/lending) is for the church's books, DVDs and curricula lent to members. It is separate from the **Library** of songs, liturgy and Bibles. It is an optional part of Canon: an administrator switches it on in **Settings → Modules**, and it appears under **Resources** in the sidebar. The ready-made **Librarian** role can do everything here without seeing the member register; borrowers are chosen by name only.
+
+**Catalogue**
+- **New book**: type or scan the **ISBN** (the barcode number on the back) and press **Look up**. Canon fills in the title, author, publisher, year and cover from Open Library, or else Google Books; only the ISBN is sent. Without internet, or for a book without an ISBN, type the details. Choose the **Kind** (book, DVD, curriculum), **Category**, **Language** and **Shelf**, and how many **Copies** the library has.
+- Each copy gets a number (**B0001**, **B0002** …). **Print labels** (in a book, for all its copies) prints QR labels on **A4 sticker sheets** (24, 21 or 65 to a sheet; **Start at label** uses a part-used sheet) or on a **label printer** (62 × 29 mm). The label shows the QR code, the number, the title and the shelf. Print at 100%. The QR code opens the copy in Canon at the office computer's network address, on a phone on the church network.
+- A copy can be marked **Lost** or **Withdrawn**; one that was never lent can be deleted.
+- **Import CSV** brings in a whole list (one row per title, with how many copies); **Export CSV** gives the catalogue back.
+
+**Lend & return**: type the copy's number (or scan its QR label with a scanner) and press **Find**.
+- **Available**: choose the **Borrower** (type part of a name; members only), check **Due back** (the loan period from **Loan rules**) and press **Lend**.
+- **On loan**: **Take back**, or **Renew** for another loan period (up to the renewals allowed).
+- Scanning a label with a phone's camera opens the same card.
+
+**On loan** lists what is out, overdue first (**Overdue** and **Returned** show those). A member with something on loan can't be deleted or have their personal data erased until it is back.
+
+**Loan rules**: the **Loan period**, **Renewals allowed**, and when to remind. **Send reminders by e-mail each day** e-mails borrowers who have an e-mail address, in their language: a "due soon" e-mail once, the set number of days before the due date, and an "overdue" e-mail once a week. It uses the church's e-mail account (Settings → E-mail). **Send now** on the On loan tab sends today's reminders straight away.
+
+## Asset register {#asset-register}
+
+The [Asset register](/equipment) is for the church's equipment and property. It is an optional part of Canon (**Settings → Modules**), under **Resources** in the sidebar. The ready-made **Asset keeper** role looks after it.
+
+- **New item**: the **Name**, a **Number** (empty = the next free one, **E0001** …), **Category**, **Make and model**, **Serial number**, **Place**, who it's **Looked after by** (a member, chosen by name), **Condition** and **Status** (in use, in storage, out of service). Under **Purchase**: when it was **Bought**, the **Price**, **Supplier** and **Warranty until**.
+- **Photos and receipts**: add photos (PNG, JPEG, WebP) and PDF receipts or warranties, up to 10 MB each. They are kept in Canon's database, so backups include them.
+- **Maintenance**: **Every (months)** and **Next maintenance**. **Record** in the **Maintenance log** what was done, when, by whom and at what cost; with a regular interval, the next date moves on by that many months. **Maintenance due** in the list shows what is due in the next two weeks or overdue, and the dashboard counts it.
+- **Print labels** prints QR labels for the items in the list, the same way as for books. The QR code opens the item: what it is, where it belongs and who looks after it.
+- **Import CSV** brings in an existing inventory (one row per item); **Export CSV** gives the register back.
+
 ## Settings
 
 Open [Settings](/settings). Administrators see its sections listed down the left in four groups (**My account**, **Church**, **People and access**, **Canon**); on a phone, choose a section from the list at the top.
 
 - **My profile** (everyone; for administrators it is the first section): display name, interface language, **Change password**.
 - **Church**, **Languages**, **Users & access**: see [Getting started](#getting-started).
-- **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form**. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
+- **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library** and the **Asset register** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it; values already entered are kept and come back if the field is added again.
 - **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).
 - **E-mail**: choose the **Provider** (Gmail, Microsoft 365 or other), fill in the SMTP details and **Save**, then **Send test**. Gmail needs an app password.

@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n.tsx';
 import { Empty, ErrorBox, Field, Loading, Modal, PageHead, SearchBox, confirmAction, fmtDate, useAction, useDebounced, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
+import { CsvTools } from '../../components/CsvTools.tsx';
 import { PersonSearch, type PersonHit } from './common.tsx';
 import './resources.css';
 
@@ -73,6 +74,7 @@ export default function Equipment() {
           <label className="check small"><input type="checkbox" checked={due} onChange={(e) => setDue(e.target.checked)} />{t('Maintenance due')}</label>
           <div className="grow" />
           {!!data?.length && <Link className="btn" to={`/equipment/labels?items=${data.map((r) => r.id).join(',')}`}><Icon name="qr" />{t('Print labels')}</Link>}
+          <CsvTools entity="equipment" label={t('Asset register')} onImported={() => { reload(); lists.reload(); }} />
           {canEdit && <button className="btn primary" onClick={() => setOpen('new')}><Icon name="plus" />{t('New item')}</button>}
         </div>
         {error && <ErrorBox error={error} />}

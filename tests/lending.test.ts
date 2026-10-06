@@ -210,3 +210,43 @@ test('switched off again: refused, gone from the dashboard, the data kept', asyn
   assert.equal((await call(as.admin, 'PUT', '/modules', { lending: true })).status, 200);
   assert.ok((await call(as.librarian, 'GET', '/lending/books')).body.length >= 2, 'everything is still there');
 });
+
+test('CSV: the catalogue and the register round-trip; new rows bring their copies and who looks after them', async () => {
+  const raw = async (method: string, url: string, body?: string) => {
+    const r = await fetch(`${base}/api${url}`, { method, headers: { Cookie: as.librarian.cookie, 'X-CSRF-Token': as.librarian.csrf, 'Content-Type': 'text/csv' }, body });
+    return { status: r.status, text: await r.text() };
+  };
+  const exp = await raw('GET', '/csv/books/export.csv');
+  assert.equal(exp.status, 200);
+  assert.match(exp.text, /Knowing God/);
+  const again = JSON.parse((await raw('POST', '/csv/books/import?dry_run=1', exp.text)).text);
+  assert.ok(again.rows.every((r: Json) => r.action === 'unchanged'), 'an export imports back unchanged');
+  const add = JSON.parse((await raw('POST', '/csv/books/import', 'title,authors,isbn,copies\nThe Holiness of God,R. C. Sproul,978-0-8423-1493-5,3\nKnowing God,J. I. Packer,,3\n')).text);
+  assert.deepEqual(add.rows.map((r: Json) => r.action), ['create', 'update'], 'new title; the existing one gets more copies');
+  assert.equal(get<{ n: number }>("SELECT COUNT(*) n FROM lending_copies c JOIN lending_books b ON b.id = c.book_id WHERE b.title = 'The Holiness of God'")!.n, 3);
+
+  const keeper = async (method: string, url: string, body?: string) => {
+    const r = await fetch(`${base}/api${url}`, { method, headers: { Cookie: as.keeper.cookie, 'X-CSRF-Token': as.keeper.csrf, 'Content-Type': 'text/csv' }, body });
+    return { status: r.status, text: await r.text() };
+  };
+  const imp = JSON.parse((await keeper('POST', '/csv/equipment/import', 'number,name,location,person,price\nE0001,Projector,Fellowship hall,,\n,Folding tables (10),Store room,Amos Koh,"$1,200"\n')).text);
+  assert.deepEqual(imp.rows.map((r: Json) => r.action), ['update', 'create']);
+  const tables = get<{ number: string; custodian_id: number; price: number }>("SELECT number, custodian_id, price FROM equipment WHERE name = 'Folding tables (10)'")!;
+  assert.equal(tables.number, 'E0002');
+  assert.equal(tables.custodian_id, ids.amos);
+  assert.equal(tables.price, 1200);
+});
+
+test('AI assistants: the tools come with the module and the church’s agent setting', async () => {
+  const { allowedTools } = await import('../server/mcp.ts');
+  const { getSettings } = await import('../server/repo/settings.ts');
+  const cfg = { ...getSettings().mcp, enabled: true, modules: { ...getSettings().mcp.modules, lending: 'write' as const, equipment: 'read' as const } };
+  const names = () => allowedTools(cfg, new Set(['canon:read', 'canon:write']), 'admin').map((t) => t.name);
+  assert.ok(names().includes('canon_save_book'));
+  assert.ok(names().includes('canon_equipment'));
+  assert.ok(!names().includes('canon_save_equipment'), 'read only for agents');
+  assert.ok(!allowedTools(cfg, new Set(['canon:read', 'canon:write']), 'keeper').map((t) => t.name).includes('canon_lending'), 'an asset keeper has no library');
+  updateSettings({ modules: { ...getSettings().modules, lending: false } });
+  assert.ok(!names().includes('canon_lending'), 'switched off: no tools');
+  updateSettings({ modules: { ...getSettings().modules, lending: true } });
+});

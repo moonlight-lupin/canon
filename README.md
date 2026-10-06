@@ -25,6 +25,9 @@ It was designed with a bilingual (English / 中文) Reformed and Presbyterian co
   - co-workers;
   - groups and committees, Sunday school classes, with custom member fields;
   - a volunteer rota with e-mail reminders.
+- **Resources** (optional):
+  - a lending library of books, DVDs and curricula: ISBN lookup, numbered copies with QR labels, loans, overdue lists and e-mail reminders;
+  - an asset register of the church's equipment: where it is, who looks after it, photos and receipts, maintenance.
 - **Meetings and the calendar:**
   - fellowship meetings, cell groups, Sunday school and one-off meetings, each with its own leader and a record (an offering only when one is taken);
   - leaders can record their own meetings with their own accounts;

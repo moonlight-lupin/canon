@@ -9,7 +9,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.12.0 | Meetings, Sunday school and the church calendar — done |
 | 0.13.0 | Roles and permissions, optional modules, second hardening round — done |
 | 0.14.0 | UI/UX audit of the core (worship and records) — done |
-| 0.15.0 | Lending library and asset register (two optional modules, one release) |
+| 0.15.0 | Lending library and asset register (two optional modules, one release) — done |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
 | 0.17.0 | Third hardening round |
@@ -106,9 +106,9 @@ Still to do as screens are touched: inline layout styles moved to shared classes
 
 The original plan: a review of the core — services, the library, members and groups, meetings, records and reports, settings — for clarity, consistency, accessibility and use on phones and tablets, while it is complete and before the optional modules add more screens. The patterns it settles (forms, lists, dialogs, phone layouts, wording in both languages) are what the lending library, asset register and book-keeping are then built with.
 
-## 0.15.0 — Lending library and asset register
+## 0.15.0 — Lending library and asset register (done)
 
-Two separate optional modules, released together because they share item numbers and QR labels.
+Two separate optional modules, released together because they share item numbers and QR labels. Shipped with ISBN lookup, e-mail due-date reminders, photos and receipts, and a maintenance log. Not in this release (ideas for later): holds / reservations, a stocktake mode, lending equipment out, disposal records for assets.
 
 - **Lending library**: a library for the church's books, DVDs and curricula, lent to members. It is called *Lending library*, separate from the existing **Library** of songs, liturgy and Bibles.
   - A catalogue: title, author, ISBN, category, language and shelf.

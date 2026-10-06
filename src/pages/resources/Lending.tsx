@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n.tsx';
 import { Empty, ErrorBox, Field, Loading, Modal, PageHead, SearchBox, Seg, confirmAction, fmtDate, useAction, useDebounced, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
+import { CsvTools } from '../../components/CsvTools.tsx';
 import { langInfo } from '../../../shared/languages.ts';
 import { PersonSearch, type PersonHit } from './common.tsx';
 import './resources.css';
@@ -304,6 +305,7 @@ function CatalogueTab() {
         )}
         <label className="check small"><input type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)} />{t('Available now')}</label>
         <div className="grow" />
+        <CsvTools entity="books" label={t('Lending library')} onImported={() => { reload(); cats.reload(); }} />
         {canEdit && <button className="btn primary" onClick={() => setOpen('new')}><Icon name="plus" />{t('New book')}</button>}
       </div>
       {error && <ErrorBox error={error} />}

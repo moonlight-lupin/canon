@@ -6,9 +6,10 @@ import { groupsCsv } from './groups.ts';
 import { teamMembersCsv, unavailabilityCsv } from './volunteers.ts';
 import { hymnalIndexCsv, songsCsv, textsCsv } from './library.ts';
 import { templatesCsv } from './templates.ts';
+import { booksCsv, equipmentCsv } from './resources.ts';
 
 export const CSV_ENTITIES: Record<string, Entity> = Object.fromEntries(
-  [members, coworkers, groupsCsv, teamMembersCsv, unavailabilityCsv, songsCsv, textsCsv, templatesCsv, hymnalIndexCsv].map((e) => [e.key, e]),
+  [members, coworkers, groupsCsv, teamMembersCsv, unavailabilityCsv, songsCsv, textsCsv, templatesCsv, hymnalIndexCsv, booksCsv, equipmentCsv].map((e) => [e.key, e]),
 );
 
 export { runImport, templateCsv, exportCsv, guide, makeCtx, ImportBlocked, RowError, say } from './engine.ts';
