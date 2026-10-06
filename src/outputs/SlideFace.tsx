@@ -123,7 +123,7 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
     );
   }
 
-  const cls = `sl-face slide t-${s.type}${s.kind ? ` kind-${s.kind}` : ''}${s.type === 'section' ? ' slide-section' : ''}${r.season.color ? ' seasonal' : ''}${s.bg ? ' item-bg' : ''}`;
+  const cls = `sl-face slide t-${s.type}${s.corner ? ' has-corner' : ''}${s.kind ? ` kind-${s.kind}` : ''}${s.type === 'section' ? ' slide-section' : ''}${r.season.color ? ' seasonal' : ''}${s.bg ? ' item-bg' : ''}`;
   // an item's own background picture replaces the template's (faded with the template's background colour)
   const style: Record<string, string> = {};
   if (r.season.color) style['--s-season'] = r.season.color;
@@ -144,6 +144,12 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
       <div className="sl-box" ref={boxRef}>
         <div className="sl-fit" ref={fitRef}>{body}</div>
       </div>
+      {s.corner && (
+        <div className="sl-corner slide-corner">
+          <div className="sl-corner-qr"><img src={blockQrSrc(s.corner.id, s.corner.v, s.corner.value)} alt="" /></div>
+          {hasAny(s.corner.caption) && <div className="sl-corner-cap">{blockLines(s.corner.caption, langs).map((p, i) => <div key={i} className={`lang-${p.lang}`} lang={LANG_ATTR[p.lang]}>{p.text}</div>)}</div>}
+        </div>
+      )}
       <div className="sl-foot slide-footer">
         <span className="slide-church"><Bi v={r.church.name} langs={langs.slice(0, 1)} /></span>
         <span className="slide-ref">{s.footer && biParts(s.footer, langs).map((p) => <span key={p.lang} className={`lang-${p.lang}`} lang={LANG_ATTR[p.lang]}>{p.text}</span>)}</span>

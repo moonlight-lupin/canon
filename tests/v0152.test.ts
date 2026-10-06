@@ -110,12 +110,14 @@ test('bulletin link for attendees: public, no serving team or notes; QR code on 
 
   const rr = renderService(s.id);
   assert.ok(rr.bulletin.blocks?.some((b) => b.id === -2 && b.data.value?.endsWith(`/b/${token}`)), 'on the back page');
-  // its own slide straight after the title slide (slide 2), not at the Announcements
+  // on the title slide, not at the Announcements
   assert.ok(!rr.items.some((it) => it.slide_blocks.some((b) => b.id === -2)));
   assert.equal(rr.opening_blocks?.[0]?.id, -2);
   const { buildSlides } = await import('../shared/slide-model.ts');
   const deck = buildSlides(rr, rr.languages);
-  assert.deepEqual([deck[0].type, deck[1].key, deck[1].blocks?.[0]?.value], ['title', 'opening', rr.opening_blocks![0].value]);
+  // 0.15.6: in a corner of the title slide (on screen while people arrive), not a slide of its own
+  assert.deepEqual([deck[0].type, deck[0].corner?.value], ['title', rr.opening_blocks![0].value]);
+  assert.ok(!deck.some((s) => s.key === 'opening'));
   // the FreeShow project gets it as a show of its own, first
   const { freeshowProject } = await import('../server/export/freeshow.ts');
   const fs1 = await freeshowProject(rr);

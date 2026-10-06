@@ -4,8 +4,9 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.15.6 — Paper-sized pages fit a phone
+## 0.15.6 — Paper-sized pages fit a phone; the bulletin QR code on the title slide
 
+- **Share → Bulletin for the congregation**: its QR code is now in a corner of the **title slide**, the slide on screen while people arrive, instead of a slide of its own after it. This applies in Canon's slides and the PowerPoint file. The FreeShow project, which has no title slide, keeps it as its first show.
 - On a phone or a narrow window, these pages now shrink to fit the screen's width instead of running off its edge: the bulletin preview, the run sheet, sheet music, printable visitor cards, the cash declaration, a month's offerings summary and QR labels. Printing is unchanged: always the real paper size.
 - Database: no change.
 

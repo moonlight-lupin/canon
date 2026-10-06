@@ -151,7 +151,7 @@ function AttendeeBox({ serviceId, info, setInfo }: { serviceId: number; info: At
             <img className="share-qr" src={qrPreviewUrl(info.url)} alt={t('QR code of the bulletin link')} />
             <fieldset disabled={busy} className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
               <label className="check"><input type="checkbox" checked={!!info.bulletin} onChange={(e) => save({ enabled: true, bulletin: e.target.checked })} />{t('Print the QR code on the bulletin’s back page')}</label>
-              <label className="check"><input type="checkbox" checked={!!info.slides} onChange={(e) => save({ enabled: true, slides: e.target.checked })} />{t('Show the QR code on a slide at the start, after the title slide')}</label>
+              <label className="check"><input type="checkbox" checked={!!info.slides} onChange={(e) => save({ enabled: true, slides: e.target.checked })} />{t('Show the QR code on the title slide (in a corner, while people arrive)')}</label>
               <a className="btn sm ghost" href={qrPreviewUrl(info.url, 'png', true)} download><Icon name="download" />{t('Download QR code')}</a>
             </fieldset>
           </div>

@@ -220,6 +220,7 @@ export const SLIDE_CLASS_HOOKS: { cls: string; what: L10n }[] = [
   { cls: '.slide-blocks', what: { en: 'the row of QR codes, pictures and notes shown after an item (e.g. the offering)', zh: '项目之后显示的二维码、图片和短讯（如奉献）' } },
   { cls: '.slide-block', what: { en: 'one QR code, picture or note with its caption', zh: '单个二维码、图片或短讯及其说明' } },
   { cls: '.slide-qr', what: { en: 'the white card behind a QR code or picture (keep it light so phones can scan it)', zh: '二维码或图片的白色底卡（请保持浅色，以便手机扫描）' } },
+  { cls: '.slide-corner', what: { en: 'the bulletin link’s QR code in a corner of the title slide', zh: '标题投影角落的次序单链接二维码' } },
   { cls: '.slide-block-caption', what: { en: 'the caption under a QR code or picture', zh: '二维码或图片下方的说明' } },
   { cls: '.slide-block-text', what: { en: 'a short note shown with the QR codes', zh: '与二维码一同显示的短讯' } },
   { cls: '.lang-en, .lang-zh, .lang-zh-Hant …', what: { en: 'text in one language', zh: '某一种语言的文字' } },

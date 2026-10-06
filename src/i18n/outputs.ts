@@ -82,7 +82,7 @@ const zh: Record<string, string> = {
   'QR code / note slide': '二维码／短句投影',
   'QR code / note': '二维码／短句',
   Slide: '投影片',
-  'Slide 2: the QR code of the bulletin link, to show as people arrive.': '第 2 张：次序单链接的二维码，在会众进场时显示。',
+  'The title slide (1) carries the bulletin link’s QR code: show it as people arrive.': '标题投影（第 1 张）角落有次序单链接的二维码：会众进场时显示。',
   'Slide numbers count the title slide as 1 and follow the service as it is now: print again after changes.': '投影片编号以标题投影为第 1 张，按聚会目前的内容计算：内容更改后请重新打印。',
 };
 export default zh;
