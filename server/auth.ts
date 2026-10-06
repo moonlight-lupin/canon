@@ -8,7 +8,8 @@ import { leaderMayWrite } from './lib/leaders.ts';
 import { gateRequest, isAdmin, meetingPath } from './lib/permissions.ts';
 import { outsideWall } from './lib/walls.ts';
 import { moduleOff } from '../shared/modules.ts';
-import { getSettings } from './repo/settings.ts';
+import { GUEST_ROLE } from '../shared/permissions.ts';
+import { getMeta, getSettings } from './repo/settings.ts';
 import { hashCode, verifyTotp } from './lib/totp.ts';
 
 export interface User {
@@ -58,7 +59,11 @@ export function createUser(u: { username: string; display_name: string; password
 
 export const getUser = (id: number) =>
   get<User>('SELECT id, username, display_name, role, lang, person_id, congregation_id, totp_enabled = 1 AS totp_enabled FROM users WHERE id = ?', id);
-export const listUsers = () => all<User & { created_at: string; person_name: string | null }>(
+export const listUsers = () => {
+  const first = firstAdminId();
+  return listUserRows().map((u) => ({ ...u, first_admin: u.id === first, needs_member: !!memberLinkProblem(u.id, u.role, u.person_id) }));
+};
+const listUserRows = () => all<User & { created_at: string; person_name: string | null }>(
   `SELECT u.id, u.username, u.display_name, u.role, u.lang, u.created_at, u.person_id, u.congregation_id, u.totp_enabled = 1 AS totp_enabled,
           u.locked_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS locked,
           CASE WHEN p.id IS NOT NULL THEN TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) END AS person_name
@@ -193,6 +198,11 @@ export function requireUser(req: Request, res: Response, next: NextFunction) {
   if (moduleOff(req.method, req.path, getSettings().modules) || (getSettings().modules.meetings === false && meetingPath(req.path))) {
     return res.status(404).json({ error: 'This part of Canon is turned off (Settings → Modules).' });
   }
+  // the church requires two-step sign-in (for everyone, or for administrators): set it up before anything else
+  if (!u.totp_enabled && twoStepRequired(u) && !TWO_STEP_SETUP(req.method, req.path)) {
+    const who = getSettings().security.require_all_2fa ? 'every account' : 'administrators';
+    return res.status(403).json({ error: `Set up two-step sign-in first (Settings → My profile): this church requires it for ${who}.`, code: 'two_step_required' });
+  }
   const why = gateRequest(u, req.method, req.path);
   if (why && !(!SAFE.has(req.method) && leaderMayWrite(u.person_id, req))) return res.status(403).json({ error: why });
   // an account limited to one congregation can't reach another congregation's items (lib/walls.ts)
@@ -207,10 +217,48 @@ export const wallOf = (u: { role: string; congregation_id?: number | null } | nu
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!isAdmin(req.user)) return res.status(403).json({ error: 'Administrators only' });
   // the church can require two-step sign-in for administrators (Settings → Security & privacy)
-  if (getSettings().security.require_admin_2fa && !req.user?.totp_enabled) {
+  if (twoStepRequired(req.user) && !req.user?.totp_enabled) {
     return res.status(403).json({ error: 'Set up two-step sign-in first (Settings → My profile): this church requires it for administrators.' });
   }
   next();
+}
+
+/** Must this account use two-step sign-in? The church requires it for administrators, or for every account. */
+export function twoStepRequired(u: { role: string } | null | undefined): boolean {
+  const s = getSettings().security;
+  return !!u && (!!s.require_all_2fa || (!!s.require_admin_2fa && isAdmin(u)));
+}
+
+/** While an account that must use two-step sign-in hasn't set it up, it can only do that (and read the settings). */
+const TWO_STEP_SETUP = (method: string, path: string) =>
+  (method === 'POST' && (path === '/me/two-step/setup' || path === '/me/two-step/enable')) || (method === 'GET' && path === '/settings') || (method === 'PATCH' && path === '/me');
+
+/**
+ * Every account belongs to a church member (Settings → Users & access → Member), except an external guest's
+ * (read-only, e.g. an auditor) and — with a reminder until they do — the first administrator's.
+ */
+export function memberLinkProblem(uid: number | null, role: string, personId: number | null | undefined): string | null {
+  if (personId || role === GUEST_ROLE || (uid !== null && uid === firstAdminId())) return null;
+  return 'Link the account to a church member (choose them under Member). Only an external guest account is without one.';
+}
+
+/** The member an account is linked to: someone on the register, not erased, not already another account's. */
+export function personLinkProblem(personId: number, uid: number | null): string | null {
+  const p = get<{ erased_at: string | null }>('SELECT erased_at FROM people WHERE id = ?', personId);
+  if (!p) return 'That member does not exist.';
+  if (p.erased_at) return 'That member’s personal data was erased.';
+  const other = get<{ display_name: string }>('SELECT display_name FROM users WHERE person_id = ? AND id IS NOT ?', personId, uid);
+  return other ? `That member already has an account (${other.display_name}).` : null;
+}
+
+/**
+ * The first administrator (who set Canon up): the one account that may stay unlinked to a member (with a reminder).
+ * Recorded at setup; for a Canon set up before 0.15, the oldest administrator account.
+ */
+export function firstAdminId(): number | null {
+  const m = Number(getMeta('first_admin_id'));
+  if (m && get('SELECT 1 FROM users WHERE id = ?', m)) return m;
+  return get<{ id: number }>("SELECT MIN(id) AS id FROM users WHERE role = 'admin'")?.id ?? null;
 }
 
 // ---- crude login throttling (per IP, in memory) ---------------------------------------

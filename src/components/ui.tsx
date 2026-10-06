@@ -24,6 +24,8 @@ export interface SessionUser {
   role_def?: RoleDef;
   /** two-step sign-in is on */
   totp_enabled?: boolean | number;
+  /** the administrator who set Canon up (the one account that may stay unlinked to a member, with a reminder) */
+  first_admin?: boolean;
 }
 interface Session {
   user: SessionUser;

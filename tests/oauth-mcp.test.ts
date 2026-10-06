@@ -665,7 +665,7 @@ test('change log: who changed what, how (web, AI agent), without passwords; filt
   assert.ok(viaMcp.json.rows[0].client);
 
   // a password change is recorded without the password
-  const u = await web('POST', '/users', { username: 'logq', display_name: 'Log Q', password: 'long-enough-1', role: 'viewer' });
+  const u = await web('POST', '/users', { username: 'logq', display_name: 'Log Q', password: 'long-enough-1', role: 'viewer', person_id: p.json.id });
   await web('PATCH', `/users/${u.json.id}`, { password: 'long-enough-2' });
   const users = await web('GET', '/change-log?entity=users');
   assert.ok(!JSON.stringify(users.json.rows).includes('long-enough'), 'no password in the log');

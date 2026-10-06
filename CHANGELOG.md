@@ -4,6 +4,18 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.14.5 — accounts and the Settings page
+
+- **Settings lists its sections down the left**, in four groups: **My account**, **Church** (church, languages, modules, offerings), **People and access** (users & access, member fields, visitor form) and **Canon** (security & privacy, backups, e-mail, AI / MCP, change log). On a phone it is a list at the top. The address follows the section (e.g. `/settings?tab=backups`), so a link opens it.
+- **Every account belongs to a church member.** **Add user** asks for the **Member**, and an account can't be unlinked or given to a second account's member. The exceptions:
+  - an **External guest (read-only)** account, a new built-in role for someone outside the church such as an auditor. It reads services, the library, service records and offerings, changes nothing and never sees members' contact details or notes. The church can let it read more, never change anything.
+  - the administrator who set Canon up. Until they link their own account, a reminder sits above every page.
+
+  Existing accounts without a member keep working; **Users & access** and the security checklist (**Accounts and members**) say which need one.
+- **Two-step sign-in for everyone:** Security & privacy can now require it for every account, not only administrators. An account without it sees only the setup screen when it signs in (with its recovery codes before Canon opens), and can't turn it off while it is required.
+- When two-step sign-in is required for administrators, an administrator without it now also sees the setup screen, instead of finding administrator pages refused.
+- Database: adds the External guest role (version 25).
+
 ## 0.14.4 — Canon on a Mac; slides for Keynote
 
 - **A Mac can run Canon:** double-click **start-canon.command**, the Mac twin of start-canon.bat.

@@ -750,4 +750,13 @@ export const MIGRATIONS: (string | Migration)[] = [
       }
     },
   },
+  // 25 (0.15): the external guest role (read-only; an auditor, say) — the only accounts not linked to a member.
+  {
+    sql: `SELECT 1;`,
+    run: (d) => {
+      const r = BUILTIN_ROLES.find((x) => x.key === 'guest')!;
+      d.prepare(`INSERT OR IGNORE INTO access_roles (key, name, description, builtin, admin, access, member_details, sensitive_fields, reopen_counts, sort)
+        VALUES (?, ?, ?, 1, 0, ?, 0, 0, 0, ?)`).run(r.key, JSON.stringify(r.name), JSON.stringify(r.description), JSON.stringify(r.access), r.sort);
+    },
+  },
 ];

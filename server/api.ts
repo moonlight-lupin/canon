@@ -24,6 +24,7 @@ import { adminRoutes } from './routes/admin.ts';
 import {
   authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginThrottle,
   requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES,
+  firstAdminId, memberLinkProblem, personLinkProblem, twoStepRequired,
 } from './auth.ts';
 import { all, get, run } from './db.ts';
 import { config } from './config.ts';
@@ -42,7 +43,7 @@ import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
 import { renderService } from './repo/render.ts';
 import { songUsage } from './repo/history.ts';
-import { getSettings, updateSettings, type Settings } from './repo/settings.ts';
+import { getSettings, setMeta, updateSettings, type Settings } from './repo/settings.ts';
 import { fileForToken } from './repo/downloads.ts';
 import { isAdmin, listRoles, roleDef } from './lib/permissions.ts';
 import { hashCode, newRecoveryCodes, newSecret, otpauthUri, verifyTotp } from './lib/totp.ts';
@@ -58,7 +59,8 @@ api.get('/me', (req, res) => {
   const u = sessionUser(req);
   // leads: the groups this account's member leads (the screens offer recording their meetings)
   // role_def: what the account's role allows (the screens use it to show what may be changed)
-  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id), role_def: roleDef(u.role) } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
+  // first_admin: the administrator who set Canon up (reminded to link their account to their member record)
+  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id), role_def: roleDef(u.role), first_admin: u.id === firstAdminId() } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
 });
 
 api.post('/setup', h((req, res) => {
@@ -70,6 +72,7 @@ api.post('/setup', h((req, res) => {
     ui_lang: S.LangSchema.optional(),
   }).parse(req.body);
   const user = createUser({ ...b, role: 'admin' });
+  setMeta('first_admin_id', String(user.id));
   if (b.ui_lang) run('UPDATE users SET lang = ? WHERE id = ?', b.ui_lang, user.id);
   // onboarded: false says so explicitly; otherwise a church name alone looks like a v0.1 church set up before onboarding
   const patch: Partial<Settings> = { onboarded: false };
@@ -190,7 +193,7 @@ api.post('/me/two-step/disable', h((req) => {
   const b = z.object({ password: z.string() }).parse(req.body);
   const row = get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', req.user!.id)!;
   if (!verifyPassword(b.password, row.password_hash)) throw Object.assign(new Error('Password is wrong'), { status: 400 });
-  if (getSettings().security.require_admin_2fa && isAdmin(req.user)) throw Object.assign(new Error('This church requires two-step sign-in for administrators.'), { status: 400 });
+  if (twoStepRequired(req.user)) throw Object.assign(new Error(getSettings().security.require_all_2fa ? 'This church requires two-step sign-in for every account.' : 'This church requires two-step sign-in for administrators.'), { status: 400 });
   run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]' WHERE id = ?", req.user!.id);
   logChange({ entity: 'users', entity_id: req.user!.id, action: 'update', summary: 'Two-step sign-in turned off' });
   return { ok: true };
@@ -200,10 +203,20 @@ api.post('/me/two-step/disable', h((req) => {
 
 api.get('/users', requireAdmin, h(() => listUsers()));
 api.post('/users', requireAdmin, h((req) => {
-  const b = z.object({ username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8), role: z.string().min(1).max(40) }).parse(req.body);
+  const b = z.object({
+    username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8), role: z.string().min(1).max(40),
+    /** the church member the account belongs to (required, except for an external guest) */
+    person_id: z.number().int().nullable().optional(),
+  }).parse(req.body);
   if (!listRoles().some((r) => r.key === b.role)) throw Object.assign(new Error('That role does not exist.'), { status: 400 });
-  const u = createUser(b);
-  logChange({ entity: 'users', entity_id: u.id, action: 'create', after: { username: u.username, display_name: u.display_name, role: u.role } });
+  const personId = b.person_id ?? null;
+  const problem = (personId && personLinkProblem(personId, null)) || memberLinkProblem(null, b.role, personId);
+  if (problem) throw Object.assign(new Error(problem), { status: 400 });
+  const { person_id: _p, ...fields } = b;
+  const created = createUser(fields);
+  if (personId) run('UPDATE users SET person_id = ? WHERE id = ?', personId, created.id);
+  const u = getUser(created.id)!;
+  logChange({ entity: 'users', entity_id: u.id, action: 'create', after: { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null } });
   return u;
 }));
 api.patch('/users/:id', requireAdmin, h((req) => {
@@ -219,6 +232,14 @@ api.patch('/users/:id', requireAdmin, h((req) => {
   if (b.role && !roleDef(b.role).admin && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
   if (b.role && !listRoles().some((r) => r.key === b.role)) throw Object.assign(new Error('That role does not exist.'), { status: 400 });
   const before = getUser(uid);
+  if (!before) throw Object.assign(new Error('That account does not exist.'), { status: 404 });
+  // a change of role or member keeps the account a church member's (or an external guest's)
+  if (b.role !== undefined || b.person_id !== undefined) {
+    const role = b.role ?? before.role;
+    const personId = b.person_id !== undefined ? b.person_id : before.person_id ?? null;
+    const problem = (b.person_id && personLinkProblem(b.person_id, uid)) || memberLinkProblem(uid, role, personId);
+    if (problem) throw Object.assign(new Error(problem), { status: 400 });
+  }
   if (b.role) run('UPDATE users SET role = ? WHERE id = ?', b.role, uid);
   if (b.password) {
     // a new password also unlocks the account
@@ -227,10 +248,7 @@ api.patch('/users/:id', requireAdmin, h((req) => {
   }
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
   if (b.congregation_id !== undefined) run('UPDATE users SET congregation_id = ? WHERE id = ?', b.congregation_id, uid);
-  if (b.person_id !== undefined) {
-    if (b.person_id !== null && !get('SELECT 1 FROM people WHERE id = ?', b.person_id)) throw Object.assign(new Error('That member does not exist.'), { status: 400 });
-    run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);
-  }
+  if (b.person_id !== undefined) run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);
   const after = getUser(uid);
   const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null, congregation_id: u.congregation_id ?? null } : null);
   logChange({ entity: 'users', entity_id: uid, action: 'update', before: pick(before), after: pick(after), summary: b.password ? 'Password changed' : undefined });

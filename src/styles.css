@@ -523,3 +523,23 @@ table.t tr.click:hover td { background: var(--sunk); }
 
 /* dashboard: the Bible versions the church has, one line per language */
 .dash-bible { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; margin-top: 4px; }
+
+/* Settings: sections listed down the side in groups; a dropdown on a narrow screen */
+.settings-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 28px; align-items: start; }
+.settings-nav { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
+.settings-nav-group { display: flex; flex-direction: column; gap: 1px; }
+.settings-nav-group .eyebrow { margin: 0 0 4px 10px; }
+.settings-nav button { text-align: left; border: 0; background: none; padding: 6px 10px; border-radius: 6px; font: 500 14px var(--sans); color: var(--ink-2); cursor: pointer; }
+.settings-nav button:hover:not(.on) { background: var(--sunk); color: var(--ink); }
+.settings-nav button.on { background: var(--reed-wash); color: var(--reed-ink); font-weight: 600; }
+.settings-nav-select { display: none; }
+.settings-body { min-width: 0; }
+@media (max-width: 860px) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .settings-nav { display: none; }
+  .settings-nav-select { display: block; width: 100%; }
+}
+
+/* the reminder above every page (components/Layout.tsx): buttons go under the words on a narrow screen */
+.member-link-reminder { flex-wrap: wrap; margin: 0 0 12px; }
+.member-link-reminder > .grow { min-width: min(100%, 320px); }

@@ -26,19 +26,24 @@ type Tab = 'profile' | 'church' | 'languages' | 'modules' | 'users' | 'member-fi
 export default function Settings() {
   const { t } = useI18n();
   const { isAdmin, settings, reloadSettings } = useSession();
-  // ?tab=email etc. opens a specific tab (used by links from other screens)
-  const [tab, setTab] = useState<Tab>(() => {
-    const q = new URLSearchParams(location.search).get('tab');
-    return q && ['profile', 'church', 'languages', 'modules', 'users', 'member-fields', 'offerings', 'visitor-form', 'email', 'backups', 'security', 'changelog', 'mcp'].includes(q) ? (q as Tab) : 'profile';
-  });
-  // the tabs in groups (a thin line between groups): my own account; the church; people and access; records; Canon itself
+  // the sections in groups, listed down the side (a dropdown on a phone): my account; the church; people; Canon itself
   const groups: [Tab, string][][] = [
     [['profile', 'My profile']],
-    [['church', 'Church'], ['languages', 'Languages'], ['modules', 'Modules']],
-    [['users', 'Users & access'], ['member-fields', 'Member fields']],
-    [['offerings', 'Offerings'], ['visitor-form', 'Visitor form']],
-    [['email', 'E-mail'], ['backups', 'Backups'], ['security', 'Security & privacy'], ['changelog', 'Change log'], ['mcp', 'AI / MCP']],
+    [['church', 'Church'], ['languages', 'Languages'], ['modules', 'Modules'], ['offerings', 'Offerings']],
+    [['users', 'Users & access'], ['member-fields', 'Member fields'], ['visitor-form', 'Visitor form']],
+    [['security', 'Security & privacy'], ['backups', 'Backups'], ['email', 'E-mail'], ['mcp', 'AI / MCP'], ['changelog', 'Change log']],
   ];
+  const groupTitles = ['My account', 'Church', 'People and access', 'Canon'];
+  const all = groups.flat().map(([k]) => k);
+  // ?tab=email etc. opens a section (links from other screens); the address follows the section chosen
+  const [tab, setTabState] = useState<Tab>(() => {
+    const q = new URLSearchParams(location.search).get('tab') as Tab | null;
+    return q && all.includes(q) ? q : 'profile';
+  });
+  const setTab = (k: Tab) => {
+    setTabState(k);
+    history.replaceState(history.state, '', k === 'profile' ? location.pathname : `${location.pathname}?tab=${k}`);
+  };
   const shown = (k: Tab) => k !== 'visitor-form' || settings?.modules?.visitor_form !== false;
   return (
     <div className="page people-page">
@@ -46,15 +51,25 @@ export default function Settings() {
       <div className="stack">
         {!isAdmin && <ProfileCard />}
         {isAdmin && (
-          <div>
-            <div className="tabs" role="tablist">
-              {groups.map((g, gi) => [
-                gi > 0 && <span key={`sep-${gi}`} className="tab-sep" aria-hidden="true" />,
-                ...g.filter(([k]) => shown(k)).map(([k, l]) => (
-                  <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>
-                )),
-              ])}
-            </div>
+          <div className="settings-layout">
+            <nav className="settings-nav" aria-label={t('Settings')}>
+              {groups.map((g, gi) => (
+                <div key={gi} className="settings-nav-group">
+                  <div className="eyebrow">{t(groupTitles[gi])}</div>
+                  {g.filter(([k]) => shown(k)).map(([k, l]) => (
+                    <button key={k} type="button" aria-current={tab === k ? 'page' : undefined} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>
+                  ))}
+                </div>
+              ))}
+            </nav>
+            <select className="settings-nav-select" aria-label={t('Settings')} value={tab} onChange={(e) => setTab(e.target.value as Tab)}>
+              {groups.map((g, gi) => (
+                <optgroup key={gi} label={t(groupTitles[gi])}>
+                  {g.filter(([k]) => shown(k)).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <div className="settings-body">
             {tab === 'profile' && <ProfileCard />}
             {tab === 'church' && <ChurchTab />}
             {tab === 'changelog' && <ChangeLogTab />}
@@ -68,6 +83,7 @@ export default function Settings() {
             {tab === 'backups' && <BackupsTab />}
             {tab === 'security' && <SecurityTab />}
             {tab === 'mcp' && <McpTab />}
+            </div>
           </div>
         )}
       </div>
@@ -78,7 +94,7 @@ export default function Settings() {
 // ---------------------------------------------------------------- my profile
 
 /** Two-step sign-in for my account: an authenticator app's code after the password, and recovery codes. */
-function TwoStepCard() {
+export function TwoStepCard({ forced }: { forced?: boolean }) {
   const { t } = useI18n();
   const { user, refresh } = useSession();
   const { run, busy } = useAction();
@@ -92,7 +108,8 @@ function TwoStepCard() {
     setCodes(r.recovery_codes);
     setSetup(null);
     setCode('');
-    await refresh();
+    // on the "set it up first" screen, Canon opens once the codes are saved (refreshing now would hide them)
+    if (!forced) await refresh();
   }, t('Two-step sign-in is on.'));
   const disable = () => run(async () => {
     await api.post('/me/two-step/disable', { password: pw });
@@ -106,9 +123,10 @@ function TwoStepCard() {
         <div className="callout">
           <strong>{t('Your recovery codes')}</strong> — {t('keep them somewhere safe: each signs you in once if you lose your phone. They are shown only now.')}
           <pre className="small" style={{ margin: '6px 0 0' }}>{codes.join('\n')}</pre>
+          {forced && <div className="row end" style={{ marginTop: 8 }}><button className="btn primary sm" onClick={() => void refresh()}>{t('I’ve saved them: open Canon')}</button></div>}
         </div>
       )}
-      {user.totp_enabled ? (
+      {codes && forced ? null : user.totp_enabled ? (
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="badge ok">{t('On')}</span>
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t('Your password')} autoComplete="current-password" style={{ maxWidth: 200 }} />

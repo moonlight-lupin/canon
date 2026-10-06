@@ -69,7 +69,14 @@ export const BUILTIN_ROLES: Omit<RoleDef, 'builtin'>[] = [
     key: 'viewer', name: { en: 'Read-only', zh: '只读' }, description: { en: 'Can view and print; no money, no members’ contact details or notes. Linked to a member who leads a group or a meeting, can record those meetings.', zh: '可查看和打印；不看奉献、会友联络资料或备注。若连结到带领某个群组或聚会活动的会友，可记录那些聚会活动。' },
     admin: false, access: with_('read', { contributions: 'none' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 90,
   },
+  {
+    key: 'guest', name: { en: 'External guest (read-only)', zh: '外部访客（只读）' }, description: { en: 'For someone outside the church, such as an auditor: reads what this role allows, never members’ contact details or notes, and changes nothing. The only account that isn’t linked to a member.', zh: '供教会以外的人使用，例如审计员：只能查看此角色允许的内容，绝不看会友联络资料或备注，也不能更改任何内容。唯一不必连结到会友的帐户。' },
+    admin: false, access: with_('none', { services: 'read', library: 'read', records: 'read', contributions: 'read' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 95,
+  },
 ];
+
+/** The external guest role: read-only, and the only role whose accounts are not linked to a member. */
+export const GUEST_ROLE = 'guest';
 
 export const rank = (a: Access) => (a === 'edit' ? 2 : a === 'read' ? 1 : 0);
 /** Does this role give at least this access to this module? */

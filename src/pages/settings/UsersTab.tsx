@@ -13,7 +13,10 @@ import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import '../people.css';
 
-export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null; totp_enabled?: number | boolean; locked?: number | boolean };
+export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null; totp_enabled?: number | boolean; locked?: number | boolean; first_admin?: boolean; needs_member?: boolean };
+
+/** The external guest role (an auditor, say): read-only, and the only accounts not linked to a member. */
+export const GUEST_ROLE = 'guest';
 
 export function UsersTab() {
   const { t, lang, lt } = useI18n();
@@ -81,8 +84,12 @@ export function UsersTab() {
                     </td>
                   )}
                   <td style={{ minWidth: 200 }}>
-                    <Combo value={u.person_id ? String(u.person_id) : ''} options={personOptions} noneLabel="—" ariaLabel={t('Member')} disabled={busy}
-                      onChange={(v) => setPerson(u, v ? Number(v) : null)} />
+                    {u.role === GUEST_ROLE && !u.person_id
+                      ? <span className="small muted">{t('External guest: no member')}</span>
+                      : <Combo value={u.person_id ? String(u.person_id) : ''} options={personOptions} noneLabel="—" ariaLabel={t('Member')} disabled={busy}
+                        onChange={(v) => setPerson(u, v ? Number(v) : null)} />}
+                    {u.needs_member && <div className="small" style={{ color: 'var(--warn)', marginTop: 3 }}>{t('Link to a member, or make it an external guest account')}</div>}
+                    {u.first_admin && !u.person_id && <div className="small muted" style={{ marginTop: 3 }}>{t('Set Canon up: link to your own member record')}</div>}
                   </td>
                   <td className="nowrap muted small">{fmtStamp(u.created_at, lang)}</td>
                   <td className="right nowrap">
@@ -97,20 +104,22 @@ export function UsersTab() {
         </div>
       )}
       <RolesCard data={roles.data} reload={() => { roles.reload(); reload(); }} />
-      {adding && <AddUserModal roles={roles.data?.roles ?? []} onClose={() => setAdding(false)} onSaved={() => { reload(); roles.reload(); }} />}
+      {adding && <AddUserModal roles={roles.data?.roles ?? []} people={personOptions} onClose={() => setAdding(false)} onSaved={() => { reload(); roles.reload(); }} />}
       {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />}
     </div>
   );
 }
 
-export function AddUserModal({ roles, onClose, onSaved }: { roles: RoleDef[]; onClose: () => void; onSaved: () => void }) {
+export function AddUserModal({ roles, people, onClose, onSaved }: { roles: RoleDef[]; people: ComboOption[]; onClose: () => void; onSaved: () => void }) {
   const { t, lt } = useI18n();
   const { run, busy } = useAction();
-  const [d, setD] = useState({ username: '', display_name: '', password: '', role: 'editor' as Role });
+  const [d, setD] = useState({ username: '', display_name: '', password: '', role: 'editor' as Role, person_id: null as number | null });
+  const guest = d.role === GUEST_ROLE;
   const save = async () => {
     const ok = await run(async () => {
+      if (!guest && !d.person_id) throw new Error(t('Choose the member this account belongs to (only an external guest account is without one).'));
       if (d.password.length < 8) throw new Error(t('The password needs at least 8 characters.'));
-      return api.post('/users', { ...d, username: d.username.trim(), display_name: d.display_name.trim() });
+      return api.post('/users', { ...d, person_id: guest ? null : d.person_id, username: d.username.trim(), display_name: d.display_name.trim() });
     }, t('Saved.'));
     if (ok) {
       onSaved();
@@ -121,15 +130,26 @@ export function AddUserModal({ roles, onClose, onSaved }: { roles: RoleDef[]; on
     <Modal title={t('Add user')} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></>}>
       <div className="form-grid">
-        <Field label={t('Display name')}><input autoFocus value={d.display_name} onChange={(e) => setD({ ...d, display_name: e.target.value })} /></Field>
-        <Field label={t('Username')}><input autoComplete="off" value={d.username} onChange={(e) => setD({ ...d, username: e.target.value })} /></Field>
-        <Field label={t('Password')} hint={t('At least 8 characters. Ask them to change it after signing in.')}>
-          <input type="password" autoComplete="new-password" value={d.password} onChange={(e) => setD({ ...d, password: e.target.value })} />
-        </Field>
         <Field label={t('Role')} hint={lt(roles.find((r) => r.key === d.role)?.description ?? {})}>
           <select value={d.role} onChange={(e) => setD({ ...d, role: e.target.value as Role })}>
             {roles.map((r) => <option key={r.key} value={r.key}>{lt(r.name)}</option>)}
           </select>
+        </Field>
+        {guest
+          ? <Field label={t('Member')} hint={t('An external guest (an auditor, say) is not a church member.')}><div className="small muted" style={{ paddingTop: 8 }}>{t('External guest: no member')}</div></Field>
+          : (
+            <Field label={t('Member')} hint={t('The church member this account belongs to. Add them in Members first if they are not there yet.')}>
+              <Combo value={d.person_id ? String(d.person_id) : ''} options={people} noneLabel="—" ariaLabel={t('Member')}
+                onChange={(v) => {
+                  const p = people.find((o) => o.value === v);
+                  setD({ ...d, person_id: v ? Number(v) : null, display_name: d.display_name || (p?.label ?? '') });
+                }} />
+            </Field>
+          )}
+        <Field label={t('Display name')}><input autoFocus value={d.display_name} onChange={(e) => setD({ ...d, display_name: e.target.value })} /></Field>
+        <Field label={t('Username')}><input autoComplete="off" value={d.username} onChange={(e) => setD({ ...d, username: e.target.value })} /></Field>
+        <Field label={t('Password')} hint={t('At least 8 characters. Ask them to change it after signing in.')}>
+          <input type="password" autoComplete="new-password" value={d.password} onChange={(e) => setD({ ...d, password: e.target.value })} />
         </Field>
       </div>
     </Modal>

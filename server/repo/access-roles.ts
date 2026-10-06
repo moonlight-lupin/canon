@@ -1,6 +1,7 @@
 // Roles for accounts (Settings → Users & access → Roles), administrators only. Canon's ready-made roles can be
 // changed (not deleted); the Administrator role always keeps everything. A church can add its own roles. Not to be
 // confused with rota roles (Volunteers), which are positions people serve in.
+import { GUEST_ROLE } from '../../shared/permissions.ts';
 import { PERM_MODULES, type Access, type PermModule, type RoleDef } from '../../shared/permissions.ts';
 import type { L10n } from '../../shared/types.ts';
 import { get, run, tx } from '../db.ts';
@@ -54,6 +55,10 @@ export function updateRole(key: string, input: Partial<RoleInput>): RoleDef {
   if (input.name && !hasText(input.name)) throw new BadRequest('Give the role a name.');
   const access = input.access ? fullAccess({ ...cur.access, ...input.access }) : cur.access;
   checkAccess(access);
+  // the external guest role is for people outside the church: it reads, never changes, never sees members' details
+  if (key === GUEST_ROLE && (Object.values(access).includes('edit') || input.member_details || input.sensitive_fields || input.reopen_counts)) {
+    throw new BadRequest('The external guest role is read-only: it can read some parts of Canon, but not change anything or see members’ details.');
+  }
   run(
     'UPDATE access_roles SET name = ?, description = ?, access = ?, member_details = ?, sensitive_fields = ?, reopen_counts = ? WHERE key = ?',
     JSON.stringify(input.name ?? cur.name), JSON.stringify(input.description ?? cur.description), JSON.stringify(access),

@@ -62,7 +62,7 @@ export interface Settings {
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
   member_fields: MemberField[];
   /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
-  security: { disk_encryption: boolean; /** administrators must use two-step sign-in */ require_admin_2fa?: boolean };
+  security: { disk_encryption: boolean; /** administrators must use two-step sign-in */ require_admin_2fa?: boolean; /** every account must */ require_all_2fa?: boolean };
   /** how many months the change log and the AI activity log keep (0 = everything) */
   /** months to keep logs (0 = all); visitors' contact details erased after visitor_contact_months; records archived after archive_years */
   retention: {
@@ -101,7 +101,7 @@ export const DEFAULT_SETTINGS: Settings = {
   visitor_form: DEFAULT_VISITOR_FORM,
   modules: DEFAULT_MODULES,
   member_fields: [],
-  security: { disk_encryption: false, require_admin_2fa: false },
+  security: { disk_encryption: false, require_admin_2fa: false, require_all_2fa: false },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {

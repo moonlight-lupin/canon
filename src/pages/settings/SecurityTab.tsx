@@ -20,12 +20,13 @@ const MARK: Record<CheckStatus, string> = { ok: '✓', warn: '!', todo: '…', i
 
 export function SecurityTab() {
   const { t } = useI18n();
-  const { data, error, setData } = useApi<{ checklist: CheckItem[]; security: { disk_encryption: boolean; require_admin_2fa?: boolean } }>('/security');
+  const { data, error, setData } = useApi<{ checklist: CheckItem[]; security: { disk_encryption: boolean; require_admin_2fa?: boolean; require_all_2fa?: boolean } }>('/security');
   const { run, busy } = useAction();
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Loading />;
-  const setTwoStep = (v: boolean) => run(async () => {
-    await api.put('/security', { require_admin_2fa: v });
+  // two-step sign-in: not required, required for administrators, or for every account
+  const setTwoStep = (admins: boolean, everyone: boolean) => run(async () => {
+    await api.put('/security', { require_admin_2fa: admins, require_all_2fa: everyone });
     setData(await api.get('/security'));
   }, t('Saved.'));
   const setDisk = (v: boolean) => run(async () => {
@@ -47,9 +48,14 @@ export function SecurityTab() {
                   {c.key === 'disk' && (c.status === 'ok'
                     ? <button className="btn sm ghost" onClick={() => setDisk(false)} disabled={busy}>{t('Undo')}</button>
                     : <button className="btn sm" onClick={() => setDisk(true)} disabled={busy}><Icon name="check" />{t('Done: the disk is encrypted')}</button>)}
-                  {c.key === 'two_step' && (data.security.require_admin_2fa
-                    ? <button className="btn sm ghost" onClick={() => setTwoStep(false)} disabled={busy}>{t('Stop requiring it')}</button>
-                    : <button className="btn sm" onClick={() => setTwoStep(true)} disabled={busy}><Icon name="lock" />{t('Require it for administrators')}</button>)}
+                  {c.key === 'two_step' && (
+                    <>
+                      {!data.security.require_all_2fa && <button className="btn sm" onClick={() => setTwoStep(true, true)} disabled={busy}><Icon name="lock" />{t('Require it for everyone')}</button>}
+                      {!data.security.require_admin_2fa && !data.security.require_all_2fa && <button className="btn sm" onClick={() => setTwoStep(true, false)} disabled={busy}>{t('Require it for administrators')}</button>}
+                      {data.security.require_all_2fa && <button className="btn sm ghost" onClick={() => setTwoStep(true, false)} disabled={busy}>{t('Only for administrators')}</button>}
+                      {(data.security.require_admin_2fa || data.security.require_all_2fa) && <button className="btn sm ghost" onClick={() => setTwoStep(false, false)} disabled={busy}>{t('Stop requiring it')}</button>}
+                    </>
+                  )}
                   {c.link && <Link className="small" to={c.link}>{t('Open')} →</Link>}
                 </div>
               </div>

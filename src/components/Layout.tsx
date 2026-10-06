@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import type { Lang } from '../../shared/types.ts';
@@ -154,9 +154,45 @@ export function Layout() {
           <strong className="serif">Canon</strong>
         </div>
         <main id="main">
+          <MemberLinkReminder />
           <Outlet />
         </main>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Every account belongs to a church member, except an external guest's. The administrator who set Canon up may
+ * start without one: until they link it, this reminder sits above every page (it can be hidden until the next
+ * sign-in).
+ */
+function MemberLinkReminder() {
+  const { t } = useI18n();
+  const { user } = useSession();
+  const key = `canon.member-link-later.${user.id}`;
+  const [later, setLater] = useState(() => {
+    try {
+      return sessionStorage.getItem(key) === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (!user.first_admin || user.person_id || later) return null;
+  const hide = () => {
+    try {
+      sessionStorage.setItem(key, '1');
+    } catch { /* hidden for this page only */ }
+    setLater(true);
+  };
+  return (
+    <div className="callout warn row no-print member-link-reminder" role="status">
+      <span className="grow small">
+        <strong>{t('Your account is not linked to your member record.')}</strong>{' '}
+        {t('Every other account belongs to a church member. Add yourself in Members if you are not there yet, then choose yourself under Member in Settings → Users & access.')}
+      </span>
+      <Link className="btn sm primary" to="/settings?tab=users">{t('Link my account')}</Link>
+      <button className="btn sm ghost" onClick={hide}>{t('Remind me later')}</button>
     </div>
   );
 }

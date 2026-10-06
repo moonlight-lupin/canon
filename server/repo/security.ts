@@ -4,6 +4,7 @@
 //  - a security checklist in plain words (disk encryption, backups, public address, accounts, AI access, keep
 //    periods), each item with what to do;
 //  - how much space Canon uses, what uses it, how fast it grows, and the free space on the drive.
+import { firstAdminId, memberLinkProblem } from '../auth.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { all, get, run, type SqlValue } from '../db.ts';
@@ -198,14 +199,27 @@ export function securityChecklist(): CheckItem[] {
     : admins > 4
       ? { key: 'admins', status: 'warn', title: 'Administrators', detail: `${admins} administrators: each can change everything. Keep it to the few who need it.`, link: '/settings?tab=users' }
       : { key: 'admins', status: 'ok', title: 'Administrators', detail: `${admins} administrators.` });
-  // two-step sign-in for administrators
-  const withTwoStep = all<{ role: string; totp_enabled: number }>('SELECT role, totp_enabled FROM users').filter((u) => isAdmin(u));
+  // two-step sign-in: for every account, or for administrators
+  const twoStep = all<{ role: string; totp_enabled: number }>('SELECT role, totp_enabled FROM users');
+  const withTwoStep = twoStep.filter((u) => isAdmin(u));
   const without = withTwoStep.filter((u) => !u.totp_enabled).length;
-  items.push(s.security?.require_admin_2fa
+  const everyoneWithout = twoStep.filter((u) => !u.totp_enabled).length;
+  items.push(s.security?.require_all_2fa
+    ? { key: 'two_step', status: 'ok', title: 'Two-step sign-in', detail: `Required for every account${everyoneWithout ? ` (${everyoneWithout} still to set it up — they can only set it up when they sign in)` : ''}.` }
+    : s.security?.require_admin_2fa
     ? { key: 'two_step', status: 'ok', title: 'Two-step sign-in', detail: `Required for administrators${without ? ` (${without} still to set it up — they can’t use administrator functions until they do)` : ''}.` }
     : without === 0
       ? { key: 'two_step', status: 'ok', title: 'Two-step sign-in', detail: 'Every administrator uses it. Require it, so a new administrator does too.' }
       : { key: 'two_step', status: 'warn', title: 'Two-step sign-in', detail: `${without} administrator${without === 1 ? ' signs' : 's sign'} in with a password only. Set up two-step sign-in (Settings → My profile) with an authenticator app, then require it here.` });
+  // every account is a church member's, except external guests' (the first administrator is reminded)
+  const linked = all<{ id: number; display_name: string; role: string; person_id: number | null }>('SELECT id, display_name, role, person_id FROM users');
+  const unlinked = linked.filter((u) => memberLinkProblem(u.id, u.role, u.person_id));
+  const firstUnlinked = linked.find((u) => u.id === firstAdminId() && !u.person_id);
+  items.push(unlinked.length
+    ? { key: 'member_links', status: 'warn', title: 'Accounts and members', detail: `Not linked to a church member: ${unlinked.map((u) => u.display_name).join(', ')}. Link each to their member record (Member), or make it an external guest account.`, link: '/settings?tab=users' }
+    : firstUnlinked
+      ? { key: 'member_links', status: 'todo', title: 'Accounts and members', detail: `Every account belongs to a church member or an external guest, except yours (${firstUnlinked.display_name}, who set Canon up): link it to your member record.`, link: '/settings?tab=users' }
+      : { key: 'member_links', status: 'ok', title: 'Accounts and members', detail: 'Every account belongs to a church member, or is an external guest’s (read-only).' });
   const cutoff = Date.now() - 180 * 86400_000;
   const stale = users.filter((u) => (u.last_login_at ? Date.parse(u.last_login_at.replace(' ', 'T') + 'Z') : Date.parse(u.created_at.replace(' ', 'T') + 'Z')) < cutoff);
   items.push(stale.length

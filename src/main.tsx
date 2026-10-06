@@ -11,6 +11,7 @@ import { Layout } from './components/Layout.tsx';
 import Login from './pages/Login.tsx';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.tsx'));
+const TwoStepRequired = lazy(() => import('./pages/TwoStepRequired.tsx'));
 const Services = lazy(() => import('./pages/Services.tsx'));
 const ServiceEditor = lazy(() => import('./pages/ServiceEditor.tsx'));
 const Members = lazy(() => import('./pages/Members.tsx'));
@@ -103,10 +104,14 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
       </Suspense>
     );
   }
+  // the church requires two-step sign-in (for everyone, or administrators) and this account hasn't set it up yet
+  const sec = settings.security ?? {};
+  const mustSetUpTwoStep = !user.totp_enabled && (!!sec.require_all_2fa || (!!sec.require_admin_2fa && isAdmin));
   return (
     <SessionCtx.Provider value={{ user, canEdit, isAdmin, can, logout, refresh, settings, reloadSettings }}>
      <ChurchLanguages langs={settings.languages}>
       <Suspense fallback={<Loading />}>
+        {mustSetUpTwoStep ? <TwoStepRequired everyone={!!sec.require_all_2fa} /> : (
         <Routes>
           {/* Full-screen outputs (no app chrome) */}
           <Route path="/services/:id/bulletin" element={<Bulletin />} />
@@ -141,6 +146,7 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
+        )}
       </Suspense>
      </ChurchLanguages>
     </SessionCtx.Provider>
