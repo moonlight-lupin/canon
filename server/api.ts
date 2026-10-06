@@ -71,7 +71,8 @@ api.post('/setup', h((req, res) => {
   }).parse(req.body);
   const user = createUser({ ...b, role: 'admin' });
   if (b.ui_lang) run('UPDATE users SET lang = ? WHERE id = ?', b.ui_lang, user.id);
-  const patch: Partial<Settings> = {};
+  // onboarded: false says so explicitly; otherwise a church name alone looks like a v0.1 church set up before onboarding
+  const patch: Partial<Settings> = { onboarded: false };
   if (b.church_name) patch.church_name = b.church_name;
   if (b.languages) {
     patch.languages = b.languages;

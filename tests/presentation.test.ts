@@ -16,7 +16,7 @@ const { bulletinDecision, firstStanza, normaliseBulletinOptions, DEFAULT_BULLETI
 const { scopeCss, compileThemeCss, DEFAULT_THEME_VARS } = await import('../shared/slide-theme.ts');
 const { createApp } = await import('../server/app.ts');
 const { createUser } = await import('../server/auth.ts');
-const { seed } = await import('../server/seed/index.ts');
+const { seed, installLibrary } = await import('../server/seed/index.ts');
 const { seedPresentation } = await import('../server/seed/presentation.ts');
 const P = await import('../server/repo/presentation.ts');
 const svc = await import('../server/repo/services.ts');
@@ -45,6 +45,7 @@ async function api(method: string, p: string, body?: unknown, type = 'applicatio
 
 before(async () => {
   await seed();
+  await installLibrary(['songs', 'texts', 'templates']);
   createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-1', role: 'admin' });
   server = createApp().listen(0, '127.0.0.1');
   await new Promise((r) => server.once('listening', r));

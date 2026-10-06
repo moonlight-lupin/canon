@@ -383,6 +383,8 @@ export interface TemplateItem {
   title: L10n;
   song_key?: string;
   text_key?: string;
+  /** labels to include: song stanzas, or a text's parts (catechism questions, e.g. ["1","2","3","4"]); none = the usual */
+  stanzas?: string[];
   scripture_ref?: string;
   body?: L10n;
   duration_min: number;

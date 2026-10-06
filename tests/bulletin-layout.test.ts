@@ -19,7 +19,7 @@ const PR = await import('../shared/presentation.ts');
 const { normaliseBulletinOptions, normaliseLayout, legacyLayout, padBooklet, weeklySections, DEFAULT_BULLETIN_OPTIONS } = PR;
 const { createApp } = await import('../server/app.ts');
 const { createUser } = await import('../server/auth.ts');
-const { seed } = await import('../server/seed/index.ts');
+const { seed, installLibrary } = await import('../server/seed/index.ts');
 const { seedPresentation, BUILTIN_TEMPLATES } = await import('../server/seed/presentation.ts');
 const P = await import('../server/repo/presentation.ts');
 const svc = await import('../server/repo/services.ts');
@@ -65,6 +65,7 @@ function unzipEntry(zip: Buffer, name: string): string {
 
 before(async () => {
   await seed();
+  await installLibrary(['songs', 'texts', 'templates']);
   createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-1', role: 'admin' });
   updateSettings({ church_name: { en: 'Grace Church', zh: '恩典堂' } });
   server = createApp().listen(0, '127.0.0.1');

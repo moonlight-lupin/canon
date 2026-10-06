@@ -221,6 +221,8 @@ export function materialise(tItems: TemplateItem[]) {
       kind: t.kind,
       title: t.title,
       ref_id,
+      // the template's stanzas / catechism questions (only with the song or text they belong to)
+      ...(ref_id && t.stanzas?.length ? { stanzas: t.stanzas } : {}),
       scripture_ref: t.scripture_ref ?? null,
       body: t.body ?? {},
       duration_min: t.duration_min,
@@ -392,6 +394,7 @@ export function saveAsTemplate(serviceId: number, name: L10n) {
     const t: TemplateItem = { kind: it.kind, title: it.title, duration_min: it.duration_min, in_bulletin: it.in_bulletin, on_slides: it.on_slides };
     if (it.kind === 'song' && it.ref_id) t.song_key = ensureKey('songs', it.ref_id);
     if (it.kind === 'text' && it.ref_id) t.text_key = ensureKey('texts', it.ref_id);
+    if ((t.song_key || t.text_key) && it.stanzas?.length) t.stanzas = it.stanzas;
     if (it.scripture_ref) t.scripture_ref = it.scripture_ref;
     if (it.body && (it.body.en || it.body.zh)) t.body = it.body;
     if (it.role_id) t.role = roles.find(it.role_id)?.name.en;

@@ -176,9 +176,10 @@ export const SEED_TEMPLATES: SeedTemplate[] = [
       song('psalm-100-old-hundredth', 'Psalm of Praise', '诗篇颂赞'),
       item('prayer', { en: 'Opening Prayer', zh: '祈祷' }, 2, { role: 'Liturgist' }),
       item('text', { en: 'Catechism', zh: '要理问答' }, 3, {
-        text_key: 'westminster-shorter-catechism-1-4',
+        text_key: 'wsc', // the Westminster Standards (Library → Liturgical texts → Import Westminster Standards)
+        stanzas: ['1', '2', '3', '4'],
         role: 'Liturgist',
-        notes: 'Replace with the catechism questions for this week.',
+        notes: "Choose this week's questions; Next block moves on to the next ones.",
       }),
       hymnSlot('Hymn', '诗歌'),
 

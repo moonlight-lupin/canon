@@ -14,7 +14,16 @@ Canon helps the church office plan the Sunday service, print the bulletin, proje
 
 ### Languages and Bibles
 
-Next comes **Getting started**, the same panel as [Settings → Languages](/settings).
+Next comes **Getting started**: **Modules** (the parts of Canon your church uses), **Canon's library**, and the same panel as [Settings → Languages](/settings).
+
+**Canon's library** is optional: tick what to add and press **Add to the library**. Nothing is added unless you do, and the rest can be added later from [Library](/library) → **Canon's library**.
+
+- **Hymns & psalms**: about 380 public-domain hymns, metrical psalms and service music, with English words and credits.
+- **Liturgical texts**: creeds, calls to worship, confessions, prayers and benedictions, in English and Chinese.
+- **Service templates**: five orders of worship that use those hymns and texts.
+- **Westminster Standards**: the Shorter and Larger Catechisms and the Confession of Faith (English), downloaded from the internet.
+
+Then:
 
 1. **Worship languages**: tick your languages; the first is the primary language.
 2. **Bible**: for each language, press **Download & import** for a public-domain Bible (KJV, 和合本 and others) and choose the **Default version**.
@@ -200,7 +209,7 @@ Open [Library](/library).
 ### Hymns and hymnals
 
 - **Hymns & songs**: search by title, words or number (`HP 123`). **New song**: title, author, tune, **Stanzas** (label `R` for a refrain), **Hymnal numbers**. Untick **Public domain** to add the copyright line and **CCLI song #**.
-- **Bundled hymns**: Canon comes with about 380 public-domain hymns, with English words, credits, tune and metre. A few have a note that their usual tune or harmony is still in copyright; the words are free to print and project. Add your own language's words to a hymn's stanzas, or delete the hymns you don't sing: a hymn you delete doesn't come back when Canon is updated.
+- **Canon's library** (administrators, on the Hymns & songs and Liturgical texts tabs) adds Canon's public-domain hymns & psalms, liturgical texts, service templates and the Westminster Standards: the same choice as when Canon was set up. Each part says how much of it is already in your library. The hymns have English words, credits, tune and metre; a few have a note that their usual tune or harmony is still in copyright, but the words are free to print and project. Add your own language's words to a hymn's stanzas, or delete what you don't use: a deleted item doesn't come back when Canon is updated. **Also add back the ones you deleted** brings it back.
 - **Hymnals**: **New hymnal** with an **Abbreviation** (shown before numbers, e.g. HP 123). The first hymnal is the default for numbers.
 - To load a hymnal's index (numbers and titles), use **Import CSV…** on the hymnal. Songs not yet in the library are added as title-only songs tagged *needs-words*; words are never imported.
 
@@ -240,7 +249,7 @@ Canon has three kinds of template: a **service template** is an order of worship
 [Service templates](/templates) are reusable orders of worship: the items in order, with their minutes, roles and postures. Hymn and reading slots are left empty, to fill each week.
 
 1. Press **New template** — or, in a service you are happy with, open **⋯** in the **Outputs** bar and choose **Save as template**. A saved service keeps its items, its slide and bulletin templates and its congregation.
-2. Give it a **Template name** (each language) and a **Description**, set the **Start time**, and add the items with **Add item**: a hymn, a reading, liturgy, the sermon and so on, each with its minutes and **Role** (who leads it).
+2. Give it a **Template name** (each language) and a **Description**, set the **Start time**, and add the items with **Add item**: a hymn, a reading, liturgy, the sermon and so on, each with its minutes and **Role** (who leads it). For a catechism or other text in numbered parts, **Questions** (or **Parts**) chooses which ones, e.g. `1-4`; for a hymn, **Stanzas** chooses some of its stanzas (empty = all). Services made from the template start with them.
 3. Choose its **Slide template** and **Bulletin template** if they differ from the church default: services made from it start with these (each service can still choose others), so an evening Chinese service template brings its own bulletin and slides.
 4. **Use template** makes a new service from it. **New service** on the Services page offers the same list.
 

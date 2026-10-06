@@ -3,6 +3,7 @@
 import type { ItemKind, L10n, Template, TemplateItem } from '../../shared/types.ts';
 import { TemplateInput } from '../../shared/schemas.ts';
 import { get } from '../db.ts';
+import { parsePartSelection } from '../../shared/parts.ts';
 import { KIND_LABEL, templates as tplTable } from '../repo/services.ts';
 import { roleByName } from '../repo/volunteers.ts';
 import { listBlocks } from '../repo/presentation.ts';
@@ -22,6 +23,18 @@ const PRINT_ALIAS: Record<string, (typeof PRINT)[number]> = {
 };
 /** "PayNow giving; Instagram" → ["PayNow giving", "Instagram"] */
 const splitList = (s: string) => s.split(/[;；\n]/).map((x) => x.trim()).filter(Boolean);
+/** "1, 2, 4" or "1-4" (or "I.1-3" for a confession) against the song's stanzas / the text's parts, when it exists. */
+function readStanzas(cell: string, table: 'songs' | 'texts', key: string): string[] {
+  if (!cell.trim()) return [];
+  const col = table === 'songs' ? 'stanzas' : 'parts';
+  const row = get<{ list: string | null }>(`SELECT ${col} AS list FROM ${table} WHERE key = ?`, key);
+  const list = (JSON.parse(row?.list ?? 'null') ?? []) as { label: string }[];
+  if (list.length) {
+    const picked = parsePartSelection(cell, list.map((x) => x.label));
+    if (picked.labels.length) return picked.labels;
+  }
+  return cell.split(/[,，、;；\s]+/).map((x) => x.trim()).filter(Boolean);
+}
 
 const KINDS = ['section', 'song', 'scripture', 'text', 'sermon', 'prayer', 'sacrament', 'offering', 'announcements', 'music', 'other'] as const;
 const KIND_ALIAS: Record<string, ItemKind> = {
@@ -36,7 +49,7 @@ const fallbackKey = (t: Template) => t.key ?? `template-${t.id}`;
 /** An item as cells (title per language), for export and comparison. */
 function itemCells(it: TemplateItem, langs: string[]): Record<string, string> {
   const out: Record<string, string> = {
-    kind: it.kind, song_key: it.song_key ?? '', text_key: it.text_key ?? '', scripture_ref: it.scripture_ref ?? '',
+    kind: it.kind, song_key: it.song_key ?? '', text_key: it.text_key ?? '', stanzas: (it.stanzas ?? []).join(', '), scripture_ref: it.scripture_ref ?? '',
     duration_min: String(it.duration_min ?? 0), role: it.role ?? '', leader: it.leader ?? '',
     in_bulletin: fmtBool(it.in_bulletin), on_slides: fmtBool(it.on_slides), notes: it.notes ?? '',
     posture: it.posture ?? '', bulletin_text: it.bulletin_text ?? '', slide_blocks: (it.slide_blocks ?? []).join('; '),
@@ -64,6 +77,7 @@ export const templatesCsv: Entity = {
     ...l10nCols('title', ctx, M('Item title', '项目标题'), M('Title printed for the item, e.g. Hymn of Praise. Empty = the usual title for its kind.', '项目显示的标题，如「赞美诗」。留空则使用该类别的常用标题。'), { examples: { en: 'Hymn of Praise', zh: '颂赞诗歌' }, aliases: ['item_title'] }),
     col('song_key', M('Song key', '诗歌代码'), M('For a fixed song: the song\'s key in the library (e.g. doxology). Leave empty for a slot filled each week.', '固定的诗歌：资料库中诗歌的 key（如 doxology）。每周填写的诗歌位置请留空。'), { example: 'doxology' }),
     col('text_key', M('Text key', '礼文代码'), M('For a fixed liturgical text: its key (e.g. apostles-creed).', '固定的礼文：礼文的 key（如 apostles-creed）。'), {}),
+    col('stanzas', M('Stanzas / questions', '诗节／问题'), M('Only some stanzas of the song, or some questions of a catechism, e.g. 1-4 or 1, 2, 4. Empty = the usual.', '只用诗歌的部分诗节，或要理问答的部分问题，如 1-4 或 1, 2, 4。留空则照常。'), { example: '1-4', aliases: ['parts', 'questions', 'verses'] }),
     col('scripture_ref', M('Scripture', '经文'), M('A fixed reading, e.g. Psalm 100. Usually empty.', '固定的经文，如 Psalm 100。通常留空。'), { aliases: ['scripture', 'reference', 'passage'] }),
     col('duration_min', M('Minutes', '分钟'), M('Planned length in minutes.', '预计时长（分钟）。'), { example: '4', aliases: ['duration', 'minutes', 'mins'] }),
     col('role', M('Role', '负责岗位'), M('Who leads it: an English role name from Volunteers, e.g. Liturgist, Scripture Reader.', '负责的岗位：义工事奉中的英文岗位名称，如 Liturgist、Scripture Reader。'), { example: 'Liturgist' }),
@@ -108,7 +122,7 @@ export const templatesCsv: Entity = {
       list.push(r);
       groups.set(k.toLowerCase(), list);
     }
-    const itemCols = ['kind', 'song_key', 'text_key', 'scripture_ref', 'duration_min', 'role', 'leader', 'in_bulletin', 'on_slides', 'notes', 'posture', 'bulletin_text', 'slide_blocks'];
+    const itemCols = ['kind', 'song_key', 'text_key', 'stanzas', 'scripture_ref', 'duration_min', 'role', 'leader', 'in_bulletin', 'on_slides', 'notes', 'posture', 'bulletin_text', 'slide_blocks'];
     const blockNames = new Set(listBlocks().map((b) => b.name.trim().toLowerCase()));
 
     for (const rows of groups.values()) {
@@ -170,6 +184,8 @@ export const templatesCsv: Entity = {
           if (!get('SELECT 1 FROM texts WHERE key = ?', txt)) warnings.push(at(r.row, M(`no text has the key "${txt}" yet.`, `目前没有 key 为「${txt}」的礼文。`)));
         }
         if (ref) it.scripture_ref = ref;
+        const stanzas = song || txt ? readStanzas(r.v.stanzas ?? '', song ? 'songs' : 'texts', (song ?? txt)!) : [];
+        if (stanzas.length) it.stanzas = stanzas;
         if (role) {
           it.role = role;
           if (!roleByName(role)) warnings.push(at(r.row, M(`no volunteer role is called "${role}"; nobody will be linked to this item.`, `没有名为「${role}」的岗位；此项目不会连到任何人。`)));
@@ -197,6 +213,7 @@ export const templatesCsv: Entity = {
         if (!present.has('posture') && old?.posture && old.kind === it.kind) it.posture = old.posture;
         if (!present.has('bulletin_text') && old?.bulletin_text && old.kind === it.kind) it.bulletin_text = old.bulletin_text;
         if (!present.has('slide_blocks') && old?.slide_blocks?.length && old.kind === it.kind) it.slide_blocks = old.slide_blocks;
+        if (!present.has('stanzas') && old?.stanzas?.length && old.kind === it.kind && (it.song_key || it.text_key)) it.stanzas = old.stanzas;
         items.push(it);
       }
 

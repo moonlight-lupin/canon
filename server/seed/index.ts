@@ -1,7 +1,9 @@
-// First-run seeding: default volunteer teams/roles and the bundled public-domain library.
-// Library items are upserted by `key`, so re-running only adds new items and never
-// overwrites items the church has edited (unless force = true). Each key is offered once:
-// the keys already offered are kept (meta seed_offered), so an item the church deletes stays deleted.
+// Seeding on every start: the default volunteer teams / roles and the built-in slide and bulletin designs.
+// Canon's bundled public-domain library (hymns, liturgical texts, service templates) is optional: the first
+// administrator chooses it while setting up (or later, Library → Canon's library), installLibrary() adds it, and
+// later starts add only the items an update brings to the parts the church chose.
+// Library items are matched by `key` and never overwrite the church's edits. Each key is offered once (meta
+// seed_offered), so an item the church deletes stays deleted unless it asks for it back (restore).
 import type { L10n } from '../../shared/types.ts';
 import { get, run, tx } from '../db.ts';
 import { songs, texts } from '../repo/library.ts';
@@ -50,7 +52,7 @@ const DEFAULT_TEAMS: { name: L10n; color: string; roles: { name: L10n; needed: n
   },
 ];
 
-export async function seed(force = false) {
+export async function seed() {
   if (!get('SELECT 1 FROM teams LIMIT 1')) {
     tx(() => {
       DEFAULT_TEAMS.forEach((t, i) => {
@@ -60,53 +62,92 @@ export async function seed(force = false) {
     });
   }
 
-  // Seed content is written separately and may not exist on very early checkouts.
-  const load = async <T>(file: string, name: string): Promise<T[]> => {
+  // Canons from before 0.14.2 had the whole library added on every start: they keep all of it.
+  if (getMeta('library') == null) setMeta('library', JSON.stringify(Object.fromEntries(LIBRARY_PARTS.map((p) => [p, !!getMeta('seeded_at')]))));
+  const chosen = LIBRARY_PARTS.filter((p) => libraryChoice()[p]);
+  const counts = chosen.length ? await addBundled(chosen, false) : { songs: 0, texts: 0, templates: 0 };
+  (await import('./presentation.ts')).seedPresentation(); // built-in slide themes & bulletin templates
+  setMeta('seeded_at', new Date().toISOString());
+  return counts;
+}
+
+export type LibraryPart = 'songs' | 'texts' | 'templates';
+export const LIBRARY_PARTS: LibraryPart[] = ['songs', 'texts', 'templates'];
+type Row = Record<string, unknown> & { key: string };
+
+/** The parts of Canon's bundled library this church chose. */
+export function libraryChoice(): Record<LibraryPart, boolean> {
+  let v: Partial<Record<LibraryPart, boolean>> = {};
+  try {
+    v = JSON.parse(getMeta('library') ?? '{}') as Partial<Record<LibraryPart, boolean>>;
+  } catch { /* none chosen */ }
+  return { songs: !!v.songs, texts: !!v.texts, templates: !!v.templates };
+}
+
+/** The bundled items (written separately; may not exist on very early checkouts). */
+async function bundled(): Promise<Record<LibraryPart, Row[]>> {
+  const load = async (file: string, name: string): Promise<Row[]> => {
     try {
-      return ((await import(file)) as Record<string, T[]>)[name] ?? [];
+      return ((await import(file)) as Record<string, Row[]>)[name] ?? [];
     } catch (e) {
       console.warn(`seed: could not load ${file}: ${(e as Error).message}`);
       return [];
     }
   };
-  const SONGS = await load<Record<string, unknown> & { key: string }>('./songs.ts', 'SEED_SONGS');
-  const TEXTS = await load<Record<string, unknown> & { key: string }>('./texts.ts', 'SEED_TEXTS');
-  const TEMPLATES = await load<Record<string, unknown> & { key: string }>('./templates.ts', 'SEED_TEMPLATES');
+  return { songs: await load('./songs.ts', 'SEED_SONGS'), texts: await load('./texts.ts', 'SEED_TEXTS'), templates: await load('./templates.ts', 'SEED_TEMPLATES') };
+}
 
-  type Offered = Record<'songs' | 'texts' | 'templates', string[]>;
-  let offered: Partial<Offered> = {};
+const TABLE = { songs, texts, templates } as const;
+
+function offeredKeys(): Partial<Record<LibraryPart, string[]>> {
   try {
-    offered = JSON.parse(getMeta('seed_offered') ?? '{}') as Partial<Offered>;
-  } catch { /* start a new list */ }
-  const upsert = (tbl: typeof songs | typeof texts | typeof templates, name: keyof Offered, rows: (Record<string, unknown> & { key: string })[]) => {
-    const seen = new Set(offered[name] ?? []);
-    let added = 0;
-    for (const r of rows) {
-      const existing = get<{ id: number }>(`SELECT id FROM ${name} WHERE key = ?`, r.key);
-      if (!existing && (force || !seen.has(r.key))) {
-        tbl.insert(r);
-        added++;
-      } else if (existing && force) tbl.update(existing.id, r);
-      seen.add(r.key);
+    return JSON.parse(getMeta('seed_offered') ?? '{}') as Partial<Record<LibraryPart, string[]>>;
+  } catch {
+    return {};
+  }
+}
+
+/** Add the parts' items this library has never been offered (restore: also the ones it deleted). */
+async function addBundled(parts: LibraryPart[], restore: boolean) {
+  const rows = await bundled();
+  const offered = offeredKeys();
+  const counts: Record<LibraryPart, number> = { songs: 0, texts: 0, templates: 0 };
+  tx(() => {
+    for (const part of parts) {
+      const seen = new Set(offered[part] ?? []);
+      for (const r of rows[part]) {
+        if (!get(`SELECT 1 FROM ${part} WHERE key = ?`, r.key) && (restore || !seen.has(r.key))) {
+          TABLE[part].insert(r);
+          counts[part]++;
+        }
+        seen.add(r.key);
+      }
+      offered[part] = [...seen];
     }
-    offered[name] = [...seen];
-    return added;
-  };
-  const counts = tx(() => {
-    const c = {
-      songs: upsert(songs, 'songs', SONGS),
-      texts: upsert(texts, 'texts', TEXTS),
-      templates: upsert(templates, 'templates', TEMPLATES),
-    };
     setMeta('seed_offered', JSON.stringify(offered));
-    return c;
   });
   if (counts.songs + counts.texts + counts.templates > 0) {
     console.log(`seed: added ${counts.songs} songs, ${counts.texts} texts, ${counts.templates} templates`);
   }
-  (await import('./presentation.ts')).seedPresentation(); // built-in slide themes & bulletin templates
-  setMeta('seeded_at', new Date().toISOString());
   return counts;
+}
+
+/** Add parts of the bundled library (chosen from now on, so updates add their new items too). */
+export async function installLibrary(parts: LibraryPart[], opts: { restore?: boolean } = {}) {
+  const choice = libraryChoice();
+  for (const p of parts) choice[p] = true;
+  setMeta('library', JSON.stringify(choice));
+  return addBundled(parts, !!opts.restore);
+}
+
+/** For each part: whether it is chosen, how many items Canon bundles and how many of them this library has. */
+export async function libraryStatus() {
+  const rows = await bundled();
+  const choice = libraryChoice();
+  return Object.fromEntries(LIBRARY_PARTS.map((p) => {
+    const present = rows[p].filter((r) => get(`SELECT 1 FROM ${p} WHERE key = ?`, r.key)).length;
+    return [p, { chosen: choice[p], bundled: rows[p].length, in_library: present }];
+  })) as Record<LibraryPart, { chosen: boolean; bundled: number; in_library: number }>;
 }
 
 export const lastSeeded = () => getMeta('seeded_at');

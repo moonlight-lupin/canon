@@ -14,7 +14,7 @@ delete process.env.CANON_TRUST_PROXY;
 
 const { createApp } = await import('../server/app.ts');
 const { createUser } = await import('../server/auth.ts');
-const { seed } = await import('../server/seed/index.ts');
+const { seed, installLibrary } = await import('../server/seed/index.ts');
 const reg = await import('../server/repo/registers.ts');
 const lib = await import('../server/repo/library.ts');
 const svc = await import('../server/repo/services.ts');
@@ -53,6 +53,7 @@ before(async () => {
   for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: role, password: 'correct-horse-1', role });
   updateSettings({ languages: ['en', 'zh'] });
   await seed();
+  await installLibrary(['songs', 'texts', 'templates']);
   server = createApp().listen(0, '127.0.0.1');
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

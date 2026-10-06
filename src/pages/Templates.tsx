@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { hasAnyText } from '../../shared/labels.ts';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
@@ -16,6 +16,25 @@ import type { BulletinBlock } from '../../shared/presentation.ts';
 import { SlideBlocksPicker } from './Blocks.tsx';
 import { BulletinTemplateField, SlideThemeField } from './presentation-pickers.tsx';
 import { CardMenu, type CardAction } from './template-ui.tsx';
+import { parsePartSelection, partRuns } from '../../shared/parts.ts';
+
+/** A template item's stanzas or catechism questions, typed as a range ("1-4", "1, 3", "Q5-7"); empty = the usual. */
+function PartsField({ label, hint, labels, value, onChange }: { label: string; hint: string; labels: string[]; value: string[] | undefined; onChange: (v: string[] | undefined) => void }) {
+  const current = partRuns(value ?? [], labels).join(', ');
+  const [range, setRange] = useState(current);
+  useEffect(() => setRange(current), [current]);
+  const apply = () => {
+    if (!range.trim()) return onChange(undefined);
+    const picked = parsePartSelection(range, labels).labels;
+    if (picked.length) onChange(picked);
+    else setRange(current);
+  };
+  return (
+    <Field label={label} hint={hint}>
+      <input value={range} style={{ width: 72 }} onChange={(e) => setRange(e.target.value)} onBlur={apply} onKeyDown={(e) => e.key === 'Enter' && apply()} />
+    </Field>
+  );
+}
 
 const KINDS = Object.keys(KIND_LABEL) as ItemKind[];
 
@@ -174,16 +193,26 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
                       search: [...Object.values(s.title ?? {}), ...(s.hymnals ?? []).map((h) => `${h.abbr} ${h.number} ${h.number}`)].join(' '),
                       keys: (s.hymnals ?? []).flatMap((h) => [`${h.abbr} ${h.number}`, h.number]),
                     }))}
-                    onChange={(v) => setItem(i, { song_key: v || undefined })} />
+                    onChange={(v) => setItem(i, { song_key: v || undefined, stanzas: undefined })} />
                 </Field>
               )}
+              {it.kind === 'song' && (() => {
+                const labels = (songs ?? []).find((s) => s.key && s.key === it.song_key)?.stanzas.map((s) => s.label) ?? [];
+                return labels.length > 1 && <PartsField label={t('Stanzas')} hint={t('Empty = all')} labels={labels} value={it.stanzas} onChange={(v) => setItem(i, { stanzas: v })} />;
+              })()}
               {it.kind === 'text' && (
                 <Field label={t('Liturgy')} className="grow">
                   <Combo value={it.text_key ?? ''} noneLabel="—" ariaLabel={t('Liturgy')}
                     options={(texts ?? []).filter((s) => s.key).map((s) => ({ value: s.key!, label: both(s.title), group: s.category.replace(/_/g, ' '), search: Object.values(s.title ?? {}).join(' ') }))}
-                    onChange={(v) => setItem(i, { text_key: v || undefined })} />
+                    onChange={(v) => setItem(i, { text_key: v || undefined, stanzas: undefined })} />
                 </Field>
               )}
+              {it.kind === 'text' && (() => {
+                const text = (texts ?? []).find((s) => s.key && s.key === it.text_key);
+                const labels = (text?.parts ?? []).map((x) => x.label);
+                const catechism = text?.category === 'catechism';
+                return labels.length > 0 && <PartsField label={catechism ? t('Questions') : t('Parts')} hint={catechism ? '1-4' : 'I.1-3'} labels={labels} value={it.stanzas} onChange={(v) => setItem(i, { stanzas: v })} />;
+              })()}
               {it.kind === 'scripture' && (
                 <Field label={t('Reference')} className="grow"><input value={it.scripture_ref ?? ''} onChange={(e) => setItem(i, { scripture_ref: e.target.value || undefined })} /></Field>
               )}

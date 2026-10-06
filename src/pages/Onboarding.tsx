@@ -11,6 +11,7 @@ import { LanguagePicker } from '../components/LanguagePicker.tsx';
 import { MAX_SERVICE_LANGS, langInfo } from '../../shared/languages.ts';
 import type { Lang, Settings } from '../types-client.ts';
 import { ModulesPanel } from './settings/ModulesTab.tsx';
+import { BundledLibraryPanel } from './library/BundledLibrary.tsx';
 import { BIBLE_USES, type BibleUse } from '../../shared/bible-rights.ts';
 import { RightsDialog } from './library/RightsDialog.tsx';
 
@@ -212,10 +213,14 @@ export default function Onboarding({ settings, onDone }: { settings: Settings; o
           <h1>{lt(settings.church_name)}</h1>
         </div>
       </div>
-      <p className="muted">{t('Choose the languages your church worships in and import the Bibles. You can change all of this later in Settings → Languages.')}</p>
+      <p className="muted">{t('Choose the parts of Canon you use, add Canon’s library, and choose the languages your church worships in and their Bibles. You can change all of this later.')}</p>
       <section className="card stack" style={{ marginBottom: 14 }}>
         <h2 style={{ margin: 0 }}>{t('Modules')}</h2>
         <ModulesPanel initial={settings.modules} />
+      </section>
+      <section className="card stack" style={{ marginBottom: 14 }}>
+        <h2 style={{ margin: 0 }}>{t('Canon’s library')}</h2>
+        <BundledLibraryPanel />
       </section>
       <LanguagesPanel settings={settings} onSaved={onDone} saveLabel={t('Finish setup')} />
     </div>

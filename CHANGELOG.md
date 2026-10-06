@@ -4,14 +4,24 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.14.2 — public-domain hymns
+## 0.14.2 — Canon's library
 
-- **About 350 more hymns in the bundled library**, so a new Canon has about 380. Each has its English words and its credits: author, translator, composer, tune, metre and year.
+- **Canon's library is a choice.** A new Canon starts without bundled hymns, texts or templates. In **Getting started**, the first administrator ticks what to add and presses **Add to the library**:
+  - **Hymns & psalms**: about 380.
+  - **Liturgical texts**: creeds, calls to worship, confessions, prayers and benedictions, in English and Chinese.
+  - **Service templates**: five orders of worship.
+  - **Westminster Standards**: downloaded from the internet.
+
+  The rest can be added later from **Library → Canon's library** (administrators). Each part says how much of it is already in the library.
+- **About 350 more public-domain hymns** in it. Each has its English words and credits: author, translator, composer, tune, metre and year.
   - The words are public domain in most countries: their authors and translators died by 1955, and they were published by 1930.
-  - A few hymns' usual tune or harmony is still in copyright, for example FINLANDIA for *Be Still, My Soul*. Those are marked not public domain, with a note saying which music; the words themselves are free to print and project.
-- **A bundled item you delete stays deleted.** Canon used to put a deleted hymn, text or template from its library back on the next start. Now it offers each one once. Hymns, texts and templates new in an update are still added. On the first start after updating, anything deleted before this version comes back one last time.
+  - A few hymns' usual tune or harmony is still in copyright, for example FINLANDIA for *Be Still, My Soul*. Those are marked not public domain, with a note saying which music. The words themselves are free to print and project.
+- **A bundled item you delete stays deleted.** Canon used to put a deleted hymn, text or template back on the next start. Now each one is offered once. Items new in an update are still added to the parts you chose. **Also add back the ones you deleted** brings them back.
+- **Service templates keep catechism questions and stanzas.** In the template editor, a liturgy item in numbered parts has **Questions** (or **Parts**), e.g. `1-4`, and a hymn has **Stanzas**. Services made from the template start with them. Template CSV files have a **stanzas** column for this.
+- **Evening Worship** (built-in template) uses the full Westminster Shorter Catechism, questions 1–4, instead of a separate four-question excerpt. The excerpt is no longer bundled.
+- **Getting started shows again for a new church.** Since 0.1, a church name entered when creating the administrator skipped this page.
 - **Chinese for two prayers:** the *General Confession* (公认罪文) and the *Collect for Holy Scripture* (求主赐我们领受圣经的祷文).
-- No database change.
+- No database change. Canons set up before this version keep their whole library.
 
 ## 0.14.1 — the dashboard
 

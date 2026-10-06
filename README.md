@@ -80,7 +80,7 @@ Keep the "Canon server" window open while Canon is in use.
 
 ## Content and copyright
 
-- **Bundled texts are public domain in most countries:**
+- **Bundled texts are public domain in most countries** (the first administrator chooses which to add):
   - KJV (1769) and 和合本 (1919), from [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases);
   - the Westminster Standards, from [NonlinearFruit/Creeds.json](https://github.com/NonlinearFruit/Creeds.json);
   - historic creeds;

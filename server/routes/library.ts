@@ -4,6 +4,7 @@ import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as lib from '../repo/library.ts';
+import { installLibrary, libraryStatus } from '../seed/index.ts';
 import { legacyImport, rawBody } from './csv.ts';
 import { h, id } from './helpers.ts';
 
@@ -30,6 +31,26 @@ libraryRoutes.post('/hymnals/:id/import', rawBody, h((req) => {
 
 // ---- a song's hymnal numbers (replaces all)
 libraryRoutes.put('/songs/:id/hymnals', h((req) => lib.setSongHymnals(id(req), S.SongHymnalsInput.parse(req.body))));
+
+// ---- Canon's bundled public-domain library (optional; chosen while setting up or later)
+libraryRoutes.get('/library/bundled', h(async () => ({ ...(await libraryStatus()), standards: lib.standardsStatus() })));
+libraryRoutes.post('/library/bundled', requireAdmin, h(async (req) => {
+  const b = z.object({
+    parts: z.array(z.enum(['songs', 'texts', 'templates'])).max(3),
+    standards: z.boolean().optional(),
+    restore: z.boolean().optional(),
+  }).parse(req.body ?? {});
+  const added = b.parts.length ? await installLibrary(b.parts, { restore: b.restore }) : { songs: 0, texts: 0, templates: 0 };
+  let standards: Awaited<ReturnType<typeof lib.importStandards>> | { error: string } | null = null;
+  if (b.standards) {
+    try {
+      standards = await lib.importStandards();
+    } catch (e) {
+      standards = { error: (e as Error).message }; // e.g. no internet: the rest is added all the same
+    }
+  }
+  return { added, standards };
+}));
 
 // ---- Westminster Standards (texts in numbered parts)
 libraryRoutes.get('/library/standards', h(() => lib.standardsStatus()));

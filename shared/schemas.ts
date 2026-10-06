@@ -229,6 +229,7 @@ export const TemplateItemSchema = z.object({
   title: L10nSchema,
   song_key: z.string().optional(),
   text_key: z.string().optional(),
+  stanzas: z.array(z.string().max(20)).max(400).optional(),
   scripture_ref: z.string().optional(),
   body: L10nSchema.optional(),
   duration_min: z.number().min(0).max(240),

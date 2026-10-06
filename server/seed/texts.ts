@@ -493,28 +493,6 @@ export const SEED_TEXTS: SeedText[] = [
     ['creed', 'confession-of-faith', 'unison', 'lords-supper'],
   ),
 
-  text(
-    'westminster-shorter-catechism-1-4',
-    'catechism',
-    { en: 'Westminster Shorter Catechism, Q. 1–4', zh: '威斯敏斯德小要理问答（第1–4问）' },
-    [
-      'L: Q. 1. What is the chief end of man?',
-      "C: Man's chief end is to glorify God, and to enjoy him for ever.",
-      '',
-      'L: Q. 2. What rule hath God given to direct us how we may glorify and enjoy him?',
-      'C: The word of God, which is contained in the scriptures of the Old and New Testaments, is the only rule to direct us how we may glorify and enjoy him.',
-      '',
-      'L: Q. 3. What do the scriptures principally teach?',
-      'C: The scriptures principally teach what man is to believe concerning God, and what duty God requires of man.',
-      '',
-      'L: Q. 4. What is God?',
-      'C: God is a Spirit, infinite, eternal, and unchangeable, in his being, wisdom, power, holiness, justice, goodness, and truth.',
-    ],
-    null,
-    'Westminster Shorter Catechism (1647)',
-    ['catechism', 'westminster', 'responsive'],
-  ),
-
   // ------------------------------------------------------------ prayers
   text(
     'lords-prayer',
