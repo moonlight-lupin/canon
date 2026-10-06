@@ -169,6 +169,30 @@ Open the **Team & roster** tab.
 - An AI assistant connected to Canon can also make **download links** for these files (they stop working after a day or so). Anyone with such a link can download that file without signing in, so send it only to the people who need it.
 - **Email the team** opens your own e-mail program with the team in BCC.
 
+## Meetings {#meetings}
+
+[Meetings](/meetings) (under **Planner** in the sidebar) are fellowship meetings, cell groups, prayer meetings, Sunday school classes, committee meetings and one-off gatherings — a lighter kind of service with its own record.
+
+### Plan a meeting
+
+- **New meeting**: choose a group and a date. A group's new meeting copies its previous one (time, place, leader, whether an offering is taken); the first one takes the group's name. For a one-off meeting choose **No group** and give it a title.
+- On the meeting's page: **Title**, **Date**, **Start time**, **Place**, **Leader** (a member; type a name instead for someone outside the register), **Passage**, **Topic** and notes. **Next meeting** copies the meeting to another date (a week later unless you change it).
+
+### Offering and visitor form
+
+- **An offering is taken at this meeting**: on or off for each meeting (the next one copies it). With an offering, the record has the cash count, declaration and signing, as for a service; without one, it has headcount, new visitors and notes only, and the meeting stays out of the offerings reports.
+- **Visitors can fill in a form on their phone**: the same visitor form as a service's (Settings → Visitor form must be on). Tick it and the meeting gets its own QR code and link, with **Print cards**; entries wait below until you **accept** them into the meeting's record. The meeting's leader can do this too.
+
+### Record a meeting
+
+**Record this meeting** opens its record. An order of service, bulletin and slides are optional (**Add an order of service**).
+
+The group's leaders record its meetings with their own accounts, even read-only ones: an administrator links the account to its member (Settings → Users & access), and the group marks who **Leads** it (see [People](#people)). A meeting's own **Leader** can record it too.
+
+### Recurring meetings
+
+**Meeting pattern** (in **Edit group**): **Every week**, **Every two weeks** or **Once a month** (the first … fourth or last weekday), with the **Start time** and **Place**. **Create meetings ahead** makes the meetings for that many weeks each day (0 = only when you press **Create meetings ahead** in the group), each copying the one before, so the leader just opens tonight's meeting. A meeting can still be moved or deleted on its own.
+
 ## Library
 
 Open [Library](/library).
@@ -208,7 +232,20 @@ Open [Library](/library).
 
 ## Templates
 
-- [Service templates](/templates): reusable orders of worship. Hymn slots stay empty to fill each week. **New template**, **Edit**, **Use template**; the other actions are in the card's **⋯** menu, as on the slide and bulletin template pages. **Set as church default** (administrators) picks the template **New service** starts from; it shows a **Church default** badge. In the editor, a service template can also choose its **Slide template** and **Bulletin template**: new services made from it start with these (each service can still choose others), so an evening Chinese service template brings its own bulletin and slides. **Saving a service as a template** keeps its slide and bulletin templates and congregation. **Archive** (in the **⋯** menu) moves a template you no longer use to **Archived templates** at the bottom of the page — see the archive rules below; they are the same for all three kinds of template.
+Canon has three kinds of template: a **service template** is an order of worship to start a service from, a **bulletin template** decides what the printed bulletin includes and how it looks, and a **slide template** how the slides look. All three are under **Planner** in the sidebar.
+
+### Service templates {#service-templates}
+
+[Service templates](/templates) are reusable orders of worship: the items in order, with their minutes, roles and postures. Hymn and reading slots are left empty, to fill each week.
+
+1. Press **New template** — or, in a service you are happy with, open **⋯** in the **Outputs** bar and choose **Save as template**. A saved service keeps its items, its slide and bulletin templates and its congregation.
+2. Give it a **Template name** (each language) and a **Description**, set the **Start time**, and add the items with **Add item**: a hymn, a reading, liturgy, the sermon and so on, each with its minutes and **Role** (who leads it).
+3. Choose its **Slide template** and **Bulletin template** if they differ from the church default: services made from it start with these (each service can still choose others), so an evening Chinese service template brings its own bulletin and slides.
+4. **Use template** makes a new service from it. **New service** on the Services page offers the same list.
+
+The card's **⋯** menu has **Set as church default** (administrators: the template **New service** starts from; it shows a **Church default** badge) and **Archive** (it moves to **Archived templates** at the bottom of the page). The rules for archiving and deleting are the same for all three kinds of template — see below.
+
+### The template galleries
 
 Bulletin templates and slide templates both open on a gallery. Each card has a main button (**Edit** for your own templates, **Preview** for built-in ones) and a **⋯** menu:
 
@@ -243,19 +280,12 @@ The editor shows the settings in numbered steps that fold open, with a large liv
 
 > **Tip:** FreeShow sets its screen shape in its own output settings, so the FreeShow project ignores the template's screen shape.
 
-## People
+## People {#people}
 
 - [Groups](/groups): committees, fellowships, cell groups, ministries and **Serving teams**. **Add group**, then **Add members** with a **Role in group** and term dates. To keep history, set an end date or untick **Active** instead of deleting.
   - Every volunteer team is also a **Serving team** group: its members are the team roster, with roles (a **Leader** role makes a team leader) and term dates like any group. Teams are added, renamed and deleted in **Volunteers**, where their rota roles are; renaming in either place renames both.
-  - **Leads**: tick it for the people who lead a group (a **Leader**, **Chair** or **Teacher** role ticks it when they are added). Leaders can record the group's meetings — see [Meetings](/meetings).
+  - **Leads**: tick it for the people who lead a group (a **Leader**, **Chair** or **Teacher** role ticks it when they are added). Leaders can record the group's meetings — see [Meetings](#meetings).
   - A **Sunday school class** is a group too: its teachers lead it, its pupils are its members, and **Ages** gives the pupils' age range.
-- [Meetings](/meetings): fellowship meetings, cell groups, prayer meetings, Sunday school classes, committee meetings and one-off gatherings — a lighter kind of service with its own record.
-  - **New meeting**: choose a group and a date. A group's new meeting copies its previous one (time, place, leader, whether an offering is taken); the first one takes the group's name. For a one-off meeting choose **No group** and give it a title.
-  - On the meeting's page: **Title**, **Date**, **Start time**, **Place**, **Leader** (a member; type a name instead for someone outside the register), **Passage**, **Topic** and notes. **Next meeting** copies the meeting to another date (a week later unless you change it).
-  - **An offering is taken at this meeting**: on or off for each meeting (the next one copies it). With an offering, the record has the cash count, declaration and signing, as for a service; without one, it has headcount, new visitors and notes only, and the meeting stays out of the offerings reports.
-  - **Visitors can fill in a form on their phone**: the same visitor form as a service's (Settings → Visitor form must be on). Tick it and the meeting gets its own QR code and link, with **Print cards**; entries wait below until you **accept** them into the meeting's record. The meeting's leader can do this too.
-  - **Record this meeting** opens its record. An order of service, bulletin and slides are optional (**Add an order of service**).
-  - **Meeting pattern** (in **Edit group**): **Every week**, **Every two weeks** or **Once a month** (the first … fourth or last weekday), with the **Start time** and **Place**. **Create meetings ahead** makes the meetings for that many weeks each day (0 = only when you press **Create meetings ahead** in the group), each copying the one before, so the leader just opens tonight's meeting. A meeting can still be moved or deleted on its own.
 - [Members](/members): **Add person** with names, **Chinese name**, **Honorific title** (弟兄, 姐妹, Bro., Sis., Rev.…), contact, status, baptism and membership dates, household, and the church's own fields under **More details** (see below). **Birthdays** lists the coming birthdays. A yes / no or choice field can filter the list (**All members** ▾). Read-only accounts see names, households, groups and birthdays (day and month), but not contact details, notes, ages or sensitive fields.
   - **A member's personal data (PDPA)** — administrators, on the member's page: **Personal data** downloads everything Canon holds about them (details, household, groups, teams, serving, time away, staff record, account, e-mails sent, who viewed the record, changes, and where their name is typed on services) as a file to give them. **Erase…** erases it when they ask: type their name to confirm. Their name, contact details, dates, notes and church fields are cleared for good; qualifications, team places, time away, staff records and future duties are removed; their account is unlinked; and the change log (with its archives) forgets them. Past rotas and group histories keep an anonymous "(erased)" so counts stay right. Names typed on services and offering records (preacher, counters, signatures) are kept as church records. Backups keep their copies until they are removed.
 - [Co-workers](/coworkers): pastors, elders, deacons and staff. **Add co-worker**, choose the person, **Position** and **Category**. **Add to committee…** tags them with their committees.

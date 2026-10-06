@@ -142,7 +142,7 @@ function TemplateEditor({ tpl, onClose, onSaved }: { tpl: Partial<Template>; onC
       </>
     }>
       <div className="stack">
-        <Field label={t('Name')}><L10nInput value={x.name} onChange={(v) => setX({ ...x, name: v })} /></Field>
+        <Field label={t('Template name')}><L10nInput value={x.name} onChange={(v) => setX({ ...x, name: v })} /></Field>
         <div className="form-grid">
           <Field label={<>{t('Reference')} <InfoTip text={t('Your own short code for it, e.g. EN-001 or CN-10pmService: letters, digits and - _ . without spaces. People and AI assistants can then name it, e.g. “create Sunday’s service from template CN-10pmService”.')} /></>}>
             <input value={x.ref ?? ''} maxLength={40} placeholder="EN-001" onChange={(e) => setX({ ...x, ref: e.target.value.replace(/\s+/g, '') || null })} style={{ maxWidth: 220 }} />
