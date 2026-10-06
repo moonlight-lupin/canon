@@ -142,14 +142,15 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
   };
 
   // the visitor form's QR code: on a slide after the Announcements item (else the last item), when the planner chose it
-  // (and the attendees' bulletin link's QR code, the same way)
   const visitorQr = visitorQrBlock(svc.id);
+  const qrAfter = visitorQr?.slides ? (svc.items.find((x) => x.kind === 'announcements' && x.on_slides) ?? [...svc.items].reverse().find((x) => x.on_slides))?.id : undefined;
+  const visitorSlideBlock = (): RenderedSlideBlock[] =>
+    visitorQr ? [{ id: VISITOR_QR_BLOCK_ID, kind: 'qr', caption: complete(visitorQr.caption, langs), has_image: false, v: 'visitor', value: visitorQr.value }] : [];
+  // the attendees' bulletin link: its own slide straight after the title slide, for people as they arrive
   const attendeeQr = attendeeQrBlock(svc.id);
-  const qrAfter = visitorQr?.slides || attendeeQr?.slides ? (svc.items.find((x) => x.kind === 'announcements' && x.on_slides) ?? [...svc.items].reverse().find((x) => x.on_slides))?.id : undefined;
-  const visitorSlideBlock = (): RenderedSlideBlock[] => [
-    ...(attendeeQr?.slides ? [{ id: ATTENDEE_QR_BLOCK_ID, kind: 'qr' as const, caption: complete(attendeeQr.caption, langs), has_image: false, v: 'attendee', value: attendeeQr.value }] : []),
-    ...(visitorQr?.slides ? [{ id: VISITOR_QR_BLOCK_ID, kind: 'qr' as const, caption: complete(visitorQr.caption, langs), has_image: false, v: 'visitor', value: visitorQr.value }] : []),
-  ];
+  const opening: RenderedSlideBlock[] = attendeeQr?.slides
+    ? [{ id: ATTENDEE_QR_BLOCK_ID, kind: 'qr', caption: complete(attendeeQr.caption, langs), has_image: false, v: 'attendee', value: attendeeQr.value }]
+    : [];
 
   const items: RenderedItem[] = svc.items.map((it, i) => {
     const role = it.role_id ? roles.find(it.role_id) : undefined;
@@ -353,6 +354,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
     has_logo: !!get('SELECT 1 FROM assets WHERE key = ?', 'logo'),
     bulletin: bulletinPart(svc, bulletin, langs),
     slide_theme_id: resolveSlideThemeId(svc),
+    ...(opening.length ? { opening_blocks: opening } : {}),
   };
 }
 

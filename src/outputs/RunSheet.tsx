@@ -198,7 +198,7 @@ export default function RunSheet() {
             </div>
           </section>
         )}
-        {deck.length > 0 && <p className="rs-slidenote">{L('Slide numbers count the title slide as 1 and follow the service as it is now: print again after changes.')}</p>}
+        {deck.length > 0 && <p className="rs-slidenote">{L('Slide numbers count the title slide as 1 and follow the service as it is now: print again after changes.')}{deck[1]?.key === 'opening' && <> {L('Slide 2: the QR code of the bulletin link, to show as people arrive.')}</>}</p>}
         {r.notes && (
           <section className="rs-roster">
             <h2 className="rs-h2">{L('Notes')}</h2>

@@ -141,4 +141,6 @@ export interface RenderedService {
   };
   /** slide theme in effect (service → church default → Ink); its CSS is GET /api/slide-themes/:id/css */
   slide_theme_id: number | null;
+  /** QR codes on their own slide straight after the title slide, for people as they arrive (the attendees' bulletin link) */
+  opening_blocks?: RenderedSlideBlock[];
 }

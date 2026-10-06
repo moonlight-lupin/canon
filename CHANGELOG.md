@@ -4,6 +4,12 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.3 — The bulletin link's QR code at the start of the slides
+
+- **Share → Bulletin for the congregation**: its QR code is now on a slide of its own right after the title slide (slide 2), to show as people arrive, instead of after the Announcements, which can come at the end. The run sheet notes slide 2. The PowerPoint export has it in the same place; the FreeShow project has it as a show of its own before the first item.
+- The visitor form's QR code stays after the Announcements, where visitors are usually welcomed.
+- Database: no change.
+
 ## 0.15.2 — Slide numbers on the run sheet, the bulletin on attendees' phones, sheet music
 
 - **Run sheet: slide numbers.**

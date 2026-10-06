@@ -154,6 +154,7 @@ const zh: Record<string, string> = {
   'Asset register: items': '资产登记：物品',
   'Maintenance due: {n}': '需要保养：{n}',
   "Roles & permissions": "角色与权限",
+  "Show the QR code on a slide at the start, after the title slide": "在开头（标题投影之后）的投影片显示二维码",
   "Share links: the team’s, and the bulletin for the congregation": "分享链接：同工用的，以及给会众的次序单",
   "No public address is set (Settings → AI / MCP): these links open only on the church’s own network.": "尚未设定公开网址（设置 → AI / MCP）：这些链接只能在教会自己的网络中打开。",
   "Bulletin for the congregation (order, words and announcements; no serving team)": "给会众的次序单（程序、歌词经文和报告；不含事奉同工）",

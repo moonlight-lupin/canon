@@ -268,7 +268,7 @@ type BlockMedia = Map<number, string>;
  */
 async function blockMedia(r: RenderedService): Promise<BlockMedia> {
   const out: BlockMedia = new Map();
-  for (const b of r.items.flatMap((it) => (it.kind === 'section' ? [] : it.slide_blocks ?? []))) {
+  for (const b of [...(r.opening_blocks ?? []), ...r.items.flatMap((it) => (it.kind === 'section' ? [] : it.slide_blocks ?? []))]) {
     if (out.has(b.id)) continue;
     if (b.kind === 'qr' && b.value) {
       const png = await qrPng(b.value).catch(() => null);
@@ -406,6 +406,18 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
   const created = Date.parse(`${r.date}T00:00:00Z`) || now;
   const shows: Record<string, FsShow> = {};
   const refs: FsProjectRef[] = [];
+
+  // the bulletin link's QR code: a show of its own before the first item, for people as they arrive
+  if (r.opening_blocks?.length) {
+    const welcome = { id: 0, kind: 'other', title: r.title, subtitle: {}, slide_blocks: r.opening_blocks } as unknown as RenderedItem;
+    const qr = blocksSlide(welcome, langs, media);
+    if (qr) {
+      const built = newBuilt();
+      addSlide(built, 'qr', qr);
+      shows[id.show(0)] = makeShow(`${r.date} ${bi(r.title, langs) || 'Service'} — QR`, built, id.show(0), created, now);
+      refs.push({ id: id.show(0) });
+    }
+  }
 
   for (const it of r.items) {
     const qr = it.kind === 'section' ? null : blocksSlide(it, langs, media);

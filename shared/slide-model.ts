@@ -191,6 +191,9 @@ function titleSlide(it: RenderedItem): SlideDef {
 export function buildSlides(r: RenderedService, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
   const slides: SlideDef[] = [];
   slides.push({ key: 'title', type: 'title', itemId: null, kind: 'service', heading: r.church.name, big: r.title, sub: hasAny(r.theme) ? r.theme : undefined });
+  // QR codes for people as they arrive (the bulletin link): their own slide straight after the title slide
+  const opening = (r.opening_blocks ?? []).filter(showable).slice(0, MAX_SLIDE_BLOCKS);
+  if (opening.length) slides.push({ key: 'opening', type: 'blocks', itemId: null, kind: 'service', heading: r.title, blocks: opening });
   for (const it of r.items) {
     const own: SlideDef[] = it.on_slides ? itemSlides(r, it, langs, limits) : [];
     // QR codes / notes: one slide after the item's own; an item that is not on the slides shows only this one

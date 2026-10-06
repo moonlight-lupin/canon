@@ -110,7 +110,16 @@ test('bulletin link for attendees: public, no serving team or notes; QR code on 
 
   const rr = renderService(s.id);
   assert.ok(rr.bulletin.blocks?.some((b) => b.id === -2 && b.data.value?.endsWith(`/b/${token}`)), 'on the back page');
-  assert.ok(rr.items.some((it) => it.slide_blocks.some((b) => b.id === -2)), 'on a slide');
+  // its own slide straight after the title slide (slide 2), not at the Announcements
+  assert.ok(!rr.items.some((it) => it.slide_blocks.some((b) => b.id === -2)));
+  assert.equal(rr.opening_blocks?.[0]?.id, -2);
+  const { buildSlides } = await import('../shared/slide-model.ts');
+  const deck = buildSlides(rr, rr.languages);
+  assert.deepEqual([deck[0].type, deck[1].key, deck[1].blocks?.[0]?.value], ['title', 'opening', rr.opening_blocks![0].value]);
+  // the FreeShow project gets it as a show of its own, first
+  const { freeshowProject } = await import('../server/export/freeshow.ts');
+  const fs1 = await freeshowProject(rr);
+  assert.ok(fs1.project.shows[0].id.endsWith('-0'));
   // a copy of the service has no link of its own
   const copy = svc.duplicateService(s.id, '2031-03-09');
   assert.equal(get<{ a: string }>("SELECT json_extract(attendee, '$.token') AS a FROM services WHERE id = ?", copy.id)?.a ?? null, null);
