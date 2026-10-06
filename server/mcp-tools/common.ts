@@ -14,6 +14,8 @@ export interface Ctx {
   pii: boolean;
   /** the church's member fields marked sensitive may be returned and changed (absent = as pii) */
   sensitive?: boolean;
+  /** new visitors on service records: none, names & follow-up, or with contact details (absent = as pii) */
+  visitors?: 'off' | 'names' | 'contact';
   /** effective access per module on this connection (absent = assume every module readable) */
   levels?: Record<ModuleKey, ModuleAccess>;
   /** the address this client reached Canon at (for links in results), without a trailing slash */

@@ -426,6 +426,7 @@ export interface Template {
 
 export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions' | 'lending' | 'equipment';
 export type ModuleAccess = 'off' | 'read' | 'write';
+export type VisitorAccess = 'off' | 'names' | 'contact';
 export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment'];
 /** Modules that live inside another: they are off whenever their parent is off. */
 export const MODULE_PARENT: Partial<Record<ModuleKey, ModuleKey>> = { contributions: 'records' };
@@ -444,5 +445,8 @@ export interface McpConfig {
   enabled: boolean;
   modules: Record<ModuleKey, ModuleAccess>;
   /** When false, member contact details, birth dates and addresses are redacted from MCP output. */
+  /** members' contact details & birthdays (also co-workers' and households'): only while the Members register is on */
   expose_member_pii: boolean;
+  /** new visitors on service records (only while Service records is on): none, names & follow-up, or with contact details */
+  visitors: VisitorAccess;
 }

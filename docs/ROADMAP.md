@@ -10,7 +10,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.13.0 | Roles and permissions, optional modules, second hardening round — done |
 | 0.14.0 | UI/UX audit of the core (worship and records) — done |
 | 0.15.0 | Lending library and asset register (two optional modules, one release) — done |
-| 0.15.1 | AI access: personal-data switches beside the data they protect (members' contact details; visitors) |
+| 0.15.1 | AI access: personal-data switches beside the data they protect (members' contact details; visitors) — done |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
 | 0.17.0 | Third hardening round |
@@ -121,10 +121,10 @@ Two separate optional modules, released together because they share item numbers
   - When it was bought and for how much.
   - Its condition, and maintenance due.
 
-## 0.15.1 — AI access: personal-data switches beside the data they protect
+## 0.15.1 — AI access: personal-data switches beside the data they protect (done)
 
 In Settings → AI / MCP, the separate **Expose member contact details & birthdays** box goes; each kind of personal data gets a switch nested under its module, as **Offerings** sits under **Service records**:
-- **Members register → Contact details & birthdays** (Off / On): members' phone, e-mail, address, birth dates, notes and reasons for absence; co-workers' phone and e-mail; household addresses. The PDPA notice becomes its "?" tip and one short line.
+- **Members register → Contact details & birthdays** (Off / Shared): members' phone, e-mail, address, birth dates, notes and reasons for absence; co-workers' phone and e-mail; household addresses. The PDPA notice becomes its "?" tip and one short line.
 - **Service records → Visitors** (Off / Names & follow-up / With contact details):
   - Off: attendance numbers only (how many visitors, no names).
   - Names & follow-up: names, how they heard of the church, follow-up status; with Service records at Read & write, agents may record visitors and update follow-up.

@@ -273,4 +273,6 @@ export const McpConfigSchema = z.object({
     equipment: z.enum(['off', 'read', 'write']).default('off'),
   }),
   expose_member_pii: z.boolean(),
+  // older clients don't send it: the server keeps the saved level
+  visitors: z.enum(['off', 'names', 'contact']).optional(),
 });

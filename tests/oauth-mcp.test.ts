@@ -32,7 +32,7 @@ let server: Server;
 let base = '';
 
 const ALL_ON = { members: 'read', coworkers: 'read', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'off', contributions: 'off' } as const;
-function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean }>) {
+function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean; visitors: 'off' | 'names' | 'contact' }>) {
   const cur = getSettings().mcp;
   updateSettings({ mcp: { ...cur, ...patch, modules: { ...cur.modules, ...(patch.modules ?? {}) } } });
 }
@@ -840,6 +840,73 @@ test('service records and offerings: nested modules, offerings read-only, never 
   assert.ok(vnames.includes('canon_get_service_record'));
   assert.ok(!vnames.includes('canon_offerings_report') && !vnames.includes('canon_save_service_record'));
   setMcp({ modules: { records: 'off', contributions: 'off' } });
+});
+
+test('visitors on service records: off, names & follow-up, with contact details; capped by role and by Service records', async () => {
+  const rec = await import('../server/repo/records.ts');
+  const svcRepo = await import('../server/repo/services.ts');
+  const { visitorsFor } = await import('../server/mcp.ts');
+  const sid = svcRepo.createService({ date: '2031-06-01' }).service.id;
+  rec.saveRecord(sid, { attendance: 70, visitors: [{ name: 'Jo Example', contact: '9000 0010', prayer: 'new job' }] }, { name: 'Ed', admin: false });
+
+  // off: numbers only, no names anywhere, and visitors cannot be recorded
+  setMcp({ modules: { records: 'write', contributions: 'off' }, visitors: 'off' });
+  let r = await call(tokens.access_token, 'canon_get_service_record', { service_id: sid });
+  assert.equal(r.json?.data.new_visitors, 1, r.text);
+  assert.ok(r.json?.data.visitors_withheld);
+  assert.ok(!r.text.includes('Jo Example'));
+  const rep = await call(tokens.access_token, 'canon_attendance_report', { from: '2031-06-01', to: '2031-06-30' });
+  assert.equal(rep.isError, false, rep.text);
+  assert.ok(!rep.text.includes('Jo Example'));
+  const refused = await call(tokens.access_token, 'canon_save_service_record', { service_id: sid, add_visitors: [{ name: 'Kim Example' }] });
+  assert.equal(refused.isError, true);
+  assert.equal(rec.recordFor(sid).visitors.length, 1);
+  const att = await call(tokens.access_token, 'canon_save_service_record', { service_id: sid, attendance: 72 });
+  assert.equal(att.isError, false, att.text);
+
+  // names & follow-up: names and status, never contact details — and new visitors' contact is not stored
+  setMcp({ visitors: 'names', expose_member_pii: true });
+  r = await call(tokens.access_token, 'canon_get_service_record', { service_id: sid });
+  assert.equal(r.json?.data.visitors[0].name, 'Jo Example');
+  assert.ok(!r.text.includes('9000 0010') && !r.text.includes('new job'), r.text);
+  await call(tokens.access_token, 'canon_save_service_record', { service_id: sid, add_visitors: [{ name: 'Kim Example', contact: '9000 0011' }] });
+  assert.equal(rec.recordFor(sid).visitors[1].contact ?? null, null);
+
+  // with contact details: shared even while members' contact details are not
+  setMcp({ visitors: 'contact', expose_member_pii: false, modules: { members: 'off' } });
+  r = await call(tokens.access_token, 'canon_get_service_record', { service_id: sid });
+  assert.equal(r.json?.data.visitors[0].contact, '9000 0010', r.text);
+  assert.equal(r.json?.data.visitors[0].prayer, 'new job');
+  const who = await call(tokens.access_token, 'canon_whoami');
+  assert.match(String(who.json?.data.visitors), /contact details/);
+
+  // a role that does not see members' details gets names only; Service records off means no visitors at all
+  const cfg = getSettings().mcp;
+  assert.equal(visitorsFor(cfg, 'admin'), 'contact');
+  assert.equal(visitorsFor(cfg, 'viewer'), 'names');
+  assert.equal(visitorsFor({ ...cfg, modules: { ...cfg.modules, records: 'off' } }, 'admin'), 'off');
+  setMcp({ modules: { records: 'off', members: 'read' }, visitors: 'names' });
+});
+
+test('settings saved before 0.15.1: visitors follow the old personal-data switch', async () => {
+  const { clearSettingsCache } = await import('../server/repo/settings.ts');
+  const saved = all<{ value: string }>("SELECT value FROM settings WHERE key = 'mcp'")[0].value;
+  const old = JSON.parse(saved);
+  delete old.visitors;
+  try {
+    for (const [pii, want] of [[true, 'contact'], [false, 'names']] as const) {
+      db.prepare("UPDATE settings SET value = ? WHERE key = 'mcp'").run(JSON.stringify({ ...old, expose_member_pii: pii }));
+      clearSettingsCache();
+      assert.equal(getSettings().mcp.visitors, want);
+    }
+    // once chosen, the level stays whatever the members switch says
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'mcp'").run(JSON.stringify({ ...old, expose_member_pii: true, visitors: 'off' }));
+    clearSettingsCache();
+    assert.equal(getSettings().mcp.visitors, 'off');
+  } finally {
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'mcp'").run(saved);
+    clearSettingsCache();
+  }
 });
 
 test('member PII redaction and audit log without member values', async () => {

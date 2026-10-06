@@ -1,4 +1,5 @@
 // Settings → AI agents (MCP): what agents may do, who has connected, and the AI activity log.
+import { SaveBar } from '../template-ui.tsx';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -6,11 +7,13 @@ import { Empty, ErrorBox, Loading, Seg, confirmAction, useAction, useToast } fro
 import { Icon } from '../../components/icons.tsx';
 import { FilterBar, Pager, useLogQuery, type Paged } from '../../components/LogTools.tsx';
 import type { McpConfig, ModuleAccess, ModuleKey } from '../../types-client.ts';
+import type { VisitorAccess } from '../../../shared/types.ts';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../../types-client.ts';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { fmtStamp, PublicUrlField } from './common.tsx';
 import { DateRange, KeepMonths } from './ChangeLogTab.tsx';
 import '../people.css';
+import '../presentation.css';
 
 export type Tool = { name: string; module: ModuleKey; access: 'read' | 'write'; title: string; description: string; requires_pii: boolean };
 
@@ -39,7 +42,7 @@ export const MOD_LABEL: Record<ModuleKey, string> = {
 };
 
 export const MOD_TIP: Partial<Record<ModuleKey, string>> = {
-  records: 'Attendance, new visitors (names and follow-up; contact details only with the personal-data switch below) and notes for the team, and the attendance report. With Read & write, agents may record attendance, notes and visitors — never money.',
+  records: 'Attendance and notes for the team, and the attendance report; new visitors as the Visitors switch below says. With Read & write, agents may record attendance, notes and (when Visitors is on) visitors — never money.',
   lending: 'The catalogue and its copies, who has what on loan and what is overdue. With Read & write, agents may add books and copies (e.g. from a list of ISBNs) — not lend or return.',
   equipment: 'The asset register and its maintenance log. With Read & write, agents may add or update items and record maintenance.',
   contributions: 'Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.',
@@ -69,6 +72,16 @@ export function McpTab() {
     const r = await run(() => api.put<McpConfig>('/mcp/config', d), t('Saved.'));
     if (r) cfg.setData(r);
   };
+  // the server switch takes effect at once (the module levels below are reviewed and saved together)
+  const setEnabled = async (enabled: boolean) => {
+    if (!cfg.data) return;
+    if (!enabled && !confirmAction(t('Turn the MCP server off? Every connected AI assistant loses access until you turn it on again.'))) return;
+    const r = await run(() => api.put<McpConfig>('/mcp/config', { ...cfg.data!, enabled }), enabled ? t('The MCP server is on.') : t('The MCP server is off.'));
+    if (r) {
+      cfg.setData(r);
+      setD((x) => x && { ...x, enabled: r.enabled });
+    }
+  };
   const copy = async (s: string) => {
     try {
       await navigator.clipboard.writeText(s);
@@ -77,7 +90,8 @@ export function McpTab() {
       window.prompt(t('Copy'), s);
     }
   };
-  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? configuredAccess(x.module, d.modules) : 'off', d.expose_member_pii)).length;
+  const pii = d.expose_member_pii && configuredAccess('members', d.modules) !== 'off';
+  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? configuredAccess(x.module, d.modules) : 'off', pii)).length;
 
   return (
     <div className="stack">
@@ -87,7 +101,7 @@ export function McpTab() {
 
       <div className="card stack">
         <label className="switch">
-          <input type="checkbox" checked={d.enabled} onChange={(e) => { const enabled = e.target.checked; setD((x) => x && { ...x, enabled }); }} />
+          <input type="checkbox" checked={d.enabled} disabled={busy} onChange={(e) => void setEnabled(e.target.checked)} />
           <strong>{t('Enable MCP server')}</strong>
           <span className={`badge ${d.enabled ? 'ok' : ''}`}>{d.enabled ? t('On') : t('Off')}</span>
         </label>
@@ -123,7 +137,7 @@ export function McpTab() {
           const readOnly = READ_ONLY_MODULES.includes(m);
           const level = configuredAccess(m, d.modules);
           const mt = (tools.data ?? []).filter((x) => x.module === m);
-          const on = mt.filter((x) => toolExposed(x, level, d.expose_member_pii)).length;
+          const on = mt.filter((x) => toolExposed(x, level, pii)).length;
           return (
             <div key={m} className={`mod-row${parent ? ' nested' : ''}`}>
               <div className="row between">
@@ -140,10 +154,39 @@ export function McpTab() {
                     options={[{ value: 'off', label: t('Off') }, { value: 'read', label: t('Read only') }, ...(readOnly ? [] : [{ value: 'write' as const, label: t('Read & write') }])]} />
                 )}
               </div>
+              {m === 'members' && (
+                <div className="mod-row nested">
+                  <div className="row between">
+                    <div>
+                      <strong>{t('Contact details & birthdays')}</strong>
+                      <InfoTip text={t('PDPA: while this is off, members’ phone numbers, e-mail and home addresses, birth dates, notes and reasons for absence — and co-workers’ and households’ contact details — are withheld from everything an AI agent receives, and the birthday tool is hidden. Turn it on only if the church has consent to share them with the AI provider.')} />
+                      <div className="small muted">{t('Members, co-workers and households')}</div>
+                    </div>
+                    {level === 'off' ? <span className="badge">{t('Off')}</span> : (
+                      <Seg<'off' | 'on'> value={d.expose_member_pii ? 'on' : 'off'} onChange={(v) => setD((x) => x && { ...x, expose_member_pii: v === 'on' })}
+                        options={[{ value: 'off', label: t('Off') }, { value: 'on', label: t('Shared') }]} />
+                    )}
+                  </div>
+                </div>
+              )}
+              {m === 'records' && (
+                <div className="mod-row nested">
+                  <div className="row between">
+                    <div>
+                      <strong>{t('Visitors')}</strong>
+                      <InfoTip text={t('New visitors on service records. Off: attendance numbers only. Names & follow-up: names, how they came and follow-up (with Read & write, agents may record visitors and update follow-up). With contact details: also phone, e-mail and prayer requests — only if the church has visitors’ consent to share them with the AI provider. Details the keep period erased stay gone.')} />
+                    </div>
+                    {level === 'off' ? <span className="badge">{t('Off')}</span> : (
+                      <Seg<VisitorAccess> value={d.visitors ?? 'names'} onChange={(v) => setD((x) => x && { ...x, visitors: v })}
+                        options={[{ value: 'off', label: t('Off') }, { value: 'names', label: t('Names & follow-up') }, { value: 'contact', label: t('With contact details') }]} />
+                    )}
+                  </div>
+                </div>
+              )}
               {open[m] && (
                 <div className="tool-list">
                   {mt.map((x) => {
-                    const ex = toolExposed(x, level, d.expose_member_pii);
+                    const ex = toolExposed(x, level, pii);
                     return (
                       <div key={x.name} className={`tool${ex ? '' : ' off'}`}>
                         <Icon name={ex ? 'check' : 'x'} style={{ color: ex ? 'var(--ok)' : 'var(--ink-3)' }} />
@@ -164,21 +207,8 @@ export function McpTab() {
         })}
       </div>
 
-      <div className="card stack">
-        <label className="switch">
-          <input type="checkbox" checked={d.expose_member_pii} onChange={(e) => { const on = e.target.checked; setD((x) => x && { ...x, expose_member_pii: on }); }} />
-          <strong>{t('Expose member contact details & birthdays')}</strong>
-        </label>
-        <div className="callout warn small">
-          {t('PDPA: while this is off, phone numbers, email and home addresses, birth dates, notes and reasons for absence are withheld from everything an AI agent receives, and the birthday tool is hidden. Turn it on only if the church has consent to share members’ personal data with the AI provider.')}
-        </div>
-      </div>
-
-      <div className="row end mcp-save">
-        {dirty && <span className="muted small">{t('Unsaved changes')}</span>}
-        <button className="btn" onClick={() => cfg.data && setD(cfg.data)} disabled={!dirty || busy}>{t('Cancel')}</button>
-        <button className="btn primary" onClick={save} disabled={!dirty || busy}>{t('Save AI access')}</button>
-      </div>
+      <SaveBar dirty={dirty} busy={busy} onSave={save} onDiscard={() => cfg.data && setD(cfg.data)}
+        message={t('AI access changes are not saved yet: assistants still see the saved settings.')} saveLabel={t('Save AI access')} className="mcp-savebar" />
 
       <GrantsCard />
       <AuditCard />

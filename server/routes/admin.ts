@@ -21,7 +21,11 @@ export const adminRoutes = express.Router();
 // ---------------------------------------------------------------- MCP administration
 
 adminRoutes.get('/mcp/config', requireAdmin, h(() => getSettings().mcp));
-adminRoutes.put('/mcp/config', requireAdmin, h((req) => updateSettings({ mcp: S.McpConfigSchema.parse(req.body) }).mcp));
+adminRoutes.put('/mcp/config', requireAdmin, h((req) => {
+  const b = S.McpConfigSchema.parse(req.body);
+  // an older screen doesn't send visitors: keep the saved level
+  return updateSettings({ mcp: { ...b, visitors: b.visitors ?? getSettings().mcp.visitors } }).mcp;
+}));
 /** AI activity log, newest first, with filters and paging. */
 const auditQuery = (q: Record<string, string | undefined>) => ({
   user_id: Number(q.user) || undefined, client: q.client || undefined, tool: q.tool || undefined, module: q.module || undefined,

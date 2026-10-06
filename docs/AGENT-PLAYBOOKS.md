@@ -94,7 +94,7 @@ Example (fictional) result of `canon_find_services {"similar_to": 42}`:
 
 Read tools are safe to call freely. Write tools change church data: confirm first (section 8).
 
-**Start with `canon_whoami`** when unsure what you can do: it returns the person you act for and their role, each module's access (off / read / write) with the reason, whether member contact details are shown, the church's languages and congregations, the tools and playbooks on this connection, what agents may never do, and the working instructions. It is offered on every connection.
+**Start with `canon_whoami`** when unsure what you can do: it returns the person you act for and their role, each module's access (off / read / write) with the reason, whether member contact details are shown, what you get about new visitors (`visitors`), the church's languages and congregations, the tools and playbooks on this connection, what agents may never do, and the working instructions. It is offered on every connection.
 
 | Module | Read | Write |
 |---|---|---|
@@ -148,11 +148,11 @@ Patterns:
 
 ## 9. Privacy (PDPA)
 
-- Member contact details, addresses, birth dates and notes are returned **only** if the administrator has turned on "Expose member contact details & birthdays" **and** the role of the person who approved the connection sees members' contact details (`canon_whoami` says which). Otherwise they are withheld: do not try to obtain or infer them.
+- Member contact details, addresses, birth dates and notes (and co-workers' and households' contact details) are returned **only** if the members register is on, the administrator has set its **Contact details & birthdays** to Shared, **and** the role of the person who approved the connection sees members' contact details (`canon_whoami` says which). Otherwise they are withheld: do not try to obtain or infer them.
 - Even when exposed, use the minimum: names and dates for the task at hand. Don't copy personal data into chats, documents or other tools unless the user asked for it. Don't include ages or birth years unless asked.
 - The church's own member fields (`custom` on `canon_get_person`, set with `canon_save_person {"fields":{"custom":{key: value}}}`; keys and types in Settings → Member fields) follow the same rule: fields marked sensitive only when personal data is exposed **and** the person's role sees sensitive fields (Settings → Roles & permissions; e.g. the secretary sees contact details but not sensitive fields), and they can only be changed then.
 - Rota, group and service tools return names only, never contact details.
-- Service records: visitors are returned by name, how they came and follow-up only; their contact details, notes, prayer requests and how they describe themselves (`about`, from the visitor form) only when personal data is exposed. Agents do not see or review visitor-form entries waiting for review; staff accept them in Canon. Signature images are never returned. Report totals for offerings; do not single out individual services or people in summaries.
+- Service records: new visitors follow the **Visitors** level under Service records (`canon_whoami` → `visitors`). **Off**: no visitors at all — records carry `new_visitors` (a count) and `visitors_withheld`, the attendance report has no `people`, and `canon_save_service_record` refuses `add_visitors` / `visitor_updates`. **Names & follow-up** (the default): name, how they came and follow-up; contact details sent with `add_visitors` are not stored. **With contact details**: also contact, notes, prayer requests and how they describe themselves (`about`, from the visitor form) — but only for roles that see members' contact details; others get names & follow-up. Agents do not see or review visitor-form entries waiting for review; staff accept them in Canon. Signature images are never returned. Report totals for offerings; do not single out individual services or people in summaries.
 - Agents cannot send e-mail. Volunteer reminders are sent by staff from the service's **Team & roster** tab after a preview.
 - Every tool call is written to an audit log the administrator can read (argument names only for the registers).
 
@@ -182,7 +182,7 @@ The MCP server offers these as prompts; each is offered only when your access al
 ## 12. Troubleshooting
 
 - **A tool or playbook is missing**: the administrator has set that module to off or read-only in Settings → AI / MCP, your connection was approved with read-only scope, the signed-in user's role doesn't allow it, or the church has switched that part of Canon off (Settings → Modules: meetings and calendar, volunteers and rota, visitor form). Ask the user to check with the administrator; don't work around it.
-- **member_care is missing**: members is off, or "Expose member contact details & birthdays" is off (the default).
+- **member_care is missing**: members is off, or its "Contact details & birthdays" switch is off (the default).
 - **No service-record or offerings tools**: Service records and Offerings are off by default; offerings also need Service records on and an editor or administrator account.
 - **"N of M operations failed — nothing was applied"**: read the per-op errors, fix them, resend the whole batch.
 - **"No Bible is set up for language …"**: the church has no Bible for that language; an administrator adds one under Settings → Languages.

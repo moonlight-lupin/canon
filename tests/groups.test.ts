@@ -185,10 +185,13 @@ test('committee CRUD over MCP; batch membership edits; names and roles only with
   for (const leak of ['777', '888', 'david.tan@']) assert.ok(!detail.text.includes(leak), `leaked ${leak}`);
   for (const leak of ['777', '888', 'david.tan@']) assert.ok(!u.text.includes(leak), `batch result leaked ${leak}`);
 
+  // 0.15.1: contact details are shared only while the Members register is on for agents
   setMcp({ expose_member_pii: true });
+  assert.ok(!(await call('canon_find_groups', { id: gid })).text.includes('david.tan@example.org'), 'Members register off: no contact details');
+  setMcp({ expose_member_pii: true, modules: { members: 'read' } });
   const withPii = await call('canon_find_groups', { id: gid });
   assert.ok(withPii.text.includes('david.tan@example.org'));
-  setMcp({ expose_member_pii: false });
+  setMcp({ expose_member_pii: false, modules: { members: 'off' } });
 
   const upd = await call('canon_save_group', { id: gid, fields: { active: false } });
   assert.equal(upd.json!.data.active, false);

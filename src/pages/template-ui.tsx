@@ -64,14 +64,14 @@ export function useSteps(first = 1) {
 }
 
 /** Sticky bar at the bottom of an editor while there are unsaved changes. */
-export function SaveBar({ dirty, busy, onSave, onDiscard, problem }: { dirty: boolean; busy: boolean; onSave: () => void; onDiscard: () => void; problem?: string | null }) {
+export function SaveBar({ dirty, busy, onSave, onDiscard, problem, message, saveLabel, className }: { dirty: boolean; busy: boolean; onSave: () => void; onDiscard: () => void; problem?: string | null; message?: string; saveLabel?: string; className?: string }) {
   const { t } = useI18n();
   if (!dirty) return null;
   return (
-    <div className="tp-savebar" role="region" aria-label={t('Unsaved changes')}>
-      <span className="tp-savebar-msg">{problem ?? t('You have unsaved changes. The preview already shows them.')}</span>
+    <div className={`tp-savebar${className ? ` ${className}` : ''}`} role="region" aria-label={t('Unsaved changes')}>
+      <span className="tp-savebar-msg">{problem ?? message ?? t('You have unsaved changes. The preview already shows them.')}</span>
       <button type="button" className="btn sm ghost" onClick={onDiscard} disabled={busy}>{t('Discard')}</button>
-      <button type="button" className="btn sm primary" onClick={onSave} disabled={busy || !!problem}>{t('Save changes')}</button>
+      <button type="button" className="btn sm primary" onClick={onSave} disabled={busy || !!problem}>{saveLabel ?? t('Save changes')}</button>
     </div>
   );
 }

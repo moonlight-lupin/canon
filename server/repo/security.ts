@@ -232,9 +232,14 @@ export function securityChecklist(): CheckItem[] {
   const mcp = s.mcp;
   items.push(!mcp.enabled
     ? { key: 'ai', status: 'ok', title: 'AI assistants', detail: 'Off.' }
-    : mcp.expose_member_pii
-      ? { key: 'ai', status: 'warn', title: 'AI assistants', detail: 'On, and members’ personal data is shared with them. Keep it on only with the church’s consent to share it with the AI provider.', link: '/settings?tab=mcp' }
-      : { key: 'ai', status: 'ok', title: 'AI assistants', detail: 'On; members’ personal data is not shared.', link: '/settings?tab=mcp' });
+    : (() => {
+      const members = mcp.expose_member_pii && mcp.modules.members !== 'off';
+      const visitors = mcp.modules.records !== 'off' && mcp.visitors === 'contact';
+      const shared = [members && 'members’ contact details and birthdays', visitors && 'visitors’ contact details'].filter(Boolean).join(' and ');
+      return shared
+        ? { key: 'ai', status: 'warn' as const, title: 'AI assistants', detail: `On, and ${shared} are shared with them. Keep that only with the consent to share it with the AI provider.`, link: '/settings?tab=mcp' }
+        : { key: 'ai', status: 'ok' as const, title: 'AI assistants', detail: 'On; no contact details are shared with them.', link: '/settings?tab=mcp' };
+    })());
 
   const vf = formSettings();
   items.push({ key: 'visitor_form', status: 'info', title: 'Visitor form', detail: vf.enabled ? 'On: services with a form have a public page visitors can fill in.' : 'Off.', link: '/settings?tab=visitor-form' });

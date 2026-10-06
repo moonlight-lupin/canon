@@ -14,7 +14,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../shared/types.ts';
-import type { McpConfig, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
+import type { McpConfig, ModuleAccess, ModuleKey, Role, VisitorAccess } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
 import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
 import { asActor } from './lib/actor.ts';
@@ -83,6 +83,7 @@ const WHOAMI: ToolDef = {
       church: { name: settings.church_name, languages: settings.languages.map((l) => ({ code: l, name: langInfo(l).name })) },
       congregations: listCongregations().filter((c) => c.active).map((c) => ({ id: c.id, code: c.code, name: c.name, languages: c.languages })),
       modules: Object.fromEntries(MODULES.map((m) => [m, { access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role) }])),
+      visitors: { off: 'not shared (attendance numbers only)', names: 'names, how they came and follow-up — no contact details', contact: 'names, follow-up and contact details — handle with care (PDPA)' }[visitorsFor(cfg, auth.user.role)],
       member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : !seesMemberDetails(auth.user) && cfg.expose_member_pii ? 'withheld: your role does not see members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
       tools: allowedTools(cfg, auth.scopes, auth.user.role).map((t) => t.name),
       playbooks: allowedPrompts(levels, piiFor(cfg, auth.user.role)).map((p) => p.name),
@@ -119,7 +120,13 @@ export function toolCatalog() {
 
 /** Effective access to a module for this request = min(admin setting, token scope, user role). */
 /** Members' personal data on this connection: the administrator shares it, and the person's role sees members' details. */
-export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && roleDef(role).member_details;
+export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && configuredAccess('members', cfg.modules) !== 'off' && roleDef(role).member_details;
+/** New visitors on service records: off with Service records, names only unless contact details are shared (and the role sees members' details). */
+export function visitorsFor(cfg: McpConfig, role: Role): VisitorAccess {
+  if (configuredAccess('records', cfg.modules) === 'off') return 'off';
+  const v = cfg.visitors ?? 'names';
+  return v === 'contact' && !roleDef(role).member_details ? 'names' : v;
+}
 /** The church's member fields marked sensitive: personal data is shared, and the role sees sensitive fields too. */
 export const sensitiveFor = (cfg: McpConfig, role: Role) => piiFor(cfg, role) && roleDef(role).sensitive_fields;
 
@@ -337,7 +344,7 @@ export function buildServer(auth: McpAuth, base = '') {
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
   const pii = piiFor(cfg, auth.user.role);
-  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), levels, base };
+  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), visitors: visitorsFor(cfg, auth.user.role), levels, base };
   const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, pii, settings.languages) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;

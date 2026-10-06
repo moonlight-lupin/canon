@@ -39,9 +39,11 @@ const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kin
 // the connection's access already follows the person's role (no offerings for roles without them)
 const money = (ctx: Ctx) => canRead(ctx, 'contributions');
 
+/** Visitors on this connection (Settings → AI / MCP → Service records → Visitors). */
+const visitorLevel = (ctx: Ctx) => ctx.visitors ?? (ctx.pii ? 'contact' : 'names');
 const visitorOut = (v: Visitor, i: number, ctx: Ctx) => ({
   index: i, name: v.name, source: v.source ?? null, follow_up_by: v.follow_up_by ?? null, status: v.status ?? 'new',
-  ...(ctx.pii ? { contact: v.contact ?? null, notes: v.notes ?? null, prayer: v.prayer ?? null, about: v.about ?? null } : {}),
+  ...(visitorLevel(ctx) === 'contact' ? { contact: v.contact ?? null, notes: v.notes ?? null, prayer: v.prayer ?? null, about: v.about ?? null } : {}),
 });
 
 function recordOut(serviceId: number, ctx: Ctx) {
@@ -50,7 +52,9 @@ function recordOut(serviceId: number, ctx: Ctx) {
   const r = rec.recordFor(serviceId);
   const out: Record<string, unknown> = {
     service_id: serviceId, saved: r.saved, attendance: r.attendance, children: r.children, online: r.online, notes: r.notes,
-    visitors: r.visitors.map((v, i) => visitorOut(v, i, ctx)),
+    ...(visitorLevel(ctx) === 'off'
+      ? { new_visitors: r.visitors.length, visitors_withheld: 'visitors are not shared on this connection (numbers only)' }
+      : { visitors: r.visitors.map((v, i) => visitorOut(v, i, ctx)) }),
   };
   // a meeting says so (and whether it takes an offering at all)
   const s = dbGet<{ kind: string; group_id: number | null; offering: number }>('SELECT kind, group_id, offering FROM services WHERE id = ?', serviceId);
@@ -116,6 +120,9 @@ export const RECORD_TOOLS: ToolDef[] = [
     handler: (a, ctx) => {
       checkRef('services', a.service_id, 'write');
       const cur = rec.recordFor(a.service_id);
+      if ((a.add_visitors?.length || a.visitor_updates?.length) && visitorLevel(ctx) === 'off') {
+        throw new Error('Visitors are not shared on this connection (Settings → AI / MCP → Service records → Visitors).');
+      }
       const visitors = cur.visitors.map((v) => ({ ...v }));
       for (const u of a.visitor_updates ?? []) {
         const v = visitors[u.index];
@@ -126,7 +133,7 @@ export const RECORD_TOOLS: ToolDef[] = [
       for (const v of a.add_visitors ?? []) {
         visitors.push({
           name: v.name.trim(), source: v.source, follow_up_by: v.follow_up_by, status: v.status && v.status !== 'new' ? v.status : undefined,
-          ...(ctx.pii && v.contact ? { contact: v.contact } : {}),
+          ...(visitorLevel(ctx) === 'contact' && v.contact ? { contact: v.contact } : {}),
         });
       }
       const patch: Record<string, unknown> = {};
@@ -147,7 +154,7 @@ export const RECORD_TOOLS: ToolDef[] = [
       return {
         ...att,
         rows: att.rows.filter((r) => r.recorded).map((r) => ({ service_id: r.service_id, date: r.date, title: r.title, congregation_id: r.congregation_id, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors })),
-        visitors: { funnel: vis.funnel, sources: vis.sources, months: vis.months, people: vis.visitors.map((v) => ({ date: v.date, service_id: v.service_id, name: v.name, source: v.source, status: v.status })) },
+        visitors: { funnel: vis.funnel, sources: vis.sources, months: vis.months, ...(visitorLevel(ctx) === 'off' ? {} : { people: vis.visitors.map((v) => ({ date: v.date, service_id: v.service_id, name: v.name, source: v.source, status: v.status })) }) },
       };
     },
   },

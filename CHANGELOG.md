@@ -4,6 +4,26 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.1 — Settings: roles, and AI access beside the data it protects
+
+- **Settings → Roles & permissions** is its own section, next to **User accounts**. Administrators edit the roles there; User accounts keeps the accounts and points to it. In Chinese the section is now 角色与权限, no longer the rota word 岗位.
+- **Settings → AI / MCP**:
+  - **Enable MCP server** takes effect at once, with no need to scroll down and save. Turning it off asks first, since every connected assistant loses access.
+  - Module levels are saved with **Save AI access** in a bar that stays at the bottom of the window while there are unsaved changes.
+- **Personal data for AI assistants, beside the data it protects.** The separate "Expose member contact details & birthdays" box is gone.
+  - **Members register → Contact details & birthdays** (Off / Shared) covers members' phone numbers, e-mail and home addresses, birth dates, notes and reasons for absence, plus co-workers' and households' contact details.
+  - **Service records → Visitors** has three levels:
+    - **Off**: attendance numbers only. Agents get a count and cannot record visitors.
+    - **Names & follow-up**: names, how they came and follow-up, without contact details.
+    - **With contact details**: also phone or e-mail and prayer requests.
+- **Stricter than before:**
+  - With the Members register off, no contact details reach agents, including co-workers' and households'.
+  - With Service records off, no visitors reach agents.
+  - A connection approved by an account that doesn't see members' details gets visitors' names at most.
+  - The approval page and the security checklist show both switches.
+- **Your settings carry over.** Where the old box was on, Contact details stays on and Visitors starts at With contact details. Otherwise Contact details stays off and Visitors starts at Names & follow-up.
+- Database: no change.
+
 ## 0.15.0 — Lending library and asset register
 
 Two new optional parts of Canon, under **Resources** in the sidebar. Both start switched off: an administrator turns them on in **Settings → Modules**.

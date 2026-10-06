@@ -117,6 +117,7 @@ export const DEFAULT_SETTINGS: Settings = {
     enabled: false,
     modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off', lending: 'off', equipment: 'off' },
     expose_member_pii: false,
+    visitors: 'names',
   },
 };
 
@@ -142,6 +143,8 @@ export function getSettings(): Settings {
   // v0.1 churches were set up before onboarding existed
   if (!('onboarded' in raw) && 'church_name' in raw) out.onboarded = true;
   out.mcp = { ...DEFAULT_SETTINGS.mcp, ...out.mcp, modules: { ...DEFAULT_SETTINGS.mcp.modules, ...out.mcp.modules } };
+  // before 0.15.1 one switch shared every contact detail: visitors' followed it
+  if (!(raw.mcp as { visitors?: string } | undefined)?.visitors) out.mcp.visitors = out.mcp.expose_member_pii ? 'contact' : 'names';
   out.smtp = { ...DEFAULT_SETTINGS.smtp, ...out.smtp, has_password: !!getMeta('smtp_password') };
   out.backup = { ...DEFAULT_SETTINGS.backup, ...out.backup };
   out.retention = { ...DEFAULT_SETTINGS.retention, ...out.retention };

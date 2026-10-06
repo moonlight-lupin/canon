@@ -95,8 +95,12 @@ export function consentPage(res: Response, a: ValidAuthz, user: User & { csrf: s
     const [aen, azh] = ACCESS_LABEL[lvl];
     return `<tr><td>${esc(en)} <span class="zh">${esc(zh)}</span></td><td class="l ${lvl}">${esc(aen)} ${esc(azh)}${capped ? ' *' : ''}</td></tr>`;
   }).join('');
+  const piiOn = s.expose_member_pii && configuredAccess('members', s.modules) !== 'off';
+  const vis = configuredAccess('records', s.modules) === 'off' ? 'off' : s.visitors ?? 'names';
+  const VIS: Record<string, [string, string]> = { off: ['Hidden 隐藏', 'off'], names: ['Names &amp; follow-up 姓名与跟进', 'read'], contact: ['With contact details 含联络资料', 'write'] };
   const piiRow = `<tr><td>Member contact details, addresses &amp; birthdays <span class="zh">会友联系资料、地址与生日</span></td>` +
-    `<td class="l ${s.expose_member_pii ? 'write' : 'off'}">${s.expose_member_pii ? 'Shared 提供' : 'Hidden 隐藏'}</td></tr>`;
+    `<td class="l ${piiOn ? 'write' : 'off'}">${piiOn ? 'Shared 提供' : 'Hidden 隐藏'}</td></tr>` +
+    `<tr><td>New visitors <span class="zh">新朋友</span></td><td class="l ${VIS[vis][1]}">${VIS[vis][0]}</td></tr>`;
   const hidden = (n: string, v: string | null | undefined) => `<input type="hidden" name="${n}" value="${esc(v ?? '')}">`;
   page(
     res,
