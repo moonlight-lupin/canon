@@ -4,7 +4,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.15.8 — not released yet
+## 0.15.8 — Sample data, and tidier service details
 
 - **Settings → Sample data** (administrators): add a fictional church to try Canon with — about 40 people in households with English names and Chinese names of their own, birthdays, cell groups by area, committees, fellowships, a Sunday school and people on every serving team, optionally on the next two Sundays' rotas — and remove exactly that again in one click.
 - **A service's details:** the Bible version boxes no longer spill into the next column (Liturgical season) when a Bible's name is long; they shrink to fit and show the rest when opened.
