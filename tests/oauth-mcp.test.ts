@@ -31,8 +31,8 @@ type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-ex
 let server: Server;
 let base = '';
 
-const ALL_ON = { members: 'read', coworkers: 'read', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'off', contributions: 'off' } as const;
-function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean; visitors: 'off' | 'names' | 'contact' }>) {
+const ALL_ON = { members: 'read', coworkers: 'read', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'off', contributions: 'off', admin: 'off' } as const;
+function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean; visitors: 'off' | 'names' | 'contact'; sheet_music: boolean }>) {
   const cur = getSettings().mcp;
   updateSettings({ mcp: { ...cur, ...patch, modules: { ...cur.modules, ...(patch.modules ?? {}) } } });
 }
@@ -907,6 +907,84 @@ test('settings saved before 0.15.1: visitors follow the old personal-data switch
     db.prepare("UPDATE settings SET value = ? WHERE key = 'mcp'").run(saved);
     clearSettingsCache();
   }
+});
+
+test('sheet music for agents: off by default, a nested switch under the Library; pictures as image content', async () => {
+  const sc = await import('../server/repo/scores.ts');
+  const svcRepo = await import('../server/repo/services.ts');
+  const song = lib.songs.insert({ title: { en: 'A Hymn With Music' }, stanzas: [{ label: '1', text: { en: 'Line' } }], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40, 2)]);
+  sc.addScore(song.id, { name: 'page 1.png', mime: 'image/png', data: PNG });
+  sc.addScore(song.id, { name: 'organ.pdf', mime: 'application/pdf', data: Buffer.from('%PDF-1.4\n') });
+  const sid = svcRepo.createService({ date: '2031-07-06' }).service.id;
+  svcRepo.addItem(sid, { kind: 'song', ref_id: song.id, stanzas: ['1'] });
+
+  assert.equal(getSettings().mcp.sheet_music, false, 'off by default');
+  assert.ok(!(await toolNames(tokens.access_token)).includes('canon_sheet_music'));
+  setMcp({ sheet_music: true, modules: { library: 'off' } });
+  assert.ok(!(await toolNames(tokens.access_token)).includes('canon_sheet_music'), 'nothing while the Library is off');
+  setMcp({ modules: { library: 'read', services: 'read' } });
+  assert.ok((await toolNames(tokens.access_token)).includes('canon_sheet_music'));
+
+  const list = await call(tokens.access_token, 'canon_sheet_music', { service_id: sid });
+  assert.equal(list.isError, false, list.text);
+  assert.deepEqual(list.json!.data.songs[0].pages.map((p: Json) => [p.page, p.type]), [[1, 'image'], [2, 'pdf']]);
+  assert.match(list.json!.data.open_in_canon, new RegExp(`/services/${sid}/sheet-music$`));
+  // the pictures come as MCP image content after the JSON; PDFs are not sent
+  const r = await mcp(tokens.access_token, 'tools/call', { name: 'canon_sheet_music', arguments: { song_id: song.id, pictures: true } });
+  const content = (r.body.result as Json).content as Json[];
+  assert.equal(content[0].type, 'text');
+  assert.deepEqual(content.slice(1).map((c) => [c.type, c.mimeType]), [['image', 'image/png']]);
+  assert.ok(Buffer.from(content[1].data, 'base64').equals(PNG));
+  setMcp({ sheet_music: false, modules: { library: 'write', services: 'write' } });
+});
+
+test('administration for agents: administrators\' connections only, read only unless write; never secrets', async () => {
+  const fsMod = await import('node:fs');
+  const bk = path.join(tmp, 'admin-backups');
+  fsMod.mkdirSync(bk, { recursive: true });
+  // a test never writes into the project's own backups folder
+  updateSettings({ backup: { ...getSettings().backup, dir: bk } });
+
+  setMcp({ modules: { admin: 'off' } });
+  let names = await toolNames(tokens.access_token);
+  assert.ok(!names.some((n) => n.startsWith('canon_admin_')));
+  setMcp({ modules: { admin: 'read' } });
+  names = await toolNames(tokens.access_token);
+  for (const n of ['canon_admin_overview', 'canon_admin_accounts', 'canon_admin_change_log', 'canon_admin_record_views', 'canon_admin_settings']) assert.ok(names.includes(n), n);
+  assert.ok(!names.includes('canon_admin_backup_now') && !names.includes('canon_admin_run_checks'), 'actions need Read & write');
+
+  const ov = await call(tokens.access_token, 'canon_admin_overview');
+  assert.ok(ov.json!.data.checklist.some((c: Json) => c.key === 'disk'));
+  assert.ok('backups' in ov.json!.data);
+  const acc = await call(tokens.access_token, 'canon_admin_accounts');
+  assert.ok(acc.json!.data.some((u: Json) => u.username === 'admin' && u.role_name === 'Administrator'));
+  assert.ok(!/password|totp_secret|recovery/i.test(acc.text), 'no secrets');
+  const st = await call(tokens.access_token, 'canon_admin_settings');
+  assert.ok(!/smtp_password|has_password/i.test(st.text));
+  // the change log: field names only while members' personal data is not shared
+  setMcp({ expose_member_pii: false });
+  const log = await call(tokens.access_token, 'canon_admin_change_log', { size: 5 });
+  assert.equal(log.isError, false, log.text);
+  assert.ok(log.json!.data.entries.every((e: Json) => !('changes' in e)));
+
+  // a read-only account's connection never gets administration, whatever the setting
+  setMcp({ modules: { admin: 'write' } });
+  const viewer = await login('viewer', 'correct-horse-2');
+  const vt = await fullFlow(client.client_id, viewer);
+  assert.ok(!(await toolNames(vt.access_token)).some((n) => n.startsWith('canon_admin_')));
+
+  names = await toolNames(tokens.access_token);
+  assert.ok(names.includes('canon_admin_backup_now') && names.includes('canon_admin_run_checks'));
+  const b = await call(tokens.access_token, 'canon_admin_backup_now');
+  assert.equal(b.isError, false, b.text);
+  assert.ok(fsMod.existsSync(path.join(bk, b.json!.data.created)));
+  const chk = await call(tokens.access_token, 'canon_admin_run_checks');
+  assert.equal(chk.isError, false, chk.text);
+  assert.equal(chk.json!.data.backup_folder.ok, true);
+  const who = await call(tokens.access_token, 'canon_whoami');
+  assert.equal(who.json!.data.modules.admin.access, 'write');
+  setMcp({ modules: { admin: 'off' } });
 });
 
 test('member PII redaction and audit log without member values', async () => {

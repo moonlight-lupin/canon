@@ -25,7 +25,7 @@ import { get as dbGet } from './db.ts';
 const clientName = (clientId: string) => dbGet<{ client_name: string | null }>('SELECT client_name FROM oauth_clients WHERE client_id = ?', clientId)?.client_name ?? clientId;
 import { run } from './db.ts';
 import { getSettings } from './repo/settings.ts';
-import { BatchError, errorMessage, type Args, type Ctx, type ToolDef } from './mcp-tools/common.ts';
+import { BatchError, WithImages, errorMessage, type Args, type Ctx, type ToolDef } from './mcp-tools/common.ts';
 import { SERVICE_TOOLS } from './mcp-tools/services.ts';
 import { LIBRARY_TOOLS } from './mcp-tools/library.ts';
 import { VOLUNTEER_TOOLS } from './mcp-tools/volunteers.ts';
@@ -33,6 +33,8 @@ import { PEOPLE_TOOLS } from './mcp-tools/people.ts';
 import { GROUP_TOOLS } from './mcp-tools/groups.ts';
 import { RECORD_TOOLS } from './mcp-tools/records.ts';
 import { RESOURCE_TOOLS } from './mcp-tools/resources.ts';
+import { SCORE_TOOLS } from './mcp-tools/scores.ts';
+import { ADMIN_TOOLS } from './mcp-tools/admin.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
 import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
 import type { PermModule } from '../shared/permissions.ts';
@@ -49,6 +51,7 @@ const MODULE_TEXT: Record<ModuleKey, string> = {
   records: 'service records: attendance, new visitors (names and follow-up) and notes for the team, and their reports',
   contributions: 'offerings and cash counts on service records, and the offerings report (read only; part of records)',
   lending: 'the lending library: catalogue, copies and loans', equipment: 'the asset register: equipment and its maintenance',
+  admin: 'administration (administrators only): the security checklist, backups, accounts, the change log and record views, a settings overview; with write, back up now and run the checks',
 };
 
 /** Why a module is at this level on this connection (admin setting ∩ connection scope ∩ the person's role). */
@@ -83,12 +86,14 @@ const WHOAMI: ToolDef = {
       church: { name: settings.church_name, languages: settings.languages.map((l) => ({ code: l, name: langInfo(l).name })) },
       congregations: listCongregations().filter((c) => c.active).map((c) => ({ id: c.id, code: c.code, name: c.name, languages: c.languages })),
       modules: Object.fromEntries(MODULES.map((m) => [m, { access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role) }])),
+      sheet_music: scoresFor(cfg) ? 'shared: canon_sheet_music lists songs’ pages and returns the pictures' : 'not shared by the administrator',
       visitors: { off: 'not shared (attendance numbers only)', names: 'names, how they came and follow-up — no contact details', contact: 'names, follow-up and contact details — handle with care (PDPA)' }[visitorsFor(cfg, auth.user.role)],
       member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : !seesMemberDetails(auth.user) && cfg.expose_member_pii ? 'withheld: your role does not see members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
       tools: allowedTools(cfg, auth.scopes, auth.user.role).map((t) => t.name),
       playbooks: allowedPrompts(levels, piiFor(cfg, auth.user.role)).map((p) => p.name),
       never: [
-        'send e-mail or messages', 'delete people', 'see user accounts, passwords, settings or connection data',
+        'send e-mail or messages', 'delete people',
+        levels.admin === 'off' ? 'see user accounts, passwords, settings or connection data' : 'see passwords, sign-in secrets or connection tokens, or change accounts, roles or settings',
         ...(levels.records === 'off' ? ['see service records (attendance, visitors, notes)'] : []),
         ...(levels.contributions === 'off' ? ['see offerings or cash counts'] : []),
         'change offerings, cash counts or signatures, or verify a count', 'type hymn words that are under copyright unless the church holds a licence',
@@ -100,7 +105,7 @@ const WHOAMI: ToolDef = {
   },
 };
 
-export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS];
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...SCORE_TOOLS, ...ADMIN_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
@@ -113,6 +118,7 @@ export function toolCatalog() {
     title: t.title,
     description: t.description,
     requires_pii: !!t.requiresPii,
+    requires_scores: !!t.requiresScores,
   }));
 }
 
@@ -127,6 +133,8 @@ export function visitorsFor(cfg: McpConfig, role: Role): VisitorAccess {
   const v = cfg.visitors ?? 'names';
   return v === 'contact' && !roleDef(role).member_details ? 'names' : v;
 }
+/** Songs' sheet music: shared by the administrator, while the Library is shared. */
+export const scoresFor = (cfg: McpConfig) => !!cfg.sheet_music && configuredAccess('library', cfg.modules) !== 'off';
 /** The church's member fields marked sensitive: personal data is shared, and the role sees sensitive fields too. */
 export const sensitiveFor = (cfg: McpConfig, role: Role) => piiFor(cfg, role) && roleDef(role).sensitive_fields;
 
@@ -170,6 +178,7 @@ export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): T
     if ((t.module === 'lending' && on.lending === false) || (t.module === 'equipment' && on.equipment === false)) return false;
     const lvl = effectiveAccess(t.module, cfg, scopes, role);
     if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
+    if (t.requiresScores && !scoresFor(cfg)) return false;
     return !t.requiresPii || piiFor(cfg, role);
   });
 }
@@ -201,7 +210,9 @@ function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, lan
 
 /** Compact JSON: drop null / undefined object properties. */
 const dropNulls = (_k: string, v: unknown) => (v === null ? undefined : v);
-const ok = (data: unknown): CallToolResult => ({ content: [{ type: 'text', text: JSON.stringify({ ok: true, data }, dropNulls) }] });
+const ok = (data: unknown): CallToolResult => data instanceof WithImages
+  ? { content: [{ type: 'text', text: JSON.stringify({ ok: true, data: data.data }, dropNulls) }, ...data.images.map((i) => ({ type: 'image' as const, data: i.base64, mimeType: i.mime }))] }
+  : { content: [{ type: 'text', text: JSON.stringify({ ok: true, data }, dropNulls) }] };
 const fail = (error: string, errors?: unknown): CallToolResult =>
   ({ content: [{ type: 'text', text: JSON.stringify({ ok: false, error, errors }) }], isError: true });
 
@@ -344,7 +355,7 @@ export function buildServer(auth: McpAuth, base = '') {
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
   const pii = piiFor(cfg, auth.user.role);
-  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), visitors: visitorsFor(cfg, auth.user.role), levels, base };
+  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), visitors: visitorsFor(cfg, auth.user.role), scores: scoresFor(cfg), levels, base };
   const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, pii, settings.languages) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;

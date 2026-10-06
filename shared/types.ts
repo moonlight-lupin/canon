@@ -426,10 +426,12 @@ export interface Template {
 
 // ---------------------------------------------------------------- MCP control
 
-export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions' | 'lending' | 'equipment';
+export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions' | 'lending' | 'equipment' | 'admin';
 export type ModuleAccess = 'off' | 'read' | 'write';
 export type VisitorAccess = 'off' | 'names' | 'contact';
-export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment'];
+export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment', 'admin'];
+/** Modules only administrators' connections ever get (0.15.3: Administration). */
+export const ADMIN_MODULES: ModuleKey[] = ['admin'];
 /** Modules that live inside another: they are off whenever their parent is off. */
 export const MODULE_PARENT: Partial<Record<ModuleKey, ModuleKey>> = { contributions: 'records' };
 /** Modules agents may only ever read (offerings: agents never change money). */
@@ -451,4 +453,6 @@ export interface McpConfig {
   expose_member_pii: boolean;
   /** new visitors on service records (only while Service records is on): none, names & follow-up, or with contact details */
   visitors: VisitorAccess;
+  /** songs' sheet music (scans, photos, PDFs) — only while the Library is on; off by default (copies for the AI provider) */
+  sheet_music: boolean;
 }

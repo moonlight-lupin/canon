@@ -15,7 +15,7 @@ import { DateRange, KeepMonths } from './ChangeLogTab.tsx';
 import '../people.css';
 import '../presentation.css';
 
-export type Tool = { name: string; module: ModuleKey; access: 'read' | 'write'; title: string; description: string; requires_pii: boolean };
+export type Tool = { name: string; module: ModuleKey; access: 'read' | 'write'; title: string; description: string; requires_pii: boolean; requires_scores?: boolean };
 
 export type Grant = {
   grant_id: string; client_id: string; client_name: string; user_id: number; user_name: string; scope: string;
@@ -39,17 +39,19 @@ export const MOD_LABEL: Record<ModuleKey, string> = {
   contributions: 'Offerings (contributions)',
   lending: 'Lending library',
   equipment: 'Asset register',
+  admin: 'Administration',
 };
 
 export const MOD_TIP: Partial<Record<ModuleKey, string>> = {
   records: 'Attendance and notes for the team, and the attendance report; new visitors as the Visitors switch below says. With Read & write, agents may record attendance, notes and (when Visitors is on) visitors — never money.',
   lending: 'The catalogue and its copies, who has what on loan and what is overdue. With Read & write, agents may add books and copies (e.g. from a list of ISBNs) — not lend or return.',
   equipment: 'The asset register and its maintenance log. With Read & write, agents may add or update items and record maintenance.',
+  admin: 'For connections approved by an administrator only. Read only: the security checklist, backups, accounts (never passwords), the change log, who viewed member records and a settings overview. Read & write adds two safe actions: back up now, and run the checks (public address, backup folder, e-mail). Accounts, roles and settings are only ever changed in Canon.',
   contributions: 'Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.',
 };
 
-export const toolExposed = (tool: Tool, level: ModuleAccess, pii: boolean) =>
-  level !== 'off' && (tool.access === 'read' || level === 'write') && (!tool.requires_pii || pii);
+export const toolExposed = (tool: Tool, level: ModuleAccess, pii: boolean, scores = false) =>
+  level !== 'off' && (tool.access === 'read' || level === 'write') && (!tool.requires_pii || pii) && (!tool.requires_scores || scores);
 
 export function McpTab() {
   const { t } = useI18n();
@@ -91,7 +93,8 @@ export function McpTab() {
     }
   };
   const pii = d.expose_member_pii && configuredAccess('members', d.modules) !== 'off';
-  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? configuredAccess(x.module, d.modules) : 'off', pii)).length;
+  const scores = !!d.sheet_music && configuredAccess('library', d.modules) !== 'off';
+  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? configuredAccess(x.module, d.modules) : 'off', pii, scores)).length;
 
   return (
     <div className="stack">
@@ -137,7 +140,7 @@ export function McpTab() {
           const readOnly = READ_ONLY_MODULES.includes(m);
           const level = configuredAccess(m, d.modules);
           const mt = (tools.data ?? []).filter((x) => x.module === m);
-          const on = mt.filter((x) => toolExposed(x, level, pii)).length;
+          const on = mt.filter((x) => toolExposed(x, level, pii, scores)).length;
           return (
             <div key={m} className={`mod-row${parent ? ' nested' : ''}`}>
               <div className="row between">
@@ -169,6 +172,20 @@ export function McpTab() {
                   </div>
                 </div>
               )}
+              {m === 'library' && (
+                <div className="mod-row nested">
+                  <div className="row between">
+                    <div>
+                      <strong>{t('Sheet music')}</strong>
+                      <InfoTip text={t('Songs’ sheet music (Library → song → Sheet music). Shared: canon_sheet_music lists a service’s songs with their pages and can send the scans and photos for the assistant to read (key, range, tune). The pages then become copies at the AI provider: share them only if the church may copy the music (public domain, or under its licence).')} />
+                    </div>
+                    {level === 'off' ? <span className="badge">{t('Off')}</span> : (
+                      <Seg<'off' | 'on'> value={d.sheet_music ? 'on' : 'off'} onChange={(v) => setD((x) => x && { ...x, sheet_music: v === 'on' })}
+                        options={[{ value: 'off', label: t('Off') }, { value: 'on', label: t('Shared') }]} />
+                    )}
+                  </div>
+                </div>
+              )}
               {m === 'records' && (
                 <div className="mod-row nested">
                   <div className="row between">
@@ -186,7 +203,7 @@ export function McpTab() {
               {open[m] && (
                 <div className="tool-list">
                   {mt.map((x) => {
-                    const ex = toolExposed(x, level, pii);
+                    const ex = toolExposed(x, level, pii, scores);
                     return (
                       <div key={x.name} className={`tool${ex ? '' : ' off'}`}>
                         <Icon name={ex ? 'check' : 'x'} style={{ color: ex ? 'var(--ok)' : 'var(--ink-3)' }} />

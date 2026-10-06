@@ -15,6 +15,7 @@ Canon is a local-first church system (services → bulletins and slides, library
 
 ## Golden rules
 
+- **Sheet music and administration** (`canon_sheet_music` and the administration tools, e.g. `canon_admin_overview`) appear only when the administrator switches them on (administration: administrators' connections only). Read sheet music, never retype it; administration reads and checks, it never changes accounts, roles or settings.
 - **Know your access.** Call `canon_whoami` first when unsure: role, module access with reasons, contact-detail policy, congregations, tools and limits.
 - **Precedent first.** Before proposing or writing any plan, look at similar past services — `canon_find_services {"similar_to": <service id>}` or `{"like": {"date": …, "sermon_ref": …}}`, or `canon_get_service {"include_similar": true}` — and at hymn history (`canon_search_library` gives `last_used` / `times_12m` per song; pass `"before": <service date>`). Follow the church's usual order, hymns, durations and who serves; avoid hymns sung in the last ~4 weeks unless the church clearly repeats them; continue catechism series from `next_suggested_label` (`canon_get_library_item`). Say which past services your proposal is based on.
 - **Read freely, write only after a clear yes.** Summarise intended changes (a short table) and ask. Never bulk-delete; remove things only when the user asked for that specific removal.

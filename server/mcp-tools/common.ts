@@ -16,6 +16,8 @@ export interface Ctx {
   sensitive?: boolean;
   /** new visitors on service records: none, names & follow-up, or with contact details (absent = as pii) */
   visitors?: 'off' | 'names' | 'contact';
+  /** songs' sheet music may be listed and its pictures returned */
+  scores?: boolean;
   /** effective access per module on this connection (absent = assume every module readable) */
   levels?: Record<ModuleKey, ModuleAccess>;
   /** the address this client reached Canon at (for links in results), without a trailing slash */
@@ -38,9 +40,21 @@ export interface ToolDef {
   annotations: ToolAnnotations;
   /** only offered when the admin exposes member PII */
   requiresPii?: boolean;
+  /** only offered when the administrator shares sheet music (Library → Sheet music) */
+  requiresScores?: boolean;
   /** offered on every connection, whatever the module settings (canon_whoami) */
   always?: boolean;
   handler: (args: Args, ctx: Ctx) => unknown;
+}
+
+/** A result with pictures (e.g. pages of sheet music): the JSON first, then each image as MCP image content. */
+export class WithImages {
+  data: unknown;
+  images: { mime: string; base64: string }[];
+  constructor(data: unknown, images: { mime: string; base64: string }[]) {
+    this.data = data;
+    this.images = images;
+  }
 }
 
 export const RO: ToolAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };

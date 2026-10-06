@@ -102,7 +102,7 @@ test('viewers search names only; editors still see and search everything', async
 });
 
 test('AI connections approved by a read-only account never get personal data', () => {
-  const cfg = { enabled: true, modules: { members: 'read' } as never, expose_member_pii: true, visitors: 'contact' as const };
+  const cfg = { enabled: true, modules: { members: 'read' } as never, expose_member_pii: true, visitors: 'contact' as const, sheet_music: false };
   assert.equal(piiFor(cfg, 'viewer'), false);
   assert.equal(piiFor(cfg, 'editor'), true);
   assert.equal(piiFor({ ...cfg, expose_member_pii: false }, 'admin'), false);

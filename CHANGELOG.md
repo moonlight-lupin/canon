@@ -4,10 +4,19 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.15.3 — The bulletin link's QR code at the start of the slides
+## 0.15.3 — Bulletin QR on slide 2; sheet music and administration for AI assistants; new greetings
 
 - **Share → Bulletin for the congregation**: its QR code is now on a slide of its own right after the title slide (slide 2), to show as people arrive, instead of after the Announcements, which can come at the end. The run sheet notes slide 2. The PowerPoint export has it in the same place; the FreeShow project has it as a show of its own before the first item.
 - The visitor form's QR code stays after the Announcements, where visitors are usually welcomed.
+- **AI assistants: sheet music.** In Settings → AI / MCP, the Library row has a **Sheet music** switch, off by default.
+  - When shared, `canon_sheet_music` lists a service's songs in order with their pages.
+  - It can also send the scanned pages for Claude to read (key, range, tune). PDFs are not sent.
+  - The pages become copies at the AI provider: share them only if the church may copy the music.
+- **AI assistants: administration.** A new **Administration** row in Settings → AI / MCP, off by default and only for connections approved by an administrator.
+  - **Read only**: the security checklist, backups, accounts (never passwords), the change log (values only when contact details are shared), who viewed member records, and a settings overview.
+  - **Read & write** adds two actions: back up now, and run the checks (public address, backup folder, e-mail).
+  - Accounts, roles and settings are still only changed in Canon.
+- **Greetings**: the home page now and then says Shalom, Grace to you, Soli Deo gloria, Blessings, "The joy of the Lord is your strength", Maranatha (in Advent) or Hallelujah (never in Lent).
 - Database: no change.
 
 ## 0.15.2 — Slide numbers on the run sheet, the bulletin on attendees' phones, sheet music

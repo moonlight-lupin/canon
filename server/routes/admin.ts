@@ -24,7 +24,7 @@ adminRoutes.get('/mcp/config', requireAdmin, h(() => getSettings().mcp));
 adminRoutes.put('/mcp/config', requireAdmin, h((req) => {
   const b = S.McpConfigSchema.parse(req.body);
   // an older screen doesn't send visitors: keep the saved level
-  return updateSettings({ mcp: { ...b, visitors: b.visitors ?? getSettings().mcp.visitors } }).mcp;
+  return updateSettings({ mcp: { ...b, visitors: b.visitors ?? getSettings().mcp.visitors, sheet_music: b.sheet_music ?? getSettings().mcp.sheet_music } }).mcp;
 }));
 /** AI activity log, newest first, with filters and paging. */
 const auditQuery = (q: Record<string, string | undefined>) => ({

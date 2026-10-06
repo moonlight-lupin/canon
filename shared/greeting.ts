@@ -7,7 +7,7 @@ const DAY = 86400_000;
 
 /** Greetings that suit each season (besides the time of day). */
 const SEASONAL: Record<Season, string[]> = {
-  advent: ['Come, Lord Jesus', 'Grace and peace'],
+  advent: ['Come, Lord Jesus', 'Grace and peace', 'Maranatha'],
   christmas: ['Glory to God in the highest', 'Grace and peace'],
   epiphany: ['The Light has come', 'Grace and peace'],
   lent: ['Grace and peace', 'The Lord be with you'],
@@ -16,6 +16,10 @@ const SEASONAL: Record<Season, string[]> = {
   pentecost: ['Peace be with you'],
   ordinary: ['Grace and peace', 'The Lord be with you', 'Peace be with you'],
 };
+
+/** Greetings for any day of the year, for a little variety (0.15.3) — no alleluias in Lent and Holy Week. */
+const EVERYDAY = ['Shalom', 'Grace to you', 'Soli Deo gloria', 'The joy of the Lord is your strength', 'Blessings'];
+const ALLELUIA = ['Hallelujah'];
 
 /** Good morning (5–12), good afternoon (12–18), good evening (18–5). */
 export function timeOfDay(hour: number): string {
@@ -37,7 +41,8 @@ export function greetingFor(now: Date): string {
   if (today === easter(y) + 49 * DAY) return 'Peace be with you';
   if (now.getDay() === 0) return 'A blessed Lord’s Day';
   // otherwise one of the season's greetings or the time of day, a different one each day
-  const options = [timeOfDay(now.getHours()), ...SEASONAL[seasonOf(date)]];
+  const season = seasonOf(date);
+  const options = [timeOfDay(now.getHours()), ...SEASONAL[season], ...EVERYDAY, ...(season === 'lent' || season === 'holy_week' ? [] : ALLELUIA)];
   const dayNumber = Math.floor(today / DAY);
   return options[dayNumber % options.length];
 }

@@ -20,7 +20,11 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
 | lending (optional) | `canon_lending` (catalogue; a title's copies; `loans` open / overdue / returned; `isbn` lookup) | `canon_save_book` (titles and copies; not lending / returning) |
 | equipment (optional) | `canon_equipment` (register; `due` maintenance; one item by id or `number`) | `canon_save_equipment` (items; `maintenance` done) |
+| library → sheet music (only when shared) | `canon_sheet_music` (`service_id` or `song_id`; `pictures: true` returns image pages) | — |
+| admin (administrators only, when on) | `canon_admin_overview`, `canon_admin_accounts`, `canon_admin_change_log`, `canon_admin_record_views`, `canon_admin_settings` | `canon_admin_backup_now`, `canon_admin_run_checks` |
 
+- Sheet music: read the pictures to answer about the music; never retype or pass it on (copyright). PDFs / very large scans aren't sent — give `open_in_canon`.
+- Administration: never passwords or secrets; change-log values only when personal data is shared; ask before `canon_admin_backup_now`; accounts, roles and settings change only in Canon.
 - `find_*` / `search_*` → summaries; `get_*` → detail. `canon_get_service` returns words and Bible text only with `include_text: true`; `format: "text"` returns a run sheet.
 - `save_*`: no `id` = create; `id` + fields = update only those fields.
 - Multilingual fields merge by language on update: send only the language you add or change (`""` removes one). Song stanzas and text parts merge by `label`; `replace_stanzas` / `replace_parts: true` replace the whole list.
