@@ -10,7 +10,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.13.0 | Roles and permissions, optional modules, second hardening round — done |
 | 0.14.0 | UI/UX audit of the core (worship and records) — done |
 | 0.15.0 | Lending library and asset register (two optional modules, one release) — done |
-| 0.15.1 | AI access: member contact details as a switch inside the Members register row |
+| 0.15.1 | AI access: personal-data switches beside the data they protect (members' contact details; visitors) |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
 | 0.17.0 | Third hardening round |
@@ -121,12 +121,16 @@ Two separate optional modules, released together because they share item numbers
   - When it was bought and for how much.
   - Its condition, and maintenance due.
 
-## 0.15.1 — AI access: contact details with the Members register
+## 0.15.1 — AI access: personal-data switches beside the data they protect
 
-In Settings → AI / MCP, **Expose member contact details & birthdays** becomes a switch nested under **Members register** (as **Offerings** sits under **Service records**), instead of a separate box at the bottom.
-- Its label says what it covers: members' contact details and birth dates, but also co-workers' phone and e-mail, household addresses and new visitors' contact details in service records.
-- The PDPA notice becomes its "?" tip and one short line.
-- Like Offerings, it is off whenever its parent (Members register) is off — stricter than today for co-workers' and visitors' details; say so in the changelog.
+In Settings → AI / MCP, the separate **Expose member contact details & birthdays** box goes; each kind of personal data gets a switch nested under its module, as **Offerings** sits under **Service records**:
+- **Members register → Contact details & birthdays** (Off / On): members' phone, e-mail, address, birth dates, notes and reasons for absence; co-workers' phone and e-mail; household addresses. The PDPA notice becomes its "?" tip and one short line.
+- **Service records → Visitors** (Off / Names & follow-up / With contact details):
+  - Off: attendance numbers only (how many visitors, no names).
+  - Names & follow-up: names, how they heard of the church, follow-up status; with Service records at Read & write, agents may record visitors and update follow-up.
+  - With contact details: also phone, e-mail and prayer request (what the keep period erased stays gone).
+- A nested switch is off whenever its parent module is off — stricter than today for co-workers' and visitors' details; say so in the changelog.
+- Existing settings carry over: the old box on → Contact details on and Visitors with contact details (when Service records is on); off → Contact details off and Visitors names & follow-up.
 
 ## 0.16.0 — Book-keeping
 
