@@ -140,3 +140,40 @@ test('Export data: administrators only; everything comes as one zip', async () =
   assert.ok([...files.keys()].some((n) => n.endsWith('.canonlib')));
   assert.equal((await fetch(`${base}/api/export/library.canonlib`, { headers: { Cookie: as.editor.cookie } })).status, 403);
 });
+
+test('library sections (0.15.7): one hymnal, songs in no hymnal, texts, one Bible, QR codes & notes, slide backgrounds', async () => {
+  const { saveBackground, backgroundByName } = await import('../server/repo/backgrounds.ts');
+  const read = (b: Buffer) => JSON.parse(zlib.gunzipSync(b).toString()) as Json;
+  const h1 = lib.hymnals.insert({ name: { en: 'Section Hymnal One' }, abbr: 'S1', sort: 5 } as never);
+  const h2 = lib.hymnals.insert({ name: { en: 'Section Hymnal Two' }, abbr: 'S2', sort: 6 } as never);
+  const a = lib.songs.insert({ key: 'sec-a', title: { en: 'Section Song A' }, stanzas: [], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  const b = lib.songs.insert({ key: 'sec-b', title: { en: 'Section Song B' }, stanzas: [], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  lib.songs.insert({ key: 'sec-c', title: { en: 'Section Song C' }, stanzas: [], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  lib.setSongHymnals(a.id, [{ hymnal_id: h1.id, number: '1' }]);
+  lib.setSongHymnals(b.id, [{ hymnal_id: h2.id, number: '2' }]);
+
+  const one = read(exportLibrary({ sections: ['songs'], hymnal: h1.id }));
+  assert.deepEqual(one.songs.map((s: Json) => s.key), ['sec-a']);
+  assert.deepEqual(one.hymnals.map((h: Json) => h.abbr), ['S1']);
+  assert.deepEqual(one.texts, [], 'only the songs');
+  assert.equal(one.blocks, undefined);
+  assert.ok(read(exportLibrary({ sections: ['songs'], hymnal: 'none' })).songs.some((s: Json) => s.key === 'sec-c'));
+  assert.ok(!read(exportLibrary({ sections: ['songs'], hymnal: 'none' })).songs.some((s: Json) => s.key === 'sec-a'));
+  assert.equal(read(exportLibrary({ sections: ['texts'] })).songs.length, 0);
+
+  // slide backgrounds travel by name and come back
+  const JPEG = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64');
+  saveBackground(null, 'Bread and cup (test)', 'image/jpeg', JPEG);
+  const bgFile = exportLibrary({ sections: ['backgrounds'] });
+  assert.deepEqual(read(bgFile).backgrounds.map((x: Json) => x.name), ['Bread and cup (test)']);
+  run('DELETE FROM slide_backgrounds WHERE id = ?', backgroundByName('Bread and cup (test)')!);
+  assert.equal(importLibrary(bgFile).backgrounds.added, 1);
+  assert.ok(backgroundByName('Bread and cup (test)'));
+
+  // over HTTP: a hymnal's file has its name in the file name
+  const r = await fetch(`${base}/api/export/library.canonlib?section=songs&hymnal=${h1.id}`, { headers: { Cookie: as.admin.cookie } });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-disposition') ?? '', /canon-hymns-S1-/);
+  const list = await (await fetch(`${base}/api/export`, { headers: { Cookie: as.admin.cookie } })).json() as Json;
+  assert.ok(list.hymnals.some((h: Json) => h.abbr === 'S1'));
+});

@@ -10,6 +10,7 @@
 // edit) to keep tools/list small: a read tool and a write tool never merge, and every tool that can remove
 // something is annotated destructive.
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -73,13 +74,21 @@ function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, ro
 /** canon_whoami: always offered; built here because it needs the connection's settings. */
 const WHOAMI: ToolDef = {
   name: 'canon_whoami', module: 'services', access: 'read', always: true, title: 'Who am I connected as', annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  description: 'Who this connection acts for and what it may do: the person and their role, access to each module (off / read / write) with the reason, whether member contact details are shown, the church, its languages and congregations, the tools and playbooks available, what agents may never do, and the working instructions. Call it first when unsure what you can do, or when a tool you expected is missing.',
-  input: {},
-  handler: (_a, ctx) => {
+  description: 'Who this connection acts for and what it may do: the person and their role, access to each module (off / read / write) with the reason, whether member contact details are shown, the church, its languages and congregations, the tools and playbooks available, what agents may never do, and the working instructions. brief: true returns only the person, role, scopes and each module\'s access level. Call it first when unsure what you can do, or when a tool you expected is missing.',
+  input: { brief: z.boolean().default(false).describe('only who and the access levels (much shorter)') },
+  handler: (a, ctx) => {
     const settings = getSettings();
     const cfg = settings.mcp;
     const { auth } = ctx;
     const levels = ctx.levels ?? (Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>);
+    if (a.brief) {
+      return {
+        user: { name: auth.user.display_name, role: auth.user.role },
+        scopes: [...auth.scopes],
+        modules: Object.fromEntries(MODULES.filter((m) => levels[m] !== 'off').map((m) => [m, levels[m]])),
+        more: 'canon_whoami without brief: reasons, tools, playbooks, privacy and the working instructions',
+      };
+    }
     return {
       user: { name: auth.user.display_name, role: auth.user.role, role_name: roleDef(auth.user.role).name.en, meaning: roleDef(auth.user.role).description.en },
       connection: { scopes: [...auth.scopes], write_allowed: auth.scopes.has('canon:write') && editsAnything(auth.user) },
@@ -331,6 +340,12 @@ export function compactSchema(node: unknown): unknown {
     const { anyOf: _a, ...rest } = out;
     const x = any[0];
     out = { ...rest, ...x, type: [x.type, 'null'], ...(Array.isArray(x.enum) ? { enum: [...x.enum, null] } : {}) };
+  }
+  // anyOf of plain types (an id or a reference: integer | non-empty string, maybe null)  ->  {type: [...]}
+  const plain = out.anyOf as Record<string, unknown>[] | undefined;
+  if (Array.isArray(plain) && plain.every((x) => x && Object.keys(x).every((k) => k === 'type' || k === 'minLength') && (typeof x.type === 'string' || Array.isArray(x.type)))) {
+    const { anyOf: _a, ...rest } = out;
+    out = { ...rest, type: [...new Set(plain.flatMap((x) => (Array.isArray(x.type) ? x.type : [x.type])))] };
   }
   return out;
 }

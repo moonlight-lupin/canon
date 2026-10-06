@@ -3,6 +3,7 @@
 // size, line spacing, alignment, footer and screen shape (16:9 or 4:3). Custom CSS cannot be carried over.
 // PowerPoint does not shrink text to fit when a file is opened, so Canon sizes every text box itself from an
 // estimate of how the words wrap; "same text size on every slide" uses one size for the whole deck as on the projector.
+import { QR_SIZE_IN } from '../../shared/slide-theme.ts';
 import PptxGenJS from 'pptxgenjs';
 import type { L10n, Lang } from '../../shared/types.ts';
 import type { RenderedService, RenderedSlideBlock } from '../../shared/render-types.ts';
@@ -277,11 +278,13 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
       // the bulletin link's QR code in the bottom-right corner, on a white card so it scans on dark templates
       const qr = s.corner ? blockImg.get(s.corner.id) : undefined;
       if (s.corner && qr) {
-        const side = 1.6;
+        // the corner and size the slide template chose
+        const corner = v.qr_corner ?? 'bottom-right';
+        const side = QR_SIZE_IN[v.qr_size ?? 'medium'];
         const cap = biText(s.corner.caption, langs, '\n');
         const capH = cap ? 0.32 * cap.split('\n').length : 0;
-        const x = W - padX - side - 0.2;
-        const y0 = H - 0.75 - capH - side - 0.3;
+        const x = corner.endsWith('left') ? padX + 0.2 : W - padX - side - 0.2;
+        const y0 = corner.startsWith('top') ? 1.0 : H - 0.75 - capH - side - 0.3;
         sl.addShape('rect', { x: x - 0.1, y: y0 - 0.1, w: side + 0.2, h: side + 0.2, fill: { color: 'FFFFFF' }, line: { color: 'FFFFFF' } });
         sl.addImage({ data: qr, x, y: y0, w: side, h: side });
         if (cap) sl.addText(cap, { x: x - 0.6, y: y0 + side + 0.15, w: side + 1.2, h: capH, fontFace: UI_FONT, fontSize: 12, color: hex(v.fg), align: 'center', valign: 'top' });

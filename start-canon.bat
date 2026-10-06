@@ -24,7 +24,25 @@ if not defined CANON_LAN set CANON_LAN=%COMPUTERNAME%
 echo or http://%CANON_LAN%:%CANON_PORT% from other computers on the office network.
 echo Keep this window open while Canon is in use.
 echo.
+REM Restarts Canon if it stops by itself (an error); closing this window or Ctrl+C stops it for good.
+REM Canon writes what happens to data\logs\canon-<date>.log.
+set CANON_RESTARTS=0
+:run
 call npm start
+if not errorlevel 1 goto stopped
+set /a CANON_RESTARTS+=1
+if %CANON_RESTARTS% GTR 10 goto gaveup
+echo.
+echo Canon stopped unexpectedly. Starting it again in 10 seconds (see data\logs for why)...
+if exist data\logs echo %date% %time% Canon stopped unexpectedly and was started again>> data\logs\launcher.log
+timeout /t 10 /nobreak >nul
+goto run
+:gaveup
+echo.
+echo Canon stopped unexpectedly 10 times, so it was not started again. See data\logs for why.
+pause
+exit /b 1
+:stopped
 echo.
 echo Canon has stopped.
 pause

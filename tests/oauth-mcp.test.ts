@@ -1064,3 +1064,18 @@ test('MCP disabled -> 503 on /mcp and a notice instead of consent', async () => 
   setMcp({ enabled: true });
   assert.equal((await mcp(tokens.access_token, 'tools/list')).status, 200);
 });
+
+test('0.15.7: canon_whoami brief is a small identity check; meeting-only fields stay out of the service tools', async () => {
+  const full = await call(tokens.access_token, 'canon_whoami');
+  const brief = await call(tokens.access_token, 'canon_whoami', { brief: true });
+  assert.equal(brief.isError, false, brief.text);
+  assert.equal(brief.json!.data.user.role, 'admin');
+  assert.ok(Array.isArray(brief.json!.data.scopes));
+  assert.ok(!('instructions' in brief.json!.data) && !('tools' in brief.json!.data));
+  assert.ok(brief.text.length * 3 < full.text.length, `brief ${brief.text.length} vs full ${full.text.length}`);
+  const listed = (await mcp(tokens.access_token, 'tools/list')).body.result.tools as Json[];
+  const create = listed.find((t) => t.name === 'canon_create_service')!;
+  for (const k of ['group_id', 'place', 'leader_id', 'chair', 'topic', 'offering']) assert.ok(!(k in create.inputSchema.properties), k);
+  // an id or a reference is one compact type list
+  assert.deepEqual(create.inputSchema.properties.template.type, ['integer', 'string']);
+});

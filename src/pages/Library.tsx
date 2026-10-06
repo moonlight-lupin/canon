@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import type { L10n } from '../types-client.ts';
+import { useApi } from '../api.ts';
+import { Icon } from '../components/icons.tsx';
+import { CardMenu } from './template-ui.tsx';
+import { ImportLibrary, librarySections } from './settings/ExportTab.tsx';
 import { useSearchParams } from 'react-router-dom';
 import { BlocksTab } from './Blocks.tsx';
 import { useI18n } from '../i18n.tsx';
@@ -30,6 +35,8 @@ export default function Library() {
       <PageHead eyebrow={`${t('Planner')} · ${t('Library')}`} title={t(LIB_TAB_LABEL[tab])}>
         {(tab === 'songs' || tab === 'texts' || tab === 'bible') && <LibraryCheckButton />}
         {isAdmin && (tab === 'songs' || tab === 'texts') && <BundledLibraryButton onAdded={() => setVersion((v) => v + 1)} />}
+        {isAdmin && <SectionExport tab={tab} />}
+        {isAdmin && <ImportLibrary />}
       </PageHead>
       <div className="tabs">
         {LIB_TABS.map((k) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(LIB_TAB_LABEL[k])}</button>)}
@@ -45,3 +52,15 @@ export default function Library() {
 }
 
 // ------------------------------------------------------------------ songs
+
+/** Export this tab's section as a library file (hymns: one hymnal at a time). */
+function SectionExport({ tab }: { tab: LibTab }) {
+  const { t, lt } = useI18n();
+  const data = useApi<{ hymnals: { id: number; abbr: string; name: L10n }[]; bibles: { code: string; name: string }[] }>('/export');
+  if (!data.data) return null;
+  const want = tab === 'songs' || tab === 'hymnals' ? 'songs' : tab === 'bible' ? 'bibles' : tab;
+  const list = librarySections(data.data.hymnals, data.data.bibles, t, lt).filter((x) => x.section === want);
+  if (!list.length) return null;
+  if (list.length === 1) return <a className="btn" href={list[0].href}><Icon name="download" />{t('Export')}</a>;
+  return <CardMenu label={t('Export')} trigger={<><Icon name="download" />{t('Export')} ▾</>} down actions={list.map((x) => ({ label: x.label, onClick: () => { window.location.href = x.href; } }))} />;
+}

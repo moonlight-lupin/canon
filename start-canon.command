@@ -42,12 +42,29 @@ echo "or http://$LAN:$CANON_PORT from other computers on the office network."
 echo 'Keep this window open while Canon is in use.'
 echo
 
-# caffeinate keeps the Mac from sleeping (and taking Canon offline) for as long as Canon runs
-if command -v caffeinate >/dev/null 2>&1; then
-  caffeinate -is npm start
-else
-  npm start
-fi
+# caffeinate keeps the Mac from sleeping (and taking Canon offline) for as long as Canon runs.
+# Canon is started again if it stops by itself (an error); closing this window or Ctrl+C stops it for good.
+# Canon writes what happens to data/logs/canon-<date>.log.
+restarts=0
+while true; do
+  if command -v caffeinate >/dev/null 2>&1; then
+    caffeinate -is npm start && break
+  else
+    npm start && break
+  fi
+  status=$?
+  # Ctrl+C (130) or a closed window: stop for good
+  [ "$status" -ge 128 ] && break
+  restarts=$((restarts + 1))
+  if [ "$restarts" -gt 10 ]; then
+    echo 'Canon stopped unexpectedly 10 times, so it was not started again. See data/logs for why.'
+    break
+  fi
+  echo
+  echo 'Canon stopped unexpectedly. Starting it again in 10 seconds (see data/logs for why)...'
+  [ -d data/logs ] && echo "$(date) Canon stopped unexpectedly and was started again" >> data/logs/launcher.log
+  sleep 10
+done
 echo
 echo 'Canon has stopped.'
 finish

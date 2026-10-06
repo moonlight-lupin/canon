@@ -6,7 +6,8 @@ import { CSV_ENTITIES } from '../csv/index.ts';
 import { exportCsv, makeCtx } from '../csv/engine.ts';
 import { moduleOff } from '../../shared/modules.ts';
 import { getSettings } from '../repo/settings.ts';
-import { exportLibrary, importLibrary } from '../repo/library-file.ts';
+import { exportLibrary, importLibrary, type LibrarySection } from '../repo/library-file.ts';
+import { all } from '../db.ts';
 import { hymnals } from '../repo/library.ts';
 import { logMemberView } from '../repo/security.ts';
 import { zip } from '../lib/zip.ts';
@@ -14,6 +15,7 @@ import { h } from './helpers.ts';
 import { uiLang } from './csv.ts';
 
 export const exportRoutes = express.Router();
+const SECTIONS: LibrarySection[] = ['songs', 'texts', 'blocks', 'backgrounds', 'bibles'];
 exportRoutes.use('/export', requireAdmin);
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -32,12 +34,24 @@ exportRoutes.get('/export', h(() => ({
   csv: entities().flatMap((e) => e.needs?.includes('hymnal_id')
     ? hymnals.list('', [], 'sort, id').map((hy) => ({ key: e.key, label: { en: `${e.label.en}: ${hy.abbr}`, zh: `${e.label.zh}：${hy.abbr}` }, pii: !!e.pii, query: `hymnal_id=${hy.id}` }))
     : e.needs?.length ? [] : [{ key: e.key, label: e.label, pii: !!e.pii, query: '' }]),
+  // the library, section by section
+  hymnals: hymnals.list('', [], 'sort, id').map((hy) => ({ id: hy.id, abbr: hy.abbr, name: hy.name })),
+  bibles: all<{ code: string; name: string }>("SELECT code, name FROM bible_translations WHERE source = 'upload' ORDER BY code"),
 })));
 
 exportRoutes.get('/export/library.canonlib', (req, res, next) => {
   try {
-    const body = exportLibrary({ scores: flag(req.query.scores, true), blocks: flag(req.query.blocks, true), bibles: flag(req.query.bibles, false) });
-    download(res, `canon-library-${today()}.canonlib`, 'application/gzip', body);
+    // one section (?section=songs&hymnal=3 | none, texts, bibles&bible=CODE, blocks, backgrounds) or the whole library
+    const section = typeof req.query.section === 'string' && SECTIONS.includes(req.query.section as LibrarySection) ? (req.query.section as LibrarySection) : null;
+    const hymnal = req.query.hymnal === 'none' ? 'none' : Number(req.query.hymnal) || undefined;
+    const bible = typeof req.query.bible === 'string' && /^[\w-]{1,20}$/.test(req.query.bible) ? req.query.bible : undefined;
+    const body = exportLibrary({
+      scores: flag(req.query.scores, true), blocks: flag(req.query.blocks, true), bibles: flag(req.query.bibles, false), backgrounds: flag(req.query.backgrounds, true),
+      ...(section ? { sections: [section], hymnal, bible } : {}),
+    });
+    const abbr = typeof hymnal === 'number' ? hymnals.list('id = ?', [hymnal])[0]?.abbr : hymnal === 'none' ? 'no-hymnal' : undefined;
+    const what = !section ? 'library' : section === 'songs' ? `hymns${abbr ? `-${abbr}` : ''}` : section === 'bibles' ? `bible${bible ? `-${bible}` : ''}` : section === 'blocks' ? 'qr-codes-notes' : section;
+    download(res, `canon-${what.replace(/[^\w-]+/g, '_')}-${today()}.canonlib`, 'application/gzip', body);
   } catch (e) {
     next(e);
   }

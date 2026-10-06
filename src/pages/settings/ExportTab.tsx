@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n.tsx';
 import { Loading, useAction } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
-import type { Lang } from '../../types-client.ts';
+import type { L10n, Lang } from '../../types-client.ts';
 
 interface Part { key: string; label: { en: string; zh: string }; pii: boolean; query: string }
 interface Summary {
@@ -15,13 +15,14 @@ interface Summary {
   songs: { added: number; existing: number; numbers_added: number; sheet_music_added: number };
   texts: { added: number; existing: number };
   blocks: { added: number; existing: number };
+  backgrounds?: { added: number; existing: number };
   bibles: { added: number; existing: number; skipped: number };
   problems: string[];
 }
 
 export function ExportTab() {
-  const { t, lang } = useI18n();
-  const parts = useApi<{ csv: Part[] }>('/export');
+  const { t, lt, lang } = useI18n();
+  const parts = useApi<{ csv: Part[]; hymnals: { id: number; abbr: string; name: L10n }[]; bibles: { code: string; name: string }[] }>('/export');
   const [scores, setScores] = useState(true);
   const [blocks, setBlocks] = useState(true);
   const [bibles, setBibles] = useState(false);
@@ -51,6 +52,25 @@ export function ExportTab() {
       </section>
 
       <section className="card stack">
+        <h3 style={{ margin: 0 }}>{t('The library, section by section')}</h3>
+        <p className="small muted" style={{ margin: 0 }}>{t('Each is a library file another Canon can import (Import a library file…). Hymns come one hymnal at a time.')}</p>
+        {!parts.data ? <Loading /> : (
+          <div className="table-wrap">
+            <table className="t">
+              <tbody>
+                {librarySections(parts.data.hymnals, parts.data.bibles, t, lt).map((x) => (
+                  <tr key={x.href}>
+                    <td><strong>{x.label}</strong>{x.note && <span className="small muted"> · {x.note}</span>}</td>
+                    <td className="right"><a className="btn sm" href={x.href}><Icon name="download" />{t('Export')}</a></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="card stack">
         <h3 style={{ margin: 0 }}>{t('Each part')}</h3>
         <p className="small muted" style={{ margin: 0 }}>{t('Each opens in Excel, and can be imported again with Import CSV above the same list.')}</p>
         {!parts.data ? <Loading /> : (
@@ -73,7 +93,7 @@ export function ExportTab() {
 }
 
 /** Import a library file: first what it would add, then (confirmed) add it. */
-function ImportLibrary() {
+export function ImportLibrary() {
   const { t } = useI18n();
   const { run, busy } = useAction();
   const input = useRef<HTMLInputElement>(null);
@@ -99,6 +119,7 @@ function ImportLibrary() {
     t('Liturgical texts: {a} new, {e} already here').replace('{a}', String(s.texts.added)).replace('{e}', String(s.texts.existing)),
     t('Hymnals: {a} new').replace('{a}', String(s.hymnals.added)),
     t('QR codes & notes: {a} new').replace('{a}', String(s.blocks.added)),
+    s.backgrounds?.added ? t('Slide backgrounds: {a} new').replace('{a}', String(s.backgrounds.added)) : '',
     s.bibles.added + s.bibles.skipped ? t('Bibles: {a} new').replace('{a}', String(s.bibles.added + (done ? 0 : s.bibles.skipped))) : '',
   ].filter(Boolean);
   return (
@@ -128,4 +149,17 @@ function ImportLibrary() {
       )}
     </>
   );
+}
+
+/** The library's sections as files: each hymnal's songs, songs in no hymnal, texts, each uploaded Bible, QR codes & notes, backgrounds. */
+export function librarySections(hymnals: { id: number; abbr: string; name: L10n }[], bibles: { code: string; name: string }[], t: (s: string) => string, lt: (v: L10n) => string) {
+  const u = (q: string) => `/api/export/library.canonlib?${q}`;
+  return [
+    ...hymnals.map((h) => ({ section: 'songs', label: `${t('Hymns')}: ${h.abbr} · ${lt(h.name)}`, note: t('words, numbers, sheet music'), href: u(`section=songs&hymnal=${h.id}`) })),
+    { section: 'songs', label: t('Songs in no hymnal'), note: '', href: u('section=songs&hymnal=none') },
+    { section: 'texts', label: t('Liturgical texts'), note: '', href: u('section=texts') },
+    ...bibles.map((b) => ({ section: 'bibles', label: `${t('Bible')}: ${b.code} · ${b.name}`, note: t('only if its licence allows sharing'), href: u(`section=bibles&bible=${encodeURIComponent(b.code)}`) })),
+    { section: 'blocks', label: t('QR codes & notes'), note: '', href: u('section=blocks') },
+    { section: 'backgrounds', label: t('Slide backgrounds'), note: '', href: u('section=backgrounds') },
+  ];
 }

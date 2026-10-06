@@ -25,7 +25,7 @@ export const congregationLabel = (id: number | null | undefined) => {
   return c ? { id: c.id, code: c.code, name: c.name } : undefined;
 };
 import { DOWNLOAD_KINDS, MAX_LINK_HOURS, createLinks, type DownloadKind } from '../repo/downloads.ts';
-import { DESTRUCTIVE, DateStr, Id, InputError, L10N_MERGE_NOTE, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
+import { DESTRUCTIVE, DateStr, Id, InputError, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
 // ---------------------------------------------------------------- output shaping
 
@@ -215,6 +215,9 @@ function downloads(id: number, base: string, userId: number, files: DownloadKind
 
 // ---------------------------------------------------------------- order-of-service batch
 
+/** A service's fields for agents: meetings are made and edited in Canon, so their own fields are left out. */
+const SERVICE_FIELDS = S.ServiceInput.omit({ group_id: true, place: true, leader_id: true, chair: true, topic: true, offering: true });
+
 const OrderOp = z.object({
   op: z.enum(['add', 'update', 'move', 'remove']),
   item_id: Id.optional().describe('update / move / remove'),
@@ -293,7 +296,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_get_service', module: 'services', access: 'read', title: 'Get a service', annotations: RO,
-    description: 'One service in full: items (id, position, kind, title, start time, duration, song / text / scripture refs, stanzas, leader, slide_blocks = QR codes / notes by id and name), bulletin_content (weekly bulletin sections such as announcements, by key), the roster (names only) and roster warnings (unavailable, double-booked, unfilled roles). Hymn words, Bible text and liturgy only with include_text=true. include_similar=true adds similar_past: the 3 most similar earlier services with reasons and short outlines (the church\'s precedent). format "text" returns a plain-text run sheet in lang instead. format "downloads" returns short-lived links to the service\'s files instead: files slides_pptx (projector slides as PowerPoint, styled by the slide template, 16:9 or 4:3), bulletin_docx (bulletin / order of service as Word), freeshow (FreeShow project), run_sheet (text); each link works for hours (default 24, max ' + MAX_LINK_HOURS + ') WITHOUT signing in, so give links only to the user who asked; open_in_canon has the pages for a signed-in user (print-ready bulletin → Print → PDF, slide show, run sheet); langs limits slides / run sheet to some of the service languages. Examples: {"id":12,"include_similar":true}; {"id":12,"format":"downloads","files":["slides_pptx","bulletin_docx"]}.',
+    description: 'One service in full: items (ids, kinds, titles, times, refs, stanzas, leaders, slide_blocks), bulletin_content, the roster (names only) and roster warnings. include_text=true adds hymn words, Bible text and liturgy; include_similar=true adds the 3 most similar past services (precedent). format "text": a plain-text run sheet. format "downloads": short-lived links (default 24 h, max ' + MAX_LINK_HOURS + ') to slides_pptx, bulletin_docx, freeshow, run_sheet that work WITHOUT signing in, so give them only to the user who asked; open_in_canon has the pages for a signed-in user. Examples: {"id":12,"include_similar":true}; {"id":12,"format":"downloads"}.',
     input: {
       id: IdOrRef.describe('service id or its reference'),
       format: z.enum(['structured', 'text', 'downloads']).default('structured'),
@@ -318,9 +321,9 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_create_service', module: 'services', access: 'write', title: 'Create a service', annotations: WRITE,
-    description: 'Create a service on a date, either from a template (template: its id or reference, e.g. "CN-10pmService"; see canon_get_templates) or as a copy of an existing service (copy_from: id or reference; with_roster=true also copies the volunteer assignments). A template brings its order, congregation and its slide and bulletin templates; slide_template / bulletin_template (id or reference) choose others. ref gives the new service its own reference. Other fields (title, preacher, sermon_title, sermon_ref, theme, languages…) override; L10n fields are {lang: text}. Returns the summary, items and any library items the template referenced but are missing. Example: {"date":"2026-10-11","template":"EN-001","preacher":"Rev. Tan"}.',
+    description: 'Create a service on a date from a template (template: id or reference, see canon_get_templates) or as a copy of a service (copy_from; with_roster also copies the rota). Other fields override; L10n fields are {lang: text}. Details: handbook "Writing services and songs". Returns the summary, items and library items the template lacks. Example: {"date":"2026-10-11","template":"EN-001","preacher":"Rev. Tan"}.',
     input: {
-      ...S.ServiceInput.shape,
+      ...SERVICE_FIELDS.shape,
       template: IdOrRef.optional().describe('service template id or reference'),
       template_id: Id.optional().describe('the same as template (older name)'),
       slide_template: IdOrRef.optional().describe('slide template id or reference (default: the template\'s, else the church default)'),
@@ -350,10 +353,10 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_update_service', module: 'services', access: 'write', title: 'Update a service', annotations: { ...WRITE, idempotentHint: true },
-    description: 'Change service details: date, start_time, title, preacher, sermon_title, sermon_ref, theme, languages, season, notes, and status ("draft" or "final" = ready to print / project). Only fields in patch change. bibles {lang: code} picks the Bible version per language for every reading (codes from canon_bible with no ref; {} = church default). bulletin_content {section_key: {lang: text}} sets the weekly bulletin sections, e.g. {"announcements":{"zh":"1. …"},"pastor_note":{"en":"…"}} (keys from the page layout of the bulletin template). ' + L10N_MERGE_NOTE + ' bulletin_content merges per section and language; a section set to {} is cleared. Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
+    description: 'Change a service: only the fields in patch change; L10n fields merge by language ("" removes one). status "final" = ready to print / project. bibles {lang: code} and bulletin_content {section: {lang: text}}: handbook "Writing services and songs". Returns the summary. Example: {"id":12,"patch":{"status":"final"}}.',
     input: {
       id: IdOrRef.describe('service id or its reference'),
-      patch: S.ServiceInput.partial(),
+      patch: SERVICE_FIELDS.partial(),
       slide_template: IdOrRef.nullable().optional().describe('slide template id or reference; null = the church default'),
       bulletin_template: IdOrRef.nullable().optional().describe('bulletin template id or reference; null = the church default'),
     },
@@ -368,9 +371,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_edit_order', module: 'services', access: 'write', title: 'Edit the order of service', annotations: DESTRUCTIVE,
-    description: 'Apply a batch of item operations to one service in a single transaction, in order: add {item, position?}, update {item_id, item: fields to change; title / body merge by language}, move {item_id, position}, remove {item_id}. All or nothing: if any op fails, nothing changes and per-op errors are returned. Returns the new order. ' +
-      'Item kinds: section|song|scripture|text|sermon|prayer|sacrament|offering|announcements|music|other. A song: ref_id = song id (canon_search_library), stanzas ["1","2","R"], hymnal_id picks which hymnal number shows. Liturgy: kind "text", ref_id = text id; for a catechism / confession in parts ALWAYS set stanzas to part labels, e.g. ["1","2","3"]. A reading: kind "scripture", scripture_ref "Psalm 23"; optional bibles {"en":"ESV"} overrides the service Bible version for that reading. posture "stand"|"sit"|"kneel" (null clears) prints 众立 / All stand etc. slide_blocks [block ids] projects QR codes / notes (Library → QR codes & notes, e.g. PayNow, Instagram) on one slide after the item, even when on_slides is false; canon_get_service lists the ids and names already in use; [] clears. slide_background_id = a picture from Library → Slide backgrounds shown behind this item’s slides instead of the template’s background, e.g. bread and cup for the Lord’s Supper (canon_get_service lists the ones in use; ask the user for others); null = the template’s. Ask the user before removing items. ' +
-      'Example: {"service_id":12,"ops":[{"op":"add","item":{"kind":"song","ref_id":40,"stanzas":["1","3"]},"position":2},{"op":"move","item_id":88,"position":0},{"op":"remove","item_id":91}]}.',
+    description: 'Apply item operations to one service, in order and all-or-nothing (per-op errors if one fails): add {item, position?}, update {item_id, item: fields to change}, move {item_id, position}, remove {item_id}. Returns the new order. Item kinds and fields (stanzas for hymn verses and catechism parts, posture, slide_blocks, slide_background_id, bibles): handbook "Writing services and songs". Ask before removing. Example: {"service_id":12,"ops":[{"op":"add","item":{"kind":"song","ref_id":40,"stanzas":["1","3"]},"position":2},{"op":"remove","item_id":91}]}.',
     input: { service_id: Id, ops: z.array(OrderOp).min(1).max(50) },
     handler: (a) => {
       svc.services.get(a.service_id);

@@ -4,6 +4,29 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.7 — QR code placement, the library by section, a log file, and a lighter AI connector
+
+- **The bulletin link's QR code on the title slide**: each slide template now chooses its corner and size (Small, Medium, Large) under **Screen shape and footer**. The PowerPoint download follows the same choice.
+- **The library, section by section.** Export one section at a time as a library file:
+  - each hymnal's hymns (words, numbers, sheet music);
+  - songs in no hymnal;
+  - liturgical texts;
+  - each uploaded Bible;
+  - QR codes & notes;
+  - slide backgrounds, which the whole-library file now includes too.
+
+  Each Library tab has an **Export** button and **Import a library file…**; Settings → Export data lists them all.
+- **When Canon stops by itself:**
+  - The window starts it again after 10 seconds, up to 10 times. Closing the window or pressing Ctrl+C still stops it for good.
+  - Everything Canon prints is also written to `data/logs/canon-<date>.log`, with the last 30 days kept, so the reason for a stop is on disk.
+- **AI connector, lighter:**
+  - The longest tool descriptions were shortened, with the details moved to the agent handbook ("Writing services and songs").
+  - The service tools no longer offer meeting-only fields.
+  - Id-or-reference arguments are described more compactly.
+  - Together this trims the fixed cost sent with every turn by about 9%: about 11,800 down to 10,700 tokens with the modules of a typical church.
+  - `canon_whoami {"brief": true}` returns just who, role, scopes and access levels, at under a third of the size.
+- Database: no change.
+
 ## 0.15.6 — Export data in one place; the library as one file; pages that fit a phone; the bulletin QR code on the title slide
 
 - **Settings → Export data** (administrators):

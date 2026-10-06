@@ -1,6 +1,6 @@
 # Canon tools, data and conventions
 
-`canon_whoami` (always available): who you act for, role, each module's access and why, contact-detail policy (members and `visitors`), languages, congregations, tools, playbooks, limits and instructions — call it first when unsure.
+`canon_whoami` (always available): who you act for, role, each module's access and why, contact-detail policy (members and `visitors`), languages, congregations, tools, playbooks, limits and instructions — call it first when unsure; `{"brief": true}` returns just the person, role, scopes and access levels. Item kinds, stanzas, posture, slide blocks and song-merging rules: the handbook's "Writing services and songs" (canon://guide/agents).
 
 ## Tools by module
 

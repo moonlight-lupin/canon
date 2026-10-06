@@ -1,4 +1,6 @@
 // Slide templates: the step-by-step editor beside a live preview.
+import { QR_CORNERS, type QrCorner, type QrSize } from '../../../shared/slide-theme.ts';
+const QR_CORNER_LABEL: Record<QrCorner, string> = { 'bottom-left': 'Lower left', 'bottom-right': 'Lower right', 'top-left': 'Upper left', 'top-right': 'Upper right' };
 import { useMemo, useRef, useState } from 'react';
 import { api } from '../../api.ts';
 import { useContentLangs, useI18n } from '../../i18n.tsx';
@@ -295,6 +297,14 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
               <label className="check"><input type="checkbox" checked={v.footer_number} onChange={(e) => setV({ footer_number: e.target.checked })} />{t('Slide number')}</label>
             </div>
             <label className="check"><input type="checkbox" checked={v.show_posture} onChange={(e) => setV({ show_posture: e.target.checked })} />{t('Show “All stand / 众立” on the first slide of an item that has a posture')}</label>
+            <Field label={<TipLabel label={t('QR code on the title slide')} tip={t('Where the bulletin link’s QR code sits on the title slide, and how big (Share → Bulletin for the congregation → Show the QR code on the title slide). The PowerPoint download uses the same.')} />}>
+              <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+                <select value={v.qr_corner ?? 'bottom-right'} onChange={(e) => setV({ qr_corner: e.target.value as QrCorner })} aria-label={t('Position')}>
+                  {QR_CORNERS.map((c) => <option key={c} value={c}>{t(QR_CORNER_LABEL[c])}</option>)}
+                </select>
+                <Seg<QrSize> value={v.qr_size ?? 'medium'} onChange={(z) => setV({ qr_size: z })} options={[{ value: 'small', label: t('Small') }, { value: 'medium', label: t('Medium') }, { value: 'large', label: t('Large') }]} />
+              </div>
+            </Field>
           </Step>
 
           <Step n={5} title={t('Custom CSS (advanced)')} summary={sum.css} open={steps.isOpen(5)} onToggle={() => steps.toggle(5)}>

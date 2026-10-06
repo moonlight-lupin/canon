@@ -6,6 +6,13 @@ export type FontScript = 'latin' | 'sc' | 'tc' | 'other';
 
 export const FONT_SCRIPTS: FontScript[] = ['latin', 'sc', 'tc', 'other'];
 
+export type QrCorner = 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+export type QrSize = 'small' | 'medium' | 'large';
+export const QR_CORNERS: QrCorner[] = ['bottom-left', 'bottom-right', 'top-left', 'top-right'];
+/** the QR code's side on a 1920 × 1080 slide, and in the PowerPoint file (inches on a 13.33 in wide slide) */
+export const QR_SIZE_PX: Record<QrSize, number> = { small: 170, medium: 230, large: 300 };
+export const QR_SIZE_IN: Record<QrSize, number> = { small: 1.2, medium: 1.6, large: 2.1 };
+
 export interface SlideThemeVars {
   /** background colour (#rrggbb) */
   bg: string;
@@ -39,6 +46,9 @@ export interface SlideThemeVars {
   footer_number: boolean;
   /** a small "All stand" / 众立 cue on the first slide of an item that has a posture */
   show_posture: boolean;
+  /** the bulletin link's QR code on the title slide: which corner, and how big */
+  qr_corner?: QrCorner;
+  qr_size?: QrSize;
   /** lines per language on a slide that shows two or more languages (a "line" = a lyric line or a sentence) */
   max_lines_multi: number;
   /** lines on a slide that shows one language */
@@ -180,6 +190,8 @@ export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAUL
     footer_church: bool('footer_church'),
     footer_number: bool('footer_number'),
     show_posture: typeof v.show_posture === 'boolean' ? v.show_posture : (base.show_posture ?? false),
+    qr_corner: QR_CORNERS.includes(v.qr_corner as QrCorner) ? (v.qr_corner as QrCorner) : (base.qr_corner ?? 'bottom-right'),
+    qr_size: v.qr_size === 'small' || v.qr_size === 'medium' || v.qr_size === 'large' ? v.qr_size : (base.qr_size ?? 'medium'),
     // themes saved before these settings existed get the defaults
     max_lines_multi: Math.round(clamp(v.max_lines_multi, 1, 6, base.max_lines_multi ?? DEFAULT_LINE_LIMITS.max_lines_multi)),
     max_lines_single: Math.round(clamp(v.max_lines_single, 1, 8, base.max_lines_single ?? DEFAULT_LINE_LIMITS.max_lines_single)),
@@ -475,6 +487,12 @@ export function compileThemeCss(scope: string, vars: SlideThemeVars, css: string
     ['--slide-show-church', show(v.footer_church)],
     ['--slide-show-number', show(v.footer_number)],
     ['--slide-show-posture', show(v.show_posture)],
+    // the bulletin link's QR code on the title slide
+    ['--slide-qr-size', `${QR_SIZE_PX[v.qr_size ?? 'medium']}px`],
+    ['--slide-qr-top', (v.qr_corner ?? 'bottom-right').startsWith('top') ? '110px' : 'auto'],
+    ['--slide-qr-bottom', (v.qr_corner ?? 'bottom-right').startsWith('bottom') ? '100px' : 'auto'],
+    ['--slide-qr-left', (v.qr_corner ?? 'bottom-right').endsWith('left') ? '70px' : 'auto'],
+    ['--slide-qr-right', (v.qr_corner ?? 'bottom-right').endsWith('right') ? '70px' : 'auto'],
   ];
   for (const k of FONT_SCRIPTS) {
     const f = v[`font_${k}`];
