@@ -213,6 +213,8 @@ export function buildBulletin(b: BulletinBuild): { main: Block[]; back: Block[];
           spareNotes = true;
           return [];
         }
+        // the rest of the page, under the section before it (heading and a few lines at least, else the next page)
+        if (s.fill) return [{ key: `${p}notes`, fill: true, node: <NotesPage langs={langs} /> }];
         return [{ key: `${p}notes`, page: 'notes', node: <NotesPage langs={langs} /> }];
       case 'ccli_contact': {
         const out: Block[] = [];

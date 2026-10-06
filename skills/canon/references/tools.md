@@ -25,6 +25,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 
 - Sheet music: read the pictures to answer about the music; never retype or pass it on (copyright). PDFs / very large scans aren't sent — give `open_in_canon`.
 - Administration: never passwords or secrets; change-log values only when personal data is shared; ask before `canon_admin_backup_now`; accounts, roles and settings change only in Canon.
+- Spaces: `space_id` on create / update service (a church space; administrators keep the list in Canon); calendar items carry `space`. Avoid double-booking a space.
 - `find_*` / `search_*` → summaries; `get_*` → detail. `canon_get_service` returns words and Bible text only with `include_text: true`; `format: "text"` returns a run sheet.
 - `save_*`: no `id` = create; `id` + fields = update only those fields.
 - Multilingual fields merge by language on update: send only the language you add or change (`""` removes one). Song stanzas and text parts merge by `label`; `replace_stanzas` / `replace_parts: true` replace the whole list.

@@ -1,5 +1,6 @@
 // One meeting: its details (date, time, place, who chairs, topic and passage, offering or not), its record, an
 // optional order of service, and the next meeting (a copy a week later, or another date).
+import { SpaceClashes, SpaceField } from '../../components/Spaces.tsx';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
@@ -13,9 +14,9 @@ import type { ServiceRecord } from '../../../shared/records.ts';
 import type { Group } from '../../../shared/types.ts';
 import { VisitorFormPanel } from '../VisitorForm.tsx';
 
-type Draft = Pick<ServiceFull, 'title' | 'date' | 'start_time' | 'place' | 'leader_id' | 'chair' | 'topic' | 'sermon_ref' | 'offering' | 'notes'>;
+type Draft = Pick<ServiceFull, 'title' | 'date' | 'start_time' | 'place' | 'space_id' | 'leader_id' | 'chair' | 'topic' | 'sermon_ref' | 'offering' | 'notes'>;
 const draftOf = (m: ServiceFull): Draft => ({
-  title: m.title, date: m.date, start_time: m.start_time, place: m.place ?? '', leader_id: m.leader_id ?? null, chair: m.chair ?? '', topic: m.topic ?? {},
+  title: m.title, date: m.date, start_time: m.start_time, place: m.place ?? '', space_id: m.space_id ?? null, leader_id: m.leader_id ?? null, chair: m.chair ?? '', topic: m.topic ?? {},
   sermon_ref: m.sermon_ref ?? '', offering: !!m.offering, notes: m.notes ?? '',
 });
 
@@ -109,6 +110,7 @@ export default function MeetingPage() {
           <div className="form-grid">
             <Field label={t('Date')}><input type="date" value={d.date} onChange={(e) => set({ date: e.target.value })} /></Field>
             <Field label={t('Start time')}><input type="time" value={d.start_time} onChange={(e) => set({ start_time: e.target.value })} /></Field>
+            <SpaceField value={d.space_id} onChange={(v) => set({ space_id: v })} />
             <Field label={t('Place')}><input value={d.place ?? ''} onChange={(e) => set({ place: e.target.value })} placeholder={t('e.g. church hall, or a home')} /></Field>
             <Field label={<>{t('Leader')} <InfoTip text={t('Pick the member who leads this meeting: if their Canon account is linked to them (Settings → Users), they can record it. For someone outside the register, type their name instead.')} /></>}>
               {editor
@@ -118,6 +120,7 @@ export default function MeetingPage() {
             {editor && !d.leader_id && <Field label={t('Or the leader’s name')}><input value={d.chair ?? ''} onChange={(e) => set({ chair: e.target.value })} placeholder={t('someone not in the register')} /></Field>}
             <Field label={t('Passage')}><input value={d.sermon_ref ?? ''} onChange={(e) => set({ sermon_ref: e.target.value })} placeholder="Acts 2:42-47" /></Field>
           </div>
+          {m.space_id && <SpaceClashes type="meeting" id={m.id} version={`${m.date}${m.start_time}${m.space_id}`} />}
           <Field label={t('Topic')}><L10nInput value={d.topic ?? {}} onChange={(v: L10n) => set({ topic: v })} /></Field>
           <label className="check">
             <input type="checkbox" checked={!!d.offering} onChange={(e) => set({ offering: e.target.checked })} />

@@ -15,6 +15,8 @@ export interface ChurchEvent {
   start_time: string | null;
   end_time: string | null;
   place: string | null;
+  /** the church's space (Settings → Spaces) */
+  space_id: number | null;
   description: string | null;
   congregation_id: number | null;
   group_id: number | null;
@@ -24,7 +26,7 @@ export interface ChurchEvent {
 
 export const events = table<ChurchEvent>({
   name: 'events',
-  cols: ['title', 'date', 'end_date', 'start_time', 'end_time', 'place', 'description', 'congregation_id', 'group_id'],
+  cols: ['title', 'date', 'end_date', 'start_time', 'end_time', 'place', 'space_id', 'description', 'congregation_id', 'group_id'],
   json: ['title'],
   touch: true,
   guard: { own: 'events', refs: { group_id: 'groups' } },
@@ -46,6 +48,8 @@ export interface CalendarItem {
   end_time: string | null;
   title: L10n;
   place: string | null;
+  /** the church's space, by name */
+  space: L10n | null;
   congregation_id: number | null;
   group_id: number | null;
   group_name: L10n | null;
@@ -80,14 +84,14 @@ export function calendarItems(q: CalendarQuery): CalendarItem[] {
   };
   const s = filter('s');
   const svc = all<Record<string, unknown>>(
-    `SELECT s.id, s.kind, s.date, s.start_time, s.title, s.place, s.congregation_id, s.group_id, g.name AS group_name, g.color
-     FROM services s LEFT JOIN groups g ON g.id = s.group_id
+    `SELECT s.id, s.kind, s.date, s.start_time, s.title, s.place, sp.name AS space, s.congregation_id, s.group_id, g.name AS group_name, g.color
+     FROM services s LEFT JOIN groups g ON g.id = s.group_id LEFT JOIN spaces sp ON sp.id = s.space_id
      WHERE s.date BETWEEN ? AND ?${s.where}`,
     q.from, q.to, ...s.params,
   );
   const e = filter('e');
   const evs = all<Record<string, unknown>>(
-    `SELECT e.*, g.name AS group_name, g.color FROM events e LEFT JOIN groups g ON g.id = e.group_id
+    `SELECT e.*, sp.name AS space, g.name AS group_name, g.color FROM events e LEFT JOIN groups g ON g.id = e.group_id LEFT JOIN spaces sp ON sp.id = e.space_id
      WHERE e.date <= ? AND IFNULL(e.end_date, e.date) >= ?${e.where}`,
     q.to, q.from, ...e.params,
   );
@@ -95,14 +99,14 @@ export function calendarItems(q: CalendarQuery): CalendarItem[] {
   const items: CalendarItem[] = [
     ...svc.map((r) => ({
       type: (r.kind === 'meeting' ? 'meeting' : 'service') as CalendarItem['type'], id: r.id as number, date: r.date as string, end_date: null,
-      start_time: r.start_time as string, end_time: null, title: l10n(r.title) ?? {}, place: (r.place as string | null) ?? null,
+      start_time: r.start_time as string, end_time: null, title: l10n(r.title) ?? {}, place: (r.place as string | null) ?? null, space: l10n(r.space),
       congregation_id: (r.congregation_id as number | null) ?? null, group_id: (r.group_id as number | null) ?? null,
       group_name: l10n(r.group_name), color: (r.color as string | null) ?? null,
     })),
     ...evs.map((r) => ({
       type: 'event' as const, id: r.id as number, date: r.date as string, end_date: (r.end_date as string | null) ?? null,
       start_time: (r.start_time as string | null) ?? null, end_time: (r.end_time as string | null) ?? null, title: l10n(r.title) ?? {},
-      place: (r.place as string | null) ?? null, congregation_id: (r.congregation_id as number | null) ?? null, group_id: (r.group_id as number | null) ?? null,
+      place: (r.place as string | null) ?? null, space: l10n(r.space), congregation_id: (r.congregation_id as number | null) ?? null, group_id: (r.group_id as number | null) ?? null,
       group_name: l10n(r.group_name), color: (r.color as string | null) ?? null,
     })),
   ];

@@ -191,7 +191,7 @@ export function BulletinPages({
   const byKey = useMemo(() => new Map(all.map((b) => [b.key, b])), [all]);
 
   const measureRef = useRef<HTMLDivElement>(null);
-  const [plan, setPlan] = useState<{ pages: PageSpec[]; oversize: boolean; blanks: number } | null>(null);
+  const [plan, setPlan] = useState<{ pages: PageSpec[]; oversize: boolean; blanks: number; heights: Map<string, number> } | null>(null);
   const hasSermon = spareNotes && r.items.some((i) => i.kind === 'sermon');
 
   useLayoutEffect(() => {
@@ -220,7 +220,7 @@ export function BulletinPages({
       pages = padded.pages;
       blanks = padded.added - (padded.added > 0 && hasSermon ? 1 : 0);
     }
-    setPlan({ pages, oversize, blanks });
+    setPlan({ pages, oversize, blanks, heights: new Map(all.map((b, i) => [b.key, hs[i]])) });
   }, [all, main.length, back, capPx, booklet, hasSermon, fontTick, pt, bodyW]);
 
   // Season colour (when turned on) accents the cover rule and section headings; ink stays the text colour.
@@ -237,7 +237,14 @@ export function BulletinPages({
       <div key={key} className={`bl-page${coverPage ? ' cover' : ''}`} style={{ width: `${pw}mm`, height: `${ph}mm`, padding: `${spec.margin}mm ${spec.margin}mm 0` }}>
         <div className="bl-body" style={{ height: `${ph - 2 * spec.margin - FOOT_MM}mm` }}>
           {p.kind === 'blank' && p.notes && <NotesPage langs={langs} />}
-          {blocksOn.map((b) => <div key={b.key} className={b.page ? 'bb bb-page' : 'bb'}>{b.node}</div>)}
+          {blocksOn.map((b) => {
+            // ruled notes take what the other blocks on the page leave (a little less, for rounding)
+            if (b.fill) {
+              const used = blocksOn.filter((x) => x !== b).reduce((n, x) => n + (plan!.heights.get(x.key) ?? 0), 0);
+              return <div key={b.key} className="bb bb-fill" style={{ height: `${Math.max(plan!.heights.get(b.key) ?? 0, capPx - used - 6)}px` }}>{b.node}</div>;
+            }
+            return <div key={b.key} className={b.page ? 'bb bb-page' : 'bb'}>{b.node}</div>;
+          })}
         </div>
         <div className="bl-foot" style={{ height: `${FOOT_MM + spec.margin}mm` }}>{numbered && n}</div>
       </div>
@@ -269,7 +276,7 @@ export function BulletinPages({
   const measure = (
     // hidden measuring column at the page body width (whole-page blocks are measured as nothing)
     <div ref={measureRef} className="bl-doc bl-measure" style={{ ...docStyle, width: `${bodyW}mm` }} aria-hidden="true">
-      {all.map((b) => <div key={b.key} className="bb">{b.page ? null : b.node}</div>)}
+      {all.map((b) => <div key={b.key} className={b.fill ? 'bb bb-fill-min' : 'bb'}>{b.page ? null : b.node}</div>)}
     </div>
   );
 

@@ -1,6 +1,7 @@
 // The church calendar: services, meetings and the church's other events (a retreat, a wedding, a working bee …) by
 // month, week or as a list, for a congregation and a group. Services and meetings open their own pages; events are
 // added and changed here (editors). On a phone the month and week show as a list.
+import { SpaceClashes, SpaceField } from '../components/Spaces.tsx';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, qs, useApi } from '../api.ts';
@@ -21,6 +22,7 @@ interface Item {
   end_time: string | null;
   title: L10n;
   place: string | null;
+  space?: L10n | null;
   congregation_id: number | null;
   group_id: number | null;
   group_name: L10n | null;
@@ -121,7 +123,7 @@ export default function Calendar() {
                 {byDay.get(d)!.map((it) => (
                   <button key={`${it.type}-${it.id}`} type="button" className={`cal-row ${it.type}`} onClick={() => open(it)} style={it.color ? { ['--gc' as string]: it.color } : undefined}>
                     <span className="cal-time">{it.start_time ?? ''}{it.end_time ? `–${it.end_time}` : ''}</span>
-                    <span><strong><Bi v={it.title} /></strong>{it.group_name && <span className="small muted"> · <Bi v={it.group_name} /></span>}{it.place && <span className="small muted"> · {it.place}</span>}</span>
+                    <span><strong><Bi v={it.title} /></strong>{it.group_name && <span className="small muted"> · <Bi v={it.group_name} /></span>}{it.space && <span className="small muted"> · <Bi v={it.space} /></span>}{it.place && <span className="small muted"> · {it.place}</span>}</span>
                   </button>
                 ))}
               </div>
@@ -144,7 +146,7 @@ export default function Calendar() {
   );
 }
 
-interface EventRow { title: L10n; date: string; end_date: string | null; start_time: string | null; end_time: string | null; place: string | null; description: string | null; congregation_id: number | null; group_id: number | null }
+interface EventRow { title: L10n; date: string; end_date: string | null; start_time: string | null; end_time: string | null; place: string | null; space_id?: number | null; description: string | null; congregation_id: number | null; group_id: number | null }
 
 /** Add or change one of the church's events (editors; others see it read-only). */
 function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null; initialDate: string; onClose: () => void; onSaved: () => void }) {
@@ -153,7 +155,7 @@ function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null;
   const { run, busy } = useAction();
   const existing = useApi<EventRow>(id ? `/events/${id}` : null);
   const groups = useApi<GroupRow[]>('/groups');
-  const [d, setD] = useState<EventRow | null>(id ? null : { title: {}, date: initialDate, end_date: null, start_time: null, end_time: null, place: null, description: null, congregation_id: null, group_id: null });
+  const [d, setD] = useState<EventRow | null>(id ? null : { title: {}, date: initialDate, end_date: null, start_time: null, end_time: null, place: null, space_id: null, description: null, congregation_id: null, group_id: null });
   const e = d ?? existing.data ?? null;
   const set = (p: Partial<EventRow>) => setD({ ...(e as EventRow), ...p });
   const save = () => run(async () => {
@@ -187,6 +189,7 @@ function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null;
             <Field label={t('Until')} hint={t('for an event over several days')}><input type="date" value={e.end_date ?? ''} min={e.date} onChange={(x) => set({ end_date: x.target.value || null })} /></Field>
             <Field label={t('Start time')}><input type="time" value={e.start_time ?? ''} onChange={(x) => set({ start_time: x.target.value || null })} /></Field>
             <Field label={t('End time')}><input type="time" value={e.end_time ?? ''} onChange={(x) => set({ end_time: x.target.value || null })} /></Field>
+            <SpaceField value={e.space_id} onChange={(v) => set({ space_id: v })} />
             <Field label={t('Place')}><input value={e.place ?? ''} onChange={(x) => set({ place: x.target.value })} /></Field>
             <CongregationField value={e.congregation_id} onChange={(v) => set({ congregation_id: v })} />
             <Field label={t('Group')}>
@@ -196,6 +199,7 @@ function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null;
               </select>
             </Field>
           </div>
+          {id && existing.data?.space_id && <SpaceClashes type="event" id={id} version={JSON.stringify(existing.data)} />}
           <Field label={t('Description')}><textarea rows={3} value={e.description ?? ''} onChange={(x) => set({ description: x.target.value })} /></Field>
         </fieldset>
       )}

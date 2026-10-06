@@ -1,4 +1,4 @@
-// Records → Reports: attendance, offerings, new visitors, serving, songs and Scripture, membership — for a period and
+// Records → Reports: attendance, offerings, new visitors, serving, songs and Scripture, membership, spaces — for a period and
 // (in churches with several) a congregation. Each report can be printed or exported to CSV (opens in Excel).
 // Offerings are only offered to editors and administrators (the server refuses them to read-only users), and a
 // month's offerings print as a one-page summary for the treasurer.
@@ -13,6 +13,7 @@ import type { ReportKind } from '../../shared/reports.ts';
 import './records.css';
 import './reports.css';
 import { OfferingsTab } from './reports/OfferingsTab.tsx';
+import { SpacesReport } from './reports/SpacesReport.tsx';
 import { MembershipTab, ServingTab, VisitorsTab } from './reports/PeopleTabs.tsx';
 import { AttendanceTab, ScriptureTab, SongsTab } from './reports/WorshipTabs.tsx';
 import type { Ctx } from './reports/charts.tsx';
@@ -26,6 +27,7 @@ const TABS: { kind: ReportKind; label: string; money?: boolean }[] = [
   { kind: 'songs', label: 'Songs' },
   { kind: 'scripture', label: 'Scripture' },
   { kind: 'membership', label: 'Membership' },
+  { kind: 'spaces' as ReportKind, label: 'Spaces' },
 ];
 
 type Preset = '3m' | '6m' | '12m' | 'ytd' | 'last' | 'custom';
@@ -62,7 +64,7 @@ export default function Reports() {
   const [of, setOf] = useState<'service' | 'meeting'>('service');
   const [group, setGroup] = useState<number | null>(null);
   const groups = useApi<GroupRow[]>('/groups');
-  const byKind = kind !== 'serving' && kind !== 'membership';
+  const byKind = kind !== 'serving' && kind !== 'membership' && (kind as string) !== 'spaces';
   const q = qs({ from, to, congregation: cong, ...(byKind && of === 'meeting' ? { kind: 'meeting', group } : {}) });
   const ctx: Ctx = { q, from, to, cong, congs };
   // years in archive files that this period touches: reports read the live records only
@@ -114,6 +116,7 @@ export default function Reports() {
       {kind === 'songs' && <SongsTab {...ctx} />}
       {kind === 'scripture' && <ScriptureTab {...ctx} />}
       {kind === 'membership' && <MembershipTab {...ctx} />}
+      {(kind as string) === 'spaces' && <SpacesReport from={from} to={to} />}
     </div>
   );
 }

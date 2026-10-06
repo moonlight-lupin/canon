@@ -20,6 +20,7 @@ const EventInput = z.object({
   start_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   end_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   place: z.string().max(200).nullable().optional(),
+  space_id: z.number().int().nullable().optional(),
   description: z.string().max(4000).nullable().optional(),
   congregation_id: z.number().int().nullable().optional(),
   group_id: z.number().int().nullable().optional(),

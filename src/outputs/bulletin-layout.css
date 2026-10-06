@@ -1,6 +1,11 @@
 /* Bulletin page layout: whole-page blocks (cover, sermon notes), the booklet padding warning and the template
    editor's sample pages (real pages, scaled down, with visible boundaries and page numbers). */
 .bl-body > .bb-page { height: 100%; }
+/* ruled notes under the section before them: at least a heading and four lines; on the page, the rest of it */
+.bb-fill-min { height: 42mm; }
+.bb-fill { display: flex; flex-direction: column; }
+.bb-fill-min > .bl-notespage, .bb-fill > .bl-notespage { height: 100%; }
+.bb-fill > .bl-notespage .bl-backhead { margin-top: 4mm; }
 .bl-padwarn { font-size: 12px; white-space: normal; text-align: left; }
 
 .bl-sample { display: flex; flex-direction: column; gap: 8px; }

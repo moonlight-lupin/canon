@@ -56,6 +56,8 @@ export interface BulletinSection {
   service_notes?: boolean;
   /** sermon_notes: only on a spare page of a folded booklet, when the service has a sermon */
   spare_only?: boolean;
+  /** sermon_notes: the rest of the page after the section before it (e.g. under the announcements), not a page of its own */
+  fill?: boolean;
   /** ccli_contact: print the copyright / CCLI notices, the church address and contact */
   ccli?: boolean;
   contact?: boolean;
@@ -133,7 +135,8 @@ export function normaliseLayout(input: unknown): BulletinSection[] {
         s.blocks = ids(v.blocks);
         break;
       case 'sermon_notes':
-        if (v.spare_only === true) s.spare_only = true;
+        if (v.fill === true) s.fill = true;
+        else if (v.spare_only === true) s.spare_only = true;
         break;
       case 'ccli_contact':
         s.ccli = v.ccli !== false;

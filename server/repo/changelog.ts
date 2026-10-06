@@ -10,6 +10,7 @@ const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
 
 /** What each table's records are called in the log. */
 export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
+  spaces: { en: 'Space', zh: '场地' },
   people: { en: 'Member', zh: '会友' },
   households: { en: 'Household', zh: '家庭' },
   coworkers: { en: 'Co-worker', zh: '同工' },

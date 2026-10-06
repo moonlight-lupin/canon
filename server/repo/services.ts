@@ -17,7 +17,7 @@ export const services = table<Service>({
   cols: [
     'date', 'start_time', 'title', 'service_type', 'preacher', 'sermon_title', 'sermon_ref', 'theme', 'languages',
     'status', 'notes', 'share_token', 'template_id', 'season', 'cover', 'slide_theme_id', 'bulletin_template_id', 'bibles', 'bulletin_content',
-    'congregation_id', 'ref', 'visitor_form', 'attendee', 'kind', 'group_id', 'place', 'chair', 'leader_id', 'topic', 'offering',
+    'congregation_id', 'ref', 'visitor_form', 'attendee', 'space_id', 'kind', 'group_id', 'place', 'chair', 'leader_id', 'topic', 'offering',
   ],
   json: ['title', 'sermon_title', 'theme', 'languages', 'cover', 'bibles', 'bulletin_content', 'visitor_form', 'attendee', 'topic'],
   bool: ['offering'],
@@ -310,6 +310,7 @@ export function createMeeting(input: Partial<Service> & { date: string }) {
     start_time: prev?.start_time ?? pattern.time ?? '20:00',
     title: prev?.title ?? (g ? JSON.parse(g.name) : {}),
     place: prev?.place ?? pattern.place ?? null,
+    space_id: prev?.space_id ?? null,
     leader_id: prev?.leader_id ?? null,
     chair: prev?.chair ?? null,
     offering: prev?.offering ?? false,

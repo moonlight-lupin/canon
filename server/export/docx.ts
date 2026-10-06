@@ -111,7 +111,8 @@ export async function serviceDocx(r: RenderedService): Promise<Buffer> {
         return blockParas(s.blocks ?? [], langs, r.bulletin?.blocks);
       case 'sermon_notes':
         // a spare-page notes page belongs to folded booklets printed from the browser
-        return s.spare_only ? [] : sermonNotesPage(langs);
+        // under the section before it: a heading and a few lines (Word flows on by itself)
+        return s.spare_only ? [] : s.fill ? sermonNotesPage(langs, 10) : sermonNotesPage(langs);
       case 'ccli_contact':
         return backMatter(r, langs, { ccli: s.ccli !== false, contact: s.contact !== false });
       default:

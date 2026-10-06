@@ -330,6 +330,8 @@ export interface Service {
   ref?: string | null;
   /** the visitor form's link and QR choices (shared/visitor-form.ts); set through its own endpoint */
   visitor_form?: { token?: string; bulletin?: boolean; slides?: boolean };
+  /** the church's space it is held in (Settings → Spaces); double bookings show as clashes */
+  space_id?: number | null;
   /** the attendees' bulletin link and its QR choices (server/repo/attendee-link.ts); set through its own endpoint */
   attendee?: { token?: string; bulletin?: boolean; slides?: boolean };
   id: number;

@@ -508,7 +508,7 @@ export const textLinesOf = (v: L10n | undefined, langs: Lang[]) =>
   langs.flatMap((l) => splitLines(v?.[l]).map((text) => ({ text: text.trim(), lang: l })));
 
 /** A ruled page for sermon notes. */
-export function sermonNotesPage(langs: Lang[]): Paragraph[] {
+export function sermonNotesPage(langs: Lang[], lines = 22): Paragraph[] {
   const line = { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D0D0D0', space: 1 } };
   return [
     new Paragraph({
@@ -517,6 +517,6 @@ export function sermonNotesPage(langs: Lang[]): Paragraph[] {
       border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: RULE, space: 2 } },
       children: [run(bi(OUTPUT_LABEL.sermonNotes, langs, ' / '), { smallCaps: true, bold: true, size: SZ.section, font: DOC.head, color: ACCENT })],
     }),
-    ...Array.from({ length: 22 }, () => new Paragraph({ spacing: { before: 200 }, border: line, children: [] })),
+    ...Array.from({ length: lines }, () => new Paragraph({ spacing: { before: 200 }, border: line, children: [] })),
   ];
 }

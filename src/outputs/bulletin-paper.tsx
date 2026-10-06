@@ -43,6 +43,8 @@ export interface Block {
   split?: () => Block[];
   /** a whole page on its own: the cover page or a ruled sermon-notes page */
   page?: 'cover' | 'notes';
+  /** takes the rest of its page (ruled notes under the section before it); measured at its smallest */
+  fill?: boolean;
   /** the page holding this block has no page number (the banner on page 1) */
   nonum?: boolean;
 }

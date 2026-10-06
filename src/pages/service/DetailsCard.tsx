@@ -1,4 +1,5 @@
 // The service planner: the service's details (date, title, preacher, languages, cover, templates…).
+import { SpaceClashes, SpaceField } from '../../components/Spaces.tsx';
 import { useState } from 'react';
 import { useContentLangs, useI18n } from '../../i18n.tsx';
 import { Field, L10nInput, useSession, L10nEditScope, L10nSwitcher } from '../../components/ui.tsx';
@@ -60,6 +61,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
             </div>
           </Field>
           <CongregationField value={d.congregation_id} onChange={(v) => set('congregation_id', v)} />
+          <SpaceField value={d.space_id} onChange={(v) => set('space_id', v)} />
           <Field label={t('Liturgical season')}>
             <select value={d.season ?? ''} onChange={(e) => set('season', (e.target.value || null) as ServiceFull['season'])}>
               <option value="">{t('Auto')} — {lt(SEASONS[seasonOf(d.date || svc.date)].name)}</option>
@@ -80,6 +82,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
           <BulletinTemplateField value={d.bulletin_template_id ?? null} onChange={(v) => set('bulletin_template_id', v)} />
           <SlideThemeField value={d.slide_theme_id ?? null} onChange={(v) => set('slide_theme_id', v)} />
         </div>
+        {svc.space_id && <SpaceClashes type="service" id={svc.id} version={`${svc.date}${svc.start_time}${svc.space_id}${svc.items.reduce((n, i) => n + (i.duration_min ?? 0), 0)}`} />}
         <div className="l10n-section-head"><span /><L10nSwitcher min={2} /></div>
         <Field label={t('Title')}><L10nInput value={d.title} onChange={(v) => set('title', v)} /></Field>
         <Field label={t('Sermon title')}><L10nInput value={d.sermon_title} onChange={(v) => set('sermon_title', v)} /></Field>
@@ -90,7 +93,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
             date: d.date, start_time: d.start_time, preacher: d.preacher || null, sermon_ref: d.sermon_ref || null,
             languages: d.languages, title: d.title, sermon_title: d.sermon_title, theme: d.theme, notes: d.notes || null,
             season: d.season ?? null, cover: { style: d.cover?.style, verse_ref: d.cover?.verse_ref?.trim() || undefined },
-            slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null, congregation_id: d.congregation_id ?? null, ref: d.ref || null,
+            slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null, congregation_id: d.congregation_id ?? null, space_id: d.space_id ?? null, ref: d.ref || null,
             bibles: Object.fromEntries(Object.entries(d.bibles ?? {}).filter(([l, c]) => c && d.languages.includes(l))),
           })}>{t('Save')}</button>
         </div>

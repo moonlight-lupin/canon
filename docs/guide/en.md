@@ -99,13 +99,14 @@ The sidebar groups the pages: **Planner** (services, meetings, the library and t
 
 The [Dashboard](/) is the home page: the next service and its status, open roster roles and clashes for the coming weeks, upcoming birthdays, and quick links to the bulletin and slides. Its greeting follows the time of day and the church year (Advent, Christmas, Easter …), with its own on Sundays and the great feasts, and now and then a surprise — Shalom, Soli Deo gloria, Hallelujah (never in Lent). At the bottom, the library: the number of hymns and of liturgical texts, and the Bible versions installed for each language; each card opens that part of the Library.
 
-The [Calendar](/calendar) shows services, meetings and the church's other events together: **Month**, **Week** or **List** (the next eight weeks; phones show a list), for a congregation (with the whole church's items) and a group. Click a service or meeting to open it. **New event** (editors) adds anything else on the church's calendar — a camp, a wedding, a working bee — with its dates (**Until** for several days), times, place, congregation and group; click an event to change or delete it.
+The [Calendar](/calendar) shows services, meetings and the church's other events together: **Month**, **Week** or **List** (the next eight weeks; phones show a list), for a congregation (with the whole church's items) and a group. Click a service or meeting to open it. **New event** (editors) adds anything else on the church's calendar — a camp, a wedding, a working bee — with its dates (**Until** for several days), times, **Space** (one of the church's spaces, with a warning when it is already booked) or place, congregation and group; click an event to change or delete it. Items show their space.
 
 ### 1. Plan Sunday's service
 
 1. Go to [Services](/services) and press **＋ New service**.
 2. Check the **Date** (next Sunday is filled in), add the **Preacher**, **Sermon text** (e.g. Isaiah 6:1-8) and **Sermon title**.
 3. Choose a **Template** (or **Blank service**) and press **New service**. The planner opens.
+4. Under the service's details, choose the **Space** it is held in (once an administrator has added the church's spaces in Settings → Spaces). If the same space is booked at the same time — another service, a meeting or an event — a warning lists them; it doesn't stop you saving, since sharing a hall can be on purpose.
 
 **The order of worship**
 
@@ -195,7 +196,7 @@ For a Mac, choose **Files** → **PowerPoint for Keynote (Mac)**: the same slide
 ### Plan a meeting
 
 - **New meeting**: choose a group and a date. A group's new meeting copies its previous one (time, place, leader, whether an offering is taken); the first one takes the group's name. For a one-off meeting choose **No group** and give it a title.
-- On the meeting's page: **Title**, **Date**, **Start time**, **Place**, **Leader** (a member; type a name instead for someone outside the register), **Passage**, **Topic** and notes. **Next meeting** copies the meeting to another date (a week later unless you change it).
+- On the meeting's page: **Title**, **Date**, **Start time**, **Space** (one of the church's spaces; the next meeting keeps it, and a double booking shows a warning) or **Place** (anywhere else, e.g. a home), **Leader** (a member; type a name instead for someone outside the register), **Passage**, **Topic** and notes. **Next meeting** copies the meeting to another date (a week later unless you change it).
 
 ### Offering and visitor form
 
@@ -286,7 +287,7 @@ The editor shows the settings in numbered steps that fold open, with a large liv
 1. **Paper and languages**: paper (usually A4 landscape, folded into an A5 booklet), font size, all languages or the main one only, side by side or one after the other.
 2. **What to print** for each kind of item: all the words, the first verse only, or the title / reference only.
 3. **Cover and order of service**: cover style, banner colours, list or table, hymn numbers, posture, leaders and times.
-4. **Page layout**: the list of sections in print order: **Cover page or banner**, **Order of service**, **Full words** (creeds, catechism and hymns gathered after the order), **Announcements**, **Weekly text**, **Fixed text**, **Serving today**, **Serving next week**, a bold **Note**, **QR codes, pictures and notes**, a **Sermon notes page** and **Copyright notices and church contact**. Drag a section (or use ↑ ↓) to reorder it; **Add section ▾** and **Add page break** add more.
+4. **Page layout**: the list of sections in print order: **Cover page or banner**, **Order of service**, **Full words** (creeds, catechism and hymns gathered after the order), **Announcements**, **Weekly text**, **Fixed text**, **Serving today**, **Serving next week**, a bold **Note**, **QR codes, pictures and notes**, a **Sermon notes page** and **Copyright notices and church contact**. **Sermon notes** can be **A page of its own**, **The rest of the page, under the section before it** (e.g. ruled lines under the announcements, for members' own notes) or **Only on a spare page of a folded booklet**. Drag a section (or use ↑ ↓) to reorder it; **Add section ▾** and **Add page break** add more.
    - Each section can **Start a new page**, be **Kept together** on one page, or go **On the back cover**, which always prints on the last page (a folded booklet puts its blank pages before it).
    - A **Fixed text** (a welcome, the church's vision, giving details) is the same every week and is typed in the template. A **Weekly text** (a pastor's note, prayer requests) and the **Announcements** are typed per service in the planner's **Bulletin** tab.
 
@@ -371,6 +372,7 @@ The form is a public page: anyone with the service's link or QR code can open it
 - **Songs**: how often each song was sung, with its copyright and CCLI number (export the list for your licence report), and songs not sung in the period.
 - **Scripture**: every book and chapter of the Bible as a grid of small squares — blue where a chapter was read in a service, gold where it was preached on, half and half for both, darker when more often. Click a square to see when. Choose one or more **Years** (they need not follow each other, e.g. 2023 and 2025) instead of the period, and tick **Only books with readings or sermons** for a shorter list. The totals show how much of the Bible, and of each Testament, the church has read or preached; useful for planning a series on books not yet covered.
 - **Membership**: members and regulars, by status, age, gender and congregation, and who joined or was baptised in the period.
+- **Spaces**: how much each of the church's spaces was used in the period (services, meetings, events, hours), every **double booking** (the same space at overlapping times; a service lasts for the minutes of its order of service, a meeting or a service without items an hour, an event without times all day), and everything booked in the **coming 4 weeks**, whatever period is chosen.
 
 ## Lending library {#lending-library}
 
@@ -414,6 +416,7 @@ Open [Settings](/settings). Administrators see its sections listed down the left
 
 - **My profile** (everyone; for administrators it is the first section): display name, interface language, **Change password**.
 - **Church**, **Languages**, **User accounts**, **Roles & permissions**: see [Getting started](#getting-started).
+- **Spaces** (administrators): the church's halls, rooms and other places — a **Name** in each language, the **Capacity** and **Notes** (e.g. projector, piano). Services, meetings and calendar events can each be in one. The ⋯ menu edits, archives (it stays on its bookings but isn't offered for new ones) or deletes a space nothing was ever booked in.
 - **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library** and the **Asset register** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it; values already entered are kept and come back if the field is added again.
 - **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).

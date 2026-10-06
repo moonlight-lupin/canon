@@ -294,3 +294,14 @@ test('PowerPoint for Keynote (Mac): the same slides, with fonts every Mac has', 
   assert.doesNotMatch(mac.xml, /SimSun|PMingLiU|Segoe UI/, 'no Windows fonts in the Mac file');
   assert.match(mac.name, /-mac\.pptx/);
 });
+
+test('sermon notes can fill the rest of a page under the section before them (0.15.4)', () => {
+  const l = normaliseLayout([
+    { id: 'announcements', type: 'announcements' },
+    { id: 'n1', type: 'sermon_notes', fill: true },
+    { id: 'n2', type: 'sermon_notes', fill: true, spare_only: true },
+    { id: 'n3', type: 'sermon_notes', spare_only: true },
+  ]);
+  const notes = l.filter((s) => s.type === 'sermon_notes');
+  assert.deepEqual(notes.map((s) => [!!s.fill, !!s.spare_only]), [[true, false], [true, false], [false, true]], 'filling wins over spare-page only');
+});

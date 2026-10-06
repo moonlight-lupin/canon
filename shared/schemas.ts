@@ -200,6 +200,8 @@ export const ServiceInput = z.object({
   bulletin_template_id: z.number().int().nullable().optional(),
   congregation_id: z.number().int().nullable().optional(),
   ref: z.string().max(40).nullable().optional(),
+  /** the church's space it is held in (Settings → Spaces) */
+  space_id: z.number().int().nullable().optional(),
   // meetings
   group_id: z.number().int().nullable().optional(),
   place: optStr,
@@ -215,6 +217,7 @@ export const MeetingInput = z.object({
   start_time: time.optional(),
   title: L10nSchema.optional(),
   place: optStr,
+  space_id: z.number().int().nullable().optional(),
   leader_id: z.number().int().nullable().optional(),
   chair: optStr,
   congregation_id: z.number().int().nullable().optional(),

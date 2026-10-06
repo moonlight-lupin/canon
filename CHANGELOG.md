@@ -4,6 +4,23 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.4 — Church spaces and double bookings; notes under the announcements
+
+- **Spaces** (new in Settings, for administrators): the church's halls, rooms and other places.
+  - Each space has a name in each language, a capacity and notes.
+  - A space nothing was ever booked in can be deleted. One in use is archived instead: it stays on its bookings but isn't offered for new ones.
+- **A space for every service, meeting and calendar event.** There is a **Space** field beside the date and time.
+  - A group's next meeting keeps its space, and the calendar shows each item's space.
+  - **Double bookings**: when the same space is booked at overlapping times, a warning lists the other bookings. It doesn't stop you saving, since sharing a hall can be on purpose.
+  - A service lasts for the minutes of its order of service. A meeting, or a service without items, counts as an hour. An event without times counts as all day.
+- **Reports → Spaces**:
+  - use per space in the period (services, meetings, events, hours);
+  - every double booking;
+  - everything booked in the coming four weeks, to plan ahead.
+- **Bulletin: notes under the section before them.** In a bulletin template's page layout, **Sermon notes** can now fill **the rest of the page under the section before it**, for example ruled lines under the announcements for members' own notes. The other choices are a page of its own, or only a spare page of a folded booklet. In the Word file it is a heading and ten lines.
+- AI assistants can set a service's or meeting's space (`space_id`), and calendar items carry `space`.
+- Database: upgraded to version 28 (spaces, and a space on services, meetings and events).
+
 ## 0.15.3 — Bulletin QR on slide 2; sheet music and administration for AI assistants; new greetings
 
 - **Share → Bulletin for the congregation**: its QR code is now on a slide of its own right after the title slide (slide 2), to show as people arrive, instead of after the Announcements, which can come at the end. The run sheet notes slide 2. The PowerPoint export has it in the same place; the FreeShow project has it as a show of its own before the first item.

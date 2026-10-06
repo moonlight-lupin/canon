@@ -919,4 +919,24 @@ export const MIGRATIONS: (string | Migration)[] = [
     END;
     `,
   },
+  // 28 (0.15.4): the church's spaces (halls, rooms …): each service, meeting or calendar event can be in one, so
+  // double bookings show up; a space in use is archived rather than deleted.
+  {
+    sql: `
+    CREATE TABLE spaces (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL DEFAULT '{}',
+      capacity INTEGER,
+      notes TEXT,
+      archived INTEGER NOT NULL DEFAULT 0,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    ALTER TABLE services ADD COLUMN space_id INTEGER REFERENCES spaces(id) ON DELETE SET NULL;
+    ALTER TABLE events ADD COLUMN space_id INTEGER REFERENCES spaces(id) ON DELETE SET NULL;
+    CREATE INDEX services_space ON services(space_id, date);
+    CREATE INDEX events_space ON events(space_id, date);
+    `,
+  },
 ];

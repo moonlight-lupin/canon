@@ -15,6 +15,7 @@ import { VisitorFormTab } from './settings/VisitorFormTab.tsx';
 import './people.css';
 import { ChangeLogTab } from './settings/ChangeLogTab.tsx';
 import { ChurchTab } from './settings/ChurchTab.tsx';
+import { SpacesTab } from './settings/SpacesTab.tsx';
 import { McpTab } from './settings/McpTab.tsx';
 import { UsersTab } from './settings/UsersTab.tsx';
 import { RolesTab } from './settings/RolesCard.tsx';
@@ -22,7 +23,7 @@ import { ModulesPanel } from './settings/ModulesTab.tsx';
 import { InfoTip } from '../components/InfoTip.tsx';
 import { Icon } from '../components/icons.tsx';
 
-type Tab = 'profile' | 'church' | 'languages' | 'modules' | 'users' | 'roles' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
+type Tab = 'profile' | 'church' | 'spaces' | 'languages' | 'modules' | 'users' | 'roles' | 'member-fields' | 'offerings' | 'visitor-form' | 'email' | 'backups' | 'security' | 'mcp' | 'changelog';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -30,7 +31,7 @@ export default function Settings() {
   // the sections in groups, listed down the side (a dropdown on a phone): my account; the church; people; Canon itself
   const groups: [Tab, string][][] = [
     [['profile', 'My profile']],
-    [['church', 'Church'], ['languages', 'Languages'], ['modules', 'Modules'], ['offerings', 'Offerings']],
+    [['church', 'Church'], ['spaces', 'Spaces'], ['languages', 'Languages'], ['modules', 'Modules'], ['offerings', 'Offerings']],
     [['users', 'User accounts'], ['roles', 'Roles & permissions'], ['member-fields', 'Member fields'], ['visitor-form', 'Visitor form']],
     [['security', 'Security & privacy'], ['backups', 'Backups'], ['email', 'E-mail'], ['mcp', 'AI / MCP'], ['changelog', 'Change log']],
   ];
@@ -73,6 +74,7 @@ export default function Settings() {
             <div className="settings-body">
             {tab === 'profile' && <ProfileCard />}
             {tab === 'church' && <ChurchTab />}
+            {tab === 'spaces' && <SpacesTab />}
             {tab === 'changelog' && <ChangeLogTab />}
             {tab === 'languages' && settings && <LanguagesPanel settings={settings} onSaved={reloadSettings} />}
             {tab === 'modules' && settings && <div className="card"><ModulesPanel initial={settings.modules} onSaved={reloadSettings} /></div>}

@@ -310,7 +310,14 @@ function SectionCard({ s, first, last, readOnly, roles, blockOpts, onPatch, onMo
           </>
         )}
         {s.type === 'sermon_notes' && (
-          <label className="check"><input type="checkbox" checked={!!s.spare_only} onChange={(e) => onPatch({ spare_only: e.target.checked || undefined })} />{t('Only on a spare page of a folded booklet')}</label>
+          <label className="bll-field">
+            <span>{t('Where')}</span>
+            <select value={s.fill ? 'fill' : s.spare_only ? 'spare' : 'page'} onChange={(e) => onPatch({ fill: e.target.value === 'fill' || undefined, spare_only: e.target.value === 'spare' || undefined })}>
+              <option value="page">{t('A page of its own')}</option>
+              <option value="fill">{t('The rest of the page, under the section before it')}</option>
+              <option value="spare">{t('Only on a spare page of a folded booklet')}</option>
+            </select>
+          </label>
         )}
         {s.type === 'ccli_contact' && (
           <div className="bll-toggles">
