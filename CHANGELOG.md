@@ -4,6 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.8 — not released yet
+
+- **A service's details:** the Bible version boxes no longer spill into the next column (Liturgical season) when a Bible's name is long; they shrink to fit and show the rest when opened.
+- **Text in several languages** (a title, a sermon title…): when the language on screen is empty but another has words, the box shows them faintly (e.g. "简体中文: …"), so it is clear they are under the other tab.
+- **The team's share page:** next week's names are in every language of the service, like today's.
+- Database: no change.
+
 ## 0.15.7 — QR code placement, the library by section, a log file, and a lighter AI connector
 
 - **The bulletin link's QR code on the title slide**: each slide template now chooses its corner and size (Small, Medium, Large) under **Screen shape and footer**. The PowerPoint download follows the same choice.

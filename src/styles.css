@@ -216,6 +216,8 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; 
 label.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
 .field-hint { font-size: 11.5px; color: var(--ink-3); font-weight: 400; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
+/* a field never pushes into the next column (e.g. a select with a long option); its content shrinks instead */
+.form-grid > * { min-width: 0; }
 .form-grid .span-all { grid-column: 1 / -1; }
 .l10n { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .l10n.single { display: block; }

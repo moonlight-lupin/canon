@@ -20,8 +20,9 @@
 
 /* version selects in the planner and the Library lookup */
 .bible-pick { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
-.bible-pick label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.bible-pick label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); min-width: 0; max-width: 100%; }
 .bible-pick select, select.bible-sel { min-height: 28px; height: 28px; padding: 2px 24px 2px 7px; font-size: 12.5px; width: auto; max-width: 260px; }
+.bible-pick select { min-width: 0; max-width: min(260px, 100%); text-overflow: ellipsis; }
 .bible-tag { font: 600 10.5px var(--sans); letter-spacing: 0.06em; color: var(--reed-ink); background: var(--reed-wash); border-radius: 4px; padding: 0 5px; margin-left: 6px; }
 
 @media (max-width: 640px) {

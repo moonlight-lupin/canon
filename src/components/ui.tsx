@@ -316,7 +316,11 @@ export function L10nInput({
   const field = (lang: Lang, withTag: boolean) => {
     const info = langInfo(lang);
     const auto = !v[lang]?.trim() && ((lang === 'zh-Hant' && !!v.zh?.trim()) || (lang === 'zh' && !!v['zh-Hant']?.trim()));
-    const ph = auto ? `${t('Automatic from')} ${langInfo(lang === 'zh' ? 'zh-Hant' : 'zh').native}` : placeholder?.[lang];
+    // empty here but written in another language: show that text faintly, so it is clear where the words are
+    const other = !withTag && !v[lang]?.trim() ? filledLangs.find((l) => l !== lang) : undefined;
+    const ph = auto
+      ? `${t('Automatic from')} ${langInfo(lang === 'zh' ? 'zh-Hant' : 'zh').native}`
+      : placeholder?.[lang] ?? (other ? `${langInfo(other).native}: ${v[other]!.trim().split('\n')[0]}` : undefined);
     return (
       <div key={lang} className="l10n-field">
         {withTag && <div className="tag" title={info.name}>{info.native}{extra.includes(lang) ? ' ·' : ''}</div>}
