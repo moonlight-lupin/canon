@@ -16,7 +16,7 @@ export const SYSTEM_FONTS: Record<FontSystem, string[]> = {
     'Nirmala UI', 'Malgun Gothic', 'Yu Gothic', 'Meiryo', 'Leelawadee UI',
   ],
   mac: [
-    'Georgia', 'Palatino', 'Times New Roman', 'Times', 'Helvetica Neue', 'Helvetica', 'Arial', 'Verdana', 'Tahoma', 'Baskerville', 'Hoefler Text',
+    'Georgia', 'Palatino', 'Times New Roman', 'Helvetica Neue', 'Helvetica', 'Arial', 'Verdana', 'Tahoma', 'Baskerville', 'Hoefler Text',
     'PingFang SC', 'PingFang TC', 'PingFang HK', 'Songti SC', 'Songti TC', 'Heiti SC', 'Heiti TC', 'Hiragino Sans GB',
     'Apple SD Gothic Neo', 'Hiragino Sans', 'Hiragino Mincho ProN', 'Tamil Sangam MN', 'Thonburi', 'Kohinoor Devanagari',
   ],
