@@ -1,0 +1,55 @@
+/* The lending library and the asset register (0.15). */
+
+/* names-only member search */
+.person-search { position: relative; }
+.person-search input { width: 100%; }
+.person-hits { list-style: none; margin: 4px 0 0; padding: 4px; border: 1px solid var(--rule-strong); border-radius: 8px; background: var(--paper-3); max-height: 260px; overflow: auto; }
+.person-hits button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 6px; font: inherit; color: inherit; cursor: pointer; }
+.person-hits button:hover, .person-hits button:focus-visible { background: var(--reed-wash); outline: none; }
+
+/* list toolbars: filters sit in a row */
+.res-toolbar select { width: auto; max-width: 220px; }
+.res-toolbar .search { min-width: min(100%, 240px); }
+
+/* lend & return */
+.scan-box { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.scan-box input { font-size: 17px; padding: 10px 12px; min-width: min(100%, 320px); }
+.scan-result { margin-top: 14px; }
+.book-head { display: flex; gap: 14px; align-items: flex-start; }
+.book-cover { width: 72px; flex: none; border-radius: 4px; box-shadow: 0 1px 4px rgb(0 0 0 / 0.18); background: var(--sunk); }
+.book-cover.lg { width: 110px; }
+.book-cover-ph { width: 72px; height: 100px; flex: none; border-radius: 4px; background: var(--sunk); display: grid; place-items: center; color: var(--ink-3); }
+.loan-overdue td { background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.copy-list { display: grid; gap: 6px; }
+.copy-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; }
+.copy-row .code { min-width: 64px; }
+.res-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.res-card { display: flex; gap: 12px; text-align: left; padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; }
+.res-card .grow { min-width: 0; }
+.res-card .title { font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.thumb { width: 54px; height: 54px; object-fit: cover; border-radius: 6px; flex: none; background: var(--sunk); }
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.file-tile { border: 1px solid var(--rule); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.file-tile img { width: 100%; height: 110px; object-fit: cover; border-radius: 4px; background: var(--sunk); }
+.file-tile .pdf { height: 110px; display: grid; place-items: center; background: var(--sunk); border-radius: 4px; color: var(--ink-3); font-weight: 600; }
+
+/* labels: the screen shows the sheets like paper; print gives only the sheets */
+.labels-screen { background: #e9e5da; min-height: 100vh; padding: 16px; }
+.labels-bar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; max-width: 210mm; margin: 0 auto 6px; }
+.labels-tip { max-width: 210mm; margin: 0 auto 12px; }
+.label-page { background: #fff; color: #111; margin: 0 auto 16px; box-sizing: border-box; box-shadow: 0 2px 12px rgb(0 0 0 / 0.15); overflow: hidden; break-after: page; }
+.label-grid { display: grid; }
+.label { box-sizing: border-box; padding: 2.5mm; display: flex; gap: 2.5mm; align-items: center; overflow: hidden; outline: 0.2mm dashed #ddd; outline-offset: -0.1mm; }
+.label-qr { flex: none; height: 100%; aspect-ratio: 1; }
+.label-qr svg { width: 100%; height: 100%; display: block; }
+.label-text { min-width: 0; display: flex; flex-direction: column; gap: 0.6mm; font: 7.5pt/1.2 'Segoe UI', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+.label-number { font: 700 12pt/1 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.02em; }
+.label-line1 { font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.label-line2, .label-church { color: #555; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.label.small { padding: 1.2mm; gap: 1.2mm; }
+.label.small .label-number { font-size: 8.5pt; }
+@media print {
+  .labels-screen { background: none; padding: 0; }
+  .label-page { box-shadow: none; margin: 0; }
+  .label { outline: none; }
+}

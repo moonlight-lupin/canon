@@ -175,8 +175,9 @@ test('ISBN lookup: Open Library, else Google Books', async () => {
 test('labels: QR codes that open the copy in Canon', async () => {
   const r = await call(as.librarian, 'GET', `/lending/labels?copies=${ids.copy1}&base=${encodeURIComponent('http://192.168.1.20:3000')}`);
   assert.equal(r.status, 200);
-  assert.equal(r.body[0].number, 'B0001');
-  assert.match(r.body[0].qr, /^<svg/);
+  assert.equal(r.body.base, 'http://192.168.1.20:3000');
+  assert.equal(r.body.labels[0].number, 'B0001');
+  assert.match(r.body.labels[0].qr, /^<svg/);
   assert.equal((await call(as.librarian, 'GET', `/lending/labels?copies=${ids.copy1}&base=javascript:alert(1)`)).status, 400);
 });
 
@@ -199,7 +200,7 @@ test('the asset register: numbers, maintenance due, photos and receipts, the ass
   assert.equal(file.headers.get('content-type'), 'image/png');
   assert.equal((await call(as.keeper, 'GET', '/lending/books')).status, 403, 'the asset keeper has no library');
   assert.equal((await call(as.viewer, 'PATCH', `/equipment/items/${ids.item}`, { location: 'Hall' })).status, 403);
-  assert.deepEqual(personalData(ids.eli).looks_after.map((x: Json) => x.number), ['E0001']);
+  assert.deepEqual((personalData(ids.eli).looks_after as Json[]).map((x) => x.number), ['E0001']);
 });
 
 test('switched off again: refused, gone from the dashboard, the data kept', async () => {

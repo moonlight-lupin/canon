@@ -15,6 +15,9 @@ interface Dash {
   birthdays: { in_days: number; date: string; name: string; person_id: number }[];
   coworkers: number;
   library: { songs: number; texts: number; bibles?: { code: string; lang: string; name: string }[] };
+  /** the optional modules, when on and readable (null otherwise) */
+  lending?: { on_loan: number; overdue: number; titles: number } | null;
+  equipment?: { items: number; maintenance_due: number } | null;
 }
 
 export default function Dashboard() {
@@ -137,6 +140,28 @@ export default function Dashboard() {
           </div>
         </Link>
       </div>
+      {(data.lending || data.equipment) && (
+        <div className="grid cols-3 mt">
+          {data.lending && (
+            <Link to={data.lending.overdue ? '/lending?tab=loans' : '/lending'} className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <div className="stat">
+                <span className="n">{data.lending.on_loan}</span>
+                <span className="l">{t('Lending library: on loan')}</span>
+                {data.lending.overdue > 0 && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('{n} overdue').replace('{n}', String(data.lending.overdue))}</span>}
+              </div>
+            </Link>
+          )}
+          {data.equipment && (
+            <Link to="/equipment" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <div className="stat">
+                <span className="n">{data.equipment.items}</span>
+                <span className="l">{t('Asset register: items')}</span>
+                {data.equipment.maintenance_due > 0 && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('Maintenance due: {n}').replace('{n}', String(data.equipment.maintenance_due))}</span>}
+              </div>
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

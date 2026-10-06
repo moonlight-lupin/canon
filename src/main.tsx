@@ -40,6 +40,11 @@ const Share = lazy(() => import('./outputs/Share.tsx'));
 const Onboarding = lazy(() => import('./pages/Onboarding.tsx'));
 const About = lazy(() => import('./pages/About.tsx'));
 const Guide = lazy(() => import('./pages/Guide.tsx'));
+const Lending = lazy(() => import('./pages/resources/Lending.tsx'));
+const LendingCopy = lazy(() => import('./pages/resources/Lending.tsx').then((m) => ({ default: m.CopyPage })));
+const Equipment = lazy(() => import('./pages/resources/Equipment.tsx'));
+const EquipmentItem = lazy(() => import('./pages/resources/Equipment.tsx').then((m) => ({ default: m.ItemPage })));
+const LabelsPage = lazy(() => import('./pages/resources/common.tsx').then((m) => ({ default: m.LabelsPage })));
 
 interface Me {
   user: SessionUser | null;
@@ -120,6 +125,8 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
           <Route path="/services/:id/visitor-cards" element={<VisitorCardsPrint />} />
           <Route path="/services/:id/slides" element={<Slides />} />
           <Route path="/services/:id/runsheet" element={<RunSheet />} />
+          <Route path="/lending/labels" element={<LabelsPage kind="lending" />} />
+          <Route path="/equipment/labels" element={<LabelsPage kind="equipment" />} />
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="services" element={<Services />} />
@@ -135,6 +142,10 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
             <Route path="meetings/:id" element={<MeetingPage />} />
             <Route path="volunteers" element={<Volunteers />} />
             <Route path="library" element={<Library />} />
+            <Route path="lending" element={<Lending />} />
+            <Route path="lending/copy/:number" element={<LendingCopy />} />
+            <Route path="equipment" element={<Equipment />} />
+            <Route path="equipment/item/:number" element={<EquipmentItem />} />
             <Route path="templates" element={<Templates />} />
             <Route path="presentation" element={<Presentation />} />
             <Route path="bulletin-templates" element={<BulletinTemplates />} />

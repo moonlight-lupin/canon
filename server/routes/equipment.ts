@@ -7,6 +7,7 @@ import * as E from '../repo/equipment.ts';
 import { qrSvg } from '../repo/presentation.ts';
 import { BadRequest } from '../lib/table.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
+import { addressForOthers } from '../lib/lan.ts';
 
 export const equipmentRoutes = express.Router();
 
@@ -90,12 +91,13 @@ equipmentRoutes.delete('/equipment/files/:id', h((req) => {
 // ---- labels and the register as a spreadsheet
 equipmentRoutes.get('/equipment/labels', h(async (req) => {
   const ids = (str(req.query.items) ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
-  const origin = str(req.query.base) ?? '';
-  if (!/^https?:\/\/[^\s/?#]+$/.test(origin)) throw new BadRequest('Bad address for the labels.');
+  const given = str(req.query.base) ?? '';
+  if (!/^https?:\/\/[^\s/?#]+$/.test(given)) throw new BadRequest('Bad address for the labels.');
+  const origin = addressForOthers(given);
   const rows = ids.length
     ? all<{ id: number; number: string; name: string; location: string | null }>(`SELECT id, number, name, location FROM equipment WHERE id IN (${ids.map(() => '?').join(',')}) ORDER BY number`, ...ids)
     : [];
-  return Promise.all(rows.map(async (r) => ({ ...r, qr: await qrSvg(`${origin}/equipment/item/${encodeURIComponent(r.number)}`) })));
+  return { base: origin, labels: await Promise.all(rows.map(async (r) => ({ ...r, qr: await qrSvg(`${origin}/equipment/item/${encodeURIComponent(r.number)}`) }))) };
 }));
 equipmentRoutes.get('/equipment/maintenance-due.csv', h((_req, res) => {
   const rows = E.listItems({ due: true });

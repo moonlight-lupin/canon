@@ -53,6 +53,8 @@ const P: Record<string, string> = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   chart: 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM7 7h.01M17 7h.01M7 17h.01M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h3v3M20 20v.01',
+  books: 'M4 20h16M5 20V5h3v15M8 20V7h3v13M13.5 20 12 6.5l3-.5 1.8 13.5',
+  box: 'M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5zM3.5 7.5 12 12l8.5-4.5M12 12v9',
 };
 
 export type IconName = keyof typeof P;

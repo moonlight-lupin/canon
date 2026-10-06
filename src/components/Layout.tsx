@@ -35,6 +35,8 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
     ],
   },
   { group: 'Records', items: [{ to: '/records', label: 'Service records', icon: 'list' }, { to: '/reports', label: 'Reports', icon: 'chart' }] },
+  // optional modules (0.15): shown when switched on (Settings → Modules) and the role may read them
+  { group: 'Resources', items: [{ to: '/lending', label: 'Lending library', icon: 'books' }, { to: '/equipment', label: 'Asset register', icon: 'box' }] },
   { group: 'Administration', items: [{ to: '/settings', label: 'Settings', icon: 'settings' }] },
 ];
 

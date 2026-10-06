@@ -10,6 +10,7 @@ import { getSettings, updateSettings } from '../repo/settings.ts';
 import { qrSvg } from '../repo/presentation.ts';
 import { BadRequest } from '../lib/table.ts';
 import { h, id, str } from './helpers.ts';
+import { addressForOthers } from '../lib/lan.ts';
 
 export const lendingRoutes = express.Router();
 
@@ -73,6 +74,13 @@ lendingRoutes.get('/lending/books/:id/cover', (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=86400');
   res.type(a.mime).send(Buffer.from(a.data));
 });
+/** A looked-up cover shown before the book is saved, through Canon (the browser never contacts the lookup's servers). */
+lendingRoutes.get('/lending/cover-preview', h(async (req, res) => {
+  const c = await fetchCover(str(req.query.url) ?? '');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  res.type(c.mime).send(c.data);
+}));
 lendingRoutes.get('/lending/isbn/:isbn', h(async (req) => ({ found: await lookupIsbn(String(req.params.isbn)) })));
 
 // ---- copies
@@ -99,12 +107,12 @@ const base = (v: unknown) => {
 };
 lendingRoutes.get('/lending/labels', h(async (req) => {
   const ids = (str(req.query.copies) ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
-  const origin = base(req.query.base);
+  const origin = addressForOthers(base(req.query.base));
   const rows = ids.length
     ? (await import('../db.ts')).all<{ id: number; number: string; title: string; shelf: string | null }>(
       `SELECT c.id, c.number, b.title, b.shelf FROM lending_copies c JOIN lending_books b ON b.id = c.book_id WHERE c.id IN (${ids.map(() => '?').join(',')}) ORDER BY c.number`, ...ids)
     : [];
-  return Promise.all(rows.map(async (r) => ({ ...r, qr: await qrSvg(`${origin}/lending/copy/${encodeURIComponent(r.number)}`) })));
+  return { base: origin, labels: await Promise.all(rows.map(async (r) => ({ ...r, qr: await qrSvg(`${origin}/lending/copy/${encodeURIComponent(r.number)}`) }))) };
 }));
 
 // ---- lending, returns, renewals
