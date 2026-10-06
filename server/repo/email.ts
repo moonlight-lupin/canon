@@ -115,7 +115,7 @@ function fmtDate(date: string, lang: Lang, long = true) {
 }
 
 const fill = (s: string, vars: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 // ---------------------------------------------------------------- recipients
 
@@ -284,7 +284,7 @@ export function renderReminder(c: Content): { subject: string; text: string; htm
   return { subject, text, html };
 }
 
-function wrapHtml(inner: string, lang: Lang) {
+export function wrapHtml(inner: string, lang: Lang) {
   return `<!doctype html><html lang="${esc(langInfo(lang).htmlLang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>`
     + `<body style="margin:0;padding:0;background:#F3EEE2">`
     + `<div style="background:#F3EEE2;padding:24px 12px"><div style="max-width:600px;margin:0 auto;background:#FFFDF8;border:1px solid #E2D9C3;border-top:3px solid #A8893C;border-radius:4px;padding:26px 28px">`

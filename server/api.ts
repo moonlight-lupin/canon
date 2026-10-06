@@ -1,4 +1,8 @@
 import fs from 'node:fs';
+import { lendingRoutes } from './routes/lending.ts';
+import { equipmentRoutes } from './routes/equipment.ts';
+import { lendingCounts } from './repo/lending.ts';
+import { equipmentCounts } from './repo/equipment.ts';
 import path from 'node:path';
 // REST API for the web app. All business logic lives in ./repo; this file wires HTTP to it.
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -50,6 +54,7 @@ import { hashCode, newRecoveryCodes, newSecret, otpauthUri, verifyTotp } from '.
 import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
 import { seesSensitiveFields } from './lib/permissions.ts';
+import { allows } from '../shared/permissions.ts';
 
 export const api = express.Router();
 
@@ -289,8 +294,11 @@ api.patch('/settings', requireAdmin, h((req) => {
   return updateSettings(b as Partial<Settings>);
 }));
 
-api.get('/dashboard', h(() => {
+api.get('/dashboard', h((req) => {
   const today = new Date().toISOString().slice(0, 10);
+  // the optional modules' numbers, when they are on and this account may read them
+  const on = getSettings().modules;
+  const role = roleDef(req.user!.role);
   const in8w = new Date(Date.now() + 56 * 86400_000).toISOString().slice(0, 10);
   const upcoming = svc.listServices({ from: today, to: in8w });
   return {
@@ -304,6 +312,8 @@ api.get('/dashboard', h(() => {
       // the installed versions, by language (a verse count says little)
       bibles: all<{ code: string; lang: string; name: string }>('SELECT code, lang, name FROM bible_translations WHERE code IN (SELECT DISTINCT translation FROM bible_verses) ORDER BY lang, code'),
     },
+    lending: on.lending !== false && allows(role, 'lending', 'read') ? lendingCounts() : null,
+    equipment: on.equipment !== false && allows(role, 'equipment', 'read') ? equipmentCounts() : null,
   };
 }));
 
@@ -419,6 +429,8 @@ api.use(calendarRoutes);
 // ---------------------------------------------------------------- feature modules (v0.2)
 
 api.use(libraryRoutes);
+api.use(lendingRoutes);
+api.use(equipmentRoutes);
 api.use(groupRoutes);
 api.use(emailRoutes);
 api.use(backupRoutes);

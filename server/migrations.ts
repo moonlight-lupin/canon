@@ -759,4 +759,125 @@ export const MIGRATIONS: (string | Migration)[] = [
         VALUES (?, ?, ?, 1, 0, ?, 0, 0, 0, ?)`).run(r.key, JSON.stringify(r.name), JSON.stringify(r.description), JSON.stringify(r.access), r.sort);
     },
   },
+  // 26 (0.15): the lending library (a catalogue, numbered copies, loans to members) and the asset register (equipment,
+  // its maintenance log, photos and receipts). Both optional modules start switched off. Every role gets access to
+  // them (the ready-made roles as shipped; a church's own roles none); new ready-made roles Librarian and Asset keeper.
+  {
+    sql: `
+    CREATE TABLE lending_books (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      subtitle TEXT,
+      authors TEXT,
+      isbn TEXT,
+      publisher TEXT,
+      year INTEGER,
+      kind TEXT NOT NULL DEFAULT 'book' CHECK (kind IN ('book', 'dvd', 'curriculum', 'other')),
+      category TEXT,
+      language TEXT,
+      shelf TEXT,
+      description TEXT,
+      notes TEXT,
+      has_cover INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX lending_books_isbn ON lending_books(isbn);
+
+    CREATE TABLE lending_copies (
+      id INTEGER PRIMARY KEY,
+      book_id INTEGER NOT NULL REFERENCES lending_books(id) ON DELETE CASCADE,
+      number TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      status TEXT NOT NULL DEFAULT 'in' CHECK (status IN ('in', 'lost', 'withdrawn')),
+      condition TEXT,
+      acquired_on TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX lending_copies_book ON lending_copies(book_id);
+
+    CREATE TABLE lending_loans (
+      id INTEGER PRIMARY KEY,
+      copy_id INTEGER NOT NULL REFERENCES lending_copies(id) ON DELETE CASCADE,
+      person_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+      lent_on TEXT NOT NULL,
+      due_on TEXT NOT NULL,
+      returned_on TEXT,
+      renewals INTEGER NOT NULL DEFAULT 0,
+      reminded_on TEXT,
+      overdue_reminded_on TEXT,
+      notes TEXT,
+      lent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX lending_loans_copy ON lending_loans(copy_id);
+    CREATE INDEX lending_loans_person ON lending_loans(person_id);
+    CREATE INDEX lending_loans_open ON lending_loans(returned_on, due_on);
+
+    CREATE TABLE equipment (
+      id INTEGER PRIMARY KEY,
+      number TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      name TEXT NOT NULL,
+      category TEXT,
+      make_model TEXT,
+      serial_no TEXT,
+      location TEXT,
+      custodian_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+      bought_on TEXT,
+      price REAL,
+      supplier TEXT,
+      warranty_until TEXT,
+      condition TEXT NOT NULL DEFAULT 'good' CHECK (condition IN ('good', 'fair', 'poor', 'broken')),
+      status TEXT NOT NULL DEFAULT 'in_use' CHECK (status IN ('in_use', 'stored', 'out_of_service')),
+      maintenance_every_months INTEGER,
+      next_maintenance_on TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX equipment_custodian ON equipment(custodian_id);
+
+    CREATE TABLE equipment_maintenance (
+      id INTEGER PRIMARY KEY,
+      equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+      done_on TEXT NOT NULL,
+      what TEXT NOT NULL,
+      cost REAL,
+      done_by TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX equipment_maintenance_item ON equipment_maintenance(equipment_id);
+
+    -- the file itself is in assets, key 'equip-file-<id>' (included in backups)
+    CREATE TABLE equipment_files (
+      id INTEGER PRIMARY KEY,
+      equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL DEFAULT 'photo' CHECK (kind IN ('photo', 'receipt', 'warranty', 'other')),
+      name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX equipment_files_item ON equipment_files(equipment_id);
+    `,
+    run: (d) => {
+      // existing roles: Canon's own get the access they ship with; a church's own roles start without (an
+      // administrator gives it in Settings → Users & access → Roles)
+      const roles = d.prepare('SELECT key, builtin, access FROM access_roles').all() as { key: string; builtin: number; access: string }[];
+      const set = d.prepare('UPDATE access_roles SET access = ? WHERE key = ?');
+      for (const r of roles) {
+        const shipped = BUILTIN_ROLES.find((x) => x.key === r.key);
+        const access = JSON.parse(r.access || '{}') as Record<string, string>;
+        for (const m of ['lending', 'equipment']) access[m] = r.builtin && shipped ? shipped.access[m as 'lending'] : 'none';
+        set.run(JSON.stringify(access), r.key);
+      }
+      const put = d.prepare(`INSERT OR IGNORE INTO access_roles (key, name, description, builtin, admin, access, member_details, sensitive_fields, reopen_counts, sort)
+        VALUES (?, ?, ?, 1, 0, ?, 0, 0, 0, ?)`);
+      for (const key of ['librarian', 'keeper']) {
+        const r = BUILTIN_ROLES.find((x) => x.key === key)!;
+        put.run(r.key, JSON.stringify(r.name), JSON.stringify(r.description), JSON.stringify(r.access), r.sort);
+      }
+    },
+  },
 ];

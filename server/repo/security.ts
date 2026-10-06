@@ -86,7 +86,7 @@ const fileSize = (p: string) => {
 
 /** What uses the space inside the database, in plain words. */
 const TABLE_LABEL: Record<string, string> = {
-  bible_verses: 'Bible texts', assets: 'Pictures (logo, QR codes and notes, backgrounds)', slide_backgrounds: 'Slide backgrounds',
+  bible_verses: 'Bible texts', assets: 'Pictures and files (logo, QR codes and notes, backgrounds, book covers, asset photos and receipts)', slide_backgrounds: 'Slide backgrounds',
   songs: 'Songs', texts: 'Liturgy and catechisms', services: 'Services', service_items: 'Orders of service',
   service_records: 'Service records', change_log: 'Change log', mcp_audit: 'AI activity log', member_views: 'Member record views',
   people: 'Members', email_log: 'E-mail log', visitor_cards: 'Visitor cards',
@@ -94,6 +94,7 @@ const TABLE_LABEL: Record<string, string> = {
   bulletin_templates: 'Bulletin templates', slide_themes: 'Slide templates', bulletin_blocks: 'QR codes and notes', groups: 'Groups', group_members: 'Group members',
   households: 'Households', assignments: 'Rota', settings: 'Settings', bible_translations: 'Bible versions', oauth_tokens: 'AI connections', oauth_grants: 'AI connections',
   sessions: 'Sign-ins', users: 'User accounts', coworkers: 'Co-workers', roles: 'Roles', teams: 'Teams', congregations: 'Congregations', unavailability: 'Away dates',
+  lending_books: 'Lending library', lending_copies: 'Lending library', lending_loans: 'Lending library loans', equipment: 'Asset register', equipment_maintenance: 'Asset register', equipment_files: 'Asset register',
 };
 
 /** Keep one size reading a day (for the growth estimate); the last 400 days. */

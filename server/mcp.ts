@@ -47,6 +47,7 @@ const MODULE_TEXT: Record<ModuleKey, string> = {
   volunteers: 'teams, roles, rota and away dates', members: 'the member register', coworkers: 'co-workers', groups: 'groups, committees and serving teams',
   records: 'service records: attendance, new visitors (names and follow-up) and notes for the team, and their reports',
   contributions: 'offerings and cash counts on service records, and the offerings report (read only; part of records)',
+  lending: 'the lending library: catalogue, copies and loans', equipment: 'the asset register: equipment and its maintenance',
 };
 
 /** Why a module is at this level on this connection (admin setting ∩ connection scope ∩ the person's role). */
@@ -158,6 +159,7 @@ export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): T
     // switched-off parts of Canon (Settings → Modules) have no tools
     if (on.volunteers === false && (t.module === 'volunteers' || t.name === 'canon_serving_report')) return false;
     if (on.meetings === false && t.name === 'canon_get_calendar') return false;
+    if ((t.module === 'lending' && on.lending === false) || (t.module === 'equipment' && on.equipment === false)) return false;
     const lvl = effectiveAccess(t.module, cfg, scopes, role);
     if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
     return !t.requiresPii || piiFor(cfg, role);

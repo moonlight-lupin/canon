@@ -59,6 +59,8 @@ export const MODULE_LABEL: Record<ModuleKey, [string, string]> = {
   templates: ['Service templates', '聚会模板'],
   records: ['Service records (attendance, visitors, notes)', '聚会记录（出席、新朋友、备注）'],
   contributions: ['Offerings and cash counts', '奉献与现金点算'],
+  lending: ['Lending library', '图书馆'],
+  equipment: ['Asset register', '资产登记'],
 };
 
 export const ACCESS_LABEL: Record<ModuleAccess, [string, string]> = {

@@ -34,10 +34,14 @@ export const MOD_LABEL: Record<ModuleKey, string> = {
   templates: 'Templates',
   records: 'Service records',
   contributions: 'Offerings (contributions)',
+  lending: 'Lending library',
+  equipment: 'Asset register',
 };
 
 export const MOD_TIP: Partial<Record<ModuleKey, string>> = {
   records: 'Attendance, new visitors (names and follow-up; contact details only with the personal-data switch below) and notes for the team, and the attendance report. With Read & write, agents may record attendance, notes and visitors — never money.',
+  lending: 'The catalogue and its copies, who has what on loan and what is overdue. With Read & write, agents may add books and copies (e.g. from a list of ISBNs) — not lend or return.',
+  equipment: 'The asset register and its maintenance log. With Read & write, agents may add or update items and record maintenance.',
   contributions: 'Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.',
 };
 

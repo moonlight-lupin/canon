@@ -39,6 +39,12 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   events: { en: 'Calendar event', zh: '日历活动' },
   access_roles: { en: 'Role', zh: '角色' },
   backgrounds: { en: 'Slide background', zh: '投影背景' },
+  lending_books: { en: 'Library book', zh: '图书馆书目' },
+  lending_copies: { en: 'Library copy', zh: '图书副本' },
+  lending_loans: { en: 'Library loan', zh: '借阅' },
+  equipment: { en: 'Asset', zh: '资产' },
+  equipment_maintenance: { en: 'Maintenance', zh: '维修保养' },
+  equipment_files: { en: 'Asset photo or receipt', zh: '资产照片或收据' },
 };
 
 /** Columns never written to the log. */

@@ -245,6 +245,10 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
       if (v.visitors || v.log) log(`records: erased the details of ${v.visitors} visitors (and ${v.log} change-log copies) past the keep period`);
       const m = createAllMeetingsAhead();
       if (m) log(`meetings: created ${m} meetings ahead from the groups' meeting patterns`);
+      // the lending library's due-date and overdue e-mails (when it is on and its rules say so)
+      void import('./lending-reminders.ts').then((r) => r.dailyLoanReminders())
+        .then((r) => { if (r && (r.sent || r.failed)) log(`library: sent ${r.sent} loan reminders${r.failed ? `, ${r.failed} failed` : ''}`); })
+        .catch((e) => log(`library: reminders failed — ${(e as Error).message}`));
       recordSizeSnapshot();
     } catch (e) {
       log(`logs: tidy failed — ${(e as Error).message}`);

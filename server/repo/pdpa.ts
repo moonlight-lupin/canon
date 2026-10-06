@@ -87,6 +87,8 @@ export function personalData(pid: number) {
     time_away: all('SELECT start_date, end_date, reason FROM unavailability WHERE person_id = ? ORDER BY start_date', pid),
     staff_records: all('SELECT position, category, employment, ministry_area, ordained, start_date, end_date, notes FROM coworkers WHERE person_id = ?', pid),
     account: account ? { ...account, totp_enabled: !!account.totp_enabled } : null,
+    library_loans: all('SELECT b.title, c.number, l.lent_on, l.due_on, l.returned_on FROM lending_loans l JOIN lending_copies c ON c.id = l.copy_id JOIN lending_books b ON b.id = c.book_id WHERE l.person_id = ? ORDER BY l.lent_on', pid),
+    looks_after: all('SELECT number, name, location FROM equipment WHERE custodian_id = ? ORDER BY number', pid),
     emails_sent: all('SELECT at, to_addr, subject, kind, ok FROM email_log WHERE person_id = ? ORDER BY at', pid),
     record_viewed: all('SELECT at, user_name, via, detail FROM member_views WHERE person_id = ? ORDER BY at', pid),
     changes: all<{ at: string; user_name: string | null; action: string; summary: string | null; changes: string | null }>(
@@ -137,6 +139,7 @@ export function erasePerson(pid: number, confirm: string) {
   const p = people.get(pid);
   if (p.erased_at) throw new BadRequest('This member’s personal data was already erased.');
   if (confirm.trim() !== displayName(p)) throw new BadRequest(`Type the member’s name exactly as shown (${displayName(p)}) to erase.`);
+  if (get('SELECT 1 FROM lending_loans WHERE person_id = ? AND returned_on IS NULL', pid)) throw new BadRequest('This member has items from the lending library on loan: take them back first.');
   const names = nameVariants(p);
   const kept = mentions(names);
   const ids = {
@@ -152,6 +155,8 @@ export function erasePerson(pid: number, confirm: string) {
     run('DELETE FROM coworkers WHERE person_id = ?', pid);
     run("UPDATE group_members SET end_date = IFNULL(end_date, ?), leads = 0, role = NULL WHERE person_id = ?", today(), pid);
     run('UPDATE users SET person_id = NULL WHERE person_id = ?', pid);
+    // past loans stay (the borrower shows as erased); equipment they looked after has no one now
+    run('UPDATE equipment SET custodian_id = NULL WHERE custodian_id = ?', pid);
     run("UPDATE email_log SET to_addr = '(erased)' WHERE person_id = ?", pid);
     run(
       `UPDATE people SET first_name = '(erased)', last_name = '', native_name = NULL, preferred_name = NULL, gender = NULL, birth_date = NULL,

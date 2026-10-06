@@ -59,6 +59,8 @@ export interface Settings {
   visitor_form: VisitorFormSettings;
   /** optional parts of Canon switched on or off (shared/modules.ts) */
   modules: ModuleSwitches;
+  /** the lending library's rules (0.15) */
+  lending: { loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean };
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
   member_fields: MemberField[];
   /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
@@ -100,13 +102,14 @@ export const DEFAULT_SETTINGS: Settings = {
   offering: { currency: 'SGD', funds: ['General', 'Missions', 'Building'], signing: 'paper', min_counters: 2 },
   visitor_form: DEFAULT_VISITOR_FORM,
   modules: DEFAULT_MODULES,
+  lending: { loan_days: 21, max_renewals: 2, remind_days_before: 3, send_reminders: false },
   member_fields: [],
   security: { disk_encryption: false, require_admin_2fa: false, require_all_2fa: false },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {
     enabled: false,
-    modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off' },
+    modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off', lending: 'off', equipment: 'off' },
     expose_member_pii: false,
   },
 };
@@ -138,6 +141,7 @@ export function getSettings(): Settings {
   out.retention = { ...DEFAULT_SETTINGS.retention, ...out.retention };
   out.visitor_form = { ...DEFAULT_SETTINGS.visitor_form, ...out.visitor_form };
   out.modules = { ...DEFAULT_MODULES, ...out.modules };
+  out.lending = { ...DEFAULT_SETTINGS.lending, ...out.lending };
   out.default_languages = out.default_languages.filter((l) => out.languages.includes(l));
   if (!out.default_languages.length) out.default_languages = out.languages.slice(0, 2);
   cache = out;

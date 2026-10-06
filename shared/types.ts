@@ -424,9 +424,9 @@ export interface Template {
 
 // ---------------------------------------------------------------- MCP control
 
-export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions';
+export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions' | 'lending' | 'equipment';
 export type ModuleAccess = 'off' | 'read' | 'write';
-export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions'];
+export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment'];
 /** Modules that live inside another: they are off whenever their parent is off. */
 export const MODULE_PARENT: Partial<Record<ModuleKey, ModuleKey>> = { contributions: 'records' };
 /** Modules agents may only ever read (offerings: agents never change money). */

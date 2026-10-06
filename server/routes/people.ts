@@ -1,4 +1,5 @@
 // REST routes for members and households (and what a member page needs). Mounted inside /api after authentication.
+import { openLoanCount } from '../repo/lending.ts';
 import express from 'express';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
@@ -86,7 +87,11 @@ peopleRoutes.put('/member-fields', requireAdmin, h((req) => {
   })).max(30).parse(req.body);
   return updateSettings({ member_fields: cleanFieldDefs(b as MemberField[], getSettings().member_fields ?? []) }).member_fields;
 }));
-peopleRoutes.delete('/people/:id', h((req) => reg.people.remove(id(req))));
+peopleRoutes.delete('/people/:id', h((req) => {
+  const n = openLoanCount(id(req));
+  if (n) throw Object.assign(new Error(`This member has ${n} item(s) from the lending library on loan: take them back first.`), { status: 400 });
+  return reg.people.remove(id(req));
+}));
 // PDPA (administrators): everything held about a member, as a file for them; erasing it
 peopleRoutes.get('/people/:id/personal-data', requireAdmin, h((req, res) => {
   const pid = id(req);
