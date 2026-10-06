@@ -1,9 +1,11 @@
 // Seed song library: public-domain hymns, metrical psalms and service music.
 // Every text here was written (or translated) before 1929 and is in the public domain.
+// SEED_HYMNS (./hymns.ts, generated) adds ~350 more public-domain hymns, English words only.
 // Chinese (zh) text is supplied only where a long-established Simplified Chinese
 // version is in common use; otherwise only a zh title (when the title is well known) or nothing.
 
 import type { L10n, Song, SongCategory, Stanza } from '../../shared/types.ts';
+import { SEED_HYMNS } from './hymns.ts';
 
 export type SeedSong = Omit<Song, 'id' | 'notes' | 'ccli'> & { key: string };
 
@@ -48,7 +50,7 @@ function song(s: SongInput): SeedSong {
   };
 }
 
-export const SEED_SONGS: SeedSong[] = [
+const CORE_SONGS: SeedSong[] = [
   // ------------------------------------------------------------ praise & adoration
   song({
     key: 'holy-holy-holy',
@@ -1670,3 +1672,5 @@ export const SEED_SONGS: SeedSong[] = [
     ],
   }),
 ];
+
+export const SEED_SONGS: SeedSong[] = [...CORE_SONGS, ...SEED_HYMNS];

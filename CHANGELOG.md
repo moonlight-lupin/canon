@@ -4,6 +4,15 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.14.2 — public-domain hymns
+
+- **About 350 more hymns in the bundled library**, so a new Canon has about 380. Each has its English words and its credits: author, translator, composer, tune, metre and year.
+  - The words are public domain in most countries: their authors and translators died by 1955, and they were published by 1930.
+  - A few hymns' usual tune or harmony is still in copyright, for example FINLANDIA for *Be Still, My Soul*. Those are marked not public domain, with a note saying which music; the words themselves are free to print and project.
+- **A bundled item you delete stays deleted.** Canon used to put a deleted hymn, text or template from its library back on the next start. Now it offers each one once. Hymns, texts and templates new in an update are still added. On the first start after updating, anything deleted before this version comes back one last time.
+- **Chinese for two prayers:** the *General Confession* (公认罪文) and the *Collect for Holy Scripture* (求主赐我们领受圣经的祷文).
+- No database change.
+
 ## 0.14.1 — the dashboard
 
 - **The greeting follows the day.** Good morning, afternoon or evening, or a greeting of the church year, a different one each day:

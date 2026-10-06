@@ -1,6 +1,7 @@
 // First-run seeding: default volunteer teams/roles and the bundled public-domain library.
 // Library items are upserted by `key`, so re-running only adds new items and never
-// overwrites items the church has edited (unless force = true).
+// overwrites items the church has edited (unless force = true). Each key is offered once:
+// the keys already offered are kept (meta seed_offered), so an item the church deletes stays deleted.
 import type { L10n } from '../../shared/types.ts';
 import { get, run, tx } from '../db.ts';
 import { songs, texts } from '../repo/library.ts';
@@ -72,22 +73,34 @@ export async function seed(force = false) {
   const TEXTS = await load<Record<string, unknown> & { key: string }>('./texts.ts', 'SEED_TEXTS');
   const TEMPLATES = await load<Record<string, unknown> & { key: string }>('./templates.ts', 'SEED_TEMPLATES');
 
-  const upsert = (tbl: typeof songs | typeof texts | typeof templates, name: string, rows: (Record<string, unknown> & { key: string })[]) => {
+  type Offered = Record<'songs' | 'texts' | 'templates', string[]>;
+  let offered: Partial<Offered> = {};
+  try {
+    offered = JSON.parse(getMeta('seed_offered') ?? '{}') as Partial<Offered>;
+  } catch { /* start a new list */ }
+  const upsert = (tbl: typeof songs | typeof texts | typeof templates, name: keyof Offered, rows: (Record<string, unknown> & { key: string })[]) => {
+    const seen = new Set(offered[name] ?? []);
     let added = 0;
     for (const r of rows) {
       const existing = get<{ id: number }>(`SELECT id FROM ${name} WHERE key = ?`, r.key);
-      if (!existing) {
+      if (!existing && (force || !seen.has(r.key))) {
         tbl.insert(r);
         added++;
-      } else if (force) tbl.update(existing.id, r);
+      } else if (existing && force) tbl.update(existing.id, r);
+      seen.add(r.key);
     }
+    offered[name] = [...seen];
     return added;
   };
-  const counts = tx(() => ({
-    songs: upsert(songs, 'songs', SONGS),
-    texts: upsert(texts, 'texts', TEXTS),
-    templates: upsert(templates, 'templates', TEMPLATES),
-  }));
+  const counts = tx(() => {
+    const c = {
+      songs: upsert(songs, 'songs', SONGS),
+      texts: upsert(texts, 'texts', TEXTS),
+      templates: upsert(templates, 'templates', TEMPLATES),
+    };
+    setMeta('seed_offered', JSON.stringify(offered));
+    return c;
+  });
   if (counts.songs + counts.texts + counts.templates > 0) {
     console.log(`seed: added ${counts.songs} songs, ${counts.texts} texts, ${counts.templates} templates`);
   }

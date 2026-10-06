@@ -276,7 +276,7 @@ export const SEED_TEXTS: SeedText[] = [
   text(
     'general-confession',
     'confession',
-    { en: 'General Confession' },
+    { en: 'General Confession', zh: '公认罪文' },
     [
       'L: Let us humbly confess our sins unto Almighty God.',
       '',
@@ -296,8 +296,26 @@ export const SEED_TEXTS: SeedText[] = [
       'A: that we may hereafter live a godly, righteous, and sober life,',
       'A: to the glory of thy holy Name. Amen.',
     ],
-    null,
-    'Book of Common Prayer (1662), Morning Prayer',
+    [
+      'L: 我们当存谦卑的心，向全能的神承认我们的罪。',
+      '',
+      'A: 全能、至慈的天父：',
+      'A: 我们走迷了路，偏离你的道，如同迷失的羊。',
+      'A: 我们太过随从自己心中的计谋和私欲。',
+      'A: 我们违犯了你圣洁的律法。',
+      'A: 当做的，我们没有去做；',
+      'A: 不当做的，我们却做了；',
+      'A: 我们里面毫无完全之处。',
+      '',
+      'A: 主啊，求你怜悯我们这些可怜的罪人。',
+      'A: 神啊，求你宽恕承认己过的人；',
+      'A: 使悔改的人得以复兴；',
+      'A: 照着你在我们的主基督耶稣里向世人所应许的。',
+      'A: 至慈的天父啊，求你因祂的缘故施恩，',
+      'A: 使我们从今以后过敬虔、公义、自守的生活，',
+      'A: 好叫荣耀归于你的圣名。阿们。',
+    ],
+    'Book of Common Prayer (1662), Morning Prayer; Chinese tr. Canon (2026)',
     ['confession', 'prayer', 'unison'],
   ),
 
@@ -557,7 +575,7 @@ export const SEED_TEXTS: SeedText[] = [
   text(
     'collect-for-holy-scripture',
     'prayer',
-    { en: 'Collect for Holy Scripture' },
+    { en: 'Collect for Holy Scripture', zh: '求主赐我们领受圣经的祷文' },
     [
       'L: Blessed Lord, who hast caused all holy Scriptures to be written for our learning:',
       'L: Grant that we may in such wise hear them, read, mark, learn, and inwardly digest them,',
@@ -565,8 +583,14 @@ export const SEED_TEXTS: SeedText[] = [
       'L: which thou hast given us in our Saviour Jesus Christ.',
       'A: Amen.',
     ],
-    null,
-    'Book of Common Prayer (1662), Collect for the Second Sunday in Advent',
+    [
+      'L: 可称颂的主啊，你使一切圣经写成，为要教训我们：',
+      'L: 求你赐我们这样听圣经、读圣经、留心、学习，并在心里细细领受，',
+      'L: 好叫我们因你圣言所赐的忍耐和安慰，怀抱并永远持守永生的有福盼望，',
+      'L: 就是你在我们的救主耶稣基督里所赐给我们的。',
+      'A: 阿们。',
+    ],
+    'Book of Common Prayer (1662), Collect for the Second Sunday in Advent; Chinese tr. Canon (2026)',
     ['prayer', 'illumination', 'scripture', 'advent'],
   ),
 

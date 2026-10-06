@@ -200,6 +200,7 @@ Open [Library](/library).
 ### Hymns and hymnals
 
 - **Hymns & songs**: search by title, words or number (`HP 123`). **New song**: title, author, tune, **Stanzas** (label `R` for a refrain), **Hymnal numbers**. Untick **Public domain** to add the copyright line and **CCLI song #**.
+- **Bundled hymns**: Canon comes with about 380 public-domain hymns, with English words, credits, tune and metre. A few have a note that their usual tune or harmony is still in copyright; the words are free to print and project. Add your own language's words to a hymn's stanzas, or delete the hymns you don't sing: a hymn you delete doesn't come back when Canon is updated.
 - **Hymnals**: **New hymnal** with an **Abbreviation** (shown before numbers, e.g. HP 123). The first hymnal is the default for numbers.
 - To load a hymnal's index (numbers and titles), use **Import CSV…** on the hymnal. Songs not yet in the library are added as title-only songs tagged *needs-words*; words are never imported.
 

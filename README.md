@@ -84,7 +84,7 @@ Keep the "Canon server" window open while Canon is in use.
   - KJV (1769) and 和合本 (1919), from [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases);
   - the Westminster Standards, from [NonlinearFruit/Creeds.json](https://github.com/NonlinearFruit/Creeds.json);
   - historic creeds;
-  - hymns first published before 1929.
+  - about 380 hymns whose words were published by 1930 and whose authors and translators died by 1955 (English words; a few with Chinese).
 - **The rules differ by country:**
   - in the United Kingdom, the KJV is under the Crown's perpetual rights;
   - where copyright lasts 70 years after the author's death, an older hymn's words, translation or arrangement may still be in copyright.
