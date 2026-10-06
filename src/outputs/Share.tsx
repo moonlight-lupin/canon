@@ -226,7 +226,7 @@ export default function Share({ attendee = false }: { attendee?: boolean }) {
               {r.next_roster.roles.map((row, i) => (
                 <div key={i} className="sh-team-row">
                   <span className="muted"><Bi v={row.role} langs={langs} /></span>
-                  <span>{row.people.map((p) => biText(p, langs.slice(0, 1))).join(', ')}</span>
+                  <span>{row.people.map((p) => [...new Set(langs.map((l) => p[l]?.trim()).filter(Boolean))].join(' ')).join(', ')}</span>
                 </div>
               ))}
             </div>
