@@ -107,7 +107,7 @@ serviceRoutes.get('/services/:id/export.docx', h(async (req, res) => {
 }));
 serviceRoutes.get('/services/:id/slides.pptx', h(async (req, res) => {
   const langs = typeof req.query.langs === 'string' && req.query.langs ? (req.query.langs.split(',').slice(0, MAX_SERVICE_LANGS) as Lang[]) : null;
-  sendFile(res, await buildFile(id(req), 'slides_pptx', langs));
+  sendFile(res, await buildFile(id(req), 'slides_pptx', langs, req.query.system === 'mac' ? 'mac' : 'windows'));
 }));
 serviceRoutes.get('/services/:id/freeshow.project', h(async (req, res) => {
   const r = withRights(renderService(id(req)), 'project');

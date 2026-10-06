@@ -12,6 +12,7 @@ import { postureL10n, speakerLabel } from '../../shared/labels.ts';
 import { langInfo } from '../../shared/languages.ts';
 import { blockImageKey } from '../../shared/presentation.ts';
 import { DEFAULT_THEME_VARS, type FontScript, type SlideThemeVars } from '../../shared/slide-theme.ts';
+import { pickFont, SYSTEM_UI_FONT, type FontSystem } from '../../shared/slide-fonts.ts';
 import { assetRow, getTheme, qrPng } from '../repo/presentation.ts';
 
 type TextProps = PptxGenJS.TextProps;
@@ -22,9 +23,6 @@ const H = 7.5;
 /** Largest text per slide type in points (the projector's sizes: 1920 px wide = 960 pt). */
 const MAX_PT: Record<SlideDef['type'], number> = { title: 56, section: 56, sermon: 52, item: 50, lyrics: 40, scripture: 32, text: 34, blocks: 28 };
 const MIN_PT = 12;
-/** Fonts PowerPoint can use when the template keeps Canon's built-in choice. */
-const DEFAULT_FONT: Record<FontScript, string> = { latin: 'Georgia', sc: 'SimSun', tc: 'PMingLiU', other: 'Nirmala UI' };
-const UI_FONT = 'Segoe UI';
 
 const hex = (c: string) => c.replace('#', '').slice(0, 6).toUpperCase();
 
@@ -34,13 +32,8 @@ function scriptOf(lang: Lang): FontScript {
   return langInfo(lang).cjk || ['ta', 'ko', 'ja', 'th', 'hi'].includes(lang) ? 'other' : 'latin';
 }
 
-/** The first family of a CSS font stack ('' = Canon's default for that script). */
-function fontFor(v: SlideThemeVars, lang: Lang): string {
-  const s = scriptOf(lang);
-  const stack = v[`font_${s}`];
-  const first = stack.split(',')[0]?.trim().replace(/^['"]|['"]$/g, '');
-  return first && !/^(serif|sans-serif|monospace)$/.test(first) ? first : DEFAULT_FONT[s];
-}
+/** The template's font for a language that the system showing the file has ('' = Canon's default there). */
+const fontFor = (system: FontSystem) => (v: SlideThemeVars, lang: Lang): string => pickFont(v[`font_${scriptOf(lang)}`], scriptOf(lang), system);
 
 // ---------------------------------------------------------------- fitting text
 
@@ -118,7 +111,10 @@ function themeVars(r: RenderedService): { vars: SlideThemeVars; id: number | nul
   return { vars: DEFAULT_THEME_VARS, id: null };
 }
 
-export async function servicePptx(r: RenderedService, opts: { langs?: Lang[] } = {}): Promise<Buffer> {
+/** system: the computer that will show the file — 'windows' (PowerPoint, default) or 'mac' (Keynote opens it). */
+export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; system?: FontSystem } = {}): Promise<Buffer> {
+  const font = fontFor(opts.system ?? 'windows');
+  const UI_FONT = SYSTEM_UI_FONT[opts.system ?? 'windows'];
   const langs: Lang[] = opts.langs?.length ? opts.langs : r.languages.length ? r.languages : ['en'];
   const { vars: v, id: themeId } = themeVars(r);
   const shape = SHAPES[v.aspect === '4:3' ? '4:3' : '16:9'];
@@ -220,7 +216,7 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[] } =
       }
       sl.addShape('rect', { x: 0, y: 0, w: W, h: H, fill: { color: hex(v.bg), transparency: Math.round((1 - Math.max(v.bg_dim, 0.3)) * 100) }, line: { type: 'none' } });
     }
-    const run = (text: string, lang: Lang, o: TextProps['options'] = {}): TextProps => ({ text, options: { fontFace: fontFor(v, lang), lang: langInfo(lang).htmlLang, ...o } });
+    const run = (text: string, lang: Lang, o: TextProps['options'] = {}): TextProps => ({ text, options: { fontFace: font(v, lang), lang: langInfo(lang).htmlLang, ...o } });
 
     // heading band: small item heading, stanza label, posture cue
     const head: TextProps[] = [];
@@ -255,7 +251,7 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[] } =
       });
       sl.addText(runs, { ...body, fontSize: pt, color: hex(v.fg), align, valign: 'middle', lineSpacingMultiple: lh, paraSpaceAfter: 0 });
     } else if (s.blocks) {
-      blocksOn(sl, s, s.blocks, langs, { W, padX, body, v, accent, blockImg, fontFor });
+      blocksOn(sl, s, s.blocks, langs, { W, padX, body, v, accent, blockImg, fontFor: font });
     } else {
       const pt = fitted[i];
       const runs: TextProps[] = [];

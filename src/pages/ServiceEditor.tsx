@@ -275,6 +275,7 @@ export default function ServiceEditor() {
           <Link className="btn sm" to={`/services/${sid}/runsheet`}><Icon name="list" />{t('Run sheet')}</Link>
           <CardMenu down label={t('Download the service as a file')} trigger={<><Icon name="download" />{t('Files')}<Icon name="chevronDown" /></>} actions={[
             { label: t('PowerPoint'), title: t('The slides as a PowerPoint file, styled by the slide template'), onClick: () => { window.location.href = `/api/services/${sid}/slides.pptx`; } },
+            { label: t('PowerPoint for Keynote (Mac)'), title: t('The same slides with fonts every Mac has: open the file in Keynote'), onClick: () => { window.location.href = `/api/services/${sid}/slides.pptx?system=mac`; } },
             { label: t('Word document'), title: t('The order of service as a Word file'), onClick: () => { window.location.href = `/api/services/${sid}/export.docx`; } },
             { label: t('FreeShow project'), title: t('The slides for FreeShow'), onClick: () => { window.location.href = `/api/services/${sid}/freeshow.project`; } },
           ]} />

@@ -3,7 +3,8 @@
 // virtual adapters (Hyper-V, WSL, VirtualBox, VMware, Docker, VPNs) are left out. Prints nothing if there is none.
 import os from 'node:os';
 
-const VIRTUAL = /vethernet|virtualbox|vmware|vbox|docker|wsl|hyper-v|loopback|tailscale|zerotier|vpn|tap|tun|bluetooth/i;
+// (macOS: bridge* = Internet Sharing / virtual machines, utun* = VPNs, awdl / llw = AirDrop)
+const VIRTUAL = /vethernet|virtualbox|vmware|vbox|docker|wsl|hyper-v|loopback|tailscale|zerotier|vpn|tap|tun|bluetooth|bridge|awdl|llw|anpi/i;
 const isPrivate = (ip) => /^10\./.test(ip) || /^192\.168\./.test(ip) || /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
 
 const found = [];

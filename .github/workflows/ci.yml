@@ -1,9 +1,11 @@
 # Every push and pull request: type-check, run the tests and build the web app on Node.js 24 (the version Canon
-# needs), on Linux and on Windows (where most churches run it).
+# needs), on Linux, on Windows (where most churches run it) and on a Mac. On the Mac it also starts Canon with
+# start-canon.command, as a church would, and checks the fonts the "PowerPoint for Keynote (Mac)" download names.
+# Branches named test/... run it too, to try a change on every system before it goes to main.
 name: CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'test/**']
   pull_request:
 permissions:
   contents: read
@@ -12,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node: ['24']
     runs-on: ${{ matrix.os }}
     steps:
@@ -25,3 +27,19 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Fonts named by the Keynote download are on a plain Mac
+        if: runner.os == 'macOS'
+        run: node --disable-warning=ExperimentalWarning scripts/check-mac-fonts.mjs
+      - name: start-canon.command starts Canon on a Mac
+        if: runner.os == 'macOS'
+        run: |
+          test -x start-canon.command
+          CANON_PORT=3999 ./start-canon.command < /dev/null > launcher.log 2>&1 &
+          for i in $(seq 1 150); do curl -sf http://127.0.0.1:3999/api/about > about.json && break; sleep 2; done
+          tail -n 25 launcher.log
+          cat about.json
+          grep -q '"version"' about.json
+          grep -q 'from other computers on the office network' launcher.log
+          pgrep -x caffeinate > /dev/null
+          pkill -x caffeinate || true
+          pkill -f 'server/index.ts' || true

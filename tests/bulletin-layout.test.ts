@@ -265,3 +265,32 @@ test('bulletin_content saves via PATCH /api/services/:id and shows in canon_get_
   const out = (await (getTool.handler as (a: Json) => unknown)({ id: s.id, format: 'structured', include_text: false, include_similar: false })) as Json;
   assert.deepEqual(out.bulletin_content.pastor_note, { en: 'Grace and peace.' });
 });
+
+test('slide fonts: the first font of the template that the system has, else its default (pickFont)', async () => {
+  const { pickFont } = await import('../shared/slide-fonts.ts');
+  const hei = "'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif";
+  assert.equal(pickFont(hei, 'sc', 'windows'), 'Microsoft YaHei', 'a Mac font first: Windows takes the next one');
+  assert.equal(pickFont(hei, 'sc', 'mac'), 'PingFang SC');
+  assert.equal(pickFont('', 'sc', 'windows'), 'SimSun');
+  assert.equal(pickFont('', 'sc', 'mac'), 'Songti SC');
+  assert.equal(pickFont('', 'tc', 'mac'), 'Songti TC');
+  assert.equal(pickFont("'Kaiti SC', 'STKaiti', KaiTi, serif", 'sc', 'windows'), 'KaiTi');
+  assert.equal(pickFont("'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif", 'latin', 'mac'), 'Palatino');
+});
+
+test('PowerPoint for Keynote (Mac): the same slides, with fonts every Mac has', async () => {
+  const s = makeService('2026-11-22');
+  const xmlOf = async (q: string) => {
+    const res = await fetch(`${base}/api/services/${s.id}/slides.pptx${q}`, { headers: { Cookie: cookie } });
+    assert.equal(res.status, 200);
+    const zip = Buffer.from(await res.arrayBuffer());
+    return { xml: unzipEntry(zip, 'ppt/slides/slide2.xml') + unzipEntry(zip, 'ppt/slides/slide1.xml'), name: res.headers.get('content-disposition') ?? '' };
+  };
+  const pc = await xmlOf('');
+  const mac = await xmlOf('?system=mac');
+  assert.match(pc.xml, /typeface="SimSun"/);
+  assert.match(mac.xml, /typeface="Songti SC"/);
+  assert.match(mac.xml, /typeface="Songti TC"/);
+  assert.doesNotMatch(mac.xml, /SimSun|PMingLiU|Segoe UI/, 'no Windows fonts in the Mac file');
+  assert.match(mac.name, /-mac\.pptx/);
+});

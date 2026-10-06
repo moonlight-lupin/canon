@@ -1,6 +1,7 @@
 // Short-lived download links for a service's files: the PowerPoint slides, the Word bulletin, the FreeShow project
 // and the run sheet. AI agents create them (canon_get_service, format "downloads"); anyone holding a link can
 // download that one file until it expires, without signing in — like the team share link, so keep links private.
+import type { FontSystem } from '../../shared/slide-fonts.ts';
 import crypto from 'node:crypto';
 import type { Lang } from '../../shared/types.ts';
 import { all, get, run } from '../db.ts';
@@ -30,13 +31,14 @@ export interface DownloadFile {
 }
 
 /** Build one file for a service. */
-export async function buildFile(serviceId: number, kind: DownloadKind, langs?: Lang[] | null): Promise<DownloadFile> {
+/** system: for slides, the computer that will show them ('mac' = fonts every Mac has, for Keynote). */
+export async function buildFile(serviceId: number, kind: DownloadKind, langs?: Lang[] | null, system: FontSystem = 'windows'): Promise<DownloadFile> {
   // slides and FreeShow are projected; the Word file is printed (a licence may allow one and not the other)
   const r = withRights(renderService(serviceId), kind === 'bulletin_docx' ? 'print' : kind === 'run_sheet' ? 'print' : 'project');
   langs = langs?.filter((l) => r.languages.includes(l)) ?? null;
   switch (kind) {
     case 'slides_pptx':
-      return { name: `slides-${r.date}.pptx`, mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', body: await servicePptx(r, { langs: langs ?? undefined }) };
+      return { name: `slides-${r.date}${system === 'mac' ? '-mac' : ''}.pptx`, mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', body: await servicePptx(r, { langs: langs ?? undefined, system }) };
     case 'bulletin_docx':
       return { name: `order-of-service-${r.date}.docx`, mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', body: await serviceDocx(r) };
     case 'freeshow':
