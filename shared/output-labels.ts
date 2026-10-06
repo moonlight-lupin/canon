@@ -8,6 +8,7 @@ import { dropRepeatedPrefix, refrainLabel } from './labels.ts';
 /** Section labels printed in outputs (not UI chrome, so not tied to the UI language). */
 export const OUTPUT_LABEL = {
   servingToday: { en: 'Serving today', zh: '今日事奉', 'zh-Hant': '今日事奉', ms: 'Bertugas hari ini', id: 'Melayani hari ini', es: 'Sirven hoy', tl: 'Naglilingkod ngayon', vi: 'Phục vụ hôm nay' },
+  teamNotes: { en: 'Notes for the team', zh: '给事奉团队的备注', 'zh-Hant': '給事奉團隊的備註', ms: 'Catatan untuk pasukan', id: 'Catatan untuk tim', es: 'Notas para el equipo', tl: 'Mga tala para sa koponan', vi: 'Ghi chú cho nhóm' },
   announcements: { en: 'Announcements', zh: '报告事项', 'zh-Hant': '報告事項', ms: 'Pengumuman', id: 'Pengumuman', es: 'Anuncios', tl: 'Mga Patalastas', vi: 'Thông báo' },
   sermon: { en: 'Sermon', zh: '讲道', 'zh-Hant': '講道', ms: 'Khutbah', id: 'Khotbah', es: 'Sermón', tl: 'Sermon', vi: 'Bài giảng' },
   preacher: { en: 'Preacher', zh: '讲员', 'zh-Hant': '講員', ms: 'Pengkhutbah', id: 'Pengkhotbah', es: 'Predicador', tl: 'Mangangaral', vi: 'Diễn giả' },

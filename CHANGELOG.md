@@ -25,6 +25,8 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
   - Id-or-reference arguments are described more compactly.
   - Together this trims the fixed cost sent with every turn by about 9%: about 11,800 down to 10,700 tokens with the modules of a typical church.
   - `canon_whoami {"brief": true}` returns just who, role, scopes and access levels, at under a third of the size.
+- **The team's share link** now shows what only the team needs, which the congregation's bulletin link leaves out: the service's notes ("Notes for the team", at the top), each item's notes under the item, and who serves at the next service, after today's serving team.
+- **Settings → Languages:** the lock, download and delete buttons of an installed Bible stay on the first line of its row; only the name and badges wrap underneath, so long rows no longer leave a gap.
 - Database: no change.
 
 ## 0.15.6 — Export data in one place; the library as one file; pages that fit a phone; the bulletin QR code on the title slide

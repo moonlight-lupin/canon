@@ -479,6 +479,11 @@
 .sh-item-title .bi-alt { font-weight: 500; color: var(--ink-2); margin-left: 2px; }
 .sh-item-sub { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 14px; }
 .sh-item-who { font-size: 12.5px; color: var(--ink-3); }
+/* the team's page: the planner's notes (0.15.7) */
+.sh-item-note { margin-top: 3px; padding: 3px 8px; border-left: 2px solid var(--reed); background: var(--sunk); font-size: 13px; color: var(--ink-2); white-space: pre-line; }
+.sh-notes { margin-bottom: 8px; padding: 10px 14px; border: 1px solid var(--rule-strong); border-radius: 8px; background: var(--sunk); }
+.sh-notes p { margin: 4px 0; font-size: 14px; }
+.sh-notes .sh-sec-head { margin-top: 0; }
 .sh-toggle { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--rule-strong); display: grid; place-items: center; color: var(--ink-2); font: 600 14px/1 var(--sans); margin-top: 1px; }
 .sh-toggle::after { content: '+'; }
 details[open] .sh-toggle::after { content: '\2212'; }

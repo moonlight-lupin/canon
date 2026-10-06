@@ -1,5 +1,6 @@
 // Public, read-only order of service: the team's share link (/share/…, with who is serving) and the attendees'
 // bulletin link (/b/…, without the serving team). No session; names only, no contact details.
+// The team's page also shows the planner's notes (the service's and each item's) and who serves next week (0.15.7).
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ApiError, api } from '../api.ts';
@@ -15,6 +16,7 @@ import {
 } from './content.tsx';
 import { ANNOUNCEMENTS_KEY, weeklySections } from '../../shared/presentation.ts';
 import { isNumberedLine } from './bulletin-order.tsx';
+import { servingOnLabel } from '../../shared/labels.ts';
 import './outputs.css';
 
 function useNarrow(q = '(max-width: 640px)') {
@@ -124,6 +126,13 @@ export default function Share({ attendee = false }: { attendee?: boolean }) {
         <div className="reed-rule" aria-hidden="true" />
       </header>
 
+      {r.notes?.trim() && (
+        <section className="sh-notes">
+          <div className="sh-sec-head"><h2><Bi v={LABEL.teamNotes} langs={langs} sep=" · " /></h2></div>
+          {r.notes.split(/\r?\n/).filter((x) => x.trim()).map((ln, i) => <p key={i}>{ln.trim()}</p>)}
+        </section>
+      )}
+
       <section>
         <div className="sh-sec-head">
           <h2><Bi v={LABEL.orderOfService} langs={langs} sep=" · " /></h2>
@@ -147,6 +156,7 @@ export default function Share({ attendee = false }: { attendee?: boolean }) {
                   <span className="sh-item-title"><Bi v={it.title} langs={langs} /></span>
                   {subs.map((s, i) => <span key={i} className="sh-item-sub"><Bi v={s} langs={langs} sep=" · " /></span>)}
                   {it.leader && <span className="sh-item-who">{it.leader}</span>}
+                  {it.notes?.trim() && <span className="sh-item-note">{it.notes.trim()}</span>}
                 </span>
                 {content && <span className="sh-toggle" aria-hidden="true" />}
               </div>
@@ -204,6 +214,22 @@ export default function Share({ attendee = false }: { attendee?: boolean }) {
                 ))}
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {!!r.next_roster?.roles.length && (
+        <section>
+          <div className="sh-sec-head"><h2>{langs.map((l) => servingOnLabel(r.next_roster!.date, l)).filter((x, i, a) => a.indexOf(x) === i).join(' · ')}</h2></div>
+          <div className="sh-teams">
+            <div className="sh-team">
+              {r.next_roster.roles.map((row, i) => (
+                <div key={i} className="sh-team-row">
+                  <span className="muted"><Bi v={row.role} langs={langs} /></span>
+                  <span>{row.people.map((p) => biText(p, langs.slice(0, 1))).join(', ')}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

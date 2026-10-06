@@ -13,9 +13,10 @@
 
 /* installed versions under each language (Settings → Languages) */
 .bible-vers { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-.bible-ver { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+.bible-ver { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+.bible-ver .info { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-top: 4px; }
 .bible-ver .code { font-weight: 600; color: var(--ink); }
-.bible-ver .acts { margin-left: auto; display: inline-flex; gap: 2px; }
+.bible-ver .acts { flex: none; margin-left: auto; display: inline-flex; gap: 2px; }
 
 /* version selects in the planner and the Library lookup */
 .bible-pick { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }

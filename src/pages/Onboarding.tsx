@@ -128,14 +128,17 @@ export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Set
                         <div className="bible-vers">
                           {mine.map((x) => (
                             <div key={x.code} className="bible-ver">
-                              <span className="code">{x.code}</span>
-                              <span>{x.name}{other ? ` · ${langInfo(x.lang).native}` : ''}</span>
-                              <span className="muted">{x.verses.toLocaleString()} {t('verses')}</span>
-                              <span className={`badge ${x.source === 'upload' ? 'reed' : 'lapis'}`} title={x.notes ?? x.license}>{x.source === 'upload' ? t('Uploaded') : t('Public domain')}</span>
-                              {!other && x.code === chosen && <span className="badge ok">{t('Default')}</span>}
-                              {x.rights && BIBLE_USES.some((u) => !x.rights![u]) && (
-                                <span className="badge warn" title={t('What the licence allows')}>{BIBLE_USES.filter((u) => !x.rights![u]).map((u) => t(NOT_USE[u])).join(' · ')}</span>
-                              )}
+                              {/* the name and badges wrap among themselves; the buttons stay on the first line, at the right */}
+                              <span className="info">
+                                <span className="code">{x.code}</span>
+                                <span>{x.name}{other ? ` · ${langInfo(x.lang).native}` : ''}</span>
+                                <span className="muted">{x.verses.toLocaleString()} {t('verses')}</span>
+                                <span className={`badge ${x.source === 'upload' ? 'reed' : 'lapis'}`} title={x.notes ?? x.license}>{x.source === 'upload' ? t('Uploaded') : t('Public domain')}</span>
+                                {!other && x.code === chosen && <span className="badge ok">{t('Default')}</span>}
+                                {x.rights && BIBLE_USES.some((u) => !x.rights![u]) && (
+                                  <span className="badge warn" title={t('What the licence allows')}>{BIBLE_USES.filter((u) => !x.rights![u]).map((u) => t(NOT_USE[u])).join(' · ')}</span>
+                                )}
+                              </span>
                               {isAdmin && (
                                 <span className="acts">
                                   <button className="btn ghost sm icon" title={t('Licence and allowed uses')} onClick={() => setRightsFor(x)}><Icon name="lock" /></button>
