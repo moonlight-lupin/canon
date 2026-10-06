@@ -225,7 +225,7 @@ function LoansTab() {
       {!data ? <Loading /> : !data.length ? <Empty title={status === 'overdue' ? t('Nothing is overdue.') : status === 'open' ? t('Nothing is on loan.') : t('No returned loans yet.')} /> : (
         <div className="card flush table-wrap">
           <table className="t">
-            <thead><tr><th>{status === 'returned' ? t('Returned') : t('Due')}</th><th>{t('Copy')}</th><th>{t('Title')}</th><th>{t('Borrower')}</th><th>{t('Lent')}</th><th /></tr></thead>
+            <thead><tr><th>{status === 'returned' ? t('Returned') : t('Due')}</th><th>{t('Copy number')}</th><th>{t('Title')}</th><th>{t('Borrower')}</th><th>{t('Lent')}</th><th /></tr></thead>
             <tbody>
               {data.map((l) => (
                 <tr key={l.id} className={l.overdue_days ? 'loan-overdue' : ''}>
@@ -486,7 +486,7 @@ function BookDialog({ id, categories, onClose, onChanged }: { id: number | null;
             <h3 style={{ margin: 0 }}>{t('Loans')}</h3>
             <div className="table-wrap">
               <table className="t">
-                <thead><tr><th>{t('Copy')}</th><th>{t('Borrower')}</th><th>{t('Lent')}</th><th>{t('Due')}</th><th>{t('Returned')}</th></tr></thead>
+                <thead><tr><th>{t('Copy number')}</th><th>{t('Borrower')}</th><th>{t('Lent')}</th><th>{t('Due')}</th><th>{t('Returned')}</th></tr></thead>
                 <tbody>
                   {full.data.history.map((h) => (
                     <tr key={h.id}><td><span className="code">{h.number}</span></td><td>{h.borrower ?? <span className="muted">{t('(erased)')}</span>}</td><td className="nowrap">{fmtDate(h.lent_on, lang)}</td><td className="nowrap">{fmtDate(h.due_on, lang)}</td><td className="nowrap">{h.returned_on ? fmtDate(h.returned_on, lang) : <span className="badge lapis">{t('On loan')}</span>}</td></tr>
