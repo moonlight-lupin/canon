@@ -10,6 +10,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.13.0 | Roles and permissions, optional modules, second hardening round — done |
 | 0.14.0 | UI/UX audit of the core (worship and records) — done |
 | 0.15.0 | Lending library and asset register (two optional modules, one release) — done |
+| 0.15.1 | AI access: member contact details as a switch inside the Members register row |
 | 0.16.0 | Book-keeping: double-entry accounts (optional module) |
 | 0.16.1 | Claim forms |
 | 0.17.0 | Third hardening round |
@@ -119,6 +120,13 @@ Two separate optional modules, released together because they share item numbers
   - What each item is, where it is and who looks after it.
   - When it was bought and for how much.
   - Its condition, and maintenance due.
+
+## 0.15.1 — AI access: contact details with the Members register
+
+In Settings → AI / MCP, **Expose member contact details & birthdays** becomes a switch nested under **Members register** (as **Offerings** sits under **Service records**), instead of a separate box at the bottom.
+- Its label says what it covers: members' contact details and birth dates, but also co-workers' phone and e-mail, household addresses and new visitors' contact details in service records.
+- The PDPA notice becomes its "?" tip and one short line.
+- Like Offerings, it is off whenever its parent (Members register) is off — stricter than today for co-workers' and visitors' details; say so in the changelog.
 
 ## 0.16.0 — Book-keeping
 
