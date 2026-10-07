@@ -28,7 +28,7 @@ const RecordInput = z.object({
   online: z.number().int().min(0).max(1000000).nullable().optional(),
   visitors: z.array(VisitorSchema).max(500).optional(),
   notes: z.string().max(20000).nullable().optional(),
-  offerings: z.array(z.object({ fund: z.string().max(100), method: z.string().max(20), amount: z.number().int().min(0), currency: z.string().max(3).optional(), note: z.string().max(300).optional() })).max(200).optional(),
+  offerings: z.array(z.object({ fund: z.string().max(100), method: z.string().max(20), amount: z.number().int().min(0), currency: z.string().max(3).optional(), note: z.string().max(300).optional(), bank_line_id: z.number().int().optional() })).max(200).optional(),
   foreign_cash: z.record(z.string().regex(/^[A-Z]{3}$/), z.object({ cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(), total: z.number().int().min(0).optional(), converted: z.number().int().min(0).nullable().optional() })).optional(),
   cash: z.record(z.string().regex(/^\d+$/), z.number().int().min(0).max(1000000)).optional(),
   counters: z.array(z.string().max(120)).max(10).optional(),

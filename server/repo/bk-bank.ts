@@ -109,6 +109,49 @@ export function guessLayout(rows: string[][]): BankCsvLayout {
   return { header_row, date, description, ...(amount && !(debit && credit) ? { amount } : { debit, credit }), ...(reference && reference !== description ? { reference } : {}), date_format };
 }
 
+/**
+ * The lines of a statement not imported before for this account. Statements overlap (this month's file repeats the
+ * end of last month's), and a bank can show two genuine transactions that look alike (two SGD 50 PayNow gifts on the
+ * same day). So:
+ * - a line with the bank's reference is the same transaction only as a line with that reference (date and amount
+ *   too); lines imported earlier without a reference are compared as below;
+ * - otherwise lines are counted: if the earlier imports hold two "same date, amount and description" lines and this
+ *   file three, one is new.
+ * Exact retries add nothing; nothing genuine is dropped (v0.17.2 review, F1).
+ */
+function newLines<T extends { date: string; amount: number; description: string | null; reference: string | null }>(accountId: number, lines: T[]): T[] {
+  const before = all<{ date: string; amount: number; description: string | null; reference: string | null }>(
+    'SELECT sl.date, sl.amount, sl.description, sl.reference FROM bk_statement_lines sl JOIN bk_statements s ON s.id = sl.statement_id WHERE s.account_id = ?', accountId,
+  );
+  const plain = (l: { date: string; amount: number; description: string | null }) => `${l.date}|${l.amount}|${(l.description ?? '').trim()}`;
+  const withRef = (l: { date: string; amount: number; reference: string | null }) => `${l.date}|${l.amount}|${(l.reference ?? '').trim()}`;
+  const count = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
+  const refs = new Map<string, number>();
+  const plains = new Map<string, number>();
+  const plainsNoRef = new Map<string, number>();
+  for (const b of before) {
+    if (b.reference?.trim()) count(refs, withRef(b));
+    else count(plainsNoRef, plain(b));
+    count(plains, plain(b));
+  }
+  // take one earlier occurrence of a key, if any is left
+  const take = (m: Map<string, number>, k: string) => {
+    const n = m.get(k) ?? 0;
+    if (n <= 0) return false;
+    m.set(k, n - 1);
+    return true;
+  };
+  return lines.filter((l) => {
+    if (l.reference?.trim()) {
+      const seen = take(refs, withRef(l)) || take(plainsNoRef, plain(l));
+      // the earlier line it matched can't be matched again by a line without a reference
+      if (seen) take(plains, plain(l));
+      return !seen;
+    }
+    return !take(plains, plain(l));
+  });
+}
+
 /** Import a statement with a layout (saved on the account for next time). Lines already imported are skipped. */
 export function importStatement(input: { account_id: number; data: Buffer; layout: BankCsvLayout; file_name?: string; opening_balance?: number | null; closing_balance?: number | null }) {
   const a = activeAccount(input.account_id);
@@ -136,11 +179,9 @@ export function importStatement(input: { account_id: number; data: Buffer; layou
   });
   if (!lines.length) throw new BadRequest(`No transactions were found with this layout.${skipped.length ? ` ${skipped.slice(0, 3).join('; ')}` : ''}`);
   return tx(() => {
-    // the same line in an earlier statement of this account: skipped
-    const seen = new Set(all<{ k: string }>(
-      "SELECT sl.date || '|' || sl.amount || '|' || IFNULL(sl.description,'') AS k FROM bk_statement_lines sl JOIN bk_statements s ON s.id = sl.statement_id WHERE s.account_id = ?", a.id,
-    ).map((r) => r.k));
-    const fresh = lines.filter((l) => !seen.has(`${l.date}|${l.amount}|${l.description ?? ''}`));
+    const fresh = newLines(a.id, lines);
+    // everything was imported before: no empty statement
+    if (!fresh.length) return { statement_id: null, lines: 0, already: lines.length, skipped };
     const dates = lines.map((l) => l.date).sort();
     const st = Number(run(
       'INSERT INTO bk_statements (account_id, starts_on, ends_on, opening_balance, closing_balance, file_name, imported_by) VALUES (?,?,?,?,?,?,?)',
@@ -266,24 +307,38 @@ export function servicesNear(lineId: number) {
  */
 export function offeringFromLine(id: number, input: { service_id: number; fund: string; method: OfferingMethod; post: boolean }, who: Who) {
   const l = lineOf(id);
-  if (l.status !== 'open') throw new Conflict('This line is already matched or ignored.');
   if (l.amount <= 0) throw new BadRequest('Only money in can be an offering.');
   if (input.method === 'cash') throw new BadRequest('Cash is counted at the service: choose PayNow, transfer, card or cheque.');
   if (!getSettings().offering.funds.includes(input.fund)) throw new BadRequest(`“${input.fund}” is not an offering fund (Settings → Offerings).`);
   return tx(() => {
+    // one statement line is one gift: it is added to a service's offerings once, whatever is retried (review F2)
+    const prior = get<{ service_id: number }>(
+      "SELECT r.service_id FROM service_records r, json_each(r.offerings) o WHERE json_extract(o.value, '$.bank_line_id') = ? LIMIT 1", id,
+    );
+    if (prior && prior.service_id !== input.service_id) throw new Conflict(`This bank line is already among the offerings of another service (#${prior.service_id}).`);
+    if (!prior) {
+      if (l.status !== 'open') throw new Conflict('This line is already matched or ignored.');
+      const r0 = recordFor(input.service_id);
+      saveRecord(input.service_id, { offerings: [...(r0.offerings ?? []), { fund: input.fund, method: input.method, amount: l.amount, bank_line_id: id }] }, who);
+      logChange({ entity: 'bk_statements', entity_id: l.statement_id, action: 'update', summary: `Line ${l.date} ${l.description ?? ''} ${(l.amount / 100).toFixed(2)} added to the offerings of service ${input.service_id} (${input.fund}, ${input.method})` });
+    }
+    const added = !prior;
+    const now = lineOf(id);
+    if (now.status === 'matched') {
+      const jid = get<{ journal_id: number }>('SELECT journal_id FROM bk_lines WHERE id = ?', now.line_id)?.journal_id;
+      return { added, journal: jid ? getJournal(jid) : null, matched: true };
+    }
     const r = recordFor(input.service_id);
-    saveRecord(input.service_id, { offerings: [...(r.offerings ?? []), { fund: input.fund, method: input.method, amount: l.amount }] }, who);
-    logChange({ entity: 'bk_statements', entity_id: l.statement_id, action: 'update', summary: `Line ${l.date} ${l.description ?? ''} ${(l.amount / 100).toFixed(2)} added to the offerings of service ${input.service_id} (${input.fund}, ${input.method})` });
     const draft = get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND kind = 'offering' AND status = 'draft' ORDER BY id LIMIT 1", input.service_id);
     // not verified yet: the count drafts it later, and the line is matched then (it will be suggested)
-    if (!r.verified_at || !draft) return { added: true, journal: null, matched: false };
+    if (!r.verified_at || !draft) return { added, journal: null, matched: false };
     linkDraftToLine(id, draft.id);
-    if (!input.post) return { added: true, journal: getJournal(draft.id), matched: false };
+    if (!input.post) return { added, journal: getJournal(draft.id), matched: false };
     const j = getJournal(draft.id);
     const problems = postingProblems(j);
     if (problems.length) throw new BadRequest(problems.join(' '));
     const posted = postJournal(j.id);
-    return { added: true, journal: posted, matched: lineOf(id).status === 'matched' };
+    return { added, journal: posted, matched: lineOf(id).status === 'matched' };
   });
 }
 

@@ -450,3 +450,60 @@ test('importing journals from Excel or CSV: the template, a preview with what st
   assert.equal(prev.body.layout.date, 'Date');
   assert.equal(prev.body.layout.amount, 'Amount');
 });
+
+test('bank re-imports: overlapping files keep a genuine look-alike transaction; exact retries add nothing (review F1)', async () => {
+  const L = { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', reference: 'Ref', date_format: 'YYYY-MM-DD' };
+  const file = (rows: string[]) => Buffer.from(['Date,Description,Amount,Ref', ...rows].join('\n')).toString('base64');
+  const imp = async (rows: string[], layout: Json = L) => (await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: acc('1110'), file: file(rows), layout })).body;
+  // with the bank's reference: TX-B is a second SGD 50 gift, not a repeat of TX-A
+  let r = await imp(['2031-10-01,PAYNOW GIFT,50.00,TX-A']);
+  assert.equal(r.lines, 1);
+  r = await imp(['2031-10-01,PAYNOW GIFT,50.00,TX-A', '2031-10-01,PAYNOW GIFT,50.00,TX-B']);
+  assert.deepEqual([r.lines, r.already], [1, 1], 'the review’s case: TX-B kept');
+  r = await imp(['2031-10-01,PAYNOW GIFT,50.00,TX-A', '2031-10-01,PAYNOW GIFT,50.00,TX-B']);
+  assert.deepEqual([r.lines, r.already], [0, 2], 'an exact retry adds nothing');
+  // without references: counted — two look-alike lines then three means one new
+  const noRef = { ...L, reference: undefined };
+  r = await imp(['2031-10-02,CASH DEPOSIT,20.00,', '2031-10-02,CASH DEPOSIT,20.00,'], noRef);
+  assert.equal(r.lines, 2, 'two look-alike lines in one file are both kept');
+  r = await imp(['2031-10-02,CASH DEPOSIT,20.00,', '2031-10-02,CASH DEPOSIT,20.00,', '2031-10-02,CASH DEPOSIT,20.00,'], noRef);
+  assert.deepEqual([r.lines, r.already], [1, 2]);
+  assert.equal(get<{ n: number }>("SELECT COUNT(*) n FROM bk_statement_lines WHERE date = '2031-10-02' AND amount = 2000")!.n, 3);
+});
+
+test('a bank receipt is added to a service’s offerings once, however often it is retried (review F2)', async () => {
+  const ed = { name: 'Ed Itor', admin: false, money: true };
+  const s = svc.createService({ date: '2031-11-02' }).service;
+  const s2 = svc.createService({ date: '2031-11-09' }).service;
+  const csv = ['Date,Description,Amount', '2031-11-03,PAYNOW GIFT (fictional),20.00', '2031-11-04,PAYNOW GIFT (fictional),15.00'].join('\n');
+  const imp = (await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: acc('1100'), file: Buffer.from(csv).toString('base64'), layout: { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', date_format: 'YYYY-MM-DD' } })).body;
+  const st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.statement_id}`)).body;
+  const [g20, g15] = [st.lines.find((l: Json) => l.amount === 2000), st.lines.find((l: Json) => l.amount === 1500)];
+  const add = (lineId: number, serviceId: number, post: boolean) => call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${lineId}/offering`, { service_id: serviceId, fund: 'General', method: 'paynow', post });
+  const bankLinesOf = (serviceId: number, lineId: number) => R.recordFor(serviceId).offerings.filter((o) => o.bank_line_id === lineId).length;
+
+  // before the count is verified: twice, one offering
+  assert.equal((await add(g15.id, s2.id, false)).status, 200);
+  assert.equal((await add(g15.id, s2.id, false)).body.added, false);
+  assert.equal(bankLinesOf(s2.id, g15.id), 1);
+  assert.equal((await add(g15.id, s.id, false)).status, 409, 'not also to another service');
+
+  // a verified service, the draft kept: twice, one offering of 20 and a draft of 20
+  web(() => R.saveRecord(s.id, { offerings: [], counters: ['Ann', 'Ben'] }, ed));
+  web(() => R.setVerified(s.id, true, ed));
+  assert.equal((await add(g20.id, s.id, false)).body.added, true);
+  const again = (await add(g20.id, s.id, false)).body;
+  assert.equal(again.added, false, 'the retry adds no money');
+  assert.equal(bankLinesOf(s.id, g20.id), 1);
+  const draft = B.getJournal(again.journal.id);
+  assert.equal(draft.lines.reduce((n, l) => n + l.debit, 0), 2000, 'the draft is for 20.00, not 40.00');
+  // posted and matched; a retry after that returns what was done
+  assert.equal((await add(g20.id, s.id, true)).body.matched, true);
+  const after = (await add(g20.id, s.id, true)).body;
+  assert.deepEqual([after.added, after.matched], [false, true]);
+  assert.equal(bankLinesOf(s.id, g20.id), 1);
+  // the record editor saving the whole record keeps the marker
+  const rec = R.recordFor(s.id);
+  web(() => R.saveRecord(s.id, { offerings: rec.offerings }, ed));
+  assert.equal(bankLinesOf(s.id, g20.id), 1);
+});

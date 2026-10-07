@@ -74,7 +74,7 @@ const toBase64 = (f: File) => new Promise<string>((res, rej) => {
   r.readAsDataURL(f);
 });
 
-function ImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (statementId: number) => void }) {
+function ImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (statementId: number | null) => void }) {
   const { t } = useI18n();
   const b = useBooks();
   const banks = b.accounts.filter((a) => a.kind === 'bank' && a.active);
@@ -111,7 +111,7 @@ function ImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (state
   const go = async () => {
     if (!file || !layout || !account) return;
     const l: BankCsvLayout = split ? { ...layout, amount: undefined } : { ...layout, debit: undefined, credit: undefined };
-    const r = await run(() => api.post<{ statement_id: number; lines: number; already: number; skipped: string[] }>('/bookkeeping/bank/statements', {
+    const r = await run(() => api.post<{ statement_id: number | null; lines: number; already: number; skipped: string[] }>('/bookkeeping/bank/statements', {
       account_id: account, file: file.data, file_name: file.name, layout: l, opening_balance: haveBal ? opening : null, closing_balance: haveBal ? closing : null,
     }));
     if (r) {

@@ -14,6 +14,8 @@ export interface OfferingLine {
   /** another currency than the record's (e.g. a USD note in an SGD church); absent = the record's currency */
   currency?: string;
   note?: string;
+  /** a gift first seen on the bank statement (Book-keeping → Bank → Offering…): that statement line, so it is added once only */
+  bank_line_id?: number;
 }
 
 /** Cash in another currency: counted by denomination (known currencies) or as a total, and its value once exchanged. */
