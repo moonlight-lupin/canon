@@ -109,7 +109,10 @@ test('only encrypted backups go; the newest N are kept in Drive; one is not sent
 });
 
 test('restoring a backup keeps this computer’s Drive connection; a withdrawn sign-in is reported, not thrown', async () => {
-  const before = createBackup(path.join(tmp, 'r'));
+  // backups (and the restore's safety copy) in this test's own folder, never the real backups/
+  const { updateSettings, getSettings } = await import('../server/repo/settings.ts');
+  updateSettings({ backup: { ...getSettings().backup, dir: path.join(tmp, 'r') } });
+  const before = createBackup();
   await restoreBackup(before.path);
   assert.equal(g.driveStatus().connected, true, 'still connected after the restore');
   // Google withdrew the sign-in

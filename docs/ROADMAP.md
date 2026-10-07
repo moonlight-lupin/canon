@@ -14,9 +14,12 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.15.2 | Slide numbers on the cue sheet, a bulletin link for attendees, sheet music, links that phones can open, a role menu — done |
 | 0.15.4 | Church spaces and double bookings (with a report); notes under the announcements on the bulletin — done |
 | 0.15.5 | Sheet music from a phone (upload link, also from AI assistants) and in bulk; phone-sized menus — done |
-| 0.16.0 | Book-keeping: double-entry accounts (optional module) |
-| 0.16.1 | Claim forms |
-| 0.17.0 | Third hardening round |
+| 0.15.6–0.15.10 | Export data and the library by section, QR placement, a log file, cover and closing slides, leaders only from the rota, a size per language — done |
+| 0.16.0 | Languages anyone can add (translations in `locales/`), Simplified ⇄ Traditional Chinese everywhere — done |
+| 0.16.1 | Backups to the church's own Google Drive — done |
+| 0.17.0 | Book-keeping: double-entry accounts (optional module) |
+| 0.17.1 | Claim forms |
+| 0.18.0 | Third hardening round |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
@@ -147,22 +150,31 @@ In Settings → AI / MCP, the separate **Expose member contact details & birthda
 - **Sheet music** (added while building): scans or photos (or a PDF) kept with each song in the Library; **Outputs → Sheet music** in the planner, beside the run sheet, shows the service's songs in order with theirs.
 - **Links other people open** (added while building): share links, the bulletin link, the visitor form, team e-mails and QR labels use the public address, else this computer's network address — never "localhost" or the computer's name.
 
-## 0.16.0 — Book-keeping
+## 0.17.0 — Book-keeping
 
-An optional module of proper **double-entry** accounts, the kind charity accounts and auditors expect:
-- **Chart of accounts:** assets, liabilities, funds, income and expenses, starting from a simple church template that the treasurer can adjust.
-- **Journal:** every transaction is a balanced journal entry (debits equal credits). Posted entries are never edited: a mistake is corrected by a reversing entry, so the books keep their history.
-- **Funds and projects:** restricted and unrestricted funds, and **project accounts** for special events (a camp, a building fund, a conference).
-- **Offerings flow in:** verified offerings from service records become journal entries, by fund and payment method, so nothing is typed twice.
-- **Bank reconciliation** against statements.
-- **Period close:** a closed month or year can't be changed.
-- **Reports:** trial balance, income and expenditure, balance sheet, and fund and project statements, printable and exportable to Excel.
+An optional module, **Accounts**, where the treasurer keeps the church's books. Decided with the church (2026-10-07):
 
-## 0.16.1 — Claim forms
+- **Canon is the main books**, with clean exports: Excel/CSV reports and a journal export that an accountant can import into other accounting software (Xero, QuickBooks, Odoo).
+- **Double-entry.** Every entry balances (debits equal credits). Day to day it is on a cash basis (receipts and payments); manual journals allow accruals such as payables, prepayments and depreciation where a church needs them.
+- **Every line is tagged with a fund:** unrestricted, restricted, designated or endowment. Lines may also carry a **project** (camp, building works), a **congregation** and a **ministry / department**. Statements can be drawn per fund, per project, per congregation and per ministry. Moving money between funds is a journal.
+- **Chart of accounts:** a church template to start from (editable; also importable from CSV). The books start on a chosen date with **opening balances** per account and fund, entered as one opening journal that must balance.
+- **Posting:** a treasurer drafts and posts. Posted entries are never edited: a mistake is corrected by a reversing entry. Months and years can be **closed and locked**. The year-end close moves the year's surplus into each fund's balance. Every action is in the audit trail.
+- **Offerings flow in.** When a cash count is verified, Canon drafts a journal for that service, by fund and payment method: cash to cash-in-hand, PayNow or transfer to the bank. The treasurer reviews the drafts and posts them.
+- **Other currencies:** the books are in the church's currency. A foreign amount is booked at its converted value, with the original amount and rate kept on the line. Foreign cash waiting to be exchanged has its own account.
+- **Bank reconciliation:** import the bank's CSV statement. The column layout is remembered per bank account. Canon suggests matches to the books; an unmatched line (bank charges, interest) becomes a new entry. Each statement gets a reconciliation report.
+- **Reports**, generic charity format, printable and exportable:
+  - trial balance and general ledger;
+  - income and expenditure, by fund;
+  - balance sheet, with fund balances;
+  - fund movements;
+  - project, congregation and ministry statements.
+- **AI assistants** may read the books and create **draft** journals (e.g. from a pasted statement or receipts) for the treasurer to review. They never post, and never change a posted entry.
+
+## 0.17.1 — Claim forms
 
 Part of the book-keeping module: expense claims with receipts, approval and on-screen signatures; approved claims become expenses in the main or a project account.
 
-## 0.17.0 — Third hardening round
+## 0.18.0 — Third hardening round
 
 After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals). Also carried forward from 0.13: running Canon as a Windows service instead of a console window.
 
