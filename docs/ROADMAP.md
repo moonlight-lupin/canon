@@ -209,7 +209,12 @@ After book-keeping, which adds financial records and approvals: a review of secu
 
 Until 1 and 2 ship, run Canon's books alongside the church's existing books, not instead of them.
 
-**Documentation:** the chart of accounts can be exported but not imported yet (the 0.17.0 plan said CSV import); add the import or drop the promise. Reports carry each year's surplus into its fund; there is no posted year-end closing journal.
+**Done so far in 0.18.0:**
+- the reference church's whole financial cycle as a test, against figures worked out by hand;
+- an encrypted backup of the books restoring exactly;
+- the chart of accounts and the funds importable from Excel or CSV.
+
+Reports carry each year's surplus into its fund; there is no posted year-end closing journal (none is needed).
 
 ## Later
 

@@ -502,6 +502,7 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
 - **Funds**: unrestricted, designated (set aside by the church), restricted (given for a purpose) or endowment.
 - **Projects** and **Ministries**: tags for lines.
 - Something already used in a journal can be renamed or retired, not deleted.
+- **Import…** (chart of accounts, funds): **Download the current list**, change it or add rows in Excel, and choose the file. Rows are matched by code: a new code is added, a known one updated. The preview shows each change first. Nothing is deleted, and an account already used keeps its type.
 
 **AI assistants** with Book-keeping shared (Settings → AI / MCP, off by default) can read the books and reports, and can **draft** journals, e.g. from receipts you paste. They can never post, reverse or change a posted journal. A person reviews every draft and posts it in Canon.
 - They also see the **bank statements** you imported and the lines still to match. Ask "draft the bank charges and interest on the October statement": the drafts wait on those lines (**Draft waiting**) and match them when posted.

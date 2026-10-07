@@ -552,3 +552,34 @@ test('group matching: several bank receipts against one offering line, one depos
   assert.deepEqual([p25.id, p35.id].map((i) => st.lines.find((l: Json) => l.id === i).status), ['open', 'open']);
   assert.ok(st.reconciliation.uncleared.some((u: Json) => u.id === bankLine.id), 'uncleared again');
 });
+
+test('importing the chart of accounts and the funds: matched by code, previewed, nothing deleted, a used account keeps its type', async () => {
+  const { readXlsx, tableRows } = await import('../server/lib/xlsx-read.ts');
+  const x = await fetch(`${base}/api/bookkeeping/import/chart/accounts.xlsx`, { headers: { Cookie: as.treasurer.cookie } });
+  const [head] = tableRows(readXlsx(new Uint8Array(await x.arrayBuffer())));
+  assert.deepEqual(head.slice(0, 4), ['Code', 'Name', 'Name (other language)', 'Type']);
+  const up = (url: string, text: string) => fetch(`${base}/api${url}`, { method: 'POST', headers: { Cookie: as.treasurer.cookie, 'X-CSRF-Token': as.treasurer.csrf, 'Content-Type': 'text/csv' }, body: text }).then((r) => r.json() as Promise<Json>);
+  const csv = [
+    'Code,Name,Name (other language),Type,What it is for,In use,Description',
+    '5450,Youth camp (fictional),青年营,expense,,yes,',
+    '5500,Rent and utilities,租金与水电,expense,,yes,Hall and electricity',
+    '1100,Bank — current account,,income,bank,yes,',
+    '5450,Twice,,expense,,yes,',
+  ].join('\n');
+  const pv = await up('/bookkeeping/import/chart/accounts?dry_run=1', csv);
+  assert.equal(pv.fatal, null);
+  const row = (code: string, n = 0) => pv.rows.filter((r: Json) => r.code === code)[n];
+  assert.equal(row('5450').action, 'create');
+  assert.equal(row('5500').action, 'update');
+  assert.deepEqual(row('5500').changes, ['description']);
+  assert.equal(row('1100').action, 'error', 'a used account keeps its type');
+  assert.equal(row('5450', 1).action, 'error', 'the same code twice');
+  assert.equal(get('SELECT 1 FROM bk_accounts WHERE code = ?', '5450'), undefined, 'a preview changes nothing');
+  const done = await up('/bookkeeping/import/chart/accounts', csv);
+  assert.deepEqual([done.counts.create, done.counts.update], [1, 1]);
+  assert.equal(get<{ name: string }>('SELECT name FROM bk_accounts WHERE code = ?', '5450')!.name, JSON.stringify({ en: 'Youth camp (fictional)', zh: '青年营' }));
+  assert.equal(get<{ type: string }>('SELECT type FROM bk_accounts WHERE code = ?', '1100')!.type, 'asset');
+  const f = await up('/bookkeeping/import/chart/funds', 'Code,Name,Restriction\nYTH,Youth fund (fictional),designated\n');
+  assert.equal(f.counts.create, 1);
+  assert.equal(get<{ restriction: string }>('SELECT restriction FROM bk_funds WHERE code = ?', 'YTH')!.restriction, 'designated');
+});

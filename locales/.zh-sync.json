@@ -2812,6 +2812,14 @@
       "下载 CSV 模板",
       "下載 CSV 模板"
     ],
+    "Download the current list": [
+      "下载目前的清单",
+      "下載目前的清單"
+    ],
+    "Download the current list, change it or add rows in Excel, and choose the file. Rows are matched by code: a new code is added, a known one updated. Nothing is deleted, and an account already used keeps its type.": [
+      "下载目前的清单，在 Excel 中修改或增加行，再选择文件。按代号比对：新代号会加入，已有的会更新。不会删除任何项目，已使用的科目会保留原来的类型。",
+      "下載目前的清單，在 Excel 中修改或增加行，再選擇文件。按代號比對：新代號會加入，已有的會更新。不會刪除任何項目，已使用的科目會保留原來的類型。"
+    ],
     "Download the library file": [
       "下载资料库文件",
       "下載資料庫文件"
@@ -4064,6 +4072,14 @@
       "请在「资料库 → 礼文」导入威斯敏斯德信仰准则，即可选用全部107问。",
       "請在「資料庫 → 禮文」導入威斯敏斯德信仰準則，即可選用全部107問。"
     ],
+    "Import the chart of accounts": [
+      "导入会计科目表",
+      "導入會計科目表"
+    ],
+    "Import the funds": [
+      "导入款项",
+      "導入款項"
+    ],
     "Import valid rows and skip errors": [
       "导入有效的行并跳过错误",
       "導入有效的行並跳過錯誤"
@@ -4071,6 +4087,10 @@
     "Import {n} as drafts": [
       "导入 {n} 笔为草稿",
       "導入 {n} 筆為草稿"
+    ],
+    "Import {n} change(s)": [
+      "导入 {n} 项更改",
+      "導入 {n} 項更改"
     ],
     "Import {n} rows": [
       "导入 {n} 行",
@@ -9224,6 +9244,10 @@
       "如需更正，请在“分录”中冲销期初分录，再重新录入。",
       "如需更正，請在“分錄”中沖銷期初分錄，再重新錄入。"
     ],
+    "To update": [
+      "将更新",
+      "將更新"
+    ],
     "Today": [
       "今天",
       "今天"
@@ -9427,6 +9451,10 @@
     "Unavailability": [
       "不便事奉",
       "不便事奉"
+    ],
+    "Unchanged": [
+      "没有变动",
+      "沒有變動"
     ],
     "Under copyright": [
       "有版权",
@@ -9975,6 +10003,10 @@
     "With contact details": [
       "含联络资料",
       "含聯絡資料"
+    ],
+    "With problems": [
+      "有问题",
+      "有問題"
     ],
     "Withdraw": [
       "撤回",
@@ -10942,8 +10974,8 @@
     ]
   },
   "guide": [
-    "471443877ee0247e",
-    "0606972e95f3fb80"
+    "e6ce26974154c19f",
+    "f178ccf7d30577e4"
   ],
   "outputs": {
     "Advent": [

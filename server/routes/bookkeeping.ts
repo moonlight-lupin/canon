@@ -6,7 +6,8 @@ import { all, get } from '../db.ts';
 import * as B from '../repo/bookkeeping.ts';
 import * as R from '../repo/bk-reports.ts';
 import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
-import { journalsCsv } from '../repo/bk-export.ts';
+import { accountsCsv, fundsCsv, journalsCsv } from '../repo/bk-export.ts';
+import { importChart, type ChartPart } from '../repo/bk-chart-import.ts';
 import * as Claims from '../repo/bk-claims.ts';
 import { claimsSignInStatus } from './claims-self.ts';
 import { publicUrl } from '../lib/public-url.ts';
@@ -416,3 +417,21 @@ bookkeepingRoutes.post('/bookkeeping/import/journals', rawBody, h((req) => {
   if (req.query.dry_run === '1') return readJournalFile(data);
   return asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () => importJournals(data));
 }));
+
+// ---------------------------------------------------------------- importing the chart (0.18.0)
+
+const chartPart = (v: unknown): ChartPart => {
+  if (v === 'accounts' || v === 'funds') return v;
+  throw Object.assign(new Error('Not found'), { status: 404 });
+};
+/** The chart as it is, to edit in Excel and import back (new codes are added, known ones updated). */
+bookkeepingRoutes.get('/bookkeeping/import/chart/:part.xlsx', h((req, res) => {
+  const part = chartPart(req.params.part);
+  const [header, ...rows] = part === 'accounts' ? accountsCsv() : fundsCsv();
+  sendXlsx(req, res, uiLang(req), { file: `canon-${part}`, title: part === 'accounts' ? 'Chart of accounts' : 'Funds', header: header as string[], rows });
+}));
+/** Preview (?dry_run=1) or import the chart of accounts or the funds. */
+bookkeepingRoutes.post('/bookkeeping/import/chart/:part', rawBody, h((req) => asActor(
+  { user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' },
+  () => importChart(chartPart(req.params.part), bodyBytes(req), req.query.dry_run === '1'),
+)));

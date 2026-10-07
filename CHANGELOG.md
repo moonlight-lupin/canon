@@ -4,6 +4,14 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.18.0 — Hardening (in progress)
+
+- **Importing the chart of accounts and the funds** (Book-keeping → Accounts and funds → Import…) from Excel or CSV — the same columns as their export. Rows are matched by code; a preview first; nothing deleted; an account already used keeps its type.
+- **Release gates for the books:**
+  - a fictional reference church's year (opening balances, offerings, a claim, a correction by reversal, a bank reconciliation with a group match, a closed month, the new year, the accountant's export) checked against figures worked out by hand;
+  - an encrypted backup of the books (posted journals, a paid claim with its receipt, bank matches, a closed month) restoring exactly.
+- Database: no change.
+
 ## 0.17.4 — Financial correctness (review fixes)
 
 Fixes for the findings of an external review of v0.17.2.

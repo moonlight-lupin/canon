@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { api } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Field, L10nInput, Modal, Seg, confirmAction, useAction } from '../../components/ui.tsx';
+import { ErrorBox, Field, L10nInput, Modal, Seg, confirmAction, useAction } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import {
   ACCOUNT_KINDS, ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, FUND_RESTRICTIONS, FUND_RESTRICTION_LABEL,
@@ -24,6 +24,7 @@ export function ChartTab() {
   const b = useBooks();
   const [part, setPart] = useState<Part>('accounts');
   const [open, setOpen] = useState<number | 'new' | null>(null);
+  const [importing, setImporting] = useState(false);
   const tags = part === 'projects' ? b.projects : b.ministries;
   return (
     <div className="stack">
@@ -31,6 +32,8 @@ export function ChartTab() {
         <Seg<Part> value={part} onChange={(p) => { setPart(p); setOpen(null); }} options={[
           { value: 'accounts', label: t('Chart of accounts') }, { value: 'funds', label: t('Funds‖books') }, { value: 'projects', label: t('Projects') }, { value: 'ministries', label: t('Ministries') },
         ]} />
+        <div className="grow" />
+        {b.canEdit && (part === 'accounts' || part === 'funds') && <button className="btn" onClick={() => setImporting(true)}><Icon name="upload" />{t('Import…')}</button>}
         {b.canEdit && <button className="btn primary" onClick={() => setOpen('new')}><Icon name="plus" />{part === 'accounts' ? t('New account') : part === 'funds' ? t('New fund') : part === 'projects' ? t('New project') : t('New ministry')}</button>}
       </div>
       {part === 'accounts' && (
@@ -86,6 +89,7 @@ export function ChartTab() {
           )}
         </div>
       )}
+      {importing && (part === 'accounts' || part === 'funds') && <ChartImport part={part} onClose={() => setImporting(false)} onDone={() => { setImporting(false); b.reload(); }} />}
       {open !== null && part === 'accounts' && <AccountDialog a={open === 'new' ? null : b.accounts.find((a) => a.id === open)!} onClose={() => setOpen(null)} />}
       {open !== null && part === 'funds' && <FundDialog f={open === 'new' ? null : b.funds.find((f) => f.id === open)!} onClose={() => setOpen(null)} />}
       {open !== null && (part === 'projects' || part === 'ministries') && <TagDialog kind={part} x={open === 'new' ? null : tags.find((x) => x.id === open)!} onClose={() => setOpen(null)} />}
@@ -199,6 +203,64 @@ function TagDialog({ kind, x, onClose }: { kind: 'projects' | 'ministries'; x: B
         <Field label={t('Code')}><input value={code} onChange={(e) => setCode(e.target.value)} /></Field>
         <Field label={t('Name')}><L10nInput value={name} onChange={setName} /></Field>
         <label className="check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />{t('In use (untick to retire it: it stays in old journals and reports)')}</label>
+      </div>
+    </Modal>
+  );
+}
+
+interface ChartPreview { fatal: string | null; rows: { row: number; code: string; action: 'create' | 'update' | 'unchanged' | 'error'; errors: string[]; changes: string[] }[]; counts: Record<string, number> }
+
+/** The chart of accounts or the funds from an Excel or CSV file: new codes are added, known ones updated; previewed first. */
+function ChartImport({ part, onClose, onDone }: { part: 'accounts' | 'funds'; onClose: () => void; onDone: () => void }) {
+  const { t } = useI18n();
+  const { run, busy } = useAction();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<ChartPreview | null>(null);
+  const check = async (f: File | undefined) => {
+    if (!f) return;
+    setFile(f);
+    setPreview(await run(() => api.upload<ChartPreview>(`/bookkeeping/import/chart/${part}?dry_run=1`, f)) ?? null);
+  };
+  const go = async () => {
+    if (!file) return;
+    const r = await run(() => api.upload<ChartPreview>(`/bookkeeping/import/chart/${part}`, file), t('Saved.'));
+    if (r) onDone();
+  };
+  const changes = (preview?.counts.create ?? 0) + (preview?.counts.update ?? 0);
+  const LABEL: Record<string, string> = { create: t('New'), update: t('To update'), unchanged: t('Unchanged'), error: t('With problems') };
+  return (
+    <Modal title={part === 'accounts' ? t('Import the chart of accounts') : t('Import the funds')} onClose={onClose} size="lg" footer={
+      <>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn primary" disabled={busy || !changes} onClick={go}>{t('Import {n} change(s)').replace('{n}', String(changes))}</button>
+      </>
+    }>
+      <div className="stack">
+        <p className="small">{t('Download the current list, change it or add rows in Excel, and choose the file. Rows are matched by code: a new code is added, a known one updated. Nothing is deleted, and an account already used keeps its type.')}</p>
+        <div className="row">
+          <a className="btn" href={`/api/bookkeeping/import/chart/${part}.xlsx`} download><Icon name="download" />{t('Download the current list')}</a>
+          <label className="btn primary"><Icon name="upload" />{t('Choose a file (Excel or CSV)')}
+            <input type="file" hidden accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => check(e.target.files?.[0])} />
+          </label>
+          {file && <span className="small muted">{file.name}</span>}
+        </div>
+        {preview?.fatal && <ErrorBox error={preview.fatal} />}
+        {preview && !preview.fatal && (
+          <>
+            <div className="row small">{Object.entries(preview.counts).map(([k, n]) => <span key={k} className="badge">{LABEL[k]}: {n}</span>)}</div>
+            <table className="t bk-mini">
+              <tbody>
+                {preview.rows.filter((r) => r.action !== 'unchanged').map((r) => (
+                  <tr key={r.row}>
+                    <td className="nowrap small muted">{t('Row {n}').replace('{n}', String(r.row))}</td>
+                    <td><span className="code">{r.code}</span></td>
+                    <td className="small">{LABEL[r.action]}{r.changes.length ? `: ${r.changes.join(', ')}` : ''}{r.errors.length ? <span style={{ color: 'var(--danger)' }}> {r.errors.join(' ')}</span> : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
       </div>
     </Modal>
   );

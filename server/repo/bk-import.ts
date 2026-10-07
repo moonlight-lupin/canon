@@ -78,7 +78,8 @@ export function readJournalFile(data: Uint8Array): { journals: ImportedJournal[]
   }
   rows = rows.filter((r) => r.some((c) => c?.trim()));
   if (rows.length < 2) return { journals: [], fatal: 'The file has no rows below the headings.', ignored: [] };
-  const head = rows[0].map((h) => headerKey(h ?? '').replace(/_/g, ''));
+  // headings compared without spaces or punctuation: "Account code" = "accountcode"
+  const head = rows[0].map((h) => headerKey(h ?? '').replace(/[^\p{L}\p{N}]/gu, ''));
   const at: Record<string, number> = {};
   const ignored: string[] = [];
   head.forEach((h, i) => {
