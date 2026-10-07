@@ -17,18 +17,18 @@ Tests run on Windows and Linux, on Node.js 24, for every change ([CI](../.github
 ## Windows PC or Mac
 
 1. **Make a backup.** Use Settings → Backups → **Back up now**, or `npm run backup` (safe while Canon is running).
-2. **Stop Canon:** close the "Canon server" window.
+2. **Stop Canon:** close the "Canon server" window. If Canon runs in the background (its icon by the clock), right-click the icon → **Exit**.
 3. **Get the new version:**
    - with git: `git pull`;
    - with a download: unzip the new version *over* the Canon folder, replacing files. Do not delete the folder first. `data/`, `backups/`, `canon.local.bat` and `canon.local.sh` are not in the download, so they are kept.
-4. **Start Canon:** double-click `start-canon.bat` (on a Mac, `start-canon.command`). Before Canon starts, it:
+4. **Start Canon:** double-click `start-canon.bat` (on a Mac, `start-canon.command`); in the background, open **Canon** from the Start menu. Before Canon starts, it:
    - checks the Node.js version;
    - installs new dependencies, if there are any;
    - rebuilds the web app, if it changed;
    - upgrades the database, first saving a copy in `data/pre-upgrade/` (the newest three are kept).
 5. Check **About Canon** (bottom of the sidebar) for the new version number.
 
-If something goes wrong at step 4, the window says what happened and your data has not been changed.
+If something goes wrong at step 4, the window says what happened and your data has not been changed. In the background there is no window: see `data/logs/`.
 
 ## Docker
 

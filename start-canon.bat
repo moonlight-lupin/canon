@@ -5,6 +5,7 @@ REM First run installs dependencies, imports the Bible and builds the web app; a
 REM installs and rebuilds what changed, and the database is upgraded (a copy is kept in data\pre-upgrade).
 REM Machine-specific settings (e.g. set CANON_PORT=5018) go in canon.local.bat next to this file;
 REM it is not part of the repository.
+REM CANON_BACKGROUND=1 (set by scripts\windows-task.ps1): no window to answer, so no "press a key" pauses.
 cd /d "%~dp0"
 if exist "%~dp0canon.local.bat" call "%~dp0canon.local.bat"
 if not defined CANON_PORT set CANON_PORT=3000
@@ -40,18 +41,18 @@ goto run
 :gaveup
 echo.
 echo Canon stopped unexpectedly 10 times, so it was not started again. See data\logs for why.
-pause
+if not defined CANON_BACKGROUND pause
 exit /b 1
 :stopped
 echo.
 echo Canon has stopped.
-pause
+if not defined CANON_BACKGROUND pause
 goto :eof
 :nonode
 echo Node.js is not installed on this computer. Install the "LTS" version from https://nodejs.org,
 echo then double-click this file again.
-pause
+if not defined CANON_BACKGROUND pause
 goto :eof
 :err
 echo Something went wrong - see the messages above. Your data has not been changed.
-pause
+if not defined CANON_BACKGROUND pause

@@ -14,7 +14,39 @@ Environment variables are optional overrides:
 | `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
 | `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*`. Automatic once a public address is set. |
 
-To start Canon when Windows starts, add `start-canon.bat` to Task Scheduler with the trigger "At log on".
+### In the background on Windows
+
+Canon can run without a window, starting when the computer starts (before anyone signs in) and starting again if it stops by itself. Its icon by the clock shows that it is running and the address other computers use.
+
+1. Sign in to the office PC as the account Canon should run as (normally the office's own account).
+2. Open PowerShell **as administrator** (right-click **Start** → **Terminal (Admin)**), go to the Canon folder and run:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 install
+   ```
+3. Windows asks for that account's password once, so Canon can run while nobody is signed in. The password goes to Windows only; Canon does not keep it. (An account without a password can't be used; give it one first.)
+4. Close the old "Canon server" window if it is still open. Running both doesn't work: they would want the same port.
+
+What it sets up:
+- a Task Scheduler task **Canon**: at start-up, runs `start-canon.bat` without a window or pauses, as that account; if it fails, it is started again every minute;
+- **Canon** in the Start menu and in the account's Startup folder: the icon by the clock. Windows 11 first puts new icons under **^**; to keep it in view, drag it onto the taskbar, or turn it on in Settings → Personalisation → Taskbar → Other system tray icons.
+
+The icon: green dot = running, grey = not running. Click it to open Canon. Right-click it for:
+- the address for other computers (click to copy);
+- **Start Canon** (when it isn't running);
+- **Exit**: stops Canon properly (requests already running finish, the database is closed) and closes the icon. Opening **Canon** from the Start menu, or restarting the computer, starts it again.
+
+Exit asks Canon through a token in `data\run\` that only the account running Canon (and administrators) can read, and only from the PC itself; nobody on the network can stop Canon this way.
+
+From PowerShell (no administrator needed, except to install or uninstall):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 status     # the task, Canon, the icon
+powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 restart    # after an update
+powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 stop       # or start
+powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 uninstall  # as administrator: back to start-canon.bat
+```
+
+What Canon does is written to `data\logs\` as before (`launcher.log` for restarts). Ctrl+C in the window, and `docker stop`, also stop Canon properly now.
 
 ### On a Mac
 
