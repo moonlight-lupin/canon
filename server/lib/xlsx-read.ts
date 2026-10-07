@@ -46,8 +46,9 @@ const colIndex = (ref: string) => {
   return n - 1;
 };
 const BUILTIN_DATES = new Set([14, 15, 16, 17, 22, 27, 30, 36, 50, 57]);
-const fromSerial = (v: number) => {
-  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v * 86_400_000));
+/** A date's day number to YYYY-MM-DD: from 30 Dec 1899, or from 1 Jan 1904 in a workbook using the 1904 date system (older Mac Excel). */
+const fromSerial = (v: number, date1904: boolean) => {
+  const d = new Date(Date.UTC(date1904 ? 1904 : 1899, date1904 ? 0 : 11, date1904 ? 1 : 30) + Math.round(v * 86_400_000));
   return d.toISOString().slice(0, 10);
 };
 
@@ -57,6 +58,8 @@ export function readXlsx(data: Uint8Array): string[][] {
   const wb = files.get('xl/workbook.xml')?.toString('utf8');
   const rels = files.get('xl/_rels/workbook.xml.rels')?.toString('utf8') ?? '';
   if (!wb) throw new Error('This is not an Excel file (.xlsx).');
+  // Excel's 1904 date system (older Mac workbooks): day numbers count from 1 Jan 1904
+  const date1904 = /<workbookPr\s[^>]*date1904="(1|true)"/.test(wb);
   const firstId = /<sheet\s[^>]*r:id="([^"]+)"/.exec(wb)?.[1];
   const target = firstId ? new RegExp(`<Relationship[^>]*Id="${firstId}"[^>]*Target="([^"]+)"`).exec(rels)?.[1] ?? new RegExp(`<Relationship[^>]*Target="([^"]+)"[^>]*Id="${firstId}"`).exec(rels)?.[1] : null;
   const path = target ? (target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.\//, '')}`) : 'xl/worksheets/sheet1.xml';
@@ -90,7 +93,7 @@ export function readXlsx(data: Uint8Array): string[][] {
       else if (t === 'b') s = v === '1' ? 'TRUE' : 'FALSE';
       else if (v !== undefined) {
         const n = Number(v);
-        s = dateStyle[Number(attr(tag, 's') ?? 0)] && Number.isFinite(n) ? fromSerial(n) : v;
+        s = dateStyle[Number(attr(tag, 's') ?? 0)] && Number.isFinite(n) ? fromSerial(n, date1904) : v;
       }
       while (cells.length < i) cells.push('');
       cells[i] = s;
