@@ -52,3 +52,22 @@ test('the user guide: the Chinese file that was edited is converted into the oth
   const both = syncChineseGuide('# 指南\n设置甲', first.hant.replace('設置', '設定乙'), first.state);
   assert.ok(both.note, 'both edited: left for a person to bring together');
 });
+
+test('printed labels come from locales/<code>/outputs.json, falling back to English', async () => {
+  const { printed, printedL10n } = await import('../shared/printed.ts');
+  const { servingOnLabel, stanzaName } = await import('../shared/labels.ts');
+  assert.equal(printed('Order of Service', 'zh-Hant'), '聚會程序');
+  assert.equal(printed('Order of Service', 'ms'), 'Aturan Ibadah');
+  assert.equal(printed('All stand', 'ms'), 'All stand', 'no Malay wording yet: English');
+  assert.equal(printedL10n('Sermon').id, 'Khotbah');
+  assert.equal(servingOnLabel('2026-10-18', 'zh'), '10月18日 服事人员');
+  assert.equal(servingOnLabel('2026-10-18', 'en'), 'Serving on 18 Oct');
+  assert.equal(stanzaName('2', 'zh-Hant'), '第2節');
+  // every language's printed labels keep their placeholders, and only use known ones
+  const p = plan();
+  for (const code of ['zh', 'zh-Hant', 'ms', 'ja', 'ko']) {
+    const r = check(code, p.catalogue);
+    assert.deepEqual(r.badPlaceholders, [], code);
+    assert.deepEqual(r.unknownOutputs, [], code);
+  }
+});

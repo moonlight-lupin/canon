@@ -64,10 +64,15 @@ if (out.length) {
 for (const n of p.notes) console.warn(`! ${n}`);
 const used = codeStrings();
 for (const code of arg ? [arg] : localeCodes()) {
+  if (code === 'en') continue;
   const r = check(code, p.catalogue, used);
-  console.log(`\n${code}: ${Math.round((p.coverage[code] ?? 0) * 100)} % — ${r.missing.length} to translate, ${r.unused.length} no longer used, ${r.badPlaceholders.length} with placeholders that don't match`);
-  if (arg) for (const k of r.missing.slice(0, 40)) console.log(`  to translate: ${JSON.stringify(k)}`);
-  if (arg && r.missing.length > 40) console.log(`  … and ${r.missing.length - 40} more`);
+  const hasUi = code in p.coverage;
+  const ui = hasUi ? `interface ${Math.round(p.coverage[code] * 100)} % (${r.missing.length} to translate, ${r.unused.length} no longer used)` : 'no interface translation';
+  console.log(`\n${code}: ${ui}; printed labels ${r.missingOutputs.length ? `${r.missingOutputs.length} to translate` : 'complete'}; ${r.badPlaceholders.length} with placeholders that don't match`);
+  if (arg && hasUi) for (const k of r.missing.slice(0, 40)) console.log(`  to translate: ${JSON.stringify(k)}`);
+  if (arg && hasUi && r.missing.length > 40) console.log(`  … and ${r.missing.length - 40} more`);
+  if (arg) for (const k of r.missingOutputs) console.log(`  printed label to translate: ${JSON.stringify(k)}`);
+  for (const k of r.unknownOutputs) console.log(`  printed label not in locales/en/outputs.json: ${JSON.stringify(k)}`);
   for (const k of r.unused.slice(0, 20)) console.log(`  no longer used: ${JSON.stringify(k)}`);
   for (const k of r.badPlaceholders) console.log(`  placeholders differ: ${JSON.stringify(k)}`);
   if (r.badPlaceholders.length) failed = true;

@@ -1,30 +1,25 @@
 // Fixed labels and date formats printed in the outputs (bulletin, slides, run sheet, share page,
-// Word, FreeShow) in any service language. Speaker and refrain labels come from ./labels.ts.
-// Languages without an entry fall back to English.
+// Word, FreeShow) in any service language. The wording is in locales/<code>/outputs.json (shared/printed.ts);
+// speaker and refrain labels come from ./labels.ts. Languages without an entry fall back to English.
 import type { L10n, Lang } from './types.ts';
 import { isChinese, langInfo } from './languages.ts';
 import { dropRepeatedPrefix, refrainLabel } from './labels.ts';
+import { hasPrinted, printed, printedL10n } from './printed.ts';
 
 /** Section labels printed in outputs (not UI chrome, so not tied to the UI language). */
 export const OUTPUT_LABEL = {
-  servingToday: { en: 'Serving today', zh: '今日事奉', 'zh-Hant': '今日事奉', ms: 'Bertugas hari ini', id: 'Melayani hari ini', es: 'Sirven hoy', tl: 'Naglilingkod ngayon', vi: 'Phục vụ hôm nay' },
-  teamNotes: { en: 'Notes for the team', zh: '给事奉团队的备注', 'zh-Hant': '給事奉團隊的備註', ms: 'Catatan untuk pasukan', id: 'Catatan untuk tim', es: 'Notas para el equipo', tl: 'Mga tala para sa koponan', vi: 'Ghi chú cho nhóm' },
-  announcements: { en: 'Announcements', zh: '报告事项', 'zh-Hant': '報告事項', ms: 'Pengumuman', id: 'Pengumuman', es: 'Anuncios', tl: 'Mga Patalastas', vi: 'Thông báo' },
-  sermon: { en: 'Sermon', zh: '讲道', 'zh-Hant': '講道', ms: 'Khutbah', id: 'Khotbah', es: 'Sermón', tl: 'Sermon', vi: 'Bài giảng' },
-  preacher: { en: 'Preacher', zh: '讲员', 'zh-Hant': '講員', ms: 'Pengkhutbah', id: 'Pengkhotbah', es: 'Predicador', tl: 'Mangangaral', vi: 'Diễn giả' },
-  theme: { en: 'Theme', zh: '主题', 'zh-Hant': '主題', ms: 'Tema', id: 'Tema', es: 'Tema', tl: 'Tema', vi: 'Chủ đề' },
-  orderOfService: { en: 'Order of Service', zh: '聚会程序', 'zh-Hant': '聚會程序', ms: 'Aturan Ibadah', id: 'Tata Ibadah', es: 'Orden del culto', tl: 'Palatuntunan', vi: 'Chương trình thờ phượng' },
-  sermonNotes: { en: 'Sermon notes', zh: '讲道笔记', 'zh-Hant': '講道筆記', ms: 'Catatan khutbah', id: 'Catatan khotbah', es: 'Notas del sermón', tl: 'Mga tala sa sermon', vi: 'Ghi chú bài giảng' },
+  servingToday: printedL10n('Serving today'),
+  teamNotes: printedL10n('Notes for the team'),
+  announcements: printedL10n('Announcements'),
+  sermon: printedL10n('Sermon'),
+  preacher: printedL10n('Preacher'),
+  theme: printedL10n('Theme'),
+  orderOfService: printedL10n('Order of Service'),
+  sermonNotes: printedL10n('Sermon notes'),
 } satisfies Record<string, L10n>;
 
 /** Short, non-refrain stanza labels (B, P, T, Amen). Numbered stanzas print as numbers. */
-const STANZA_LABEL: Record<string, L10n> = {
-  B: { en: 'Bridge', zh: '桥段', 'zh-Hant': '橋段' },
-  BRIDGE: { en: 'Bridge', zh: '桥段', 'zh-Hant': '橋段' },
-  P: { en: 'Pre-chorus', zh: '导歌', 'zh-Hant': '導歌' },
-  T: { en: 'Tag', zh: '尾句', 'zh-Hant': '尾句' },
-  AMEN: { en: 'Amen', zh: '阿们', 'zh-Hant': '阿們', ms: 'Amin', id: 'Amin', es: 'Amén', vi: 'A-men' },
-};
+const STANZA_LABEL: Record<string, string> = { B: 'Bridge', BRIDGE: 'Bridge', P: 'Pre-chorus', T: 'Tag', AMEN: 'Amen' };
 export const isNumbered = (label: string) => /^\d+$/.test(label.trim());
 export const isRefrain = (label: string) => /^(R|C|REFRAIN|CHORUS)$/i.test(label.trim());
 
@@ -32,10 +27,11 @@ export const isRefrain = (label: string) => /^(R|C|REFRAIN|CHORUS)$/i.test(label
 export function stanzaLabel(label: string, lang: Lang): string {
   const k = label.trim().toUpperCase();
   if (/^\d+$/.test(k)) return k;
-  if (k === 'C' || k === 'CHORUS') return lang === 'en' ? 'Chorus' : refrainLabel(lang);
+  // "Chorus" where a language has its own word, else its word for a refrain
+  if (k === 'C' || k === 'CHORUS') return lang === 'en' || hasPrinted('Chorus', lang) ? printed('Chorus', lang) : refrainLabel(lang);
   if (k === 'R' || k === 'REFRAIN') return refrainLabel(lang);
   const v = STANZA_LABEL[k];
-  return v ? (v[lang] ?? (lang === 'zh-Hant' ? v.zh : undefined) ?? v.en ?? label) : label;
+  return v ? printed(v, lang) : label;
 }
 
 // ---------------------------------------------------------------- dates

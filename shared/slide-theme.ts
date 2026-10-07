@@ -1,6 +1,7 @@
 // Slide templates: theme variables, font presets, and checking and scoping a template's own CSS.
 import type { L10n } from './types.ts';
 import { DEFAULT_LINE_LIMITS } from './slide-chunks.ts';
+import { printedL10n } from './printed.ts';
 
 export type FontScript = 'latin' | 'sc' | 'tc' | 'other';
 
@@ -179,7 +180,7 @@ const langScale = (x: unknown): Record<string, number> | undefined => {
 };
 
 /** The closing slide's message when a template has not set its own. */
-export const DEFAULT_CLOSING_TEXT: L10n = { en: 'Thank you for worshipping with us', zh: '感谢您与我们一同敬拜', 'zh-Hant': '感謝您與我們一同敬拜' };
+export const DEFAULT_CLOSING_TEXT: L10n = printedL10n('Thank you for worshipping with us');
 const closingText = (x: unknown): L10n | undefined => {
   if (!x || typeof x !== 'object') return undefined;
   const out: L10n = {};

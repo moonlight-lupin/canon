@@ -1,31 +1,21 @@
-// Small fixed labels printed inside worship content (bulletins, slides, exports), per language.
-// Languages without an entry fall back to English; Traditional Chinese falls back to converted Simplified.
+// Small fixed labels printed inside worship content (bulletins, slides, exports), per language. The wording is in
+// locales/<code>/outputs.json (shared/printed.ts); a language without it falls back to English.
 import type { L10n, Lang } from './types.ts';
+import { hasPrinted, printed } from './printed.ts';
 
-const SPEAKER: Record<'L' | 'C' | 'A', L10n> = {
-  L: { en: 'Leader', zh: '领', 'zh-Hant': '領', ms: 'Pemimpin', id: 'Pemimpin', es: 'Líder', tl: 'Pinuno', vi: 'Chủ lễ' },
-  C: { en: 'People', zh: '会众', 'zh-Hant': '會眾', ms: 'Jemaah', id: 'Jemaat', es: 'Pueblo', tl: 'Kongregasyon', vi: 'Hội chúng' },
-  A: { en: 'All', zh: '齐', 'zh-Hant': '齊', ms: 'Semua', id: 'Semua', es: 'Todos', tl: 'Lahat', vi: 'Tất cả' },
-};
+const SPEAKER = { L: 'Leader', C: 'People', A: 'All' } as const;
 
-const REFRAIN: L10n = { en: 'Refrain', zh: '副歌', 'zh-Hant': '副歌', ms: 'Korus', id: 'Refrein', es: 'Coro', tl: 'Koro', vi: 'Điệp khúc' };
+export const speakerLabel = (who: 'L' | 'C' | 'A', lang: Lang) => printed(SPEAKER[who], lang);
+export const refrainLabel = (lang: Lang) => printed('Refrain', lang);
 
-const get = (v: L10n, lang: Lang) => v[lang] ?? v.en!;
-
-export const speakerLabel = (who: 'L' | 'C' | 'A', lang: Lang) => get(SPEAKER[who], lang);
-export const refrainLabel = (lang: Lang) => get(REFRAIN, lang);
-
-/** "Verse 1" style label for a stanza label in a language. */
+/** "Verse 1" style label for a stanza label in a language ("第1节"; English just the number). */
 export function stanzaName(label: string, lang: Lang): string {
   if (label === 'R' || label === 'C') return refrainLabel(lang);
-  if (lang === 'zh' || lang === 'zh-Hant') return `第${label}节`.replace('节', lang === 'zh' ? '节' : '節');
-  return label;
+  return /^\d+$/.test(label.trim()) ? printed('Stanza {n}', lang).replace('{n}', label) : label;
 }
 
 /** True when any language has non-blank text. */
 export const hasAnyText = (v: L10n | null | undefined) => !!v && Object.values(v).some((x) => !!x?.trim());
-
-const QUESTIONS: L10n = { en: 'Q.{n}', zh: '第{n}问', 'zh-Hant': '第{n}問', ja: '問{n}', ko: '제{n}문' };
 
 /**
  * Selected parts of a long text, e.g. runs ["1–3"] → "Q.1–3" / "第1–3问" for a catechism, or
@@ -34,7 +24,7 @@ const QUESTIONS: L10n = { en: 'Q.{n}', zh: '第{n}问', 'zh-Hant': '第{n}問', 
 export function partsLabel(runs: string[], lang: Lang, catechism: boolean): string {
   const cjk = lang === 'zh' || lang === 'zh-Hant' || lang === 'ja';
   const n = runs.join(cjk ? '、' : ', ');
-  return catechism ? get(QUESTIONS, lang).replace('{n}', n) : n;
+  return catechism ? printed('Q.{n}', lang).replace('{n}', n) : n;
 }
 
 /**
@@ -49,28 +39,31 @@ export function dropRepeatedPrefix(parts: string[]): string[] {
   return [parts[0], ...parts.slice(1).map((p) => (p.startsWith(prefix) ? p.slice(prefix.length) : p))];
 }
 
-const POSTURE: Record<'stand' | 'sit' | 'kneel', L10n> = {
-  stand: { en: 'All stand', zh: '众立', 'zh-Hant': '眾立' },
-  sit: { en: 'All sit', zh: '众坐', 'zh-Hant': '眾坐' },
-  kneel: { en: 'Kneel', zh: '跪下', 'zh-Hant': '跪下' },
-};
+const POSTURE = { stand: 'All stand', sit: 'All sit', kneel: 'Kneel' } as const;
 
 /** What the congregation does during an item ("All stand" / 众立 / 眾立); other languages fall back to English. */
-export const postureLabel = (p: 'stand' | 'sit' | 'kneel', lang: Lang) => get(POSTURE[p], lang);
+export const postureLabel = (p: 'stand' | 'sit' | 'kneel', lang: Lang) => printed(POSTURE[p], lang);
 /** The posture in every language, e.g. { en: 'All stand', zh: '众立' }. */
 export const postureL10n = (p: 'stand' | 'sit' | 'kneel', langs: Lang[]): L10n => Object.fromEntries(langs.map((l) => [l, postureLabel(p, l)]));
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** A month's short name in a language ("Oct", "okt", …); English for a language the system doesn't know. */
+function monthShort(month: number, lang: Lang): string {
+  if (lang === 'en') return MONTH_SHORT[month - 1];
+  try {
+    return new Intl.DateTimeFormat(lang, { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, month - 1, 15)));
+  } catch {
+    return MONTH_SHORT[month - 1];
+  }
+}
 /** Heading of next week's roster: "10月11日 服事人员" / "10月11日 服事人員" / "Serving on 11 Oct". */
 export function servingOnLabel(date: string, lang: Lang): string {
   const m = date.match(/^\d{4}-(\d{2})-(\d{2})/);
   if (!m) return date;
   const [mo, d] = [Number(m[1]), Number(m[2])];
-  if (lang === 'zh') return `${mo}月${d}日 服事人员`;
-  if (lang === 'zh-Hant') return `${mo}月${d}日 服事人員`;
-  if (lang === 'ja') return `${mo}月${d}日の奉仕者`;
-  if (lang === 'ko') return `${mo}월 ${d}일 봉사자`;
-  return `Serving on ${d} ${MONTH_SHORT[mo - 1]}`;
+  // a language printed in English wording (no translation yet) gets the English month too
+  const own = hasPrinted('Serving on {d} {mon}', lang);
+  return printed('Serving on {d} {mon}', lang).replace('{d}', String(d)).replace('{mon}', monthShort(mo, own ? lang : 'en')).replace('{m}', String(mo));
 }
 
 /** Does a role (its name in any language) match a name typed in a bulletin template ("Usher" ≈ "Ushers", case-insensitive)? */

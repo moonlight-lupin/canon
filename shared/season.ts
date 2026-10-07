@@ -1,4 +1,5 @@
 // Western liturgical calendar: which season a date falls in, with its colour and bilingual name.
+import { printedL10n } from './printed.ts';
 import type { L10n, Season } from './types.ts';
 
 export interface SeasonInfo {
@@ -11,14 +12,14 @@ export interface SeasonInfo {
 }
 
 export const SEASONS: Record<Season, SeasonInfo> = {
-  advent: { key: 'advent', name: { en: 'Advent', zh: '将临期', 'zh-Hant': '將臨期' }, color: '#5a3f86', liturgical: 'purple / blue' },
-  christmas: { key: 'christmas', name: { en: 'Christmastide', zh: '圣诞期', 'zh-Hant': '聖誕期' }, color: '#b38a2e', liturgical: 'white / gold' },
-  epiphany: { key: 'epiphany', name: { en: 'Epiphany', zh: '显现期', 'zh-Hant': '顯現期' }, color: '#3d7a5a', liturgical: 'green (white on the feast)' },
-  lent: { key: 'lent', name: { en: 'Lent', zh: '大斋期', 'zh-Hant': '大齋期' }, color: '#6b3a6e', liturgical: 'purple' },
-  holy_week: { key: 'holy_week', name: { en: 'Holy Week', zh: '圣周', 'zh-Hant': '聖週' }, color: '#8e2b2b', liturgical: 'red / purple' },
-  easter: { key: 'easter', name: { en: 'Eastertide', zh: '复活期', 'zh-Hant': '復活期' }, color: '#b8902f', liturgical: 'white / gold' },
-  pentecost: { key: 'pentecost', name: { en: 'Pentecost', zh: '五旬节', 'zh-Hant': '五旬節' }, color: '#b5402a', liturgical: 'red' },
-  ordinary: { key: 'ordinary', name: { en: 'Ordinary Time', zh: '常年期', 'zh-Hant': '常年期' }, color: '#4f6b34', liturgical: 'green' },
+  advent: { key: 'advent', name: printedL10n('Advent'), color: '#5a3f86', liturgical: 'purple / blue' },
+  christmas: { key: 'christmas', name: printedL10n('Christmastide'), color: '#b38a2e', liturgical: 'white / gold' },
+  epiphany: { key: 'epiphany', name: printedL10n('Epiphany'), color: '#3d7a5a', liturgical: 'green (white on the feast)' },
+  lent: { key: 'lent', name: printedL10n('Lent'), color: '#6b3a6e', liturgical: 'purple' },
+  holy_week: { key: 'holy_week', name: printedL10n('Holy Week'), color: '#8e2b2b', liturgical: 'red / purple' },
+  easter: { key: 'easter', name: printedL10n('Eastertide'), color: '#b8902f', liturgical: 'white / gold' },
+  pentecost: { key: 'pentecost', name: printedL10n('Pentecost'), color: '#b5402a', liturgical: 'red' },
+  ordinary: { key: 'ordinary', name: printedL10n('Ordinary Time'), color: '#4f6b34', liturgical: 'green' },
 };
 
 const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);

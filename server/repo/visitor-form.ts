@@ -1,6 +1,7 @@
 // The visitor form (Settings → Visitor form): one short public form per service. Visitors' entries wait as visitor
 // cards until an editor accepts them into the service record's New visitors, or discards them. Nothing a visitor
 // sends is shown publicly; the public page shows only the church name and the service's title and date.
+import { printedL10n } from '../../shared/printed.ts';
 import { addressForOthers } from '../lib/lan.ts';
 import crypto from 'node:crypto';
 import { type ServiceVisitorForm, type VisitorCard, type VisitorFormSettings, CARD_LIMITS, DEFAULT_VISITOR_FORM, MAX_SOURCES, VISITOR_QR_BLOCK_ID, sourceLabel } from '../../shared/visitor-form.ts';
@@ -184,7 +185,7 @@ export function visitorQrBlock(serviceId: number) {
   return {
     id: VISITOR_QR_BLOCK_ID,
     value: formUrl(f.token, f.base),
-    caption: { en: 'New here? Scan to say hello', zh: '初次来访？请扫码留下资料' } as L10n,
+    caption: printedL10n('New here? Scan to say hello'),
     bulletin: !!f.bulletin,
     slides: !!f.slides,
   };

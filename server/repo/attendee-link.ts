@@ -1,8 +1,8 @@
 // The bulletin link for attendees (0.15.2): one public, read-only page per service with the order of service, the
 // words, readings and announcements — and no serving team, notes or contact details. Switched on per service; its QR
 // code can go on that week's bulletin and on a slide, like the visitor form's. Separate from the team's share link.
+import { printedL10n } from '../../shared/printed.ts';
 import crypto from 'node:crypto';
-import type { L10n } from '../../shared/types.ts';
 import type { RenderedService } from '../../shared/render-types.ts';
 import { ATTENDEE_QR_BLOCK_ID } from '../../shared/visitor-form.ts';
 import { get } from '../db.ts';
@@ -75,7 +75,7 @@ export function attendeeQrBlock(serviceId: number) {
   return {
     id: ATTENDEE_QR_BLOCK_ID,
     value: attendeeUrl(a.token),
-    caption: { en: 'This bulletin on your phone', zh: '在手机上看这份次序单' } as L10n,
+    caption: printedL10n('This bulletin on your phone'),
     bulletin: !!a.bulletin,
     slides: !!a.slides,
   };

@@ -1,5 +1,7 @@
 // Canon's translations (0.16.0): one folder per language under locales/<code>/ — see CONTRIBUTING-TRANSLATIONS.md.
 //   ui.json       the interface: English phrase → translation (only what is translated; the rest stays English)
+//   outputs.json  what is printed in this language in bulletins, slides and exports (section headings, "Leader" /
+//                 "People", "Refrain", seasons …): English wording (locales/en/outputs.json) → translation
 //   meta.json     optional: { "fallback": "id" } — a language to use for phrases this one lacks, before English
 // The user guide is docs/guide/<code>.md. `npm run i18n` (this file, via scripts/i18n.ts):
 //   - keeps Simplified and Traditional Chinese in step both ways: edit either; the other follows (what was written
@@ -37,10 +39,13 @@ export function localeCodes(): string[] {
     .sort();
 }
 export const readUi = (code: string): Dict => readJson<Dict>(path.join(LOCALES, code, 'ui.json'), {});
+export const readOutputs = (code: string): Dict => readJson<Dict>(path.join(LOCALES, code, 'outputs.json'), {});
+/** Languages with an interface translation (locales/<code>/ui.json). */
+export const uiCodes = () => localeCodes().filter((c) => fs.existsSync(path.join(LOCALES, c, 'ui.json')));
 
 // ---------------------------------------------------------------- Simplified ⇄ Traditional
 
-export interface ZhSyncState { ui: Record<string, [string, string]>; guide?: [string, string] }
+export interface ZhSyncState { ui: Record<string, [string, string]>; outputs?: Record<string, [string, string]>; guide?: [string, string] }
 
 /**
  * One phrase kept in step: `prev` is the pair as last synced. Whichever side changed since then is converted into
@@ -62,17 +67,23 @@ export function syncPair(zh: string | undefined, hant: string | undefined, prev:
   return [zh!, hant!];
 }
 
-export function syncChineseUi(zh: Dict, hant: Dict, state: ZhSyncState): { zh: Dict; hant: Dict; state: ZhSyncState } {
-  const out = { zh: {} as Dict, hant: {} as Dict, state: { ...state, ui: {} as ZhSyncState['ui'] } };
+/** A whole Simplified / Traditional pair of dictionaries kept in step (`prev`: the pairs as last synced). */
+export function syncChineseDicts(zh: Dict, hant: Dict, prev: Record<string, [string, string]>): { zh: Dict; hant: Dict; state: Record<string, [string, string]> } {
+  const out = { zh: {} as Dict, hant: {} as Dict, state: {} as Record<string, [string, string]> };
   for (const k of new Set([...Object.keys(zh), ...Object.keys(hant)])) {
-    const pair = syncPair(zh[k], hant[k], state.ui[k]);
+    const pair = syncPair(zh[k], hant[k], prev[k]);
     if (!pair) continue;
     [out.zh[k], out.hant[k]] = pair;
-    out.state.ui[k] = pair;
+    out.state[k] = pair;
   }
   out.zh = sortDict(out.zh);
   out.hant = sortDict(out.hant);
   return out;
+}
+
+export function syncChineseUi(zh: Dict, hant: Dict, state: ZhSyncState): { zh: Dict; hant: Dict; state: ZhSyncState } {
+  const r = syncChineseDicts(zh, hant, state.ui);
+  return { zh: r.zh, hant: r.hant, state: { ...state, ui: r.state } };
 }
 
 /** The user guide, as a whole file: the side that changed since the last sync is converted into the other. */
@@ -145,9 +156,10 @@ export interface Plan { files: Map<string, string>; notes: string[]; coverage: R
 export function plan(): Plan {
   const files = new Map<string, string>();
   const notes: string[] = [];
-  const codes = localeCodes();
+  const codes = uiCodes();
   const state = readJson<ZhSyncState>(SYNC_STATE, { ui: {} });
   const dicts = new Map<string, Dict>(codes.map((c) => [c, readUi(c)]));
+  const outputs = new Map<string, Dict>(['en', ...localeCodes()].map((c) => [c, readOutputs(c)]));
 
   // Simplified ⇄ Traditional Chinese
   if (dicts.has('zh') || dicts.has('zh-Hant')) {
@@ -166,6 +178,13 @@ export function plan(): Plan {
       state.guide = g.state;
       if (g.note) notes.push(g.note);
     }
+    // the printed labels, the same way
+    const o = syncChineseDicts(outputs.get('zh') ?? {}, outputs.get('zh-Hant') ?? {}, state.outputs ?? {});
+    outputs.set('zh', o.zh);
+    outputs.set('zh-Hant', o.hant);
+    files.set(path.join(LOCALES, 'zh/outputs.json'), json(o.zh));
+    files.set(path.join(LOCALES, 'zh-Hant/outputs.json'), json(o.hant));
+    state.outputs = o.state;
     files.set(SYNC_STATE, json(state));
   }
 
@@ -183,6 +202,8 @@ export function plan(): Plan {
   for (const c of codes) {
     const d = dicts.get(c)!;
     coverage[c] = Math.round((catalogue.filter((k) => d[k]?.trim()).length / Math.max(1, catalogue.length)) * 1000) / 1000;
+  }
+  for (const c of localeCodes()) {
     const meta = readJson<{ fallback?: string }>(path.join(LOCALES, c, 'meta.json'), {});
     if (meta.fallback) fallback[c] = meta.fallback;
   }
@@ -197,6 +218,8 @@ export function plan(): Plan {
     `export const UI_COVERAGE: Record<string, number> = ${JSON.stringify({ en: 1, ...coverage })};`,
     '/** For a phrase a language lacks: this language next, then English. */',
     `export const UI_FALLBACK: Record<string, string> = ${JSON.stringify(fallback)};`,
+    '/** What is printed in each language (locales/<code>/outputs.json), keyed by the English wording. */',
+    `export const OUTPUTS: Record<string, Record<string, string>> = ${JSON.stringify(Object.fromEntries([...outputs].filter(([, d]) => Object.keys(d).length)), null, 1)};`,
     '',
   ].join('\n'));
   return { files, notes, coverage, catalogue };
@@ -219,5 +242,13 @@ export function check(code: string, catalogue: string[], used = codeStrings()) {
   const listed = new Set(catalogue);
   const unused = Object.keys(d).filter((k) => !listed.has(k) && !used.has(k));
   const badPlaceholders = Object.entries(d).filter(([k, v]) => v.trim() && placeholders(k) !== placeholders(v)).map(([k]) => k);
-  return { missing, unused, badPlaceholders };
+  // printed labels: against the English list (an English value may drop a placeholder, e.g. "Stanza {n}" → "{n}")
+  const en = readOutputs('en');
+  const o = readOutputs(code);
+  const missingOutputs = Object.keys(en).filter((k) => !o[k]?.trim());
+  const unknownOutputs = Object.keys(o).filter((k) => !(k in en));
+  // a translation may only use the placeholders its English wording has; a date may also use {d} {m} {mon} in any order
+  const allowed = (k: string) => new Set([...placeholders(k).split(' '), ...(k.includes('{d}') ? ['{d}', '{m}', '{mon}'] : [])].filter(Boolean));
+  const badOutputPlaceholders = Object.entries(o).filter(([k, v]) => k in en && placeholders(v).split(' ').some((x) => x && !allowed(k).has(x))).map(([k]) => k);
+  return { missing, unused, badPlaceholders: [...badPlaceholders, ...badOutputPlaceholders.map((k) => `outputs: ${k}`)], missingOutputs, unknownOutputs };
 }
