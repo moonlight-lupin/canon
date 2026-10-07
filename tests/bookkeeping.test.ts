@@ -288,6 +288,17 @@ test('AI assistants: read the books by code, draft a journal, never post it', as
   assert.equal(get<{ created_via: string }>('SELECT created_via FROM bk_journals WHERE id = ?', d.id)!.created_via, 'mcp');
   assert.throws(() => mcp(() => tool('canon_draft_journal').handler({ date: '2030-11-01', lines: [{ account: '9999', fund: 'GEN', debit_cents: 1 }] }, {} as never)), /No account with the code "9999"/);
   assert.throws(() => mcp(() => B.postJournal(d.id)), /a person posts/);
+  // an assistant may draft the reversal of a posted journal; it stays a draft until a person posts it
+  const posted = web(() => B.postJournal(B.saveDraft(null, { date: '2030-11-02', memo: 'Wrong fund (fictional)', lines: [
+    { account_id: acc('5500'), fund_id: fund('GEN'), debit: 700, credit: 0 }, { account_id: acc('1100'), fund_id: fund('GEN'), debit: 0, credit: 700 },
+  ] }).id));
+  const rv = (await mcp(() => tool('canon_draft_reversal').handler({ journal: posted.number, memo: 'Booked to the wrong fund' }, {} as never))) as Json;
+  assert.equal(rv.status, 'draft');
+  assert.equal(rv.kind, 'reversal');
+  assert.equal(rv.reverses, posted.number);
+  assert.equal(B.getJournal(posted.id).reversed_by_id, null, 'the posted journal stands until the reversal is posted');
+  assert.throws(() => mcp(() => B.postJournal(rv.id)), /a person posts/);
+  assert.throws(() => mcp(() => tool('canon_draft_reversal').handler({ journal: '1999-0001' }, {} as never)), /No posted journal/);
   const listed = (await mcp(() => tool('canon_books_journals').handler({ status: 'draft', limit: 50 }, {} as never))) as Json;
   assert.ok(listed.journals.some((j: Json) => j.id === d.id && j.lines[0].account === '5500'));
   web(() => B.deleteDraft(d.id));

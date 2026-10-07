@@ -21,7 +21,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | lending (optional) | `canon_lending` (catalogue; a title's copies; `loans` open / overdue / returned; `isbn` lookup) | `canon_save_book` (titles and copies; not lending / returning) |
 | equipment (optional) | `canon_equipment` (register; `due` maintenance; one item by id or `number`) | `canon_save_equipment` (items; `maintenance` done) |
 | claims (book-keeping; anyone's own) | `canon_claims` (own claims, those to approve; all for book-keepers) | `canon_draft_claim` (from receipt photos the user shows; returns the link to attach photos and sign) |
-| bookkeeping (optional) | `canon_books` (accounts, funds, tags, balances), `canon_books_report` (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger), `canon_books_journals`, `canon_bank_statements` (statements, lines to match, reconciliation) | `canon_draft_journal` (drafts only — a person posts; `statement_line` ties it to a bank line) |
+| bookkeeping (optional) | `canon_books` (accounts, funds, tags, balances), `canon_books_report` (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger), `canon_books_journals`, `canon_bank_statements` (statements, lines to match, reconciliation) | `canon_draft_journal` (drafts only — a person posts; `statement_line` ties it to a bank line), `canon_draft_reversal` (drafts the reversal of a posted journal) |
 | library → sheet music (only when shared) | `canon_sheet_music` (`service_id` or `song_id`; `pictures: true` returns image pages) | — |
 | library (write) | — | `canon_sheet_music_upload_link` (`song_id` or `number` "HP 178"; the user adds pages from a phone) |
 | admin (administrators only, when on) | `canon_admin_overview`, `canon_admin_accounts`, `canon_admin_change_log`, `canon_admin_record_views`, `canon_admin_settings` | `canon_admin_backup_now`, `canon_admin_run_checks` |
@@ -44,7 +44,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - Book-keeping:
   - Amounts are in cents. Every line needs an account code and a fund code; read `canon_books` for the codes.
   - `canon_draft_journal` makes a DRAFT only. Confirm accounts and funds with the user first; the reply lists `problems` that stop posting (debits ≠ credits, a closed period, before the books start).
-  - Never post, reverse or change a posted journal: the treasurer does that in Canon. Verified offerings already arrive as drafts by themselves.
+  - Never post or change a posted journal: the treasurer posts in Canon. To correct one, `canon_draft_reversal` {journal: "2026-0042", memo} drafts its reversal (the original stands until the reversal is posted); then draft the right journal. Verified offerings already arrive as drafts by themselves.
   - Bank: `canon_bank_statements` (no id: the statements; with id: open lines, suggestions, `draft_journal_id`, reconciliation).
     - For a line the books lack, `canon_draft_journal` with `statement_line` and a line on the bank account for the same amount (money in = debit).
     - Posting the draft matches the line. Importing statements and matching stay with people.

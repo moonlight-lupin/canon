@@ -2,7 +2,7 @@
 // balances, journals, the reports, and imported bank statements with the lines still to match. Writing is DRAFT
 // journals only (e.g. for a statement line the books lack, or receipts the user pasted): a person reviews and posts
 // them in Canon; a draft made for a statement line is matched to it when posted. Importing statements and matching
-// stay with people. Agents never post, reverse or change a posted journal
+// stay with people. Agents may draft the reversal of a posted journal; they never post, nor change a posted journal
 // (repo/bookkeeping.ts refuses it for MCP whatever the tool). Amounts are in cents (minor units).
 import { z } from 'zod';
 import { all, get } from '../db.ts';
@@ -129,6 +129,18 @@ export const BOOKKEEPING_TOOLS: ToolDef[] = [
           bank_should_show_cents: st.reconciliation.expected_bank_balance, statement_balance_cents: st.reconciliation.statement_balance, difference_cents: st.reconciliation.difference,
         },
       };
+    },
+  },
+  {
+    name: 'canon_draft_reversal', module: 'bookkeeping', access: 'write', title: 'Draft the reversal of a posted journal (a person posts it)', annotations: { ...WRITE, idempotentHint: false },
+    description: 'Prepare a DRAFT that reverses a posted journal: every line the other way round, on date (default today). The posted journal stays as it is; when the treasurer posts the draft in Canon, the two are linked and cancel out (deleting the draft changes nothing). Give the journal\u2019s number (e.g. "2026-0042", from canon_books_journals) and why (memo). One reversing draft at a time; a journal already reversed, or itself a reversal, can\u2019t be. To correct a mistake, draft the reversal, then draft the right journal with canon_draft_journal. Confirm with the user first. Example: {"journal":"2026-0042","memo":"Rent booked to the wrong fund"}.',
+    input: { journal: z.string().min(1).max(20), date: DateStr.optional(), memo: z.string().max(1000).optional() },
+    handler: (a) => {
+      const ref = String(a.journal).trim();
+      const row = get<{ id: number }>('SELECT id FROM bk_journals WHERE number = ?', ref) ?? (/^\d+$/.test(ref) ? get<{ id: number }>('SELECT id FROM bk_journals WHERE id = ?', Number(ref)) : undefined);
+      if (!row) throw new InputError(`No posted journal numbered "${ref}" (see canon_books_journals).`);
+      const j = B.reverseJournal(row.id, a.date, a.memo ? `Reverses ${B.getJournal(row.id).number}: ${a.memo}` : undefined);
+      return { amounts_in: 'cents', ...journalOut(j), reverses: B.getJournal(row.id).number, problems: B.postingProblems(j), note: 'A draft: the treasurer reviews and posts it in Canon (Book-keeping → Journals); only then is the journal reversed.' };
     },
   },
   {

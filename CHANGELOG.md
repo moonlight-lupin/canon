@@ -10,6 +10,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
   - The posted journal stays as it is until the reversal is posted; then the two are linked and cancel out.
   - The draft can be checked and its date or narration changed first. Deleting it changes nothing.
   - One reversing draft at a time. The journal shows it is waiting, with a link to open it.
+- **AI assistants can draft a reversal** too (new tool `canon_draft_reversal`, by the journal's number). As with every journal, only a person posts it.
 - Database: no change.
 
 ## 0.17.2 — Excel exports, and importing journals
