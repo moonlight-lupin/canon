@@ -139,7 +139,7 @@ function ClaimDialog({ id, onClose, onChanged }: { id: number; onClose: () => vo
         {b.canEdit && (c.status === 'draft' || c.status === 'submitted') && <button className="btn ghost" disabled={busy} onClick={() => confirmAction(t('Withdraw this claim?')) && run(() => api.post(`/bookkeeping/claims/${c.id}/withdraw`)).then(after)}>{t('Withdraw')}</button>}
         <div className="grow" />
         <button className="btn" onClick={() => navigator.clipboard?.writeText(c.link).then(() => window.alert(t('Link copied.')))}><Icon name="link" />{t('Copy the claim’s link')}</button>
-        {iApprove && <a className="btn primary" href={`/self/claims/${c.id}`}>{t('Approve or send back…')}</a>}
+        {iApprove && <a className="btn primary" href={`/self/claims/${c.id}`} target="_blank" rel="noopener">{t('Approve or send back…')}</a>}
         {b.canEdit && c.status === 'draft' && <button className="btn" disabled={busy || c.problems.length > 0} title={c.problems.join(' ')} onClick={() => confirmAction(t('Record that the claimant signed this claim on paper? Attach the signed form among the receipts first.')) && run(() => api.post(`/bookkeeping/claims/${c.id}/submit-paper`)).then(after)}>{t('Signed on paper: submit')}</button>}
         {b.canEdit && c.status === 'approved' && !pay && <button className="btn primary" onClick={() => setPay({ date: today(), bank: b.accounts.find((a) => a.kind === 'bank' && a.active)?.id ?? null, ref: '' })}>{t('Pay…')}</button>}
       </>

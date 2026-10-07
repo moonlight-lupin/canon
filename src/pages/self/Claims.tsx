@@ -21,7 +21,7 @@ const localDay = (s: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-interface Session { token: string; name: string; at: number }
+interface Session { token: string; name: string; at: number; /** signed in through a Canon account in this browser */ canon?: boolean }
 interface Status { sign_in: boolean; church_name: L10n; languages: string[]; currency: string; ministries: { id: number; name: L10n }[]; projects: { id: number; name: L10n }[] }
 type View = Claim & { may_edit: boolean; may_withdraw: boolean; may_approve: boolean; needed: number; problems: string[] };
 interface Mine {
@@ -73,7 +73,7 @@ async function canonSession(): Promise<Session | null> {
     const r = await fetch('/api/me/claims-session', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': me.csrf, 'Content-Type': 'application/json' }, body: '{}' });
     if (!r.ok) return null;
     const t = (await r.json()) as { token: string; name: string };
-    return { token: t.token, name: t.name, at: Date.now() };
+    return { token: t.token, name: t.name, at: Date.now(), canon: true };
   } catch {
     return null;
   }
@@ -124,7 +124,7 @@ function Shell({ status, session, onSignOut, children }: { status: Status | null
       <header className="self-head">
         <ReedMark className="brand-mark" />
         <div className="grow">
-          <div className="eyebrow">{t('Expense claims')}</div>
+          <div className="eyebrow">{t('Expense claims')}{session?.canon && <> · <a href="/">{t('Back to Canon')}</a></>}</div>
           <strong className="serif">{lt(status?.church_name ?? {}) || 'Canon'}</strong>
         </div>
         {choices.length > 1 && (
@@ -134,7 +134,11 @@ function Shell({ status, session, onSignOut, children }: { status: Status | null
         )}
       </header>
       {children}
-      {session && <p className="small muted" style={{ marginTop: 18, textAlign: 'center' }}>{session.name} · <button className="btn ghost sm" onClick={onSignOut}>{t('Sign out')}</button></p>}
+      {session && (
+        <p className="small muted" style={{ marginTop: 18, textAlign: 'center' }}>
+          {session.name} · {session.canon ? <a href="/">{t('Back to Canon')}</a> : <button className="btn ghost sm" onClick={onSignOut}>{t('Sign out')}</button>}
+        </p>
+      )}
     </div>
   );
 }

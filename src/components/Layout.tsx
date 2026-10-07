@@ -11,7 +11,8 @@ import type { Settings } from '../types-client.ts';
 import { allows, pageModule } from '../../shared/permissions.ts';
 import { pageOff } from '../../shared/modules.ts';
 
-const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean }[] }[] = [
+// newTab: a page outside Canon's frame (the phone claims page) opens in a tab of its own
+const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean; newTab?: boolean }[] }[] = [
   { group: '', items: [{ to: '/', label: 'Dashboard', icon: 'home' }, { to: '/calendar', label: 'Calendar', icon: 'calendar' }] },
   {
     // services and meetings are both planned here
@@ -37,7 +38,7 @@ const NAV: { group: string; items: { to: string; label: string; icon: IconName; 
   { group: 'Records', items: [{ to: '/records', label: 'Service records', icon: 'list' }, { to: '/reports', label: 'Reports', icon: 'chart' }] },
   // optional modules (0.15): shown when switched on (Settings → Modules) and the role may read them
   { group: 'Resources', items: [{ to: '/lending', label: 'Lending library', icon: 'books' }, { to: '/equipment', label: 'Asset register', icon: 'box' }] },
-  { group: 'Finance', items: [{ to: '/bookkeeping', label: 'Book-keeping', icon: 'ledger' }, { to: '/self/claims', label: 'My claims', icon: 'file' }] },
+  { group: 'Finance', items: [{ to: '/bookkeeping', label: 'Book-keeping', icon: 'ledger' }, { to: '/self/claims', label: 'My claims', icon: 'file', newTab: true }] },
   { group: 'Administration', items: [{ to: '/settings', label: 'Settings', icon: 'settings' }] },
 ];
 
@@ -124,12 +125,17 @@ export function Layout() {
                 )}
                 {!shut && (
                   <div id={id} className="nav" style={{ gap: 1 }}>
-                    {items.map((it) => (
+                    {items.map((it) => (it.newTab ? (
+                      <a key={it.to} href={it.to} target="_blank" rel="noopener">
+                        <Icon name={it.icon} />
+                        {t(it.label)}
+                      </a>
+                    ) : (
                       <NavLink key={it.to} to={it.to} end={it.to === '/'} className={() => (isActive(it.to) ? 'active' : '')}>
                         <Icon name={it.icon} />
                         {t(it.label)}
                       </NavLink>
-                    ))}
+                    )))}
                   </div>
                 )}
               </div>
