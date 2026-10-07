@@ -17,7 +17,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.15.6–0.15.10 | Export data and the library by section, QR placement, a log file, cover and closing slides, leaders only from the rota, a size per language — done |
 | 0.16.0 | Languages anyone can add (translations in `locales/`), Simplified ⇄ Traditional Chinese everywhere — done |
 | 0.16.1 | Backups to the church's own Google Drive — done |
-| 0.17.0 | Book-keeping: double-entry accounts (optional module) |
+| 0.17.0 | Book-keeping: double-entry accounts (optional module) — done |
 | 0.17.1 | Claim forms |
 | 0.18.0 | Third hardening round |
 

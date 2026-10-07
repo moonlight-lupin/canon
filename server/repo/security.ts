@@ -97,6 +97,8 @@ const TABLE_LABEL: Record<string, string> = {
   households: 'Households', assignments: 'Rota', settings: 'Settings', bible_translations: 'Bible versions', oauth_tokens: 'AI connections', oauth_grants: 'AI connections',
   sessions: 'Sign-ins', users: 'User accounts', coworkers: 'Co-workers', roles: 'Roles', teams: 'Teams', congregations: 'Congregations', unavailability: 'Away dates',
   lending_books: 'Lending library', lending_copies: 'Lending library', lending_loans: 'Lending library loans', equipment: 'Asset register', equipment_maintenance: 'Asset register', equipment_files: 'Asset register',
+  bk_accounts: 'Book-keeping', bk_funds: 'Book-keeping', bk_projects: 'Book-keeping', bk_ministries: 'Book-keeping', bk_journals: 'Book-keeping', bk_lines: 'Book-keeping',
+  bk_statements: 'Book-keeping', bk_statement_lines: 'Book-keeping',
 };
 
 /** Keep one size reading a day (for the growth estimate); the last 400 days. */

@@ -4,6 +4,19 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.17.0 — Book-keeping
+
+- **Book-keeping** (an optional module, off until switched on in Settings → Modules): the church's double-entry books, kept in Canon, under **Finance** in the sidebar. The **Treasurer** keeps them; Pastor / Elder and the external guest can read them.
+  - **Starting:** choose the start date and financial year. A church chart of accounts and four funds are ready (General, Missions, Building, Benevolence). Then enter the opening balances, split between the funds.
+  - **Journals:** drafts, then posted with a number. A posted journal never changes: **Reverse** corrects it. Every line has a fund, and can carry a project, a ministry and a congregation.
+  - **Offerings:** verifying a cash count drafts its journal (each payment method into its account, each fund's offerings into its income); the treasurer posts it. A corrected count drafts only the difference.
+  - **Bank:** import the bank's CSV statement (its layout is found and remembered), match the lines, enter bank charges and interest, and see the reconciliation.
+  - **Reports:** income and expenditure by fund, balance sheet, fund movements, trial balance, by project / ministry / congregation, and an account's ledger. Each one prints or downloads as CSV. A journal export is there for the church's accountant.
+  - **Closing:** close the books up to a date; administrators can reopen.
+- **AI assistants** (Book-keeping off for them by default) can read the books and reports, and **draft** journals. They never post, reverse or change a posted journal: four new tools, `canon_books`, `canon_books_report`, `canon_books_journals` and `canon_draft_journal`.
+- Chinese: "Fund" is now 基金 throughout, including the offering screens, so offerings and the books use the same word.
+- Database: version 32 (the book-keeping tables). Upgrading adds them; nothing else changes.
+
 ## 0.16.1 — Backups to Google Drive
 
 - **Settings → Backups → Google Drive:** Canon can send every backup to a "Canon backups" folder in the church's Google Drive, and keep the newest N there.

@@ -29,7 +29,7 @@ export function ChartTab() {
     <div className="stack">
       <div className="row between">
         <Seg<Part> value={part} onChange={(p) => { setPart(p); setOpen(null); }} options={[
-          { value: 'accounts', label: t('Accounts') }, { value: 'funds', label: t('Funds') }, { value: 'projects', label: t('Projects') }, { value: 'ministries', label: t('Ministries') },
+          { value: 'accounts', label: t('Chart of accounts') }, { value: 'funds', label: t('Funds') }, { value: 'projects', label: t('Projects') }, { value: 'ministries', label: t('Ministries') },
         ]} />
         {b.canEdit && <button className="btn primary" onClick={() => setOpen('new')}><Icon name="plus" />{part === 'accounts' ? t('New account') : part === 'funds' ? t('New fund') : part === 'projects' ? t('New project') : t('New ministry')}</button>}
       </div>

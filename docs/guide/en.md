@@ -55,7 +55,7 @@ Choose a role:
 - **Pastor / Elder**: members with their details and notes, groups, meetings and services; sees the records and offerings.
 - **Editor**: plans services and edits the registers, library, rota and records (as before 0.13).
 - **Service planner**: services, templates, the library and the rota; members by name only.
-- **Treasurer**: service records and offerings — enters, verifies and reopens cash counts; reads the rest.
+- **Treasurer**: service records and offerings — enters, verifies and reopens cash counts — and the [Book-keeping](#bookkeeping) (when switched on); reads the rest.
 - **Secretary**: the registers — members, co-workers, groups, meetings and service records (not offerings).
 - **Read-only**: can view and print; no money, no members' contact details or notes.
 - **Librarian** and **Asset keeper**: the [Lending library](#lending-library) or the [Asset register](#asset-register) only (when the church has switched it on).
@@ -414,6 +414,64 @@ The [Asset register](/equipment) is for the church's equipment and property. It 
 - **Print labels** prints QR labels for the items in the list, the same way as for books. The QR code opens the item: what it is, where it belongs and who looks after it.
 - **Import CSV** brings in an existing inventory (one row per item); **Export CSV** gives the register back.
 
+## Book-keeping {#bookkeeping}
+
+[Book-keeping](/bookkeeping) is the church's double-entry books. It is an optional part of Canon (**Settings → Modules**), under **Finance** in the sidebar. The **Treasurer** keeps the books. **Pastor / Elder** and the **External guest** (an auditor) can read them. Editors, planners, secretaries and read-only accounts don't see them, unless you change their role.
+
+The books work on a **cash basis**: money is recorded when it comes in or goes out. A journal can still record what is owed (an accrual) when you need it. Amounts are in the church's currency (Settings → Offerings). Every line of a journal belongs to a **fund**. A line can also carry a **project**, a **ministry** and, in churches with several, a **congregation**.
+
+**Starting the books**
+- **Start the books**: choose the day the books begin (usually the first day of a financial year) and the month the financial year ends. Ticked, Canon starts you with a church **chart of accounts** and four funds: General (unrestricted), Missions (designated), Building and Benevolence (restricted). Rename, add or retire them under **Accounts and funds**.
+- **Opening balances**: enter what the church had and owed on the start date: bank and cash balances, deposits, anything owed. Then enter how that stood between the funds. **Put the rest in General fund** fills in the difference. **Save and post** records it as one journal. To correct it later, reverse it and enter it again.
+
+**Journals**
+- **New journal**: a date, a narration and the lines. Each line has an account, a fund, a debit or a credit, and optionally a project, ministry and note.
+- **Save draft** keeps a draft to finish later. **Save and post** checks it first:
+  - debits must equal credits;
+  - the date must not be before the books start, nor in a closed period;
+  - its accounts and funds must be in use.
+- **A posted journal is never changed.** It gets a number (e.g. 2026-0042). A mistake is corrected with **Reverse…**: a new posted journal with every line the other way round, so the two cancel out. Then enter it again correctly.
+- **Drafts** come from you, from verified offerings, from the bank screen and from AI assistants (marked **AI draft**). Tick several and **Post … selected** posts them together; any with a problem stay drafts.
+- **Export (CSV)** gives every posted line in a period for the church's accountant or other accounting software.
+
+**Offerings into the books**
+- When a cash count is **verified** (Service records), Canon drafts its journal. Each payment method goes to its account: cash and cheques to **Offerings not yet banked**, PayNow and transfers to the bank. Each fund's offerings go to its income account.
+- Reopening the count withdraws the draft. A corrected count drafts only the difference from what was already posted.
+- **Offerings into the books → Change** sets which account each payment method uses, and which fund and income account each offering fund uses.
+- **Post the offering drafts** posts the week's offering drafts together. **Draft what's missing** drafts offerings verified before the books started.
+- Foreign cash is booked at its **Value once exchanged**. The original amount is kept on the line.
+
+**Bank**
+- **Import a statement**: export the statement from the bank's website as CSV and choose the file.
+  - Canon finds the row with the column names and guesses the columns (date, description, one amount column or money out / money in) and the date format. Check them; they are remembered for that bank account.
+  - Lines already imported are skipped.
+  - Enter the statement's opening and closing balances to reconcile.
+- Each statement line is **matched** to what the books have:
+  - **Match the obvious ones** matches lines with exactly one entry for the same amount on the same day;
+  - a suggestion (the same amount within a week) matches with one click;
+  - **Enter** books what the books don't have yet (a bank charge, interest, a direct debit) against the account and fund you choose, and matches it;
+  - **Ignore** sets a line aside.
+- The **reconciliation** at the top: the balance in the books, less what isn't on a statement yet, should equal the statement's closing balance. A **Difference** of 0.00 means the books and the bank agree. **Mark reconciled** when they do.
+
+**Reports**: from posted journals only. Each one can be **Print**ed (with the church's name and the period) or downloaded as CSV.
+- **Income and expenditure**: for a period, by fund, optionally for one fund, project or ministry.
+- **Balance sheet**: what the church has and owes on a date, and each fund's balance.
+- **Fund movements**: each fund's opening balance, income, expenditure, transfers and closing balance.
+- **Trial balance**: every account's balance on a date.
+- **By project**, **By ministry**, **By congregation**: income, spending and the net for each.
+- **Account ledger**: every entry on one account with its running balance. Click an entry to open its journal.
+- No year-end closing journal is needed: each year's surplus stays in its fund.
+
+**Closing a period**: once a month or year is checked and the bank reconciled, **Close** the books up to its last day. Nothing on or before that date can then be posted. Drafts dated in the period must be posted, redated or deleted first. Administrators can **Reopen**.
+
+**Accounts and funds**:
+- **Chart of accounts**: code, name and type (assets, liabilities, funds, income, expenses), and **What it is for**: bank account, cash, offerings not yet banked, foreign cash, fund balances, transfers between funds, or anything else.
+- **Funds**: unrestricted, designated (set aside by the church), restricted (given for a purpose) or endowment.
+- **Projects** and **Ministries**: tags for lines.
+- Something already used in a journal can be renamed or retired, not deleted.
+
+**AI assistants** with Book-keeping shared (Settings → AI / MCP, off by default) can read the books and reports, and can **draft** journals, e.g. from a bank statement you paste. They can never post, reverse or change a posted journal. A person reviews every draft and posts it in Canon.
+
 ## Settings
 
 Open [Settings](/settings). Administrators see its sections listed down the left in four groups (**My account**, **Church**, **People and access**, **Canon**); on a phone, choose a section from the list at the top.
@@ -424,7 +482,7 @@ Open [Settings](/settings). Administrators see its sections listed down the left
 - **Export data** (administrators): one click for each part of Canon — every list's CSV (it opens in Excel, and imports back with **Import CSV**), with the ones holding personal data marked — and **Download everything (zip)** with all of them and the library file. This is not a backup: services, records and accounts are only in a backup.
   - **Library file**: the hymnals, songs with their words, hymnal numbers and **sheet music**, liturgical texts and **QR codes & notes** (tick what to include; **Bibles you uploaded** only if their licence allows sharing) in one `.canonlib` file. **Import a library file…** on another Canon — another church, or a new computer — shows what it would add, then adds only what that Canon doesn't have: songs and texts match by key or title, hymnals by abbreviation. Existing songs only gain hymnal numbers and sheet music they lack. Uploaded Bibles are added only when you confirm the church may use them.
   - **The library, section by section**: the same kind of file for one section at a time — **Hymns** one hymnal at a time (words, numbers and sheet music), **Songs in no hymnal**, **Liturgical texts**, each **Bible** you uploaded, **QR codes & notes** and **Slide backgrounds**. Administrators also find an **Export** button on each Library tab (on Hymns & songs, a list of the hymnals) and **Import a library file…** beside it.
-- **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library** and the **Asset register** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
+- **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library**, the **Asset register** and **Book-keeping** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it; values already entered are kept and come back if the field is added again.
 - **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).
 - **E-mail**: choose the **Provider** (Gmail, Microsoft 365 or other), fill in the SMTP details and **Save**, then **Send test**. Gmail needs an app password.
@@ -462,6 +520,7 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - It sees only the modules you allow, and acts as the person who approved it. A viewer's connection is always read only.
 - Member contact details and birthdays stay hidden unless **Contact details & birthdays** is **Shared** under the Members register (and the Members register is on); visitors' contact details only with **Visitors → With contact details**. A connection approved by a read-only account never gets contact details, whatever the switches say — it sees visitors' names at most.
 - It cannot send e-mail or delete people. It asks before changing things.
+- **Book-keeping** (off by default): Claude reads the books and reports and can **draft** journals for the treasurer to post. With **Read & write** it still only drafts: it can never post, reverse or change a posted journal.
 - **Administration** (off by default; only for a connection approved by an administrator): **Read only** lets Claude read the security checklist, backups, accounts (never passwords), the change log, who viewed member records and a settings overview — ask "anything I should fix this week?" or "who changed Sunday's order?". **Read & write** adds two actions: back up now, and run the checks (public address, backup folder, e-mail). Accounts, roles and settings are only ever changed in Canon. The change log shows old and new values only when members' contact details are shared.
 - **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export CSV** (every entry matching the filters) and its own **Keep** period.
 
