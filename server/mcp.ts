@@ -35,6 +35,7 @@ import { GROUP_TOOLS } from './mcp-tools/groups.ts';
 import { RECORD_TOOLS } from './mcp-tools/records.ts';
 import { RESOURCE_TOOLS } from './mcp-tools/resources.ts';
 import { BOOKKEEPING_TOOLS } from './mcp-tools/bookkeeping.ts';
+import { CLAIMS_TOOLS } from './mcp-tools/claims.ts';
 import { SCORE_TOOLS } from './mcp-tools/scores.ts';
 import { ADMIN_TOOLS } from './mcp-tools/admin.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
@@ -119,7 +120,7 @@ const WHOAMI: ToolDef = {
   },
 };
 
-export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...BOOKKEEPING_TOOLS, ...SCORE_TOOLS, ...ADMIN_TOOLS];
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...BOOKKEEPING_TOOLS, ...CLAIMS_TOOLS, ...SCORE_TOOLS, ...ADMIN_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
@@ -171,11 +172,12 @@ export function meetingGate(user: { role: Role; person_id?: number | null }) {
 /** What the person's role allows in a module (administrators: everything). */
 const roleAccess = (module: ModuleKey, role: Role) => (roleDef(role).admin ? 'edit' : roleDef(role).access[module as PermModule] ?? 'none');
 
-export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): ModuleAccess {
+export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role, own = false): ModuleAccess {
   const setting = configuredAccess(module, cfg.modules);
   if (!cfg.enabled || setting === 'off') return 'off';
-  // as in the web app: the role decides (e.g. read-only accounts never see offerings)
-  const ra = roleAccess(module, role);
+  // as in the web app: the role decides (e.g. read-only accounts never see offerings) — except for a person's own
+  // records, such as their expense claims, which anyone may make
+  const ra = own ? 'edit' : roleAccess(module, role);
   if (ra === 'none') return 'off';
   if (!scopes.has('canon:read') && !scopes.has('canon:write')) return 'off';
   if (setting === 'write' && scopes.has('canon:write') && ra === 'edit') return 'write';
@@ -190,7 +192,7 @@ export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): T
     if (on.volunteers === false && (t.module === 'volunteers' || t.name === 'canon_serving_report')) return false;
     if (on.meetings === false && t.name === 'canon_get_calendar') return false;
     if ((t.module === 'lending' && on.lending === false) || (t.module === 'equipment' && on.equipment === false) || (t.module === 'bookkeeping' && on.bookkeeping === false)) return false;
-    const lvl = effectiveAccess(t.module, cfg, scopes, role);
+    const lvl = effectiveAccess(t.module, cfg, scopes, role, t.own);
     if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
     if (t.requiresScores && !scoresFor(cfg)) return false;
     return !t.requiresPii || piiFor(cfg, role);

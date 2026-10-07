@@ -174,6 +174,20 @@ An optional module, **Accounts**, where the treasurer keeps the church's books. 
 
 Part of the book-keeping module: expense claims with receipts, approval and on-screen signatures; approved claims become expenses in the main or a project account.
 
+Decided (2026-10-08):
+- **Who claims:** anyone, on their phone, by a link or QR code (signing in with a code e-mailed to their member record, like the lending library's self-service); account holders also inside Canon.
+- **A claim has lines:** several receipts per claim, each line with its date, description, amount, receipt photos or PDFs, and a suggested expense account, fund, ministry or project.
+- **Approvers are named people, not a role** (each account has one role): members listed in the claims settings, optionally for some ministries only, with an optional amount limit.
+  - They approve on their phone the same way, or in Canon, with an on-screen signature.
+  - Nobody approves their own claim. If the approver is also the person who pays, it is allowed but marked on the claim and in the report.
+- **Large claims:** an optional amount above which two different approvers must approve (off by default).
+- **The books:** approval drafts Dr expense / Cr 2100 Claims to repay; payment drafts Dr 2100 / Cr bank, matched on the bank statement. The treasurer posts both, as for every journal.
+- **AI assistants:**
+  - **Read:** claims and their status.
+  - **Draft:** a claim from receipts the user shows them; they read the photos in the chat.
+  - **Return a link:** a connector can't receive the photo itself, so the reply is the claim's link. The claimant opens it on a phone, checks the lines, attaches the receipts and signs.
+  - **Never:** submit without the claimant's signature, approve or pay.
+
 ## 0.18.0 — Third hardening round
 
 After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals). Also carried forward from 0.13: running Canon as a Windows service instead of a console window.

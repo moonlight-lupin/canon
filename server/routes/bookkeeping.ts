@@ -7,6 +7,8 @@ import * as B from '../repo/bookkeeping.ts';
 import * as R from '../repo/bk-reports.ts';
 import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
 import { journalsCsv } from '../repo/bk-export.ts';
+import * as Claims from '../repo/bk-claims.ts';
+import { claimsSignInStatus } from './claims-self.ts';
 import * as Bank from '../repo/bk-bank.ts';
 import { getSettings } from '../repo/settings.ts';
 import { can, isAdmin, mayReopenCounts } from '../lib/permissions.ts';
@@ -270,3 +272,108 @@ bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/entry', h((req) => Bank.entr
   account_id: z.number().int(), fund_id: z.number().int(), memo: z.string().max(500).nullable().optional(),
   project_id: z.number().int().nullable().optional(), ministry_id: z.number().int().nullable().optional(), post: z.boolean(),
 }).parse(req.body))));
+
+// ---------------------------------------------------------------- expense claims (0.17.1)
+// The office's view: every claim, entering paper claims, how each line is booked, paying, the approvers and settings.
+// Claimants and approvers use /self/claims (routes/claims-self.ts), also from inside Canon.
+
+const office = (req: express.Request): Claims.Party => ({ as: 'office', person_id: req.user?.person_id ?? null, name: req.user?.display_name ?? '' });
+const ClaimLine = z.object({
+  id: z.number().int().optional(), date: z.string().max(10).nullable().optional(), description: z.string().max(300).default(''), payee: z.string().max(120).nullable().optional(),
+  amount: z.number().int().min(0), account_id: z.number().int().nullable().optional(), fund_id: z.number().int().nullable().optional(),
+  ministry_id: z.number().int().nullable().optional(), project_id: z.number().int().nullable().optional(),
+});
+const ClaimInput = z.object({
+  purpose: z.string().max(300).nullable().optional(), ministry_id: z.number().int().nullable().optional(), project_id: z.number().int().nullable().optional(),
+  fund_id: z.number().int().nullable().optional(), pay_to: z.string().max(200).nullable().optional(), lines: z.array(ClaimLine).max(100),
+});
+const claimInput = (b: unknown) => {
+  const x = ClaimInput.parse(b);
+  return { ...x, lines: x.lines.map((l) => ({ ...l, date: l.date || null, payee: l.payee ?? null })) };
+};
+/** One claim for the office: with who may approve it, how many approvals it needs, what stops it, and its link. */
+const claimView = (c: ReturnType<typeof Claims.getClaim>, req?: express.Request) => ({
+  ...c,
+  // where to repay: for those who keep the books (read-only roles, e.g. an auditor, see that it is set)
+  pay_to: req && !can(req.user, 'bookkeeping', 'edit') && c.pay_to ? '•••' : c.pay_to,
+  needed: Claims.approvalsNeeded(c), approvers: Claims.approversOf(c).map((a) => ({ person_id: a.person_id, name: a.name })),
+  problems: c.status === 'draft' ? Claims.submitProblems(c) : [], link: Claims.claimLink(c.id),
+});
+
+bookkeepingRoutes.get('/bookkeeping/claims', h((req) => {
+  const q = req.query as Record<string, string | undefined>;
+  const status = ['draft', 'submitted', 'approved', 'rejected', 'paid', 'withdrawn', 'open'].includes(q.status ?? '') ? (q.status as Claims.ClaimQuery['status']) : undefined;
+  return { claims: Claims.listClaims({ status, q: str(q.q), from: str(q.from), to: str(q.to) }), counts: Claims.claimCounts() };
+}));
+bookkeepingRoutes.get('/bookkeeping/claims/:id', h((req) => claimView(Claims.getClaim(id(req)), req)));
+/** The office enters a claim for a member (e.g. one handed in on paper). */
+bookkeepingRoutes.post('/bookkeeping/claims', h((req) => {
+  const b = z.object({ person_id: z.number().int() }).passthrough().parse(req.body);
+  return claimView(Claims.createClaim(b.person_id, claimInput(req.body), office(req)));
+}));
+bookkeepingRoutes.put('/bookkeeping/claims/:id', h((req) => claimView(Claims.updateClaim(id(req), claimInput(req.body), office(req)))));
+bookkeepingRoutes.put('/bookkeeping/claims/:id/booking', h((req) => claimView(Claims.classifyClaim(id(req), z.object({
+  ministry_id: z.number().int().nullable().optional(), project_id: z.number().int().nullable().optional(), fund_id: z.number().int().nullable().optional(),
+  lines: z.array(z.object({ id: z.number().int(), account_id: z.number().int().nullable().optional(), fund_id: z.number().int().nullable().optional(), ministry_id: z.number().int().nullable().optional(), project_id: z.number().int().nullable().optional() })).max(100),
+}).parse(req.body)))));
+bookkeepingRoutes.delete('/bookkeeping/claims/:id', h((req) => {
+  Claims.deleteClaim(id(req), office(req));
+  return { deleted: true };
+}));
+bookkeepingRoutes.post('/bookkeeping/claims/:id/files', express.raw({ type: () => true, limit: '11mb' }), h((req) => {
+  const q = req.query as Record<string, string | undefined>;
+  return claimView(Claims.addClaimFile(id(req), { name: String(q.name ?? 'receipt'), mime: String(req.get('Content-Type') ?? '').split(';')[0], data: req.body as Buffer, line_id: Number(q.line_id) || null }, office(req)));
+}));
+bookkeepingRoutes.delete('/bookkeeping/claims/files/:id', h((req) => claimView(Claims.removeClaimFile(id(req), office(req)))));
+bookkeepingRoutes.get('/bookkeeping/claims/files/:id', (req, res, next) => {
+  try {
+    const f = Claims.claimFileData(id(req));
+    res.setHeader('Content-Type', f.file.mime);
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Content-Disposition', `${req.query.download ? 'attachment' : 'inline'}; filename="${f.file.name.replace(/[^\w.-]+/g, '_')}"`);
+    res.send(f.data);
+  } catch (e) {
+    next(e);
+  }
+});
+/** A claim the claimant signed on paper (its scan among the receipts). */
+bookkeepingRoutes.post('/bookkeeping/claims/:id/submit-paper', h((req) => claimView(Claims.submitClaim(id(req), { paper: true }, office(req)))));
+bookkeepingRoutes.post('/bookkeeping/claims/:id/withdraw', h((req) => claimView(Claims.withdrawClaim(id(req), office(req)))));
+bookkeepingRoutes.post('/bookkeeping/claims/:id/pay', h((req) => {
+  const b = z.object({ date: date.optional(), bank_account_id: z.number().int(), reference: z.string().max(200).nullable().optional(), post: z.boolean() }).parse(req.body);
+  return claimView(Claims.payClaim(id(req), b, { name: req.user?.display_name ?? '', person_id: req.user?.person_id ?? null }));
+}));
+
+bookkeepingRoutes.get('/bookkeeping/claim-approvers', h(() => Claims.listApprovers()));
+const ApproverInput = z.object({ person_id: z.number().int(), ministry_ids: z.array(z.number().int()).nullable().optional(), max_amount: z.number().int().nullable().optional(), active: z.boolean().optional() });
+bookkeepingRoutes.post('/bookkeeping/claim-approvers', h((req) => Claims.saveApprover(null, ApproverInput.parse(req.body))));
+bookkeepingRoutes.patch('/bookkeeping/claim-approvers/:id', h((req) => Claims.saveApprover(id(req), ApproverInput.parse(req.body))));
+bookkeepingRoutes.delete('/bookkeeping/claim-approvers/:id', h((req) => {
+  Claims.deleteApprover(id(req));
+  return Claims.listApprovers();
+}));
+/** Members to choose an approver or a claimant from (names only). */
+bookkeepingRoutes.get('/bookkeeping/claim-people', h((req) => {
+  const q = str((req.query as Record<string, unknown>).q) ?? '';
+  return all<{ id: number; name: string; email: number }>(
+    `SELECT id, TRIM(IFNULL(preferred_name, first_name) || ' ' || IFNULL(last_name, '')) AS name, (email IS NOT NULL AND email <> '') AS email FROM people
+     WHERE erased_at IS NULL AND (first_name LIKE ? OR last_name LIKE ? OR preferred_name LIKE ? OR native_name LIKE ?) ORDER BY first_name, last_name LIMIT 20`,
+    `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`,
+  ).map((r) => ({ ...r, email: !!r.email }));
+}));
+bookkeepingRoutes.get('/bookkeeping/claim-settings', h(async () => ({ settings: B.bkSettings(), sign_in: await claimsSignInStatus(true) })));
+bookkeepingRoutes.put('/bookkeeping/claim-settings', h(async (req) => {
+  const b = z.object({
+    claims_self_service: z.boolean(), claims_two_above: z.number().int().nullable(),
+    claims_payable_account_id: z.number().int().nullable(), claims_default_account_id: z.number().int().nullable(),
+  }).parse(req.body);
+  if (b.claims_self_service) {
+    const st = await claimsSignInStatus(true);
+    const bad = st.gates.filter((g) => !g.ok);
+    if (bad.length) throw Object.assign(new Error(`Phone sign-in needs ${bad.map((g) => (g.key === 'email' ? 'working e-mail (Settings → E-mail: send a test)' : 'a public https address (Settings → AI / MCP)')).join(' and ')}.`), { status: 400 });
+  }
+  return { settings: Claims.saveClaimSettings(b), sign_in: await claimsSignInStatus() };
+}));

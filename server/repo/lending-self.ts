@@ -103,50 +103,69 @@ function personByEmail(email: string): Who | null {
   return rows.length === 1 ? rows[0] : null;
 }
 
+/**
+ * What a sign-in code is for: the library's self-service, or expense claims (0.17.1). Each has its own codes, e-mail
+ * wording and sign-in token, so a library sign-in never opens claims.
+ */
+export type CodePurpose = 'library' | 'claims';
+const TOKEN_PURPOSE: Record<CodePurpose, string> = { library: 'self', claims: 'claims' };
+
 // the English wording; other languages are in locales/<code>/server.json (server/lib/server-text.ts)
-const CODE_WORDS_EN = { subject: 'Your code for the church library: {code}', body: 'Your code for the church library is {code}. It works for 10 minutes.', ignore: 'If you didn\'t ask for it, you can ignore this e-mail.' };
-const codeWords = (l: Lang) => Object.fromEntries(Object.entries(CODE_WORDS_EN).map(([k, v]) => [k, st(v, l)])) as typeof CODE_WORDS_EN;
+const CODE_WORDS_EN: Record<CodePurpose, { subject: string; body: string; ignore: string }> = {
+  library: { subject: 'Your code for the church library: {code}', body: 'Your code for the church library is {code}. It works for 10 minutes.', ignore: 'If you didn\'t ask for it, you can ignore this e-mail.' },
+  claims: { subject: 'Your code for expense claims: {code}', body: 'Your code for the church\'s expense claims is {code}. It works for 10 minutes.', ignore: 'If you didn\'t ask for it, you can ignore this e-mail.' },
+};
+const codeWords = (l: Lang, purpose: CodePurpose) => Object.fromEntries(Object.entries(CODE_WORDS_EN[purpose]).map(([k, v]) => [k, st(v, l)])) as typeof CODE_WORDS_EN.library;
 
 /** E-mail a code to the member with this address. Says nothing about whether the address is on the register. */
-export async function requestCode(email: string): Promise<void> {
+export async function requestCode(email: string, purpose: CodePurpose = 'library'): Promise<void> {
   const p = personByEmail(email);
   if (!p) return;
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
   const expires = new Date(Date.now() + CODE_MINUTES * 60_000).toISOString();
-  run('UPDATE lending_self_codes SET used_at = ? WHERE person_id = ? AND used_at IS NULL', new Date().toISOString(), p.id);
-  run('INSERT INTO lending_self_codes (person_id, code_hash, expires_at) VALUES (?, ?, ?)', p.id, codeHash(p.id, code), expires);
+  run('UPDATE lending_self_codes SET used_at = ? WHERE person_id = ? AND purpose = ? AND used_at IS NULL', new Date().toISOString(), p.id, purpose);
+  run('INSERT INTO lending_self_codes (person_id, code_hash, expires_at, purpose) VALUES (?, ?, ?, ?)', p.id, codeHash(p.id, code), expires, purpose);
   const langs = messageLangs(p.preferred_lang, getSettings().languages);
-  const subject = [...new Set(langs.map((l) => codeWords(l).subject.replace('{code}', code)))].join(' / ');
-  const text = langs.map((l) => `${codeWords(l).body.replace('{code}', code)}\n\n${codeWords(l).ignore}`).join('\n\n— — —\n\n');
-  const html = wrapHtml(langs.map((l) => `<p>${esc(codeWords(l).body.replace('{code}', code))}</p><p style="font-size:28px;letter-spacing:6px;font-weight:700">${code}</p><p style="color:#666">${esc(codeWords(l).ignore)}</p>`).join('<hr>'), langs[0]);
+  const w = (l: Lang) => codeWords(l, purpose);
+  const subject = [...new Set(langs.map((l) => w(l).subject.replace('{code}', code)))].join(' / ');
+  const text = langs.map((l) => `${w(l).body.replace('{code}', code)}\n\n${w(l).ignore}`).join('\n\n— — —\n\n');
+  const html = wrapHtml(langs.map((l) => `<p>${esc(w(l).body.replace('{code}', code))}</p><p style="font-size:28px;letter-spacing:6px;font-weight:700">${code}</p><p style="color:#666">${esc(w(l).ignore)}</p>`).join('<hr>'), langs[0]);
+  const kind = purpose === 'library' ? 'library_code' : 'claims_code';
   try {
     await sendMail({ to: p.email, subject, text, html });
-    logEmail({ person_id: p.id, to_addr: p.email, subject: subject.replace(code, '••••••'), kind: 'library_code', ok: true });
+    logEmail({ person_id: p.id, to_addr: p.email, subject: subject.replace(code, '••••••'), kind, ok: true });
   } catch (e) {
-    logEmail({ person_id: p.id, to_addr: p.email, subject: subject.replace(code, '••••••'), kind: 'library_code', ok: false, error: (e as Error).message });
+    logEmail({ person_id: p.id, to_addr: p.email, subject: subject.replace(code, '••••••'), kind, ok: false, error: (e as Error).message });
   }
 }
 
 /** Check a code; a right one gives a sign-in token for a couple of hours. */
-export function verifyCode(email: string, code: string): { token: string; name: string } {
+export function verifyCode(email: string, code: string, purpose: CodePurpose = 'library'): { token: string; name: string } {
   const p = personByEmail(email);
   const wrong = new BadRequest('That code is not right, or it has expired. Ask for a new one.');
   if (!p) throw wrong;
   const row = get<{ id: number; code_hash: string; expires_at: string; attempts: number }>(
-    'SELECT id, code_hash, expires_at, attempts FROM lending_self_codes WHERE person_id = ? AND used_at IS NULL ORDER BY id DESC LIMIT 1', p.id,
+    'SELECT id, code_hash, expires_at, attempts FROM lending_self_codes WHERE person_id = ? AND purpose = ? AND used_at IS NULL ORDER BY id DESC LIMIT 1', p.id, purpose,
   );
   if (!row || row.expires_at < new Date().toISOString() || row.attempts >= MAX_ATTEMPTS) throw wrong;
   run('UPDATE lending_self_codes SET attempts = attempts + 1 WHERE id = ?', row.id);
   const given = codeHash(p.id, code.replace(/\D/g, ''));
   if (given.length !== row.code_hash.length || !crypto.timingSafeEqual(Buffer.from(given), Buffer.from(row.code_hash))) throw wrong;
   run('UPDATE lending_self_codes SET used_at = ? WHERE id = ?', new Date().toISOString(), row.id);
+  return memberToken(p.id, purpose);
+}
+
+/** A sign-in token for a member (after a right code, or for a Canon account linked to the member). */
+export function memberToken(personId: number, purpose: CodePurpose): { token: string; name: string } {
+  const p = get<{ first_name: string; preferred_name: string | null }>('SELECT first_name, preferred_name FROM people WHERE id = ? AND erased_at IS NULL', personId);
+  if (!p) throw Object.assign(new Error('Please sign in again.'), { status: 401 });
   const exp = Math.floor(Date.now() / 1000) + SESSION_HOURS * 3600;
-  return { token: signToken('self', `${p.id}.${exp}`), name: (p.preferred_name || p.first_name).trim() };
+  return { token: signToken(TOKEN_PURPOSE[purpose], `${personId}.${exp}`), name: (p.preferred_name || p.first_name).trim() };
 }
 
 /** The member a sign-in token is for (throws when it is wrong or old). */
-export function personOf(token: string | undefined): number {
-  const payload = token ? verifyToken('self', token) : null;
+export function personOf(token: string | undefined, purpose: CodePurpose = 'library'): number {
+  const payload = token ? verifyToken(TOKEN_PURPOSE[purpose], token) : null;
   const [id, exp] = (payload ?? '').split('.').map(Number);
   if (!id || !exp || exp * 1000 < Date.now()) throw Object.assign(new Error('Please sign in again.'), { status: 401 });
   const p = get<{ erased_at: string | null }>('SELECT erased_at FROM people WHERE id = ?', id);

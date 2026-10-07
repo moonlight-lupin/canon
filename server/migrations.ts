@@ -1109,4 +1109,89 @@ export const MIGRATIONS: (string | Migration)[] = [
       }
     },
   },
+  // 33 (0.17.1): expense claims — a claimant's lines (several receipts per claim) with receipt files, signed on
+  // screen, approved by named approvers (people, not a role), then into the books: approval drafts the expense owed,
+  // payment drafts paying it. Sign-in codes for members' phones gain a purpose (the library's, or claims').
+  {
+    sql: `
+    CREATE TABLE bk_claims (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      number TEXT UNIQUE,
+      person_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+      claimant TEXT NOT NULL,
+      purpose TEXT,
+      ministry_id INTEGER REFERENCES bk_ministries(id) ON DELETE SET NULL,
+      project_id INTEGER REFERENCES bk_projects(id) ON DELETE SET NULL,
+      fund_id INTEGER REFERENCES bk_funds(id) ON DELETE SET NULL,
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL,
+      pay_to TEXT,
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','submitted','approved','rejected','paid','withdrawn')),
+      note TEXT,
+      signature TEXT,
+      submitted_at TEXT,
+      approved_at TEXT,
+      approval_journal_id INTEGER REFERENCES bk_journals(id) ON DELETE SET NULL,
+      payment_journal_id INTEGER REFERENCES bk_journals(id) ON DELETE SET NULL,
+      paid_on TEXT,
+      paid_by TEXT,
+      payment_ref TEXT,
+      approver_paid INTEGER NOT NULL DEFAULT 0,
+      created_via TEXT NOT NULL DEFAULT 'web',
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revision INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX bk_claims_person ON bk_claims(person_id);
+    CREATE INDEX bk_claims_status ON bk_claims(status);
+    CREATE TABLE bk_claim_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      claim_id INTEGER NOT NULL REFERENCES bk_claims(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      date TEXT,
+      description TEXT NOT NULL DEFAULT '',
+      payee TEXT,
+      amount INTEGER NOT NULL DEFAULT 0 CHECK (amount >= 0),
+      account_id INTEGER REFERENCES bk_accounts(id) ON DELETE SET NULL,
+      fund_id INTEGER REFERENCES bk_funds(id) ON DELETE SET NULL,
+      ministry_id INTEGER REFERENCES bk_ministries(id) ON DELETE SET NULL,
+      project_id INTEGER REFERENCES bk_projects(id) ON DELETE SET NULL
+    );
+    CREATE INDEX bk_claim_lines_claim ON bk_claim_lines(claim_id);
+    CREATE TABLE bk_claim_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      claim_id INTEGER NOT NULL REFERENCES bk_claims(id) ON DELETE CASCADE,
+      line_id INTEGER REFERENCES bk_claim_lines(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX bk_claim_files_claim ON bk_claim_files(claim_id);
+    CREATE TABLE bk_claim_approvers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      person_id INTEGER NOT NULL UNIQUE REFERENCES people(id) ON DELETE CASCADE,
+      ministry_ids TEXT,
+      max_amount INTEGER,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE bk_claim_approvals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      claim_id INTEGER NOT NULL REFERENCES bk_claims(id) ON DELETE CASCADE,
+      person_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      decision TEXT NOT NULL CHECK (decision IN ('approved','rejected','returned')),
+      note TEXT,
+      image TEXT,
+      hash TEXT,
+      via TEXT NOT NULL DEFAULT 'device',
+      account_id INTEGER,
+      at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX bk_claim_approvals_claim ON bk_claim_approvals(claim_id);
+    ALTER TABLE bk_journals ADD COLUMN claim_id INTEGER REFERENCES bk_claims(id) ON DELETE SET NULL;
+    ALTER TABLE lending_self_codes ADD COLUMN purpose TEXT NOT NULL DEFAULT 'library';
+    `,
+  },
 ];

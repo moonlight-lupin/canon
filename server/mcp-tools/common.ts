@@ -44,6 +44,8 @@ export interface ToolDef {
   requiresScores?: boolean;
   /** offered on every connection, whatever the module settings (canon_whoami) */
   always?: boolean;
+  /** follows the connection's module setting but not the person's role: the person's own records (expense claims) */
+  own?: boolean;
   handler: (args: Args, ctx: Ctx) => unknown;
 }
 

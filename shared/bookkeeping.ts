@@ -20,9 +20,9 @@ export const FUND_RESTRICTION_LABEL: Record<FundRestriction, string> = { unrestr
 
 export type JournalStatus = 'draft' | 'posted';
 /** Where a journal came from. */
-export type JournalKind = 'manual' | 'opening' | 'offering' | 'bank' | 'reversal' | 'transfer';
+export type JournalKind = 'manual' | 'opening' | 'offering' | 'bank' | 'reversal' | 'transfer' | 'claim';
 export const JOURNAL_KIND_LABEL: Record<JournalKind, string> = {
-  manual: 'Journal', opening: 'Opening balances', offering: 'Offerings', bank: 'Bank', reversal: 'Reversal', transfer: 'Fund transfer',
+  manual: 'Journal', opening: 'Opening balances', offering: 'Offerings', bank: 'Bank', reversal: 'Reversal', transfer: 'Fund transfer', claim: 'Claim',
 };
 
 export interface BkAccount {
@@ -84,6 +84,8 @@ export interface BkJournal {
   kind: JournalKind;
   /** offerings: the service the journal comes from */
   service_id: number | null;
+  /** an expense claim's approval or payment journal (0.17.1) */
+  claim_id?: number | null;
   /** a reversal: the journal it reverses; and the other way round */
   reverses_id: number | null;
   reversed_by_id: number | null;
@@ -126,11 +128,92 @@ export interface BookkeepingSettings {
   method_accounts: Partial<Record<string, number>>;
   /** offering fund name (Settings → Offerings) → its fund in the books and the income account */
   fund_map: Record<string, { fund_id: number; income_account_id: number }>;
+  /** expense claims (0.17.1): members may claim on their phones (sign-in code by e-mail) */
+  claims_self_service: boolean;
+  /** claims above this amount (minor units) need two different approvers; null = one is enough */
+  claims_two_above: number | null;
+  /** what approved claims owe (default: the account coded 2100) and the expense account a line has when nobody chose one */
+  claims_payable_account_id: number | null;
+  claims_default_account_id: number | null;
 }
 
 export const DEFAULT_BOOKKEEPING: BookkeepingSettings = {
   start_date: null, year_end_month: 12, closed_through: null, offering_drafts: true, method_accounts: {}, fund_map: {},
+  claims_self_service: false, claims_two_above: null, claims_payable_account_id: null, claims_default_account_id: null,
 };
+
+// ---------------------------------------------------------------- expense claims (0.17.1)
+
+/**
+ * draft (being prepared: by the claimant, the office or an AI assistant) -> submitted (signed by the claimant) ->
+ * approved (by one approver, or two above the set amount) -> paid. An approver may also send it back (draft again)
+ * or reject it; the claimant may withdraw it before it is approved.
+ */
+export type ClaimStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'paid' | 'withdrawn';
+export const CLAIM_STATUS_LABEL: Record<ClaimStatus, string> = {
+  draft: 'Being prepared', submitted: 'Waiting for approval', approved: 'Approved, to pay', rejected: 'Rejected', paid: 'Paid', withdrawn: 'Withdrawn',
+};
+
+export interface ClaimLine {
+  id?: number;
+  date: string | null;
+  description: string;
+  /** the shop or person paid */
+  payee: string | null;
+  /** minor units */
+  amount: number;
+  /** how it is booked (the office or the approver may choose; a default otherwise) */
+  account_id?: number | null;
+  fund_id?: number | null;
+  ministry_id?: number | null;
+  project_id?: number | null;
+}
+
+export interface ClaimFile { id: number; line_id: number | null; name: string; mime: string; size: number; created_at: string }
+
+export interface ClaimSignature { name: string; image: string; signed_at: string; hash: string; via: 'device' | 'account' | 'paper'; by?: string }
+
+export interface ClaimApproval {
+  id: number; person_id: number | null; name: string; decision: 'approved' | 'rejected' | 'returned'; note: string | null;
+  image: string | null; hash: string | null; via: string; at: string;
+}
+
+export interface Claim {
+  id: number;
+  number: string | null;
+  person_id: number | null;
+  claimant: string;
+  purpose: string | null;
+  ministry_id: number | null;
+  project_id: number | null;
+  fund_id: number | null;
+  congregation_id: number | null;
+  /** where to repay (e.g. a PayNow number, a bank account): never shown to AI assistants */
+  pay_to: string | null;
+  status: ClaimStatus;
+  note: string | null;
+  signature: ClaimSignature | null;
+  submitted_at: string | null;
+  approved_at: string | null;
+  approval_journal_id: number | null;
+  payment_journal_id: number | null;
+  paid_on: string | null;
+  paid_by: string | null;
+  payment_ref: string | null;
+  /** an approver of this claim also paid it (allowed; shown on the claim and in the list) */
+  approver_paid: boolean;
+  created_via: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  revision: number;
+  lines: ClaimLine[];
+  files: ClaimFile[];
+  approvals: ClaimApproval[];
+  total: number;
+}
+
+export interface ClaimApprover { id: number; person_id: number; name: string; email: string | null; ministry_ids: number[] | null; max_amount: number | null; active: boolean }
 
 /** The financial year a date falls in, by the year it ends: with year_end_month 3, 2026-05-01 is in FY 2027. */
 export function financialYear(date: string, yearEndMonth: number): number {

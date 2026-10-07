@@ -25,7 +25,7 @@ export const projects = table<BkTag>({ name: 'bk_projects', cols: ['code', 'name
 export const ministries = table<BkTag>({ name: 'bk_ministries', cols: ['code', 'name', 'active', 'sort'], json: ['name'], bool: ['active'], touch: true });
 const journals = table<Omit<BkJournal, 'lines'>>({
   name: 'bk_journals',
-  cols: ['number', 'date', 'memo', 'status', 'kind', 'service_id', 'reverses_id', 'reversed_by_id', 'created_via', 'created_by', 'posted_by', 'posted_at'],
+  cols: ['number', 'date', 'memo', 'status', 'kind', 'service_id', 'claim_id', 'reverses_id', 'reversed_by_id', 'created_via', 'created_by', 'posted_by', 'posted_at'],
   touch: true, revision: true,
   // logged here with their lines (logJournal), so a draft's history shows every amount changed before it was posted
   log: false,
@@ -186,6 +186,8 @@ export interface JournalInput {
   memo?: string | null;
   kind?: JournalKind;
   service_id?: number | null;
+  /** an expense claim's journal (approval or payment) */
+  claim_id?: number | null;
   lines: BkLine[];
 }
 
@@ -259,7 +261,7 @@ export function saveDraft(id: number | null, input: JournalInput, note?: string)
       journals.update(jid, { date: input.date, memo: input.memo?.trim() || null, ...(input.kind ? { kind: input.kind } : {}) });
     } else {
       jid = journals.insert({
-        date: input.date, memo: input.memo?.trim() || null, status: 'draft', kind: input.kind ?? 'manual', service_id: input.service_id ?? null,
+        date: input.date, memo: input.memo?.trim() || null, status: 'draft', kind: input.kind ?? 'manual', service_id: input.service_id ?? null, claim_id: input.claim_id ?? null,
         created_via: via(), created_by: who(),
       }).id;
     }

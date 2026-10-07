@@ -5,6 +5,7 @@ import { forAttendees, serviceByAttendeeToken } from './repo/attendee-link.ts';
 import { publicUrl } from './lib/public-url.ts';
 import { addressForOthers } from './lib/lan.ts';
 import { lendingSelfRoutes } from './routes/lending-self.ts';
+import { claimsSelfRoutes, sessionToken as claimsSessionToken } from './routes/claims-self.ts';
 import { lendingRoutes } from './routes/lending.ts';
 import { bookkeepingRoutes } from './routes/bookkeeping.ts';
 import { equipmentRoutes } from './routes/equipment.ts';
@@ -179,12 +180,17 @@ api.get('/about', (_req, res) => {
 
 // lending library self-service: members on their phones, no Canon account (routes/lending-self.ts)
 api.use(lendingSelfRoutes);
+// expense claims on a phone: claimants and approvers, no Canon account needed (routes/claims-self.ts)
+api.use(claimsSelfRoutes);
 
 api.use(requireUser);
 // the change log records who is making each change
 api.use((req, _res, next) => asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'web', congregation_id: wallOf(req.user), sensitive: seesSensitiveFields(req.user) }, next));
 // read-only accounts: no members' contact details, notes or birth years (server/lib/viewer-scrub.ts)
 api.use(viewerScrub);
+
+// expense claims: someone signed in claims (or approves) as their linked member, without an e-mailed code
+api.post('/me/claims-session', h((req) => claimsSessionToken(req.user?.person_id ?? null)));
 
 // where links for other people point (share links, e-mails): the public address, else this computer's network address
 api.get('/link-base', (req, res) => {

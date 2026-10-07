@@ -52,6 +52,7 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   bk_ministries: { en: 'Ministry', zh: '事工' },
   bk_journals: { en: 'Journal', zh: '分录' },
   bk_statements: { en: 'Bank statement', zh: '银行对账单' },
+  bk_claims: { en: 'Expense claim', zh: '报销申请' },
 };
 
 /** Columns never written to the log. */

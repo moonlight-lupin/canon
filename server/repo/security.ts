@@ -99,6 +99,7 @@ const TABLE_LABEL: Record<string, string> = {
   lending_books: 'Lending library', lending_copies: 'Lending library', lending_loans: 'Lending library loans', equipment: 'Asset register', equipment_maintenance: 'Asset register', equipment_files: 'Asset register',
   bk_accounts: 'Book-keeping', bk_funds: 'Book-keeping', bk_projects: 'Book-keeping', bk_ministries: 'Book-keeping', bk_journals: 'Book-keeping', bk_lines: 'Book-keeping',
   bk_statements: 'Book-keeping', bk_statement_lines: 'Book-keeping',
+  bk_claims: 'Expense claims', bk_claim_lines: 'Expense claims', bk_claim_files: 'Expense claims', bk_claim_approvers: 'Expense claims', bk_claim_approvals: 'Expense claims',
 };
 
 /** Keep one size reading a day (for the growth estimate); the last 400 days. */

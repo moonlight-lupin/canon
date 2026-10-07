@@ -3,6 +3,7 @@
 // Book-keeping → Journals → Export and by Settings → Export data.
 import { all, get } from '../db.ts';
 import { bkSettings } from './bookkeeping.ts';
+import { claimCounts } from './bk-claims.ts';
 
 type Cell = string | number | null | undefined;
 const money = (n: number | null) => (n ? (Number(n) / 100).toFixed(2) : '');
@@ -58,5 +59,6 @@ export function bookkeepingCounts() {
     drafts: n("SELECT COUNT(*) n FROM bk_journals WHERE status = 'draft'"),
     offering_drafts: n("SELECT COUNT(*) n FROM bk_journals WHERE status = 'draft' AND kind = 'offering'"),
     to_match: n("SELECT COUNT(*) n FROM bk_statement_lines sl JOIN bk_statements s ON s.id = sl.statement_id WHERE sl.status = 'open' AND s.done_at IS NULL"),
+    claims: claimCounts(),
   };
 }
