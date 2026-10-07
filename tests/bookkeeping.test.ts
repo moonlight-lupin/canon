@@ -150,7 +150,7 @@ test('closed periods: nothing posted on or before the close; drafts there block 
   web(() => B.postJournal(late.id));
 });
 
-test('reports: trial balance and balance sheet balance; funds hold their income; last year’s surplus stays in the fund', () => {
+test('reports: trial balance and balance sheet balance; funds hold their income; last year’s surplus stays in the fund', async () => {
   // a gift to missions, and next year a missions expense
   web(() => B.postJournal(B.saveDraft(null, { date: '2030-06-01', memo: 'Missions gift', lines: [
     { account_id: acc('1100'), fund_id: fund('MIS'), debit: 50000, credit: 0 }, { account_id: acc('4010'), fund_id: fund('MIS'), debit: 0, credit: 50000 },
@@ -170,6 +170,15 @@ test('reports: trial balance and balance sheet balance; funds hold their income;
   assert.equal(ie.surplus[fund('MIS')], -30000);
   const fm = Rp.fundMovements('2031-01-01', '2031-12-31').rows.find((r) => r.code === 'MIS')!;
   assert.equal(fm.opening + fm.income - fm.expense + fm.transfers + fm.other, fm.closing);
+  // the year the books begin: the opening balances are the funds' opening, not a movement
+  const first = Rp.fundMovements('2030-01-01', '2030-12-31').rows.find((r) => r.code === 'MIS')!;
+  assert.equal(first.opening, 200000);
+  assert.equal(first.other, 0);
+  // "Transaction Date" is the date column, not the description
+  const { guessLayout } = await import('../server/repo/bk-bank.ts');
+  const g = guessLayout([['Transaction Date', 'Description', 'Withdrawals', 'Deposits'], ['07/10/2030', 'Hall rent', '15.00', '']]);
+  assert.equal(g.date, 'Transaction Date');
+  assert.equal(g.description, 'Description');
   const led = Rp.ledger(acc('1100'), '2030-01-01', '2030-12-31')!;
   assert.equal(led.closing, 1200000 - 150000 + 150000 - 500 + 50000);
 });

@@ -82,9 +82,12 @@ export function guessLayout(rows: string[][]): BankCsvLayout {
   const isHeader = (r: string[]) => r.some((c) => /date|日期/.test(norm(c))) && r.some((c) => /amount|debit|credit|withdraw|deposit|金额|支出|存入/.test(norm(c)));
   const header_row = Math.max(0, rows.findIndex(isHeader));
   const h = rows[header_row] ?? [];
-  const find = (re: RegExp) => h.find((c) => re.test(norm(c))) ?? '';
+  const taken = new Set<string>();
+  // each column answers one question: "Transaction Date" is the date, not the description
+  const find = (re: RegExp) => h.find((c) => !taken.has(c) && re.test(norm(c))) ?? '';
   const date = find(/^(transactiondate|date|valuedate|postingdate|日期|交易日期)/) || find(/date|日期/);
-  const description = find(/description|details|particulars|narrative|reference1|transaction|摘要|说明/) || h.find((c) => c !== date) || '';
+  taken.add(date);
+  const description = find(/description|details|particulars|narrative|reference1|摘要|说明/) || find(/transaction/) || h.find((c) => c !== date) || '';
   const amount = find(/^amount|金额/);
   const debit = find(/debit|withdraw|moneyout|支出|提款/);
   const credit = find(/credit|deposit|moneyin|存入|收入/);

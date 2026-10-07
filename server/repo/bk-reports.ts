@@ -22,12 +22,12 @@ function filterSql(f: Filter = {}) {
   return { sql: w.length ? ' AND ' + w.join(' AND ') : '', params: p };
 }
 
-/** Sums by account and fund of posted lines dated in [from, to] (from null = since the start). */
-function sums(from: string | null, to: string, f: Filter = {}): Sum[] {
+/** Sums by account and fund of posted lines dated in [from, to] (from null = since the start); optionally without the opening balances. */
+function sums(from: string | null, to: string, f: Filter = {}, withoutOpening = false): Sum[] {
   const x = filterSql(f);
   return all<Sum>(
     `SELECT l.account_id, l.fund_id, SUM(l.debit) d, SUM(l.credit) c FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id
-     WHERE j.status = 'posted' AND j.date <= ? ${from ? 'AND j.date >= ?' : ''}${x.sql} GROUP BY l.account_id, l.fund_id`,
+     WHERE j.status = 'posted' AND j.date <= ? ${from ? 'AND j.date >= ?' : ''}${withoutOpening ? " AND j.kind <> 'opening'" : ''}${x.sql} GROUP BY l.account_id, l.fund_id`,
     ...(from ? [to, from] : [to]), ...x.params,
   );
 }
@@ -144,10 +144,10 @@ export function balanceSheet(asOf: string) {
 export function fundMovements(from: string, to: string) {
   const acc = accountsById();
   const fundRows = fundsById();
-  const opening = fundBalances(dayBefore(from));
   const closing = fundBalances(to);
   const mv = new Map<number, { income: number; expense: number; transfers: number; other: number }>();
-  for (const s of sums(from, to)) {
+  // the opening balances journal is where a fund starts, not a movement in the year the books begin
+  for (const s of sums(from, to, {}, true)) {
     const a = acc.get(s.account_id)!;
     if (a.type === 'asset' || a.type === 'liability') continue;
     const m = mv.get(s.fund_id) ?? { income: 0, expense: 0, transfers: 0, other: 0 };
@@ -159,7 +159,8 @@ export function fundMovements(from: string, to: string) {
   }
   const rows = [...fundRows.values()].map((x) => {
     const m = mv.get(x.id) ?? { income: 0, expense: 0, transfers: 0, other: 0 };
-    return { fund_id: x.id, code: x.code, name: x.name, restriction: x.restriction, opening: opening.get(x.id) ?? 0, ...m, closing: closing.get(x.id) ?? 0 };
+    const end = closing.get(x.id) ?? 0;
+    return { fund_id: x.id, code: x.code, name: x.name, restriction: x.restriction, opening: end - (m.income - m.expense + m.transfers + m.other), ...m, closing: end };
   }).filter((r) => r.opening || r.income || r.expense || r.transfers || r.other || r.closing);
   return { from, to, rows };
 }

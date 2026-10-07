@@ -46,6 +46,7 @@ const Guide = lazy(() => import('./pages/Guide.tsx'));
 const Lending = lazy(() => import('./pages/resources/Lending.tsx'));
 const LendingCopy = lazy(() => import('./pages/resources/Lending.tsx').then((m) => ({ default: m.CopyPage })));
 const Equipment = lazy(() => import('./pages/resources/Equipment.tsx'));
+const Bookkeeping = lazy(() => import('./pages/bookkeeping/Bookkeeping.tsx'));
 const EquipmentItem = lazy(() => import('./pages/resources/Equipment.tsx').then((m) => ({ default: m.ItemPage })));
 const LabelsPage = lazy(() => import('./pages/resources/common.tsx').then((m) => ({ default: m.LabelsPage })));
 
@@ -160,6 +161,7 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
             <Route path="lending/copy/:number" element={<LendingCopy />} />
             <Route path="equipment" element={<Equipment />} />
             <Route path="equipment/item/:number" element={<EquipmentItem />} />
+            <Route path="bookkeeping" element={<Bookkeeping />} />
             <Route path="templates" element={<Templates />} />
             <Route path="presentation" element={<Presentation />} />
             <Route path="bulletin-templates" element={<BulletinTemplates />} />
