@@ -282,3 +282,77 @@ test('AI assistants: read the books by code, draft a journal, never post it', as
   assert.ok(listed.journals.some((j: Json) => j.id === d.id && j.lines[0].account === '5500'));
   web(() => B.deleteDraft(d.id));
 });
+
+test('a journal’s history: every line changed before posting, and for offerings the cash count and earlier drafts', async () => {
+  const d = await call(as.treasurer, 'POST', '/bookkeeping/journals', { date: '2031-05-04', memo: 'Hall hire (fictional)', lines: [
+    { account_id: acc('5500'), fund_id: fund('GEN'), debit: 20000 }, { account_id: acc('1100'), fund_id: fund('GEN'), credit: 20000 },
+  ] });
+  await call(as.treasurer, 'PUT', `/bookkeeping/journals/${d.body.id}`, { date: '2031-05-04', memo: 'Hall hire (fictional)', lines: [
+    { account_id: acc('5500'), fund_id: fund('GEN'), debit: 25000 }, { account_id: acc('1100'), fund_id: fund('GEN'), credit: 25000 },
+  ] });
+  await call(as.treasurer, 'POST', `/bookkeeping/journals/${d.body.id}/post`);
+  const h = (await call(as.treasurer, 'GET', `/bookkeeping/journals/${d.body.id}/history`)).body.rows as Json[];
+  assert.equal(h.length, 3, JSON.stringify(h));
+  assert.match(h[0].summary, /^Posted as 2031-/);
+  assert.deepEqual(h[1].changes.lines, ['5500 GEN Dr 200.00\n1100 GEN Cr 200.00', '5500 GEN Dr 250.00\n1100 GEN Cr 250.00']);
+  assert.equal(h[2].action, 'create');
+
+  // an offering: verified, reopened and corrected, verified again — the count's changes and the withdrawn draft are there
+  const s = svc.createService({ date: '2031-05-11' }).service;
+  const ed = { name: 'Ed Itor', admin: false, money: true };
+  const ad = { name: 'Ad Min', admin: true, money: true };
+  web(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'paynow', amount: 10000 }], counters: ['Ann', 'Ben'], notes: 'Private note (fictional)' }, ed));
+  web(() => R.setVerified(s.id, true, ed));
+  web(() => R.setVerified(s.id, false, ad));
+  web(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'paynow', amount: 11000 }] }, ad));
+  web(() => R.setVerified(s.id, true, ad));
+  const draft = get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND status = 'draft'", s.id)!.id;
+  const oh = (await call(as.treasurer, 'GET', `/bookkeeping/journals/${draft}/history`)).body.rows as Json[];
+  assert.ok(oh.some((r) => r.entity === 'bk_journals' && r.action === 'delete' && /reopened/.test(r.summary)), 'the first draft, withdrawn');
+  assert.ok(oh.some((r) => r.entity === 'service_records' && r.changes.offerings), 'the count corrected');
+  assert.ok(oh.every((r) => !r.changes.notes && !r.changes.visitors), 'only the money fields of the record');
+  const status = (await call(as.treasurer, 'GET', `/bookkeeping/offerings/${s.id}`)).body;
+  assert.deepEqual(status.journals.map((j: Json) => j.status), ['draft']);
+});
+
+test('AI assistants and the bank: read statements, draft for an open line; posting it matches the line', async () => {
+  const { BOOKKEEPING_TOOLS } = await import('../server/mcp-tools/bookkeeping.ts');
+  const tool = (n: string) => BOOKKEEPING_TOOLS.find((t) => t.name === n)!;
+  const mcp = <T,>(fn: () => T) => asActor({ user_id: 1, user_name: 'Claude', via: 'mcp' }, fn);
+  const csv = ['Date,Description,Amount', '03/06/2031,INTEREST (fictional),1.25', '04/06/2031,CHARGE (fictional),-2.00'].join('\n');
+  const imp = await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: acc('1110'), file: Buffer.from(csv).toString('base64'), layout: { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', date_format: 'DD/MM/YYYY' } });
+  assert.equal(imp.status, 200, imp.text);
+  const list = (await mcp(() => tool('canon_bank_statements').handler({ account: '1110', open_only: true }, {} as never))) as Json;
+  assert.equal(list.statements[0].to_match, 2);
+  const one = (await mcp(() => tool('canon_bank_statements').handler({ id: imp.body.statement_id, open_only: true }, {} as never))) as Json;
+  const interest = one.lines.find((l: Json) => l.amount_cents === 125);
+  const d = (await mcp(() => tool('canon_draft_journal').handler({ date: '2031-06-03', memo: 'Interest', statement_line: interest.id, lines: [
+    { account: '1110', fund: 'GEN', debit_cents: 125 }, { account: '4400', fund: 'GEN', credit_cents: 125 },
+  ] }, {} as never))) as Json;
+  assert.equal(d.statement_line.matches_when_posted, true);
+  assert.equal(d.kind, 'bank');
+  const again = (await mcp(() => tool('canon_bank_statements').handler({ id: imp.body.statement_id, open_only: true }, {} as never))) as Json;
+  assert.equal(again.lines.find((l: Json) => l.id === interest.id).draft_journal_id, d.id);
+  assert.throws(() => mcp(() => B.postJournal(d.id)), /a person posts/);
+  await call(as.treasurer, 'POST', `/bookkeeping/journals/${d.id}/post`);
+  const st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.body.statement_id}`)).body;
+  assert.equal(st.lines.find((l: Json) => l.id === interest.id).status, 'matched');
+  // a draft entered on the Bank screen and posted later matches too
+  const chg = st.lines.find((l: Json) => l.amount === -200);
+  const e = (await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${chg.id}/entry`, { account_id: acc('5700'), fund_id: fund('GEN'), post: false })).body;
+  await call(as.treasurer, 'POST', `/bookkeeping/journals/${e.id}/post`);
+  const st2 = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.body.statement_id}`)).body;
+  assert.ok(st2.lines.every((l: Json) => l.status === 'matched'));
+});
+
+test('the books in Settings → Export data and on the dashboard', async () => {
+  const ex = (await call(as.admin, 'GET', '/export')).body;
+  assert.equal(ex.bookkeeping, true);
+  const j = await call(as.admin, 'GET', '/export/bookkeeping/accounts.csv');
+  assert.equal(j.status, 200);
+  assert.match(j.text, /Code,Name,Name \(other language\),Type/);
+  assert.equal((await call(as.admin, 'GET', '/export/bookkeeping/nothing.csv')).status, 404);
+  const dash = (await call(as.treasurer, 'GET', '/dashboard')).body;
+  assert.equal(typeof dash.bookkeeping.drafts, 'number');
+  assert.equal((await call(as.editor, 'GET', '/dashboard')).body.bookkeeping, null, 'editors don’t see the books');
+});

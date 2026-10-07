@@ -289,8 +289,8 @@
       "帳戶"
     ],
     "Accounts and funds": [
-      "科目与基金",
-      "科目與基金"
+      "科目与款项",
+      "科目與款項"
     ],
     "Accounts have this role: give them another role first.": [
       "有帐户使用此角色：请先为它们换一个角色。",
@@ -577,8 +577,8 @@
       "成人洗"
     ],
     "After a month or year is checked (and the bank reconciled), close it: nothing on or before that date can be posted. Reports need no closing journal — each year’s surplus stays in its fund.": [
-      "某月或某年核对完毕（并完成银行对账）后即可关账：该日期或之前的分录都不能再过账。报表不需要结账分录——每年的盈余留在各自的基金里。",
-      "某月或某年核對完畢（並完成銀行對賬）後即可關賬：該日期或之前的分錄都不能再過賬。報表不需要結賬分錄——每年的盈餘留在各自的基金裡。"
+      "某月或某年核对完毕（并完成银行对账）后即可关账：该日期或之前的分录都不能再过账。报表不需要结账分录——每年的盈余留在各自的款项里。",
+      "某月或某年核對完畢（並完成銀行對賬）後即可關賬：該日期或之前的分錄都不能再過賬。報表不需要結賬分錄——每年的盈餘留在各自的款項裡。"
     ],
     "After your password, Canon asks for a 6-digit code from an authenticator app on your phone (Google or Microsoft Authenticator, 1Password …), so a stolen password alone can’t sign in.": [
       "输入密码后，Canon 会要求输入手机上身份验证应用（Google 或 Microsoft Authenticator、1Password 等）显示的 6 位数验证码，所以单凭被盗的密码无法登入。",
@@ -617,8 +617,8 @@
       "所有客戶端"
     ],
     "All funds": [
-      "所有基金",
-      "所有基金"
+      "所有款项",
+      "所有款項"
     ],
     "All groups": [
       "所有群组",
@@ -1120,6 +1120,10 @@
       "银行账户",
       "銀行賬戶"
     ],
+    "Bank lines to match: {n}": [
+      "待配对的银行交易：{n}",
+      "待配對的銀行交易：{n}"
+    ],
     "Bank transfer": [
       "银行转账",
       "銀行轉賬"
@@ -1247,6 +1251,14 @@
     "Book-keeping": [
       "财务账簿",
       "財務賬簿"
+    ],
+    "Book-keeping: drafts to post": [
+      "财务账簿：待过账的草稿",
+      "財務賬簿：待過賬的草稿"
+    ],
+    "Book-keeping: not started yet": [
+      "财务账簿：尚未开始",
+      "財務賬簿：尚未開始"
     ],
     "Booked in the coming 4 weeks": [
       "未来 4 周的预订",
@@ -1489,8 +1501,8 @@
       "Canon 以 MIT 許可證發佈，並使用以下開源軟件："
     ],
     "Canon needs to know which accounts are the bank (for statements), which hold offerings, and which hold the fund balances.": [
-      "Canon 需要知道哪些科目是银行（用于对账单）、哪些存放奉献、哪些记录基金余额。",
-      "Canon 需要知道哪些科目是銀行（用於對賬單）、哪些存放奉獻、哪些記錄基金餘額。"
+      "Canon 需要知道哪些科目是银行（用于对账单）、哪些存放奉献、哪些记录款项余额。",
+      "Canon 需要知道哪些科目是銀行（用於對賬單）、哪些存放奉獻、哪些記錄款項餘額。"
     ],
     "Canon sends volunteer reminder e-mails through the church’s own e-mail account. Nothing is sent automatically: an editor presses “Send reminders” on a service’s Team tab.": [
       "Canon 通过教会自己的电邮账户发送同工服事提醒。系统不会自动发送：须由编辑者在聚会的“同工”分页按“发送提醒”。",
@@ -1612,6 +1624,10 @@
       "会计科目表",
       "會計科目表"
     ],
+    "Chart of accounts (CSV)": [
+      "会计科目表（CSV）",
+      "會計科目表（CSV）"
+    ],
     "Check": [
       "检查",
       "檢查"
@@ -1677,8 +1693,8 @@
       "選擇一欄…"
     ],
     "Choose a fund…": [
-      "选择基金…",
-      "選擇基金…"
+      "选择款项…",
+      "選擇款項…"
     ],
     "Choose a month.": [
       "请选择月份。",
@@ -2612,6 +2628,10 @@
       "为账簿开始前已核实的奉献起草分录，或重新检查",
       "為賬簿開始前已核實的奉獻起草分錄，或重新檢查"
     ],
+    "Draft waiting": [
+      "草稿待过账",
+      "草稿待過賬"
+    ],
     "Draft what’s missing": [
       "起草缺少的分录",
       "起草缺少的分錄"
@@ -2709,8 +2729,8 @@
       "每個都是另一個 Canon 可導入的資料庫文件（導入資料庫文件……）。詩歌按詩本逐本導出。"
     ],
     "Each offering fund": [
-      "每个奉献基金",
-      "每個奉獻基金"
+      "每个奉献项目",
+      "每個奉獻項目"
     ],
     "Each opens in Excel, and can be imported again with Import CSV above the same list.": [
       "每个都可用 Excel 打开，也可在同一列表上方用「导入 CSV」再导入。",
@@ -2849,8 +2869,8 @@
       "結束時間"
     ],
     "Endowment": [
-      "永久基金",
-      "永久基金"
+      "永久保留款项",
+      "永久保留款項"
     ],
     "Ends with .apps.googleusercontent.com": [
       "以 .apps.googleusercontent.com 结尾",
@@ -2873,8 +2893,8 @@
       "錄入一筆銀行交易"
     ],
     "Enter the bank and cash balances, anything owed to or by the church, and each fund’s balance on {date}.": [
-      "录入 {date} 的银行和现金余额、教会的应收应付款项，以及每个基金的余额。",
-      "錄入 {date} 的銀行和現金餘額、教會的應收應付款項，以及每個基金的餘額。"
+      "录入 {date} 的银行和现金余额、教会的应收应付，以及每个款项的余额。",
+      "錄入 {date} 的銀行和現金餘額、教會的應收應付，以及每個款項的餘額。"
     ],
     "Enter the opening balances": [
       "录入期初余额",
@@ -2928,6 +2948,10 @@
       "每隔（月）",
       "每隔（月）"
     ],
+    "Every change to this journal, its lines included, before and after it was posted. For offerings, also the cash count’s changes and any earlier drafts for the service.": [
+      "这笔分录的每一次更改（包括各行），过账前后都有记录。奉献分录还包括现金点算的更改，以及这场聚会之前的草稿。",
+      "這筆分錄的每一次更改（包括各行），過賬前後都有記錄。奉獻分錄還包括現金點算的更改，以及這場聚會之前的草稿。"
+    ],
     "Every check must pass first": [
       "必须先通过所有检查",
       "必須先通過所有檢查"
@@ -2943,6 +2967,10 @@
     "Every page of a sample service, drawn by the real bulletin. Your own services print the same way.": [
       "示例聚会的每一页，由真正的次序单绘制。您的聚会也会这样印出。",
       "示例聚會的每一頁，由真正的次序單繪製。您的聚會也會這樣印出。"
+    ],
+    "Every posted journal line since the books started (for the church’s accountant or other accounting software), the chart of accounts and the funds. Also in the zip above.": [
+      "账簿开始以来每一行已过账的分录（交给教会的会计师或其他会计软件）、会计科目表和款项。上面的 zip 文件中也有。",
+      "賬簿開始以來每一行已過賬的分錄（交給教會的會計師或其他會計軟件）、會計科目表和款項。上面的 zip 文件中也有。"
     ],
     "Every row has a problem. Fix them in Excel and choose the file again.": [
       "每一行都有问题。请在 Excel 中修正后重新选择文件。",
@@ -3293,24 +3321,36 @@
       "已排滿"
     ],
     "Fund": [
-      "基金",
-      "基金"
+      "奉献项目",
+      "奉獻項目"
     ],
     "Fund balances": [
-      "基金余额",
-      "基金餘額"
+      "款项余额",
+      "款項餘額"
     ],
     "Fund movements": [
-      "基金变动表",
-      "基金變動表"
+      "款项变动表",
+      "款項變動表"
     ],
     "Fund transfer": [
-      "基金转拨",
-      "基金轉撥"
+      "款项转拨",
+      "款項轉撥"
     ],
     "Funds": [
-      "基金",
-      "基金"
+      "奉献项目",
+      "奉獻項目"
+    ],
+    "Funds (CSV)": [
+      "款项（CSV）",
+      "款項（CSV）"
+    ],
+    "Funds‖books": [
+      "款项",
+      "款項"
+    ],
+    "Fund‖books": [
+      "款项",
+      "款項"
     ],
     "Gender": [
       "性别",
@@ -3577,8 +3617,8 @@
       "多久保養一次。記錄保養後，下次保養日期會順延這麼多個月。"
     ],
     "How the funds stood": [
-      "各基金的余额",
-      "各基金的餘額"
+      "各款项的余额",
+      "各款項的餘額"
     ],
     "How the slides look on the projector and in the PowerPoint download: colours, background, fonts, text size and screen shape.": [
       "投影片在投影和 PowerPoint 下载中的样子：颜色、背景、字体、字号和屏幕比例。",
@@ -3784,6 +3824,14 @@
       "已入账、尚未出现在对账单上（{n}）",
       "已入賬、尚未出現在對賬單上（{n}）"
     ],
+    "In the books: a draft journal is waiting to be posted.": [
+      "账簿：一份草稿分录正等待过账。",
+      "賬簿：一份草稿分錄正等待過賬。"
+    ],
+    "In the books: posted as": [
+      "账簿：已过账，编号",
+      "賬簿：已過賬，編號"
+    ],
     "In the church’s currency. Offerings in other currencies are listed separately and never converted.": [
       "以教会的货币计算。其他货币的奉献分开列出，不作兑换。",
       "以教會的貨幣計算。其他貨幣的奉獻分開列出，不作兌換。"
@@ -3899,6 +3947,10 @@
     "Journals": [
       "分录",
       "分錄"
+    ],
+    "Journals (CSV)": [
+      "分录（CSV）",
+      "分錄（CSV）"
     ],
     "Keep": [
       "保留",
@@ -4669,8 +4721,8 @@
       "新增活動"
     ],
     "New fund": [
-      "新基金",
-      "新基金"
+      "新款项",
+      "新款項"
     ],
     "New household": [
       "新建家庭",
@@ -5001,8 +5053,8 @@
       "無項目"
     ],
     "No projects yet: a project (a building appeal, a mission trip) can be tagged on any line, across funds and years.": [
-      "还没有项目：项目（如建堂筹款、宣教之旅）可以标在任何一行上，跨基金、跨年度。",
-      "還沒有項目：項目（如建堂籌款、宣教之旅）可以標在任何一行上，跨基金、跨年度。"
+      "还没有项目：项目（如建堂筹款、宣教之旅）可以标在任何一行上，跨款项、跨年度。",
+      "還沒有項目：項目（如建堂籌款、宣教之旅）可以標在任何一行上，跨款項、跨年度。"
     ],
     "No public address is set (Settings → AI / MCP), so phones can only open this link on the church’s own network.": [
       "尚未设定公开网址（设置 → AI / MCP），所以手机只能在教会自己的网络中打开这个链接。",
@@ -5273,8 +5325,8 @@
       "尚未"
     ],
     "Not yet in a fund": [
-      "尚未分配到基金",
-      "尚未分配到基金"
+      "尚未分配到款项",
+      "尚未分配到款項"
     ],
     "Note": [
       "附注",
@@ -5409,8 +5461,8 @@
       "有編號的行會印成列表"
     ],
     "Numbers group the accounts: 1… assets, 2… liabilities, 3… funds, 4… income, 5… expenses.": [
-      "编号把科目分组：1… 资产，2… 负债，3… 基金，4… 收入，5… 支出。",
-      "編號把科目分組：1… 資產，2… 負債，3… 基金，4… 收入，5… 支出。"
+      "编号把科目分组：1… 资产，2… 负债，3… 款项，4… 收入，5… 支出。",
+      "編號把科目分組：1… 資產，2… 負債，3… 款項，4… 收入，5… 支出。"
     ],
     "OK": [
       "成功",
@@ -5437,8 +5489,8 @@
       "奉獻點算聲明"
     ],
     "Offering funds are set in Settings → Offerings.": [
-      "奉献基金在“设置 → 奉献”中设定。",
-      "奉獻基金在“設置 → 奉獻”中設定。"
+      "奉献项目在“设置 → 奉献”中设定。",
+      "奉獻項目在“設置 → 奉獻”中設定。"
     ],
     "Offerings": [
       "奉献",
@@ -5465,8 +5517,12 @@
       "未存入銀行的奉獻"
     ],
     "Offerings to {funds} can’t be drafted until they have a fund and an income account.": [
-      "{funds} 的奉献需要先指定基金和收入科目，才能起草分录。",
-      "{funds} 的奉獻需要先指定基金和收入科目，才能起草分錄。"
+      "{funds} 的奉献需要先指定款项和收入科目，才能起草分录。",
+      "{funds} 的奉獻需要先指定款項和收入科目，才能起草分錄。"
+    ],
+    "Offerings: {n}": [
+      "奉献：{n}",
+      "奉獻：{n}"
     ],
     "Old Testament": [
       "旧约",
@@ -5623,6 +5679,10 @@
     "Open and edit": [
       "打开并编辑",
       "打開並編輯"
+    ],
+    "Open it": [
+      "打开",
+      "打開"
     ],
     "Open presenter window": [
       "打开主控窗口",
@@ -6737,8 +6797,8 @@
       "限定用途"
     ],
     "Restricted: given for a purpose the church must keep to. Designated: set aside by the church itself, and can be released. Endowment: the gift itself is kept.": [
-      "限定用途：奉献者指定用途，教会必须遵守。指定用途：教会自己拨出，可以解除。永久基金：本金保留不动。",
-      "限定用途：奉獻者指定用途，教會必須遵守。指定用途：教會自己撥出，可以解除。永久基金：本金保留不動。"
+      "限定用途：奉献者指定用途，教会必须遵守。指定用途：教会自己拨出，可以解除。永久保留款项：本金保留不动。",
+      "限定用途：奉獻者指定用途，教會必須遵守。指定用途：教會自己撥出，可以解除。永久保留款項：本金保留不動。"
     ],
     "Restriction": [
       "用途限制",
@@ -6969,8 +7029,8 @@
       "請先保存修改"
     ],
     "Saved as one journal on the start date: assets as debits, what is owed and the fund balances as credits ({amount} each side).": [
-      "在开始日期保存为一笔分录：资产记借方，负债和基金余额记贷方（每边 {amount}）。",
-      "在開始日期保存為一筆分錄：資產記借方，負債和基金餘額記貸方（每邊 {amount}）。"
+      "在开始日期保存为一笔分录：资产记借方，负债和款项余额记贷方（每边 {amount}）。",
+      "在開始日期保存為一筆分錄：資產記借方，負債和款項餘額記貸方（每邊 {amount}）。"
     ],
     "Saved backups": [
       "已保存的备份",
@@ -7753,8 +7813,8 @@
       "開始日期"
     ],
     "Start from the church chart of accounts and funds (General, Missions, Building, Benevolence) — rename, add or retire them afterwards": [
-      "使用教会科目表和基金模板（常费、宣教、建堂、慈惠）——之后可以改名、增加或停用",
-      "使用教會科目表和基金模板（常費、宣教、建堂、慈惠）——之後可以改名、增加或停用"
+      "使用教会科目表和款项模板（常费、宣教、建堂、慈惠）——之后可以改名、增加或停用",
+      "使用教會科目表和款項模板（常費、宣教、建堂、慈惠）——之後可以改名、增加或停用"
     ],
     "Start the books": [
       "开始记账",
@@ -8069,8 +8129,8 @@
       "修改記錄、AI 活動和誰查看了會友資料：比這更早的整年會移到該年的歸檔文件。日誌需要保存的時間通常比財務記錄短。"
     ],
     "The chart needs an active account of the kind “Fund balances” and at least one fund first (Accounts and funds).": [
-      "科目表需要先有一个用途为“基金余额”的使用中科目，以及至少一个基金（科目与基金）。",
-      "科目表需要先有一個用途為“基金餘額”的使用中科目，以及至少一個基金（科目與基金）。"
+      "科目表需要先有一个用途为“款项余额”的使用中科目，以及至少一个款项（科目与款项）。",
+      "科目表需要先有一個用途為“款項餘額”的使用中科目，以及至少一個款項（科目與款項）。"
     ],
     "The church default cannot be archived.": [
       "教会默认模板不能归档。",
@@ -8089,8 +8149,8 @@
       "教會借給會友的書籍、光碟和教材。"
     ],
     "The church’s books: journals, the bank, funds and reports.": [
-      "教会的账簿：分录、银行、基金和报表。",
-      "教會的賬簿：分錄、銀行、基金和報表。"
+      "教会的账簿：分录、银行、款项和报表。",
+      "教會的賬簿：分錄、銀行、款項和報表。"
     ],
     "The church’s equipment and property: where each item is, who looks after it, what it cost, its condition, photos and receipts, and maintenance.": [
       "教会的设备与财产：每件物品放在哪里、由谁负责、价格、状况、照片与收据，以及保养。",
@@ -8161,8 +8221,8 @@
       "資料庫已有完整的威斯敏斯德小要理問答（107問），可從中選用任何問答。"
     ],
     "The funds together hold the net assets. Restricted and designated funds first; the general fund usually takes the rest.": [
-      "各基金合计等于净资产。先填限定用途和指定用途的基金；余额通常归入常费。",
-      "各基金合計等於淨資產。先填限定用途和指定用途的基金；餘額通常歸入常費。"
+      "各款项合计等于净资产。先填限定用途和指定用途的款项；余额通常归入常费。",
+      "各款項合計等於淨資產。先填限定用途和指定用途的款項；餘額通常歸入常費。"
     ],
     "The joy of the Lord is your strength": [
       "靠耶和华而得的喜乐是你的力量",
@@ -8569,8 +8629,8 @@
       "現金總額"
     ],
     "Total funds": [
-      "基金合计",
-      "基金合計"
+      "款项合计",
+      "款項合計"
     ],
     "Total liabilities": [
       "负债合计",
@@ -8601,8 +8661,8 @@
       "轉撥"
     ],
     "Transfers between funds": [
-      "基金之间的转拨",
-      "基金之間的轉撥"
+      "款项之间的转拨",
+      "款項之間的轉撥"
     ],
     "Trends and summaries over a period, to print or export to Excel.": [
       "一段期间的趋势与汇总，可打印或导出到 Excel。",
@@ -9117,8 +9177,8 @@
       "教會的資產與負債"
     ],
     "What the church had and owed on the day the books start, and how its funds stood. Entered once; posted like any journal.": [
-      "账簿开始当天教会的资产和负债，以及各基金的余额。只录入一次，像其他分录一样过账。",
-      "賬簿開始當天教會的資產和負債，以及各基金的餘額。只錄入一次，像其他分錄一樣過賬。"
+      "账簿开始当天教会的资产和负债，以及各款项的余额。只录入一次，像其他分录一样过账。",
+      "賬簿開始當天教會的資產和負債，以及各款項的餘額。只錄入一次，像其他分錄一樣過賬。"
     ],
     "What the code opens": [
       "二维码打开的内容",
@@ -9161,8 +9221,8 @@
       "時間"
     ],
     "When a cash count is verified, Canon drafts its journal: each payment method into its account, each fund’s offerings into its income. You post it here.": [
-      "点算核实后，Canon 会起草分录：每种付款方式记入对应科目，每个基金的奉献记入收入。您在这里过账。",
-      "點算核實後，Canon 會起草分錄：每種付款方式記入對應科目，每個基金的奉獻記入收入。您在這裡過賬。"
+      "点算核实后，Canon 会起草分录：每种付款方式记入对应科目，每个款项的奉献记入收入。您在这里过账。",
+      "點算核實後，Canon 會起草分錄：每種付款方式記入對應科目，每個款項的奉獻記入收入。您在這裡過賬。"
     ],
     "When it meets": [
       "聚会时间",
@@ -10118,8 +10178,8 @@
     ]
   },
   "guide": [
-    "8c211465746c9764",
-    "acd26da489d6440b"
+    "19ec7110da0221db",
+    "6c76aa55ce49673a"
   ],
   "outputs": {
     "Advent": [

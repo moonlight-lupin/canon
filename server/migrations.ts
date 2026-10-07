@@ -965,11 +965,12 @@ export const MIGRATIONS: (string | Migration)[] = [
   },
   // 32 (0.17.0): book-keeping — the chart of accounts, funds, projects and ministries, journals and their lines
   // (every line with a fund), and bank statements. A posted journal is never changed or deleted (the triggers
-  // refuse it whatever writes): a mistake is corrected by a reversing journal.
+  // refuse it whatever writes): a mistake is corrected by a reversing journal. Ids are never reused (AUTOINCREMENT):
+  // the change log and a journal's history name records by id, and a deleted draft's id must not pass to another.
   {
     sql: `
     CREATE TABLE bk_accounts (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL DEFAULT '{}',
       type TEXT NOT NULL CHECK (type IN ('asset','liability','equity','income','expense')),
@@ -983,7 +984,7 @@ export const MIGRATIONS: (string | Migration)[] = [
       revision INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE bk_funds (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL DEFAULT '{}',
       restriction TEXT NOT NULL DEFAULT 'unrestricted' CHECK (restriction IN ('unrestricted','designated','restricted','endowment')),
@@ -995,7 +996,7 @@ export const MIGRATIONS: (string | Migration)[] = [
       revision INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE bk_projects (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL DEFAULT '{}',
       active INTEGER NOT NULL DEFAULT 1,
@@ -1004,7 +1005,7 @@ export const MIGRATIONS: (string | Migration)[] = [
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE bk_ministries (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL DEFAULT '{}',
       active INTEGER NOT NULL DEFAULT 1,
@@ -1013,7 +1014,7 @@ export const MIGRATIONS: (string | Migration)[] = [
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE bk_journals (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       number TEXT UNIQUE,
       date TEXT NOT NULL,
       memo TEXT,
@@ -1033,7 +1034,7 @@ export const MIGRATIONS: (string | Migration)[] = [
     CREATE INDEX bk_journals_date ON bk_journals(date);
     CREATE INDEX bk_journals_service ON bk_journals(service_id);
     CREATE TABLE bk_lines (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       journal_id INTEGER NOT NULL REFERENCES bk_journals(id) ON DELETE CASCADE,
       position INTEGER NOT NULL DEFAULT 0,
       account_id INTEGER NOT NULL REFERENCES bk_accounts(id),
@@ -1053,7 +1054,7 @@ export const MIGRATIONS: (string | Migration)[] = [
     CREATE INDEX bk_lines_account ON bk_lines(account_id);
     CREATE INDEX bk_lines_fund ON bk_lines(fund_id);
     CREATE TABLE bk_statements (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       account_id INTEGER NOT NULL REFERENCES bk_accounts(id),
       starts_on TEXT,
       ends_on TEXT,
@@ -1066,7 +1067,7 @@ export const MIGRATIONS: (string | Migration)[] = [
       done_at TEXT
     );
     CREATE TABLE bk_statement_lines (
-      id INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       statement_id INTEGER NOT NULL REFERENCES bk_statements(id) ON DELETE CASCADE,
       position INTEGER NOT NULL DEFAULT 0,
       date TEXT NOT NULL,

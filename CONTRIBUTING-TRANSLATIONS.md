@@ -46,6 +46,7 @@ Only include what you have translated. Anything missing shows in English (or you
   - Dates are the one exception. `"Serving on {d} {mon}"` may use `{d}` (day), `{m}` (month number) and `{mon}` (short month name) in any order. Chinese uses `"{m}月{d}日 服事人员"`.
 - **Keep the meaning, not the words.** Write what a church member in your language would naturally say. Use your church tradition's usual terms for worship words, such as liturgist, benediction and refrain.
 - **Keep it short** where the English is short: buttons and slide labels have little room.
+- **A key with "‖" has a context.** `"Fund‖books"` is the English "Fund" as used in book-keeping. The plain `"Fund"` is the same word on the offering screens. Translate each for its place: Chinese uses 款项 in the books and 奉献项目 for offerings. English shows only the part before "‖".
 - Plain text only: no HTML. Line breaks as `\n`.
 
 ## Step by step

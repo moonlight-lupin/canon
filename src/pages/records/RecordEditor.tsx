@@ -273,6 +273,7 @@ export function RecordEditor() {
                 <h3>{t('Cash count')} <InfoTip text={t('Count the notes and coins; Canon adds them up. The count must match the cash lines above before it can be verified.')} /></h3>
                 {d.verified_at ? <span className="badge ok"><Icon name="check" width={12} height={12} />{t('Counted and verified')} · {d.verified_by}</span> : null}
               </div>
+              {d.verified_at && <OfferingsInBooks serviceId={s.id} />}
               <CashCount currency={cur} cash={d.cash} onChange={(cash) => set({ cash })} />
               <div className={`callout small ${counted === cashLines ? '' : 'warn'}`}>
                 {t('Counted')}: <strong>{money(counted, cur, true)}</strong> · {t('Cash offerings')}: <strong>{money(cashLines, cur, true)}</strong>
@@ -433,5 +434,23 @@ export function MoneyInput({ value, currency, onChange, empty }: { value: number
         const v = parseMoney(e.target.value, currency);
         if (v !== null) onChange(v);
       }} />
+  );
+}
+
+/** Book-keeping (when on, for those who read the books): the journal this count drafted, waiting or posted. */
+function OfferingsInBooks({ serviceId }: { serviceId: number }) {
+  const { t } = useI18n();
+  const { can, settings } = useSession();
+  const on = !!(settings?.modules as Record<string, boolean> | undefined)?.bookkeeping && can('bookkeeping', 'read');
+  const r = useApi<{ started: boolean; journals: { id: number; number: string | null; status: string; kind: string }[] }>(on ? `/bookkeeping/offerings/${serviceId}` : null);
+  if (!on || !r.data?.started || !r.data.journals.length) return null;
+  const draft = r.data.journals.find((j) => j.status === 'draft');
+  const posted = r.data.journals.filter((j) => j.status === 'posted');
+  return (
+    <div className="callout lapis small no-print">
+      <Icon name="ledger" width={14} height={14} />{' '}
+      {draft ? <>{t('In the books: a draft journal is waiting to be posted.')} <Link to={`/bookkeeping?tab=journals&open=${draft.id}`}>{t('Open it')}</Link></>
+        : <>{t('In the books: posted as')} {posted.map((j, i) => <Fragment key={j.id}>{i > 0 && ', '}<Link to={`/bookkeeping?tab=journals&open=${j.id}`}>{j.number}</Link></Fragment>)}</>}
+    </div>
   );
 }

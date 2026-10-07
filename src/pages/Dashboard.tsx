@@ -19,6 +19,7 @@ interface Dash {
   /** the optional modules, when on and readable (null otherwise) */
   lending?: { on_loan: number; overdue: number; titles: number; to_check_in?: number } | null;
   equipment?: { items: number; maintenance_due: number } | null;
+  bookkeeping?: { started: boolean; drafts: number; offering_drafts: number; to_match: number } | null;
 }
 
 export default function Dashboard() {
@@ -150,7 +151,7 @@ export default function Dashboard() {
           </div>
         </Link>
       </div>
-      {(data.lending || data.equipment) && (
+      {(data.lending || data.equipment || data.bookkeeping) && (
         <div className="grid cols-3 mt">
           {data.lending && (
             <Link to={data.lending.overdue ? '/lending?tab=loans' : '/lending'} className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
@@ -168,6 +169,16 @@ export default function Dashboard() {
                 <span className="n">{data.equipment.items}</span>
                 <span className="l">{t('Asset register: items')}</span>
                 {data.equipment.maintenance_due > 0 && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('Maintenance due: {n}').replace('{n}', String(data.equipment.maintenance_due))}</span>}
+              </div>
+            </Link>
+          )}
+          {data.bookkeeping && (
+            <Link to={data.bookkeeping.drafts ? '/bookkeeping?tab=journals&status=draft' : '/bookkeeping'} className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <div className="stat">
+                <span className="n">{data.bookkeeping.started ? data.bookkeeping.drafts : '—'}</span>
+                <span className="l">{data.bookkeeping.started ? t('Book-keeping: drafts to post') : t('Book-keeping: not started yet')}</span>
+                {data.bookkeeping.offering_drafts > 0 && <span className="badge lapis" style={{ alignSelf: 'flex-start' }}>{t('Offerings: {n}').replace('{n}', String(data.bookkeeping.offering_drafts))}</span>}
+                {data.bookkeeping.to_match > 0 && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('Bank lines to match: {n}').replace('{n}', String(data.bookkeeping.to_match))}</span>}
               </div>
             </Link>
           )}

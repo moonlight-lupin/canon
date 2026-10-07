@@ -6,7 +6,7 @@ import type { L10n } from './types.ts';
 
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 export const ACCOUNT_TYPES: AccountType[] = ['asset', 'liability', 'equity', 'income', 'expense'];
-export const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { asset: 'Assets', liability: 'Liabilities', equity: 'Funds', income: 'Income', expense: 'Expenses' };
+export const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { asset: 'Assets', liability: 'Liabilities', equity: 'Funds‖books', income: 'Income', expense: 'Expenses' };
 /** The side an account's balance normally sits on: assets and expenses debit, the rest credit. */
 export const DEBIT_NORMAL: Record<AccountType, boolean> = { asset: true, expense: true, liability: false, equity: false, income: false };
 
@@ -169,8 +169,8 @@ export const CHART_TEMPLATE: TemplateAccount[] = [
   { code: '2000', name: { en: 'Payables and accruals', zh: '应付款项与应计费用' }, type: 'liability' },
   { code: '2100', name: { en: 'Claims to repay', zh: '应付报销款' }, type: 'liability' },
   { code: '2200', name: { en: 'Funds held for others', zh: '代管款项' }, type: 'liability' },
-  { code: '3000', name: { en: 'Accumulated funds', zh: '累积基金' }, type: 'equity', kind: 'fund_balance' },
-  { code: '3100', name: { en: 'Transfers between funds', zh: '基金之间的转拨' }, type: 'equity', kind: 'fund_transfer' },
+  { code: '3000', name: { en: 'Accumulated funds', zh: '累积款项' }, type: 'equity', kind: 'fund_balance' },
+  { code: '3100', name: { en: 'Transfers between funds', zh: '款项之间的转拨' }, type: 'equity', kind: 'fund_transfer' },
   { code: '4000', name: { en: 'Tithes and offerings', zh: '什一与奉献' }, type: 'income' },
   { code: '4010', name: { en: 'Designated gifts', zh: '指定用途奉献' }, type: 'income' },
   { code: '4200', name: { en: 'Event and programme income', zh: '活动与课程收入' }, type: 'income' },
@@ -198,9 +198,9 @@ export interface TemplateFund { code: string; name: L10n; restriction: FundRestr
 /** Starting funds; `offering` matches a fund name in Settings → Offerings, so its offerings land in it. */
 export const FUND_TEMPLATE: TemplateFund[] = [
   { code: 'GEN', name: { en: 'General fund', zh: '常费' }, restriction: 'unrestricted', offering: 'General' },
-  { code: 'MIS', name: { en: 'Missions fund', zh: '宣教基金' }, restriction: 'designated', offering: 'Missions' },
-  { code: 'BLD', name: { en: 'Building fund', zh: '建堂基金' }, restriction: 'restricted', offering: 'Building' },
-  { code: 'BEN', name: { en: 'Benevolence fund', zh: '慈惠基金' }, restriction: 'restricted' },
+  { code: 'MIS', name: { en: 'Missions fund', zh: '宣教款项' }, restriction: 'designated', offering: 'Missions' },
+  { code: 'BLD', name: { en: 'Building fund', zh: '建堂款项' }, restriction: 'restricted', offering: 'Building' },
+  { code: 'BEN', name: { en: 'Benevolence fund', zh: '慈惠款项' }, restriction: 'restricted' },
 ];
 
 /** Offering payment method → the template account its money goes to. */

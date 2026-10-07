@@ -13,8 +13,10 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
   - **Bank:** import the bank's CSV statement (its layout is found and remembered), match the lines, enter bank charges and interest, and see the reconciliation.
   - **Reports:** income and expenditure by fund, balance sheet, fund movements, trial balance, by project / ministry / congregation, and an account's ledger. Each one prints or downloads as CSV. A journal export is there for the church's accountant.
   - **Closing:** close the books up to a date; administrators can reopen.
-- **AI assistants** (Book-keeping off for them by default) can read the books and reports, and **draft** journals. They never post, reverse or change a posted journal: four new tools, `canon_books`, `canon_books_report`, `canon_books_journals` and `canon_draft_journal`.
-- Chinese: "Fund" is now 基金 throughout, including the offering screens, so offerings and the books use the same word.
+  - **History:** every change to a journal is recorded, its lines included (account, fund, amount before → after), before and after posting. An offering journal's history also shows the cash count's changes and any earlier drafts for that service. Bank matches are logged too.
+  - **Elsewhere:** the service record shows whether its offerings are drafted or posted in the books; a dashboard card counts the drafts to post and the bank lines to match; Settings → Export data has the journals, the chart of accounts and the funds as CSV.
+- **AI assistants** (Book-keeping off for them by default) can read the books, the reports and the imported bank statements, and **draft** journals. A draft for a bank line the books lack is matched to it when posted. They never post, reverse or change a posted journal, import a statement or match lines. Five new tools: `canon_books`, `canon_books_report`, `canon_books_journals`, `canon_bank_statements` and `canon_draft_journal`.
+- Chinese: the books call a fund 款项; the offering screens keep 奉献项目. For translators, a key can carry a context after "‖" (e.g. `Fund‖books`), so one English word can be translated two ways.
 - Database: version 32 (the book-keeping tables). Upgrading adds them; nothing else changes.
 
 ## 0.16.1 — Backups to Google Drive

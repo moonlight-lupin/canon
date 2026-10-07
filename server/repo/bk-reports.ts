@@ -78,7 +78,7 @@ export function trialBalance(asOf: string) {
     const net = r.d - r.c;
     return { account_id: id, code: a.code, name: a.name, type: a.type, debit: net > 0 ? net : 0, credit: net < 0 ? -net : 0 };
   }).filter((r) => r.debit || r.credit).sort((a, b) => (a.code < b.code ? -1 : 1));
-  if (priorSurplus) rows.push({ account_id: 0, code: '', name: { en: 'Surplus of earlier years (in the funds)', zh: '往年盈余（已计入基金）' }, type: 'equity', debit: priorSurplus < 0 ? -priorSurplus : 0, credit: priorSurplus > 0 ? priorSurplus : 0 });
+  if (priorSurplus) rows.push({ account_id: 0, code: '', name: { en: 'Surplus of earlier years (in the funds)', zh: '往年盈余（已计入各款项）' }, type: 'equity', debit: priorSurplus < 0 ? -priorSurplus : 0, credit: priorSurplus > 0 ? priorSurplus : 0 });
   const debit = rows.reduce((n, r) => n + r.debit, 0);
   const credit = rows.reduce((n, r) => n + r.credit, 0);
   return { as_of: asOf, year_start: fy, rows, debit, credit, balanced: debit === credit };

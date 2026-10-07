@@ -92,6 +92,11 @@ const ACTION_LABEL: Record<ChangeRow['action'], string> = { create: 'Added', upd
 const show = (v: unknown): string => {
   if (v === null || v === undefined || v === '') return '—';
   if (typeof v === 'boolean') return v ? '✓' : '✗';
+  // offering lines (a service record's offerings): "General · cash 120.00"
+  if (Array.isArray(v) && v.length && v.every((x) => x && typeof x === 'object' && 'amount' in x && 'method' in x)) {
+    return (v as { fund?: string; method: string; amount: number; currency?: string }[])
+      .map((x) => `${x.fund ?? ''} · ${x.method} ${x.currency ? `${x.currency} ` : ''}${(Number(x.amount) / 100).toFixed(2)}`).join('\n');
+  }
   if (typeof v === 'object') {
     const o = v as Record<string, unknown>;
     const vals = Object.values(o);
@@ -153,7 +158,8 @@ function FieldChanges({ fields }: { fields: [string, [unknown, unknown]][] }) {
       {list.map(([k, [a, b]]) => (
         <Fragment key={k}>
           <dt>{k.replace(/_/g, ' ')}</dt>
-          <dd><span className="log-old">{show(a)}</span> → <span className="log-new">{show(b)}</span></dd>
+          {/* several lines (a journal's lines, offerings): one above the other */}
+          <dd className={(show(a) + show(b)).includes('\n') ? 'log-multi' : undefined}><span className="log-old">{show(a)}</span> → <span className="log-new">{show(b)}</span></dd>
         </Fragment>
       ))}
       {fields.length > 6 && !all && <dd><button className="btn sm ghost" onClick={() => setAll(true)}>{t('Show all {n}').replace('{n}', String(fields.length))}</button></dd>}

@@ -14,6 +14,8 @@ import { zip } from '../lib/zip.ts';
 import { h } from './helpers.ts';
 import { uiLang } from './csv.ts';
 import { addSampleData, removeSampleData, sampleDataStatus } from '../repo/sample-data.ts';
+import { accountsCsv, fundsCsv, journalsCsv } from '../repo/bk-export.ts';
+import { toCsv } from '../../shared/reports.ts';
 
 export const exportRoutes = express.Router();
 const SECTIONS: LibrarySection[] = ['songs', 'texts', 'blocks', 'backgrounds', 'bibles'];
@@ -38,7 +40,21 @@ exportRoutes.get('/export', h(() => ({
   // the library, section by section
   hymnals: hymnals.list('', [], 'sort, id').map((hy) => ({ id: hy.id, abbr: hy.abbr, name: hy.name })),
   bibles: all<{ code: string; name: string }>("SELECT code, name FROM bible_translations WHERE source = 'upload' ORDER BY code"),
+  // book-keeping (when switched on): the posted journals, the chart of accounts and the funds
+  bookkeeping: !moduleOff('GET', '/bookkeeping', getSettings().modules),
 })));
+
+/** The books as CSV (Settings → Export data): every posted journal line, the chart of accounts, the funds. */
+const BK_CSV: Record<string, () => (string | number | null | undefined)[][]> = { journals: () => journalsCsv(), accounts: accountsCsv, funds: fundsCsv };
+exportRoutes.get('/export/bookkeeping/:what.csv', (req, res, next) => {
+  try {
+    const make = BK_CSV[String(req.params.what)];
+    if (!make || moduleOff('GET', '/bookkeeping', getSettings().modules)) return void res.status(404).json({ error: 'Not found' });
+    download(res, `bookkeeping-${req.params.what}-${today()}.csv`, 'text/csv; charset=utf-8', toCsv(make()));
+  } catch (e) {
+    next(e);
+  }
+});
 
 exportRoutes.get('/export/library.canonlib', (req, res, next) => {
   try {
@@ -72,6 +88,7 @@ exportRoutes.get('/export/all.zip', (req, res, next) => {
         files.push({ name: `${e.key.replace(/_/g, '-')}.csv`, data: exportCsv(e, makeCtx(lang, {})) });
       }
     }
+    if (!moduleOff('GET', '/bookkeeping', getSettings().modules)) for (const [k, make] of Object.entries(BK_CSV)) files.push({ name: `bookkeeping-${k}.csv`, data: toCsv(make()) });
     files.push({ name: `canon-library-${today()}.canonlib`, data: exportLibrary({ scores: true, blocks: true, bibles: false }) });
     files.push({
       name: 'README.txt',

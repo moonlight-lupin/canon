@@ -29,7 +29,7 @@ export function ChartTab() {
     <div className="stack">
       <div className="row between">
         <Seg<Part> value={part} onChange={(p) => { setPart(p); setOpen(null); }} options={[
-          { value: 'accounts', label: t('Chart of accounts') }, { value: 'funds', label: t('Funds') }, { value: 'projects', label: t('Projects') }, { value: 'ministries', label: t('Ministries') },
+          { value: 'accounts', label: t('Chart of accounts') }, { value: 'funds', label: t('Funds‖books') }, { value: 'projects', label: t('Projects') }, { value: 'ministries', label: t('Ministries') },
         ]} />
         {b.canEdit && <button className="btn primary" onClick={() => setOpen('new')}><Icon name="plus" />{part === 'accounts' ? t('New account') : part === 'funds' ? t('New fund') : part === 'projects' ? t('New project') : t('New ministry')}</button>}
       </div>
@@ -56,7 +56,7 @@ export function ChartTab() {
       {part === 'funds' && (
         <div className="card flush">
           <table className="t">
-            <thead><tr><th>{t('Code')}</th><th>{t('Fund')}</th><th>{t('Restriction')}</th></tr></thead>
+            <thead><tr><th>{t('Code')}</th><th>{t('Fund‖books')}</th><th>{t('Restriction')}</th></tr></thead>
             <tbody>
               {b.funds.map((f) => (
                 <tr key={f.id} className={b.canEdit ? 'click' : ''} onClick={() => b.canEdit && setOpen(f.id)}>

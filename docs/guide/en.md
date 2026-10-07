@@ -432,11 +432,15 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - its accounts and funds must be in use.
 - **A posted journal is never changed.** It gets a number (e.g. 2026-0042). A mistake is corrected with **Reverse…**: a new posted journal with every line the other way round, so the two cancel out. Then enter it again correctly.
 - **Drafts** come from you, from verified offerings, from the bank screen and from AI assistants (marked **AI draft**). Tick several and **Post … selected** posts them together; any with a problem stay drafts.
-- **Export (CSV)** gives every posted line in a period for the church's accountant or other accounting software.
+- **Export (CSV)** gives every posted line in a period for the church's accountant or other accounting software. **Settings → Export data** has the journals, the chart of accounts and the funds as CSV too, and in its zip.
+- **History** on a journal shows every change to it, before and after posting: who changed what, and each line's account, fund and amount before → after.
+  - Drafts can be changed until they are posted, but nothing goes unrecorded.
+  - For an offering journal, the History also shows the cash count's changes (amounts, counts, verifying and reopening) and any earlier drafts for that service that were withdrawn.
 
 **Offerings into the books**
 - When a cash count is **verified** (Service records), Canon drafts its journal. Each payment method goes to its account: cash and cheques to **Offerings not yet banked**, PayNow and transfers to the bank. Each fund's offerings go to its income account.
 - Reopening the count withdraws the draft. A corrected count drafts only the difference from what was already posted.
+- On the service record, under the cash count, **In the books** says whether its journal is a draft waiting to be posted or posted (with its number). Click it to open the journal.
 - **Offerings into the books → Change** sets which account each payment method uses, and which fund and income account each offering fund uses.
 - **Post the offering drafts** posts the week's offering drafts together. **Draft what's missing** drafts offerings verified before the books started.
 - Foreign cash is booked at its **Value once exchanged**. The original amount is kept on the line.
@@ -451,6 +455,8 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - a suggestion (the same amount within a week) matches with one click;
   - **Enter** books what the books don't have yet (a bank charge, interest, a direct debit) against the account and fund you choose, and matches it;
   - **Ignore** sets a line aside.
+  - A line with a draft already made for it (by **Enter → Save draft**, or by an AI assistant) shows **Draft waiting**. Posting that draft matches the line.
+  - Every match, unmatch and ignore is recorded in the change log.
 - The **reconciliation** at the top: the balance in the books, less what isn't on a statement yet, should equal the statement's closing balance. A **Difference** of 0.00 means the books and the bank agree. **Mark reconciled** when they do.
 
 **Reports**: from posted journals only. Each one can be **Print**ed (with the church's name and the period) or downloaded as CSV.
@@ -470,7 +476,11 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
 - **Projects** and **Ministries**: tags for lines.
 - Something already used in a journal can be renamed or retired, not deleted.
 
-**AI assistants** with Book-keeping shared (Settings → AI / MCP, off by default) can read the books and reports, and can **draft** journals, e.g. from a bank statement you paste. They can never post, reverse or change a posted journal. A person reviews every draft and posts it in Canon.
+**AI assistants** with Book-keeping shared (Settings → AI / MCP, off by default) can read the books and reports, and can **draft** journals, e.g. from receipts you paste. They can never post, reverse or change a posted journal. A person reviews every draft and posts it in Canon.
+- They also see the **bank statements** you imported and the lines still to match. Ask "draft the bank charges and interest on the October statement": the drafts wait on those lines (**Draft waiting**) and match them when posted.
+- Importing statements and matching lines stay with you.
+
+**Dashboard**: for those who read the books, a **Book-keeping** card shows the drafts waiting to be posted (how many are offerings) and the bank lines still to match.
 
 ## Settings
 
@@ -520,7 +530,7 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - It sees only the modules you allow, and acts as the person who approved it. A viewer's connection is always read only.
 - Member contact details and birthdays stay hidden unless **Contact details & birthdays** is **Shared** under the Members register (and the Members register is on); visitors' contact details only with **Visitors → With contact details**. A connection approved by a read-only account never gets contact details, whatever the switches say — it sees visitors' names at most.
 - It cannot send e-mail or delete people. It asks before changing things.
-- **Book-keeping** (off by default): Claude reads the books and reports and can **draft** journals for the treasurer to post. With **Read & write** it still only drafts: it can never post, reverse or change a posted journal.
+- **Book-keeping** (off by default): Claude reads the books, the reports and the imported bank statements, and can **draft** journals for the treasurer to post — also for a statement line the books lack. With **Read & write** it still only drafts: it can never post, reverse or change a posted journal, import a statement or match lines.
 - **Administration** (off by default; only for a connection approved by an administrator): **Read only** lets Claude read the security checklist, backups, accounts (never passwords), the change log, who viewed member records and a settings overview — ask "anything I should fix this week?" or "who changed Sunday's order?". **Read & write** adds two actions: back up now, and run the checks (public address, backup folder, e-mail). Accounts, roles and settings are only ever changed in Canon. The change log shows old and new values only when members' contact details are shared.
 - **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export CSV** (every entry matching the filters) and its own **Keep** period.
 

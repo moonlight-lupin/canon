@@ -8,7 +8,7 @@ import { BadRequest, Conflict, NotFound } from '../lib/table.ts';
 import { currentActor } from '../lib/actor.ts';
 import { decodeCsv, parseCsv } from '../lib/csv.ts';
 import { logChange } from './changelog.ts';
-import { accounts, activeAccount, activeFund, postJournal, postingProblems, saveDraft, getJournal } from './bookkeeping.ts';
+import { accounts, activeAccount, activeFund, postJournal, postingProblems, saveDraft } from './bookkeeping.ts';
 import type { BankCsvLayout } from '../../shared/bookkeeping.ts';
 
 export interface StatementLine { id: number; statement_id: number; position: number; date: string; description: string | null; reference: string | null; amount: number; status: 'open' | 'matched' | 'ignored'; line_id: number | null; journal_id: number | null }
@@ -172,9 +172,13 @@ export function getStatement(id: number) {
     `SELECT sl.id AS sl, l.id, l.journal_id, j.number, j.date, l.memo, j.memo AS jmemo, (l.debit - l.credit) AS amount, j.kind FROM bk_statement_lines sl
      JOIN bk_lines l ON l.id = sl.line_id JOIN bk_journals j ON j.id = l.journal_id WHERE sl.statement_id = ?`, id,
   ).map((r) => [r.sl, r]));
+  const drafts = new Set(all<{ id: number }>("SELECT id FROM bk_journals WHERE status = 'draft' AND id IN (SELECT journal_id FROM bk_statement_lines WHERE statement_id = ?)", id).map((r) => r.id));
   return {
     statement: s,
-    lines: lines.map((l) => ({ ...l, matched: matched.get(l.id) ?? null, suggestions: l.status === 'open' ? suggestions(l, pool) : [] })),
+    lines: lines.map((l) => ({
+      ...l, matched: matched.get(l.id) ?? null, suggestions: l.status === 'open' ? suggestions(l, pool) : [],
+      draft_id: l.status === 'open' && l.journal_id && drafts.has(l.journal_id) ? l.journal_id : null,
+    })),
     reconciliation: reconciliation(s.account_id, s.ends_on, s.closing_balance),
   };
 }
@@ -200,16 +204,38 @@ export function matchLine(id: number, bookLineId: number) {
   if (b.amount !== l.amount) throw new BadRequest('The amounts differ.');
   if (get('SELECT 1 FROM bk_statement_lines WHERE line_id = ? AND id != ?', bookLineId, id)) throw new Conflict('That book line is already matched to another statement line.');
   run("UPDATE bk_statement_lines SET status = 'matched', line_id = ? WHERE id = ?", bookLineId, id);
+  const n = get<{ number: string }>('SELECT j.number FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id WHERE l.id = ?', bookLineId)?.number;
+  logLine(l, `matched to ${n}`);
 }
 export function unmatchLine(id: number) {
-  lineOf(id);
+  const l = lineOf(id);
   run("UPDATE bk_statement_lines SET status = 'open', line_id = NULL WHERE id = ?", id);
+  logLine(l, 'unmatched');
 }
 export function ignoreLine(id: number, ignored: boolean) {
   const l = lineOf(id);
   if (l.status === 'matched') throw new Conflict('Unmatch it first.');
   run('UPDATE bk_statement_lines SET status = ? WHERE id = ?', ignored ? 'ignored' : 'open', id);
+  logLine(l, ignored ? 'ignored' : 'no longer ignored');
 }
+/** Matching is part of the audit trail: each match, unmatch and ignore is logged on its statement. */
+const logLine = (l: StatementLine, what: string) =>
+  logChange({ entity: 'bk_statements', entity_id: l.statement_id, action: 'update', summary: `Line ${l.date} ${l.description ?? ''} ${(l.amount / 100).toFixed(2)} ${what}` });
+
+/**
+ * Tie a draft to a statement line (an entry the books lack, drafted on the Bank screen or by an AI assistant): when
+ * the draft is posted, the line is matched to it (repo/bookkeeping.ts).
+ */
+export function linkDraftToLine(lineId: number, journalId: number) {
+  const l = lineOf(lineId);
+  if (l.status !== 'open') throw new Conflict('This statement line is already matched or ignored.');
+  if (l.journal_id && l.journal_id !== journalId && get("SELECT 1 FROM bk_journals WHERE id = ? AND status = 'draft'", l.journal_id)) {
+    throw new Conflict(`This statement line already has a draft (journal ${l.journal_id}): change that draft instead.`);
+  }
+  run('UPDATE bk_statement_lines SET journal_id = ? WHERE id = ?', journalId, lineId);
+  return l;
+}
+export const statementLine = (id: number) => lineOf(id);
 
 /** Match every line that has exactly one suggestion on the same day. */
 export function autoMatch(statementId: number) {
@@ -238,20 +264,18 @@ export function entryFromLine(id: number, input: { account_id: number; fund_id: 
     const amt = Math.abs(l.amount);
     const into = l.amount > 0;
     const tags = { project_id: input.project_id ?? null, ministry_id: input.ministry_id ?? null };
-    const j = saveDraft(null, {
+    const j = saveDraft(l.journal_id && get("SELECT 1 FROM bk_journals WHERE id = ? AND status = 'draft'", l.journal_id) ? l.journal_id : null, {
       date: l.date, kind: 'bank', memo: input.memo?.trim() || l.description || 'Bank', lines: [
         { account_id: l.account_id, fund_id: input.fund_id, ...tags, debit: into ? amt : 0, credit: into ? 0 : amt, memo: l.reference },
         { account_id: input.account_id, fund_id: input.fund_id, ...tags, debit: into ? 0 : amt, credit: into ? amt : 0, memo: l.description },
       ],
-    });
+    }, 'Entered from a bank statement line');
     run('UPDATE bk_statement_lines SET journal_id = ? WHERE id = ?', j.id, id);
     if (input.post) {
       const problems = postingProblems(j);
       if (problems.length) throw new BadRequest(problems.join(' '));
-      const p = postJournal(j.id);
-      const bankLine = get<{ id: number }>('SELECT id FROM bk_lines WHERE journal_id = ? AND account_id = ? ORDER BY position LIMIT 1', p.id, l.account_id)!;
-      matchLine(id, bankLine.id);
-      return getJournal(p.id);
+      // posting matches the line it was drafted for
+      return postJournal(j.id);
     }
     return j;
   });

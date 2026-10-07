@@ -10,6 +10,7 @@ import { bookkeepingRoutes } from './routes/bookkeeping.ts';
 import { equipmentRoutes } from './routes/equipment.ts';
 import { lendingCounts } from './repo/lending.ts';
 import { equipmentCounts } from './repo/equipment.ts';
+import { bookkeepingCounts } from './repo/bk-export.ts';
 import path from 'node:path';
 // REST API for the web app. All business logic lives in ./repo; this file wires HTTP to it.
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -343,6 +344,7 @@ api.get('/dashboard', h((req) => {
     },
     lending: on.lending !== false && allows(role, 'lending', 'read') ? lendingCounts() : null,
     equipment: on.equipment !== false && allows(role, 'equipment', 'read') ? equipmentCounts() : null,
+    bookkeeping: on.bookkeeping === true && allows(role, 'bookkeeping', 'read') ? bookkeepingCounts() : null,
   };
 }));
 

@@ -92,7 +92,7 @@ export function FundSelect({ value, onChange, empty, disabled }: { value: number
   const { t, lt } = useI18n();
   const { funds } = useBooks();
   return (
-    <select value={value ?? ''} onChange={(e) => onChange(Number(e.target.value) || null)} disabled={disabled} aria-label={t('Fund')}>
+    <select value={value ?? ''} onChange={(e) => onChange(Number(e.target.value) || null)} disabled={disabled} aria-label={t('Fund‖books')}>
       <option value="">{empty ?? t('Choose a fund…')}</option>
       {funds.filter((f) => f.active || f.id === value).map((f) => <option key={f.id} value={f.id}>{f.code} {lt(f.name)}</option>)}
     </select>

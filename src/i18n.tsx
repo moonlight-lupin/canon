@@ -51,8 +51,16 @@ export async function loadLocale(lang: Lang): Promise<void> {
   }
 }
 
-/** Translate a UI string into a specific language (also used for printed labels in another language). */
-export const tr = (s: string, lang: Lang) => DICTS[lang]?.[s] ?? (UI_FALLBACK[lang] ? DICTS[UI_FALLBACK[lang]]?.[s] : undefined) ?? s;
+/**
+ * Translate a UI string into a specific language (also used for printed labels in another language). A key may carry
+ * a context after "‖" — "Fund‖books" is "Fund" in book-keeping — so a language can word it apart from the same English
+ * elsewhere (in Chinese: 款项 in the books, 奉献项目 on the offering screens); English shows the part before "‖".
+ */
+export const tr = (s: string, lang: Lang) => DICTS[lang]?.[s] ?? (UI_FALLBACK[lang] ? DICTS[UI_FALLBACK[lang]]?.[s] : undefined) ?? bare(s);
+const bare = (s: string) => {
+  const i = s.indexOf('‖');
+  return i < 0 ? s : s.slice(0, i);
+};
 
 /** Make sure these languages' translations are loaded (e.g. a run sheet's label languages); re-renders when they are. */
 export function useLocales(langs: Lang[]) {

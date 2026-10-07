@@ -5,7 +5,7 @@
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, Conflict, NotFound, Forbidden } from '../lib/table.ts';
 import { currentActor } from '../lib/actor.ts';
-import { logChange } from './changelog.ts';
+import { ENTITY_LABEL, logChange } from './changelog.ts';
 import { getSettings, updateSettings } from './settings.ts';
 import {
   CHART_TEMPLATE, FUND_TEMPLATE, METHOD_TEMPLATE, financialYear, totals,
@@ -27,7 +27,33 @@ const journals = table<Omit<BkJournal, 'lines'>>({
   name: 'bk_journals',
   cols: ['number', 'date', 'memo', 'status', 'kind', 'service_id', 'reverses_id', 'reversed_by_id', 'created_via', 'created_by', 'posted_by', 'posted_at'],
   touch: true, revision: true,
+  // logged here with their lines (logJournal), so a draft's history shows every amount changed before it was posted
+  log: false,
 });
+
+/** A journal as the change log keeps it: its heading and its lines written out ("5500 GEN Dr 1500.00 · note"). */
+function journalSnapshot(j: BkJournal) {
+  const acc = new Map(all<{ id: number; code: string }>('SELECT id, code FROM bk_accounts').map((a) => [a.id, a.code]));
+  const fnd = new Map(all<{ id: number; code: string }>('SELECT id, code FROM bk_funds').map((f) => [f.id, f.code]));
+  const prj = new Map(all<{ id: number; code: string }>('SELECT id, code FROM bk_projects').map((f) => [f.id, f.code]));
+  const min = new Map(all<{ id: number; code: string }>('SELECT id, code FROM bk_ministries').map((f) => [f.id, f.code]));
+  const lines = j.lines.map((l) => [
+    acc.get(l.account_id) ?? `#${l.account_id}`, fnd.get(l.fund_id) ?? `#${l.fund_id}`,
+    l.debit ? `Dr ${(l.debit / 100).toFixed(2)}` : `Cr ${(l.credit / 100).toFixed(2)}`,
+    l.project_id ? `project ${prj.get(l.project_id) ?? l.project_id}` : '', l.ministry_id ? `ministry ${min.get(l.ministry_id) ?? l.ministry_id}` : '',
+    l.orig_currency ? `${l.orig_currency} ${((l.orig_amount ?? 0) / 100).toFixed(2)}` : '', l.memo ? `· ${l.memo}` : '',
+  ].filter(Boolean).join(' ')).join('\n');
+  return { number: j.number, date: j.date, memo: j.memo, status: j.status, kind: j.kind, posted_by: j.posted_by, reversed_by_id: j.reversed_by_id, lines };
+}
+function logJournal(action: 'create' | 'update' | 'delete', before: BkJournal | null, after: BkJournal | null, summary?: string) {
+  const j = (after ?? before)!;
+  logChange({
+    entity: 'bk_journals', entity_id: j.id, action, summary,
+    before: before ? journalSnapshot(before) : null, after: after ? journalSnapshot(after) : null,
+    // an offering journal belongs with its service, so the history shows the drafts before it and the count behind it
+    parent: j.service_id ? { entity: 'services', id: j.service_id } : null,
+  });
+}
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const who = () => currentActor()?.user_name ?? 'Canon';
@@ -216,8 +242,8 @@ function writeLines(journalId: number, lines: BkLine[]) {
   lines.forEach((l, i) => run(ins, journalId, i, l.account_id, l.fund_id, l.project_id ?? null, l.ministry_id ?? null, l.congregation_id ?? null, l.debit, l.credit, l.memo ?? null, l.orig_currency ?? null, l.orig_amount ?? null, l.rate ?? null));
 }
 
-/** Save a draft (new, or an existing draft). Drafts may be incomplete; posting checks everything. */
-export function saveDraft(id: number | null, input: JournalInput): BkJournal {
+/** Save a draft (new, or an existing draft). Drafts may be incomplete; posting checks everything. `note` explains it in the log. */
+export function saveDraft(id: number | null, input: JournalInput, note?: string): BkJournal {
   if (!DATE.test(input.date ?? '')) throw new BadRequest('Choose the journal’s date.');
   const lines = cleanLines(input.lines);
   for (const l of lines) {
@@ -226,6 +252,7 @@ export function saveDraft(id: number | null, input: JournalInput): BkJournal {
   }
   return tx(() => {
     let jid = id;
+    const before = jid ? getJournal(jid) : null;
     if (jid) {
       const cur = journals.get(jid);
       if (cur.status === 'posted') throw new Conflict('A posted journal can’t be changed: reverse it instead.');
@@ -237,14 +264,19 @@ export function saveDraft(id: number | null, input: JournalInput): BkJournal {
       }).id;
     }
     writeLines(jid, lines);
-    return getJournal(jid);
+    const after = getJournal(jid);
+    logJournal(before ? 'update' : 'create', before, after, note);
+    return after;
   });
 }
 
-export function deleteDraft(id: number) {
-  const j = journals.get(id);
+export function deleteDraft(id: number, note?: string) {
+  const j = getJournal(id);
   if (j.status === 'posted') throw new Conflict('A posted journal can’t be deleted: reverse it instead.');
-  journals.remove(id);
+  tx(() => {
+    journals.remove(id);
+    logJournal('delete', j, null, note);
+  });
 }
 
 /** What stops a journal from being posted (empty = it can be). */
@@ -287,8 +319,28 @@ export function postJournal(id: number): BkJournal {
     const problems = postingProblems(j);
     if (problems.length) throw new BadRequest(problems.join(' '));
     journals.update(id, { status: 'posted', number: nextNumber(j.date), posted_by: who(), posted_at: new Date().toISOString() });
-    return getJournal(id);
+    const posted = getJournal(id);
+    logJournal('update', j, posted, `Posted as ${posted.number}`);
+    matchDraftedLines(posted);
+    return posted;
   });
+}
+
+/**
+ * A draft made for a bank statement line (on the Bank screen, or by an AI assistant) matches that line once posted:
+ * the journal's line on the statement's account for the same amount.
+ */
+function matchDraftedLines(j: BkJournal) {
+  const open = all<{ id: number; statement_id: number; account_id: number; amount: number; date: string; description: string | null }>(
+    "SELECT sl.id, sl.statement_id, s.account_id, sl.amount, sl.date, sl.description FROM bk_statement_lines sl JOIN bk_statements s ON s.id = sl.statement_id WHERE sl.journal_id = ? AND sl.status = 'open'", j.id,
+  );
+  for (const sl of open) {
+    const book = all<{ id: number; account_id: number; debit: number; credit: number }>('SELECT id, account_id, debit, credit FROM bk_lines WHERE journal_id = ? ORDER BY position', j.id)
+      .find((l) => l.account_id === sl.account_id && l.debit - l.credit === sl.amount && !get('SELECT 1 FROM bk_statement_lines WHERE line_id = ?', l.id));
+    if (!book) continue;
+    run("UPDATE bk_statement_lines SET status = 'matched', line_id = ? WHERE id = ?", book.id, sl.id);
+    logChange({ entity: 'bk_statements', entity_id: sl.statement_id, action: 'update', summary: `Line ${sl.date} ${sl.description ?? ''} ${(sl.amount / 100).toFixed(2)} matched to ${j.number}` });
+  }
 }
 
 /** Reverse a posted journal: a new posted journal with debits and credits swapped, on `date` (default today). */
@@ -310,7 +362,10 @@ export function reverseJournal(id: number, date?: string, memo?: string): BkJour
     writeLines(r.id, lines);
     journals.update(r.id, { status: 'posted', number: nextNumber(on), posted_by: who(), posted_at: new Date().toISOString() });
     journals.update(id, { reversed_by_id: r.id });
-    return getJournal(r.id);
+    const rev = getJournal(r.id);
+    logJournal('create', null, rev, `Reverses ${j.number}`);
+    logJournal('update', j, getJournal(id), `Reversed by ${rev.number}`);
+    return rev;
   });
 }
 
@@ -339,6 +394,35 @@ export function reopenThrough(date: string | null, isAdmin: boolean) {
 }
 
 /** The opening-balances journal (kind 'opening'), if there is one. */
+/** Money fields of a service record shown in a journal's history (not visitors' details or notes). */
+const COUNT_FIELDS = new Set(['offerings', 'cash', 'foreign_cash', 'currency', 'counters', 'verified_at', 'verified_by', 'signatures', 'counted_on']);
+
+/**
+ * A journal's history from the change log, newest first: every change to it (lines included) and, for an offering
+ * journal, its service's earlier drafts and the cash count's changes (money fields only). Shown to anyone who can
+ * read the books.
+ */
+export function journalHistory(id: number) {
+  const j = journals.get(id);
+  const rec = j.service_id ? get<{ id: number }>('SELECT id FROM service_records WHERE service_id = ?', j.service_id)?.id ?? null : null;
+  const rows = all<{ id: number; at: string; user_name: string | null; via: string; client: string | null; entity: string; entity_id: number | null; action: string; name: string; summary: string | null; changes: string }>(
+    `SELECT id, at, user_name, via, client, entity, entity_id, action, name, summary, changes FROM change_log
+     WHERE (entity = 'bk_journals' AND entity_id IN (?, ?, ?))
+        OR (? IS NOT NULL AND entity = 'bk_journals' AND parent_entity = 'services' AND parent_id = ?)
+        OR (? IS NOT NULL AND entity = 'service_records' AND entity_id = ?)
+     ORDER BY id DESC LIMIT 300`,
+    id, j.reverses_id ?? -1, j.reversed_by_id ?? -1, j.service_id, j.service_id, rec, rec,
+  );
+  return {
+    rows: rows.map((r) => {
+      const changes = JSON.parse(r.changes || '{}') as Record<string, [unknown, unknown]>;
+      if (r.entity === 'service_records') for (const k of Object.keys(changes)) if (!COUNT_FIELDS.has(k)) delete changes[k];
+      return { ...r, changes, this_journal: r.entity === 'bk_journals' && r.entity_id === id };
+    }).filter((r) => r.entity !== 'service_records' || Object.keys(r.changes).length || r.summary),
+    entities: { bk_journals: ENTITY_LABEL.bk_journals, service_records: ENTITY_LABEL.service_records },
+  };
+}
+
 export const openingJournal = () => {
   const r = get<{ id: number }>("SELECT id FROM bk_journals WHERE kind = 'opening' AND reversed_by_id IS NULL ORDER BY status = 'posted' DESC, id LIMIT 1");
   return r ? getJournal(r.id) : null;

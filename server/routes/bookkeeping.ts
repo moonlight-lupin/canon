@@ -6,6 +6,7 @@ import { all, get } from '../db.ts';
 import * as B from '../repo/bookkeeping.ts';
 import * as R from '../repo/bk-reports.ts';
 import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
+import { journalsCsv } from '../repo/bk-export.ts';
 import * as Bank from '../repo/bk-bank.ts';
 import { getSettings } from '../repo/settings.ts';
 import { isAdmin } from '../lib/permissions.ts';
@@ -119,6 +120,8 @@ bookkeepingRoutes.get('/bookkeeping/journals/:id', h((req) => {
   const j = B.getJournal(id(req));
   return { ...j, problems: j.status === 'draft' ? B.postingProblems(j) : [] };
 }));
+/** A journal's history: every change to it (lines included), and for offerings the cash count behind it. */
+bookkeepingRoutes.get('/bookkeeping/journals/:id/history', h((req) => B.journalHistory(id(req))));
 bookkeepingRoutes.post('/bookkeeping/journals', h((req) => B.saveDraft(null, JournalInput.parse(req.body))));
 bookkeepingRoutes.put('/bookkeeping/journals/:id', h((req) => B.saveDraft(id(req), JournalInput.parse(req.body))));
 bookkeepingRoutes.delete('/bookkeeping/journals/:id', h((req) => {
@@ -151,6 +154,13 @@ bookkeepingRoutes.post('/bookkeeping/offerings/sync', h((req) => {
   const b = z.object({ from: date, to: date }).parse(req.body);
   return syncOfferingsBetween(b.from, b.to);
 }));
+/** A service's offerings in the books (for its record page): the draft waiting, and what is posted. */
+bookkeepingRoutes.get('/bookkeeping/offerings/:id', h((req) => ({
+  started: !!B.bkSettings().start_date,
+  journals: all<{ id: number; number: string | null; status: string; kind: string; date: string }>(
+    "SELECT id, number, status, kind, date FROM bk_journals WHERE service_id = ? AND kind IN ('offering', 'reversal') ORDER BY id", id(req),
+  ),
+})));
 bookkeepingRoutes.post('/bookkeeping/close', h((req) => B.closeThrough(z.object({ date }).parse(req.body).date)));
 bookkeepingRoutes.post('/bookkeeping/reopen', h((req) => B.reopenThrough(z.object({ date: date.nullable() }).parse(req.body).date, isAdmin(req.user!))));
 
@@ -193,26 +203,7 @@ bookkeepingRoutes.get('/bookkeeping/reports/ledger/:id', h((req) => {
  */
 bookkeepingRoutes.get('/bookkeeping/export/journals.csv', h((req, res) => {
   const p = period(req.query);
-  const rows = all<Record<string, string | number | null>>(
-    `SELECT j.number, j.date, j.memo AS journal_memo, j.kind, a.code AS account_code, a.name AS account_name, f.code AS fund, pr.code AS project, mi.code AS ministry,
-       c.code AS congregation, l.debit, l.credit, l.memo, l.orig_currency, l.orig_amount
-     FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id JOIN bk_accounts a ON a.id = l.account_id JOIN bk_funds f ON f.id = l.fund_id
-     LEFT JOIN bk_projects pr ON pr.id = l.project_id LEFT JOIN bk_ministries mi ON mi.id = l.ministry_id LEFT JOIN congregations c ON c.id = l.congregation_id
-     WHERE j.status = 'posted' AND j.date >= ? AND j.date <= ? ORDER BY j.date, j.number, l.position`, p.from, p.to,
-  );
-  const money = (n: number | null) => (n ? (Number(n) / 100).toFixed(2) : '');
-  const name = (v: unknown) => {
-    try {
-      const o = JSON.parse(String(v)) as Record<string, string>;
-      return o.en ?? Object.values(o)[0] ?? '';
-    } catch {
-      return String(v ?? '');
-    }
-  };
-  sendCsv(res, `journals-${p.from}-to-${p.to}.csv`, [
-    ['Journal', 'Date', 'Narration', 'Kind', 'Account code', 'Account', 'Fund', 'Project', 'Ministry', 'Congregation', 'Debit', 'Credit', 'Line note', 'Original currency', 'Original amount'],
-    ...rows.map((r) => [r.number, r.date, r.journal_memo, r.kind, r.account_code, name(r.account_name), r.fund, r.project, r.ministry, r.congregation, money(r.debit as number), money(r.credit as number), r.memo, r.orig_currency, r.orig_amount != null ? (Number(r.orig_amount) / 100).toFixed(2) : '']),
-  ]);
+  sendCsv(res, `journals-${p.from}-to-${p.to}.csv`, journalsCsv(p.from, p.to));
 }));
 
 // ---------------------------------------------------------------- bank statements

@@ -17,6 +17,8 @@ interface BookLine { id: number; journal_id: number; number: string; date: strin
 interface SLine {
   id: number; date: string; description: string | null; reference: string | null; amount: number; status: 'open' | 'matched' | 'ignored';
   line_id: number | null; journal_id: number | null; matched: BookLine | null; suggestions: BookLine[];
+  /** a draft made for this line (on this screen or by an AI assistant): posting it matches the line */
+  draft_id: number | null;
 }
 interface Statement {
   statement: StatementRow;
@@ -265,7 +267,9 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
                             <Icon name="link" />{x.number} · {fmtDate(x.date, lang, { day: 'numeric', month: 'short' })}
                           </button>
                         ))}
-                        <button className="btn small" onClick={() => setEntry(l)}><Icon name="plus" />{t('Enter')}</button>
+                        {l.draft_id
+                          ? <button className="btn small" onClick={() => b.go('journals', { open: String(l.draft_id) })}><Icon name="edit" />{t('Draft waiting')}</button>
+                          : <button className="btn small" onClick={() => setEntry(l)}><Icon name="plus" />{t('Enter')}</button>}
                         <button className="btn ghost small" disabled={busy} onClick={() => act(() => api.post(`/bookkeeping/bank/lines/${l.id}/ignore`, { ignored: true }))}>{t('Ignore')}</button>
                       </div>
                     )}
@@ -321,7 +325,7 @@ function EntryDialog({ line, bankId, onClose, onDone }: { line: SLine; bankId: n
         <Field label={line.amount < 0 ? t('What it was for') : t('Where it came from')}>
           <AccountSelect value={account} onChange={setAccount} exclude={bankId} types={line.amount < 0 ? ['expense', 'asset', 'liability'] : ['income', 'asset', 'liability']} />
         </Field>
-        <Field label={t('Fund')}><FundSelect value={fund} onChange={setFund} /></Field>
+        <Field label={t('Fund‖books')}><FundSelect value={fund} onChange={setFund} /></Field>
         {(b.projects.length > 0 || b.ministries.length > 0) && (
           <div className="grid cols-2">
             {b.projects.length > 0 && <Field label={t('Project')}><TagSelect kind="projects" value={project} onChange={setProject} /></Field>}

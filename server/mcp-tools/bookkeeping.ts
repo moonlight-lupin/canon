@@ -1,11 +1,14 @@
 // AI-assistant tools for book-keeping (0.17.0, module "bookkeeping"). Reading: the chart of accounts and funds with
-// balances, journals, and the reports. Writing is DRAFT journals only (e.g. from a bank statement or receipts the
-// user pasted): a person reviews and posts them in Canon. Agents never post, reverse or change a posted journal
+// balances, journals, the reports, and imported bank statements with the lines still to match. Writing is DRAFT
+// journals only (e.g. for a statement line the books lack, or receipts the user pasted): a person reviews and posts
+// them in Canon; a draft made for a statement line is matched to it when posted. Importing statements and matching
+// stay with people. Agents never post, reverse or change a posted journal
 // (repo/bookkeeping.ts refuses it for MCP whatever the tool). Amounts are in cents (minor units).
 import { z } from 'zod';
 import { all, get } from '../db.ts';
 import * as B from '../repo/bookkeeping.ts';
 import * as R from '../repo/bk-reports.ts';
+import * as Bank from '../repo/bk-bank.ts';
 import { getSettings } from '../repo/settings.ts';
 import { DateStr, Id, RO, WRITE, today, type ToolDef } from './common.ts';
 
@@ -100,10 +103,39 @@ export const BOOKKEEPING_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'canon_bank_statements', module: 'bookkeeping', access: 'read', title: 'Bank statements and lines to match', annotations: RO,
+    description: 'Bank statements imported in Canon (Book-keeping → Bank). Without id: the statements (bank account code, period, lines, how many are still to match, reconciled or not, closing balance). With id: its lines (cents; money out negative) — status open | matched | ignored, the journal a matched line is matched to, a draft already waiting for an open line (draft_journal_id), and suggestions (posted entries for the same amount within a week) — and the reconciliation (book balance, not yet on a statement, what the bank should show, the statement balance, the difference). For an open line the books lack (a bank charge, interest, a direct debit), draft its journal with canon_draft_journal and statement_line: posting it matches the line. Matching and importing are done by a person in Canon. Example: {"id":3}.',
+    input: { id: Id.optional(), account: z.string().max(20).optional(), open_only: z.boolean().default(true) },
+    handler: (a) => {
+      if (!a.id) {
+        const accountId = codeOf('bk_accounts', a.account, 'account') ?? undefined;
+        return { amounts_in: 'cents', statements: (Bank.listStatements(accountId) as Record<string, unknown>[]).map((x) => ({
+          id: x.id, account: x.account_code, starts_on: x.starts_on, ends_on: x.ends_on, lines: x.lines, to_match: x.open,
+          reconciled: !!x.done_at, closing_balance_cents: x.closing_balance,
+        })) };
+      }
+      const st = Bank.getStatement(a.id);
+      const code = new Map(all<{ id: number; code: string }>('SELECT id, code FROM bk_accounts').map((x) => [x.id, x.code]));
+      return {
+        amounts_in: 'cents',
+        statement: { id: st.statement.id, account: code.get(st.statement.account_id), starts_on: st.statement.starts_on, ends_on: st.statement.ends_on, reconciled: !!st.statement.done_at },
+        lines: st.lines.filter((l) => !a.open_only || l.status === 'open').map((l) => ({
+          id: l.id, date: l.date, description: l.description, reference: l.reference ?? undefined, amount_cents: l.amount, status: l.status,
+          matched_to: l.matched?.number ?? undefined, draft_journal_id: l.draft_id ?? undefined,
+          suggestions: l.suggestions.length ? l.suggestions.map((x) => ({ journal: x.number, date: x.date, memo: x.memo ?? x.jmemo })) : undefined,
+        })),
+        reconciliation: {
+          book_balance_cents: st.reconciliation.book_balance, not_yet_on_a_statement_cents: st.reconciliation.uncleared_total,
+          bank_should_show_cents: st.reconciliation.expected_bank_balance, statement_balance_cents: st.reconciliation.statement_balance, difference_cents: st.reconciliation.difference,
+        },
+      };
+    },
+  },
+  {
     name: 'canon_draft_journal', module: 'bookkeeping', access: 'write', title: 'Draft a journal (a person posts it)', annotations: { ...WRITE, idempotentHint: false },
-    description: 'Prepare a DRAFT journal for the treasurer to review and post in Canon — e.g. from a bank statement, receipts or a payroll summary the user gave you. You can never post one, nor change a posted journal. Each line: account code, fund code (every line needs a fund), optional project / ministry codes, debit_cents OR credit_cents (whole cents, one per line), memo. Debits must equal credits for it to be postable; the reply lists anything still stopping it. With id: replace an existing DRAFT’s date, memo and lines. Check canon_books for the codes first, and confirm with the user before drafting. Example: {"date":"2026-10-01","memo":"October rent","lines":[{"account":"5500","fund":"GEN","debit_cents":150000},{"account":"1100","fund":"GEN","credit_cents":150000}]}.',
+    description: 'Prepare a DRAFT journal for the treasurer to review and post in Canon — e.g. from a bank statement, receipts or a payroll summary the user gave you. You can never post one, nor change a posted journal. Each line: account code, fund code (every line needs a fund), optional project / ministry codes, debit_cents OR credit_cents (whole cents, one per line), memo. Debits must equal credits for it to be postable; the reply lists anything still stopping it. With id: replace an existing DRAFT’s date, memo and lines. With statement_line (from canon_bank_statements): the draft is for that bank statement line — include a line on the statement’s bank account for its amount (money in = debit, money out = credit); when the treasurer posts it, the statement line is matched to it. Check canon_books for the codes first, and confirm with the user before drafting. Example: {"date":"2026-10-01","memo":"October rent","lines":[{"account":"5500","fund":"GEN","debit_cents":150000},{"account":"1100","fund":"GEN","credit_cents":150000}]}.',
     input: {
-      id: Id.optional(), date: DateStr, memo: z.string().max(1000).optional(),
+      id: Id.optional(), date: DateStr, memo: z.string().max(1000).optional(), statement_line: Id.optional(),
       lines: z.array(z.object({
         account: z.string().max(20), fund: z.string().max(20), project: z.string().max(20).optional(), ministry: z.string().max(20).optional(),
         debit_cents: z.number().int().min(0).optional(), credit_cents: z.number().int().min(0).optional(), memo: z.string().max(500).optional(),
@@ -119,8 +151,18 @@ export const BOOKKEEPING_TOOLS: ToolDef[] = [
           debit: l.debit_cents ?? 0, credit: l.credit_cents ?? 0, memo: l.memo ?? null,
         };
       });
-      const j = B.saveDraft(a.id ?? null, { date: a.date, memo: a.memo ?? null, lines });
-      return { amounts_in: 'cents', ...journalOut(j), problems: B.postingProblems(j), note: 'A draft: the treasurer reviews and posts it in Canon (Book-keeping → Journals).' };
+      if (a.id && B.getJournal(a.id).status !== 'draft') throw new InputError('That journal is posted: it can’t be changed (the treasurer can reverse it in Canon).');
+      const sl = a.statement_line ? Bank.statementLine(a.statement_line) : null;
+      if (sl && sl.status !== 'open') throw new InputError('That statement line is already matched or ignored.');
+      const j = B.saveDraft(a.id ?? null, { date: a.date, memo: a.memo ?? null, lines, ...(sl ? { kind: 'bank' as const } : {}) }, sl ? 'Drafted by an AI assistant for a bank statement line' : undefined);
+      let statement: Record<string, unknown> | undefined;
+      if (sl) {
+        Bank.linkDraftToLine(sl.id, j.id);
+        const bank = get<{ account_id: number }>('SELECT account_id FROM bk_statements WHERE id = ?', sl.statement_id)!.account_id;
+        const fits = j.lines.some((l) => l.account_id === bank && l.debit - l.credit === sl.amount);
+        statement = { line: sl.id, matches_when_posted: fits, ...(fits ? {} : { warning: `No line on the bank account for ${(sl.amount / 100).toFixed(2)} (money in = debit, money out = credit): it won’t be matched when posted.` }) };
+      }
+      return { amounts_in: 'cents', ...journalOut(j), problems: B.postingProblems(j), statement_line: statement, note: 'A draft: the treasurer reviews and posts it in Canon (Book-keeping → Journals).' };
     },
   },
 ];

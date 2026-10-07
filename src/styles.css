@@ -465,6 +465,7 @@ table.t tr.click:hover td { background: var(--sunk); }
 .log-fields dd { margin: 0; overflow-wrap: anywhere; }
 .log-old { color: var(--ink-3); text-decoration: line-through; }
 .log-new { color: var(--ink); }
+.log-fields dd.log-multi .log-old, .log-fields dd.log-multi .log-new { display: block; white-space: pre-line; font-variant-numeric: tabular-nums; }
 
 /* congregations (components/Congregations.tsx) */
 .cong-badge { background: transparent; border: 1px solid; font-weight: 600; font-size: 11px; padding: 1px 6px; vertical-align: 1px; }

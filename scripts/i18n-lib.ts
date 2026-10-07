@@ -218,7 +218,8 @@ export function plan(): Plan {
   const used = codeStrings();
   for (const d of dicts.values()) for (const k of Object.keys(d)) if (used.has(k)) all.add(k);
   const catalogue = [...all].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  files.set(path.join(LOCALES, 'en/ui.json'), json(Object.fromEntries(catalogue.map((k) => [k, k]))));
+  // a key with a context ("Fund‖books") reads as its English ("Fund"); the context tells translators where it is used
+  files.set(path.join(LOCALES, 'en/ui.json'), json(Object.fromEntries(catalogue.map((k) => [k, k.split('‖')[0]]))));
 
   // which languages have an interface, how complete, and their fallbacks
   const coverage: Record<string, number> = {};

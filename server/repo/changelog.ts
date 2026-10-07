@@ -47,7 +47,7 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   equipment_maintenance: { en: 'Maintenance', zh: '维修保养' },
   equipment_files: { en: 'Asset photo or receipt', zh: '资产照片或收据' },
   bk_accounts: { en: 'Account', zh: '会计科目' },
-  bk_funds: { en: 'Fund', zh: '基金' },
+  bk_funds: { en: 'Fund', zh: '款项' },
   bk_projects: { en: 'Project', zh: '项目' },
   bk_ministries: { en: 'Ministry', zh: '事工' },
   bk_journals: { en: 'Journal', zh: '分录' },
@@ -94,6 +94,7 @@ export function recordName(row: Row | null | undefined, id?: number | null): str
  */
 const FULL: Record<string, Set<string>> = {
   service_records: new Set(['offerings', 'cash', 'foreign_cash', 'currency', 'counters', 'verified_at', 'verified_by', 'signatures']),
+  bk_journals: new Set(['lines', 'memo']),
 };
 const fullValue = (k: string, v: unknown): unknown => {
   if (k !== 'signatures') return v ?? null;

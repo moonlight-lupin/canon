@@ -188,7 +188,7 @@ function BalanceSheet({ asOf, file }: { asOf: string; file: string }) {
           {d.liabilities.rows.map((x) => <tr key={x.account_id}><td>{x.code} {lt(x.name)}</td><td className="bk-num">{fmtSigned(x.amount)}</td></tr>)}
           <tr className="bk-subtotal"><td>{t('Total liabilities')}</td><td className="bk-num">{fmtSigned(d.liabilities.total)}</td></tr>
           <tr className="bk-total"><td>{t('Net assets')}</td><td className="bk-num">{fmtSigned(d.net_assets)}</td></tr>
-          <tr className="bk-section"><td colSpan={2}>{t('Funds')}</td></tr>
+          <tr className="bk-section"><td colSpan={2}>{t('Funds‖books')}</td></tr>
           {d.funds.map((x) => <tr key={x.fund_id}><td>{lt(x.name)} <span className="small muted">{t(FUND_RESTRICTION_LABEL[x.restriction])}</span></td><td className="bk-num">{fmtSigned(x.amount)}</td></tr>)}
           <tr className="bk-total"><td>{t('Total funds')} {d.balanced ? <span className="badge ok">{t('Balanced')}</span> : <span className="badge danger">{t('Not balanced')}</span>}</td><td className="bk-num">{fmtSigned(d.funds_total)}</td></tr>
         </tbody>
@@ -217,7 +217,7 @@ function FundMovements({ q, file }: { q: string; file: string }) {
   return (
     <div className="card flush table-wrap">
       <table className="t bk-report">
-        <thead><tr><th>{t('Fund')}</th><th className="bk-num">{t('Opening')}</th><th className="bk-num">{t('Income')}</th><th className="bk-num">{t('Expenditure')}</th><th className="bk-num">{t('Transfers')}</th>{showOther && <th className="bk-num">{t('Other')}</th>}<th className="bk-num">{t('Closing')}</th></tr></thead>
+        <thead><tr><th>{t('Fund‖books')}</th><th className="bk-num">{t('Opening')}</th><th className="bk-num">{t('Income')}</th><th className="bk-num">{t('Expenditure')}</th><th className="bk-num">{t('Transfers')}</th>{showOther && <th className="bk-num">{t('Other')}</th>}<th className="bk-num">{t('Closing')}</th></tr></thead>
         <tbody>
           {d.rows.map((x) => (
             <tr key={x.fund_id}>
@@ -271,7 +271,7 @@ function LedgerView({ id, q, file }: { id: number; q: string; file: string }) {
     <div className="card flush table-wrap">
       <h3 className="bk-card-title">{d.account.code} {lt(d.account.name)}</h3>
       <table className="t bk-report">
-        <thead><tr><th>{t('Date')}</th><th>{t('Journal')}</th><th>{t('Narration')}</th><th>{t('Fund')}</th><th className="bk-num">{t('Debit')}</th><th className="bk-num">{t('Credit')}</th><th className="bk-num">{t('Balance')}</th></tr></thead>
+        <thead><tr><th>{t('Date')}</th><th>{t('Journal')}</th><th>{t('Narration')}</th><th>{t('Fund‖books')}</th><th className="bk-num">{t('Debit')}</th><th className="bk-num">{t('Credit')}</th><th className="bk-num">{t('Balance')}</th></tr></thead>
         <tbody>
           <tr className="bk-subtotal"><td colSpan={6}>{t('Brought forward')}</td><td className="bk-num">{fmtSigned(d.opening)}</td></tr>
           {d.lines.map((l, i) => (

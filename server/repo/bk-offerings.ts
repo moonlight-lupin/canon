@@ -89,7 +89,7 @@ export function syncOfferingDraft(serviceId: number): { journal: BkJournal | nul
   const s = bkSettings();
   // reopened, or before the books start: no draft (what is posted stays: a treasurer reverses it if needed)
   if (!r.saved || !r.verified_at || !s.start_date || svc.date < s.start_date) {
-    if (draft) deleteDraft(draft.id);
+    if (draft) deleteDraft(draft.id, 'Withdrawn: the cash count was reopened');
     return { journal: null, notes: [] };
   }
   const { lines, notes } = targetLines(r, svc.congregation_id ?? null);
@@ -109,13 +109,13 @@ export function syncOfferingDraft(serviceId: number): { journal: BkJournal | nul
     });
   }
   if (!diff.length) {
-    if (draft) deleteDraft(draft.id);
+    if (draft) deleteDraft(draft.id, 'Withdrawn: what is posted already matches the cash count');
     return { journal: null, notes };
   }
   const title = (svc.title as Record<string, string>)?.en || Object.values(svc.title ?? {})[0] || 'Service';
   const changed = have.size > 0;
   const memo = `${changed ? 'Change to offerings' : 'Offerings'}: ${title}, ${svc.date}${notes.length ? ` — ${notes.join(' ')}` : ''}`;
-  const j = saveDraft(draft?.id ?? null, { date: svc.date, memo, kind: 'offering', service_id: serviceId, lines: diff });
+  const j = saveDraft(draft?.id ?? null, { date: svc.date, memo, kind: 'offering', service_id: serviceId, lines: diff }, draft ? 'Redrafted from the verified cash count' : 'Drafted from the verified cash count');
   return { journal: j, notes };
 }
 

@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n.tsx';
 import { Empty, ErrorBox, Field, Loading, Modal, SearchBox, confirmAction, fmtDate, today, useAction, useDebounced } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { useCongregations } from '../../components/Congregations.tsx';
+import { ChangeList, type ChangeRow } from '../../components/LogTools.tsx';
 import { JOURNAL_KIND_LABEL, totals, type BkJournal, type BkLine, type JournalKind } from '../../../shared/bookkeeping.ts';
 import { AccountSelect, FundSelect, MoneyInput, TagSelect, fmtMoney, useBooks, useNames } from './common.tsx';
 
@@ -122,6 +123,7 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
   const [memo, setMemo] = useState('');
   const [lines, setLines] = useState<BkLine[]>([blank(general), blank(general)]);
   const [reverse, setReverse] = useState<{ date: string; memo: string } | null>(null);
+  const [history, setHistory] = useState(false);
   useEffect(() => {
     if (!full.data) return;
     setDate(full.data.date);
@@ -183,6 +185,7 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
     <Modal title={title} onClose={onClose} size="lg" footer={
       <>
         {editable && id && <button className="btn danger ghost" disabled={busy} onClick={del}><Icon name="trash" />{t('Delete draft')}</button>}
+        {id && <button className={`btn ghost${history ? ' on' : ''}`} onClick={() => setHistory((h) => !h)}><Icon name="clock" />{t('History')}</button>}
         <div className="grow" />
         <button className="btn" onClick={onClose}>{editable ? t('Cancel') : t('Close')}</button>
         {editable && <button className="btn" disabled={busy} onClick={() => save(false)}>{t('Save draft')}</button>}
@@ -205,7 +208,7 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
             <table className="t bk-lines">
               <thead>
                 <tr>
-                  <th>{t('Account')}</th><th>{t('Fund')}</th>
+                  <th>{t('Account')}</th><th>{t('Fund‖books')}</th>
                   {showProject && <th>{t('Project')}</th>}
                   {showMinistry && <th>{t('Ministry')}</th>}
                   {showCong && <th>{t('Congregation')}</th>}
@@ -263,6 +266,7 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
               <ul>{full.data.problems.map((p) => <li key={p}>{p}</li>)}</ul>
             </div>
           )}
+          {history && id && <JournalHistory id={id} />}
           {reverse && (
             <div className="card stack tight">
               <h3>{t('Reverse this journal')}</h3>
@@ -278,5 +282,18 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
         </div>
       )}
     </Modal>
+  );
+}
+
+/** Every change to a journal (its lines too) and, for offerings, the cash count behind it — newest first. */
+function JournalHistory({ id }: { id: number }) {
+  const { t } = useI18n();
+  const h = useApi<{ rows: (ChangeRow & { this_journal: boolean })[]; entities: Record<string, { en: string; zh: string }> }>(`/bookkeeping/journals/${id}/history`);
+  return (
+    <div className="card stack tight bk-history">
+      <h3>{t('History')}</h3>
+      <p className="small muted">{t('Every change to this journal, its lines included, before and after it was posted. For offerings, also the cash count’s changes and any earlier drafts for the service.')}</p>
+      {h.error ? <ErrorBox error={h.error} /> : !h.data ? <Loading /> : !h.data.rows.length ? <p className="small muted">{t('No changes recorded yet.')}</p> : <ChangeList rows={h.data.rows} entities={h.data.entities} />}
+    </div>
   );
 }

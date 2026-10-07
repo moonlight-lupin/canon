@@ -22,7 +22,7 @@ interface Summary {
 
 export function ExportTab() {
   const { t, lt, lang } = useI18n();
-  const parts = useApi<{ csv: Part[]; hymnals: { id: number; abbr: string; name: L10n }[]; bibles: { code: string; name: string }[] }>('/export');
+  const parts = useApi<{ csv: Part[]; hymnals: { id: number; abbr: string; name: L10n }[]; bibles: { code: string; name: string }[]; bookkeeping?: boolean }>('/export');
   const [scores, setScores] = useState(true);
   const [blocks, setBlocks] = useState(true);
   const [bibles, setBibles] = useState(false);
@@ -35,6 +35,18 @@ export function ExportTab() {
         <p className="small muted" style={{ margin: 0 }}>{t('One zip with every part below as a CSV, and the library file. It is not a backup: services, records and accounts are only in a backup (Settings → Backups). It holds members’ personal data: keep it where only the office can open it.')}</p>
         <div><a className="btn primary" href="/api/export/all.zip"><Icon name="download" />{t('Download everything (zip)')}</a></div>
       </section>
+
+      {parts.data?.bookkeeping && (
+        <section className="card stack">
+          <h3 style={{ margin: 0 }}>{t('Book-keeping')}</h3>
+          <p className="small muted" style={{ margin: 0 }}>{t('Every posted journal line since the books started (for the church’s accountant or other accounting software), the chart of accounts and the funds. Also in the zip above.')}</p>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <a className="btn" href="/api/export/bookkeeping/journals.csv"><Icon name="download" />{t('Journals (CSV)')}</a>
+            <a className="btn" href="/api/export/bookkeeping/accounts.csv"><Icon name="download" />{t('Chart of accounts (CSV)')}</a>
+            <a className="btn" href="/api/export/bookkeeping/funds.csv"><Icon name="download" />{t('Funds (CSV)')}</a>
+          </div>
+        </section>
+      )}
 
       <section className="card stack">
         <h3 style={{ margin: 0 }}>{t('Library file')} <InfoTip text={t('Hymnals, songs with their words, hymnal numbers and sheet music, liturgical texts, and QR codes & notes, in one file another Canon can import — at another church, or on a new computer. Importing adds only what that Canon doesn’t have yet.')} /></h3>
