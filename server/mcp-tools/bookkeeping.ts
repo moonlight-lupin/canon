@@ -121,7 +121,8 @@ export const BOOKKEEPING_TOOLS: ToolDef[] = [
         statement: { id: st.statement.id, account: code.get(st.statement.account_id), starts_on: st.statement.starts_on, ends_on: st.statement.ends_on, reconciled: !!st.statement.done_at },
         lines: st.lines.filter((l) => !a.open_only || l.status === 'open').map((l) => ({
           id: l.id, date: l.date, description: l.description, reference: l.reference ?? undefined, amount_cents: l.amount, status: l.status,
-          matched_to: l.matched?.number ?? undefined, draft_journal_id: l.draft_id ?? undefined,
+          matched_to: l.matched?.number ?? (l.group ? l.group.book.map((b) => b.number).join(', ') : undefined), draft_journal_id: l.draft_id ?? undefined,
+          group_suggestions: l.group_suggestions?.length ? l.group_suggestions.map((g) => ({ with_lines: g.statement_line_ids, journals: g.book.map((b) => b.number) })) : undefined,
           suggestions: l.suggestions.length ? l.suggestions.map((x) => ({ journal: x.number, date: x.date, memo: x.memo ?? x.jmemo })) : undefined,
         })),
         reconciliation: {

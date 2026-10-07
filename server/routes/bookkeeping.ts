@@ -266,6 +266,12 @@ bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/match', h((req) => {
   Bank.matchLine(id(req), z.object({ line_id: z.number().int() }).parse(req.body).line_id);
   return { ok: true };
 }));
+/** Several statement lines and/or book entries matched as one group, when the totals agree. */
+bookkeepingRoutes.post('/bookkeeping/bank/match-group', h((req) => {
+  const b = z.object({ statement_line_ids: z.array(z.number().int()).min(1).max(50), book_line_ids: z.array(z.number().int()).min(1).max(50) }).parse(req.body);
+  Bank.matchGroup(b.statement_line_ids, b.book_line_ids);
+  return { ok: true };
+}));
 bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/unmatch', h((req) => {
   Bank.unmatchLine(id(req));
   return { ok: true };

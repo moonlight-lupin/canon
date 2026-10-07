@@ -507,3 +507,48 @@ test('a bank receipt is added to a service’s offerings once, however often it 
   web(() => R.saveRecord(s.id, { offerings: rec.offerings }, ed));
   assert.equal(bankLinesOf(s.id, g20.id), 1);
 });
+
+test('group matching: several bank receipts against one offering line, one deposit against several entries (review F5)', async () => {
+  const ed = { name: 'Ed Itor', admin: false, money: true };
+  // a service whose PayNow gifts of 25 and 35 make one bank line of 60 in its offering journal
+  const s = svc.createService({ date: '2031-12-07' }).service;
+  web(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'paynow', amount: 2500 }, { fund: 'General', method: 'paynow', amount: 3500 }], counters: ['Ann', 'Ben'] }, ed));
+  web(() => R.setVerified(s.id, true, ed));
+  const off = web(() => B.postJournal(get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND status = 'draft'", s.id)!.id));
+  const bankLine = off.lines.find((l) => l.account_id === acc('1100'))!;
+  assert.equal(bankLine.debit, 6000, 'one line of 60.00 in the books');
+  // two cash-offering entries (40 and 60) banked as one deposit of 100
+  const dep = (d: string, amt: number) => web(() => B.postJournal(B.saveDraft(null, { date: d, memo: 'Deposit (fictional)', lines: [
+    { account_id: acc('1100'), fund_id: fund('GEN'), debit: amt, credit: 0 }, { account_id: acc('1010'), fund_id: fund('GEN'), debit: 0, credit: amt },
+  ] }).id));
+  const d40 = dep('2031-12-14', 4000);
+  const d60 = dep('2031-12-14', 6000);
+  const csv = ['Date,Description,Amount', '2031-12-07,PAYNOW (fictional),25.00', '2031-12-07,PAYNOW (fictional),35.00', '2031-12-15,CASH DEPOSIT (fictional),100.00'].join('\n');
+  const imp = (await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: acc('1100'), file: Buffer.from(csv).toString('base64'), layout: { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', date_format: 'YYYY-MM-DD' } })).body;
+  let st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.statement_id}`)).body;
+  const [p25, p35, cash] = [2500, 3500, 10000].map((a) => st.lines.find((l: Json) => l.amount === a));
+  // one at a time it can't be matched (the review's finding) …
+  assert.equal((await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${p25.id}/match`, { line_id: bankLine.id })).status, 400);
+  // … but Canon suggests the group, and it matches
+  const g = p25.group_suggestions.find((x: Json) => x.book.some((b: Json) => b.id === bankLine.id));
+  assert.ok(g, JSON.stringify(p25.group_suggestions));
+  assert.deepEqual([...g.statement_line_ids].sort(), [p25.id, p35.id].sort());
+  assert.equal((await call(as.treasurer, 'POST', '/bookkeeping/bank/match-group', { statement_line_ids: [p25.id], book_line_ids: [bankLine.id] })).status, 400, 'totals must agree');
+  assert.equal((await call(as.treasurer, 'POST', '/bookkeeping/bank/match-group', { statement_line_ids: g.statement_line_ids, book_line_ids: [bankLine.id] })).status, 200);
+  // one deposit against two entries
+  const book40 = d40.lines.find((l) => l.account_id === acc('1100'))!.id;
+  const book60 = d60.lines.find((l) => l.account_id === acc('1100'))!.id;
+  st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.statement_id}`)).body;
+  assert.ok(st.lines.find((l: Json) => l.id === cash.id).group_suggestions.some((x: Json) => x.book.map((b: Json) => b.id).sort().join() === [book40, book60].sort().join()));
+  assert.equal((await call(as.treasurer, 'POST', '/bookkeeping/bank/match-group', { statement_line_ids: [cash.id], book_line_ids: [book40, book60] })).status, 200);
+  st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.statement_id}`)).body;
+  assert.ok(st.lines.every((l: Json) => l.status === 'matched'));
+  assert.equal(st.lines.find((l: Json) => l.id === p25.id).group.book[0].id, bankLine.id);
+  assert.ok(!st.reconciliation.uncleared.some((u: Json) => [bankLine.id, book40, book60].includes(u.id)), 'cleared in the reconciliation');
+  // the same entry can't be matched twice; unmatching one line takes its group apart
+  assert.equal((await call(as.treasurer, 'POST', '/bookkeeping/bank/match-group', { statement_line_ids: [cash.id, p25.id], book_line_ids: [bankLine.id, book40] })).status, 409);
+  await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${p35.id}/unmatch`);
+  st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.statement_id}`)).body;
+  assert.deepEqual([p25.id, p35.id].map((i) => st.lines.find((l: Json) => l.id === i).status), ['open', 'open']);
+  assert.ok(st.reconciliation.uncleared.some((u: Json) => u.id === bankLine.id), 'uncleared again');
+});

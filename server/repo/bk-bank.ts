@@ -22,7 +22,7 @@ import { getSettings } from './settings.ts';
 import type { OfferingMethod } from '../../shared/records.ts';
 import type { BankCsvLayout } from '../../shared/bookkeeping.ts';
 
-export interface StatementLine { id: number; statement_id: number; position: number; date: string; description: string | null; reference: string | null; amount: number; status: 'open' | 'matched' | 'ignored'; line_id: number | null; journal_id: number | null }
+export interface StatementLine { id: number; statement_id: number; position: number; date: string; description: string | null; reference: string | null; amount: number; status: 'open' | 'matched' | 'ignored'; line_id: number | null; journal_id: number | null; group_id?: number | null }
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 export const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD', 'DD MMM YYYY', 'DD-MMM-YYYY', 'YYYY/MM/DD', 'DD.MM.YYYY'];
@@ -203,14 +203,55 @@ function openBookLines(accountId: number, upTo?: string): BookLine[] {
   return all<BookLine>(
     `SELECT l.id, l.journal_id, j.number, j.date, l.memo, j.memo AS jmemo, (l.debit - l.credit) AS amount, j.kind FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id
      WHERE l.account_id = ? AND j.status = 'posted' ${upTo ? 'AND j.date <= ?' : ''} AND NOT EXISTS (SELECT 1 FROM bk_statement_lines sl WHERE sl.line_id = l.id)
+       AND NOT EXISTS (SELECT 1 FROM bk_match_book_lines mb WHERE mb.line_id = l.id)
      ORDER BY j.date, l.id`, accountId, ...(upTo ? [upTo] : []),
   );
 }
 const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400_000;
+const addDaysIso = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10);
 
 /** Book lines that could be this statement line: the same amount, within a week, nearest first. */
 function suggestions(line: StatementLine, pool: BookLine[]): BookLine[] {
   return pool.filter((b) => b.amount === line.amount && days(b.date, line.date) <= 7).sort((x, y) => days(x.date, line.date) - days(y.date, line.date)).slice(0, 3);
+}
+
+/** Subsets of 2–4 items (from the 12 nearest) whose amounts add up to `total`. */
+function combos<T extends { amount: number }>(items: T[], total: number, limit = 3): T[][] {
+  const pool = items.slice(0, 12);
+  const out: T[][] = [];
+  const walk = (start: number, picked: T[], sum: number) => {
+    if (out.length >= limit) return;
+    if (picked.length >= 2 && sum === total) out.push([...picked]);
+    if (picked.length === 4) return;
+    for (let i = start; i < pool.length; i++) walk(i + 1, [...picked, pool[i]], sum + pool[i].amount);
+  };
+  walk(0, [], 0);
+  return out;
+}
+
+export interface GroupSuggestion { statement_line_ids: number[]; book: BookLine[]; total: number }
+/**
+ * Groups that could match (v0.17.2 review, F5): several open statement lines adding up to one book line (e.g. two
+ * PayNow gifts and the service's one offering line), or one statement line equal to several book lines (a deposit
+ * covering two services' offerings) — same sign, within a week.
+ */
+function groupSuggestions(open: StatementLine[], pool: BookLine[]): GroupSuggestion[] {
+  const out = new Map<string, GroupSuggestion>();
+  const add = (g: GroupSuggestion) => out.set(`${[...g.statement_line_ids].sort().join(',')}|${g.book.map((b) => b.id).sort().join(',')}`, g);
+  const same = (a: number, b: number) => (a > 0) === (b > 0);
+  // several statement lines → one book line
+  for (const b of pool) {
+    const near = open.filter((l) => same(l.amount, b.amount) && Math.abs(l.amount) < Math.abs(b.amount) && days(l.date, b.date) <= 7)
+      .sort((x, y) => days(x.date, b.date) - days(y.date, b.date));
+    for (const c of combos(near, b.amount)) add({ statement_line_ids: c.map((l) => l.id), book: [b], total: b.amount });
+  }
+  // one statement line → several book lines
+  for (const l of open) {
+    const near = pool.filter((b) => same(l.amount, b.amount) && Math.abs(b.amount) < Math.abs(l.amount) && days(l.date, b.date) <= 7)
+      .sort((x, y) => days(x.date, l.date) - days(y.date, l.date));
+    for (const c of combos(near, l.amount)) add({ statement_line_ids: [l.id], book: c, total: l.amount });
+  }
+  return [...out.values()];
 }
 
 export function getStatement(id: number) {
@@ -223,12 +264,26 @@ export function getStatement(id: number) {
      JOIN bk_lines l ON l.id = sl.line_id JOIN bk_journals j ON j.id = l.journal_id WHERE sl.statement_id = ?`, id,
   ).map((r) => [r.sl, r]));
   const drafts = new Set(all<{ id: number }>("SELECT id FROM bk_journals WHERE status = 'draft' AND id IN (SELECT journal_id FROM bk_statement_lines WHERE statement_id = ?)", id).map((r) => r.id));
+  // matched in groups: the book lines of each group, and how many statement lines share it
+  const groupIds = [...new Set(lines.map((l) => l.group_id).filter((g): g is number => !!g))];
+  const groups = new Map(groupIds.map((g) => [g, {
+    id: g,
+    book: all<BookLine>(`SELECT l.id, l.journal_id, j.number, j.date, l.memo, j.memo AS jmemo, (l.debit - l.credit) AS amount, j.kind FROM bk_match_book_lines mb
+       JOIN bk_lines l ON l.id = mb.line_id JOIN bk_journals j ON j.id = l.journal_id WHERE mb.group_id = ? ORDER BY j.date, l.id`, g),
+    lines: get<{ n: number }>('SELECT COUNT(*) n FROM bk_statement_lines WHERE group_id = ?', g)!.n,
+  }]));
+  const open = lines.filter((l) => l.status === 'open');
+  const grouped = groupSuggestions(open, pool);
   return {
     statement: s,
     lines: lines.map((l) => ({
-      ...l, matched: matched.get(l.id) ?? null, suggestions: l.status === 'open' ? suggestions(l, pool) : [],
+      ...l, matched: matched.get(l.id) ?? null, group: l.group_id ? groups.get(l.group_id) ?? null : null,
+      suggestions: l.status === 'open' ? suggestions(l, pool) : [],
+      group_suggestions: l.status === 'open' ? grouped.filter((g) => g.statement_line_ids.includes(l.id)).slice(0, 2) : [],
       draft_id: l.status === 'open' && l.journal_id && drafts.has(l.journal_id) ? l.journal_id : null,
     })),
+    // the open book entries near the statement's dates, to match by hand in a group
+    book_lines: pool.filter((b) => b.date >= addDaysIso(s.starts_on, -14) && b.date <= addDaysIso(s.ends_on, 14)),
     reconciliation: reconciliation(s.account_id, s.ends_on, s.closing_balance),
   };
 }
@@ -252,15 +307,62 @@ export function matchLine(id: number, bookLineId: number) {
   if (!b || b.status !== 'posted') throw new BadRequest('Match a posted line.');
   if (b.account_id !== l.account_id) throw new BadRequest('That line is on another account.');
   if (b.amount !== l.amount) throw new BadRequest('The amounts differ.');
-  if (get('SELECT 1 FROM bk_statement_lines WHERE line_id = ? AND id != ?', bookLineId, id)) throw new Conflict('That book line is already matched to another statement line.');
+  if (get('SELECT 1 FROM bk_statement_lines WHERE line_id = ? AND id != ?', bookLineId, id) || get('SELECT 1 FROM bk_match_book_lines WHERE line_id = ?', bookLineId)) throw new Conflict('That book line is already matched to another statement line.');
   run("UPDATE bk_statement_lines SET status = 'matched', line_id = ? WHERE id = ?", bookLineId, id);
   const n = get<{ number: string }>('SELECT j.number FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id WHERE l.id = ?', bookLineId)?.number;
   logLine(l, `matched to ${n}`);
 }
 export function unmatchLine(id: number) {
   const l = lineOf(id);
+  // a line matched in a group: the whole group comes apart
+  if (l.group_id) return dissolveGroup(l.group_id);
   run("UPDATE bk_statement_lines SET status = 'open', line_id = NULL WHERE id = ?", id);
   logLine(l, 'unmatched');
+}
+
+/**
+ * Match several statement lines and/or several book lines as one group, when their totals agree (v0.17.2 review,
+ * F5): e.g. PayNow gifts of 25 and 35 against the service's one offering line of 60, or one deposit of 100 against
+ * two services' offerings of 40 and 60. All on the statement's bank account; nothing already matched.
+ */
+export function matchGroup(statementLineIds: number[], bookLineIds: number[]) {
+  const sl = [...new Set(statementLineIds)].map(lineOf);
+  const bl = [...new Set(bookLineIds)];
+  if (!sl.length || !bl.length) throw new BadRequest('Choose statement lines and book entries to match.');
+  if (sl.length === 1 && bl.length === 1) return matchLine(sl[0].id, bl[0]);
+  const account = sl[0].account_id;
+  if (sl.some((l) => l.account_id !== account)) throw new BadRequest('The statement lines are on different accounts.');
+  if (sl.some((l) => l.status !== 'open')) throw new Conflict('A statement line is already matched or ignored.');
+  const book = bl.map((bid) => {
+    const b = get<{ id: number; account_id: number; amount: number; status: string; number: string }>(
+      'SELECT l.id, l.account_id, (l.debit - l.credit) AS amount, j.status, j.number FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id WHERE l.id = ?', bid,
+    );
+    if (!b || b.status !== 'posted') throw new BadRequest('Match posted entries only.');
+    if (b.account_id !== account) throw new BadRequest('A book entry is on another account.');
+    if (get('SELECT 1 FROM bk_statement_lines WHERE line_id = ?', bid) || get('SELECT 1 FROM bk_match_book_lines WHERE line_id = ?', bid)) throw new Conflict(`The entry in ${b.number} is already matched.`);
+    return b;
+  });
+  const bankTotal = sl.reduce((n, l) => n + l.amount, 0);
+  const bookTotal = book.reduce((n, b) => n + b.amount, 0);
+  if (bankTotal !== bookTotal) throw new BadRequest(`The totals differ: the statement ${(bankTotal / 100).toFixed(2)}, the books ${(bookTotal / 100).toFixed(2)}.`);
+  return tx(() => {
+    const g = Number(run('INSERT INTO bk_match_groups (account_id, created_by) VALUES (?, ?)', account, currentActor()?.user_name ?? null).lastInsertRowid);
+    for (const b of book) run('INSERT INTO bk_match_book_lines (group_id, line_id) VALUES (?, ?)', g, b.id);
+    for (const l of sl) {
+      run("UPDATE bk_statement_lines SET status = 'matched', group_id = ? WHERE id = ?", g, l.id);
+      logLine(l, `matched in a group with ${book.map((b) => b.number).join(', ')}`);
+    }
+    return g;
+  });
+}
+
+/** Undo a group match: its statement lines are open again, its book entries unmatched. */
+export function dissolveGroup(groupId: number) {
+  tx(() => {
+    for (const l of all<StatementLine>('SELECT * FROM bk_statement_lines WHERE group_id = ?', groupId)) logLine(l, 'unmatched (its group too)');
+    run("UPDATE bk_statement_lines SET status = 'open', group_id = NULL WHERE group_id = ?", groupId);
+    run('DELETE FROM bk_match_groups WHERE id = ?', groupId);
+  });
 }
 export function ignoreLine(id: number, ignored: boolean) {
   const l = lineOf(id);
@@ -391,6 +493,8 @@ export function setStatementDone(id: number, done: boolean) {
 }
 export function deleteStatement(id: number) {
   if (!get('SELECT 1 FROM bk_statements WHERE id = ?', id)) throw new NotFound('Statement not found');
+  // its group matches come apart (lines of other statements in them are open again)
+  for (const g of all<{ g: number }>('SELECT DISTINCT group_id g FROM bk_statement_lines WHERE statement_id = ? AND group_id IS NOT NULL', id)) dissolveGroup(g.g);
   run('DELETE FROM bk_statements WHERE id = ?', id);
   logChange({ entity: 'bk_statements', entity_id: id, action: 'delete', summary: 'Bank statement removed (journals made from it stay)' });
 }

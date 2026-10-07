@@ -2696,6 +2696,10 @@
       "差额",
       "差額"
     ],
+    "Difference: {amount}": [
+      "差额：{amount}",
+      "差額：{amount}"
+    ],
     "Different numbers of lines or paragraphs, or Leader / People lines in a different order. A translation can rightly differ; these are worth a look.": [
       "行数或段落数不同，或领会／会众的行次序不同。译文有时本来就不同，值得看一看。",
       "行數或段落數不同，或領會／會眾的行次序不同。譯文有時本來就不同，值得看一看。"
@@ -4704,9 +4708,25 @@
       "已在 Canon 中由以下人员确认",
       "已在 Canon 中由以下人員確認"
     ],
+    "Match": [
+      "配对",
+      "配對"
+    ],
     "Match the obvious ones": [
       "配对明显的项目",
       "配對明顯的項目"
+    ],
+    "Match the {n} ticked together…": [
+      "把勾选的 {n} 行一起配对…",
+      "把勾選的 {n} 行一起配對…"
+    ],
+    "Match together": [
+      "一起配对",
+      "一起配對"
+    ],
+    "Matched.": [
+      "已配对。",
+      "已配對。"
     ],
     "Measured after a few days": [
       "几天后才有数据",
@@ -5379,6 +5399,10 @@
     "No one on the member register by that name. Add them in Members first.": [
       "会友名册中没有这个名字。请先在“会友”中加入。",
       "會友名冊中沒有這個名字。請先在“會友”中加入。"
+    ],
+    "No open book entries near these dates.": [
+      "这些日期附近没有未配对的分录。",
+      "這些日期附近沒有未配對的分錄。"
     ],
     "No password": [
       "没有密码",
@@ -8388,6 +8412,10 @@
       "对账单文件（CSV）",
       "對賬單文件（CSV）"
     ],
+    "Statement lines": [
+      "对账单行",
+      "對賬單行"
+    ],
     "Statements": [
       "对账单",
       "對賬單"
@@ -8916,6 +8944,10 @@
       "标题投影（第 1 张）角落有次序单链接的二维码：会众进场时显示。",
       "標題投影（第 1 張）角落有次序單鏈接的二維碼：會眾進場時顯示。"
     ],
+    "The totals agree.": [
+      "合计相符。",
+      "合計相符。"
+    ],
     "The two passwords differ.": [
       "两次输入的密码不同。",
       "兩次輸入的密碼不同。"
@@ -9076,9 +9108,17 @@
       "星期四",
       "星期四"
     ],
+    "Tick the book entries these statement lines stand for. They match when the two totals are the same.": [
+      "勾选这些对账单行所对应的账簿分录。两边合计相同时即可配对。",
+      "勾選這些對賬單行所對應的賬簿分錄。兩邊合計相同時即可配對。"
+    ],
     "Tick the permission box first": [
       "请先勾选授权确认",
       "請先勾選授權確認"
+    ],
+    "Tick to match together": [
+      "勾选以一起配对",
+      "勾選以一起配對"
     ],
     "Ticked by visitors who leave contact details or a prayer request (PDPA). Say what the church does with them.": [
       "留下联络资料或代祷事项的新朋友须勾选（PDPA）。请说明教会会如何使用这些资料。",
@@ -9187,6 +9227,10 @@
     "Today": [
       "今天",
       "今天"
+    ],
+    "Together these add up to {amount}.": [
+      "合计为 {amount}。",
+      "合計為 {amount}。"
     ],
     "Tool": [
       "工具",
@@ -9395,6 +9439,10 @@
     "Unmatch": [
       "取消配对",
       "取消配對"
+    ],
+    "Unmatch this group? Every line in it is unmatched.": [
+      "取消这一组的配对？组内每一行都会取消配对。",
+      "取消這一組的配對？組內每一行都會取消配對。"
     ],
     "Unrestricted": [
       "非限定用途",
@@ -10396,6 +10444,10 @@
       "在 {name} 的屏幕上",
       "在 {name} 的屏幕上"
     ],
+    "one deposit, several entries": [
+      "一笔存款对应多笔分录",
+      "一筆存款對應多筆分錄"
+    ],
     "one language": [
       "单一语言",
       "單一語言"
@@ -10615,6 +10667,14 @@
     "with problems": [
       "有问题",
       "有問題"
+    ],
+    "with {n} line(s)": [
+      "与 {n} 行一起",
+      "與 {n} 行一起"
+    ],
+    "with {n} statement line(s)": [
+      "与 {n} 行对账单一起",
+      "與 {n} 行對賬單一起"
     ],
     "words": [
       "全文",
@@ -10882,8 +10942,8 @@
     ]
   },
   "guide": [
-    "c74c13f7523efcd1",
-    "e27d728ae5191e9f"
+    "471443877ee0247e",
+    "0606972e95f3fb80"
   ],
   "outputs": {
     "Advent": [

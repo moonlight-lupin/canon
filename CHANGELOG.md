@@ -4,6 +4,20 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.18.0 — Hardening (in progress): financial correctness
+
+Fixes for the findings of an external review of v0.17.2.
+- **Bank re-imports keep genuine look-alike transactions.** A line is the same transaction only with the same bank reference; without references, look-alike lines are counted. A second SGD 50 gift on the same day is no longer dropped as "already imported". A file that is entirely repeated makes no empty statement.
+- **One offering per bank receipt.** Adding a bank line to a service's offerings again (a retry, a double click) adds nothing; it returns what was done.
+- **Group matching at the bank:**
+  - several statement lines against one book entry (PayNow gifts against a service's one offering line);
+  - one statement line against several (a deposit covering several services), when the totals agree.
+  - Canon suggests such groups.
+- **Sample data removal is safe:** what has gained real records (a verified cash count, journals, an account, loans, claims) stays and is listed, and a reused number can never remove a real member.
+- **Congregation walls in the lending library and asset register:** another congregation's borrower or custodian is not named in lists, details, history, scans or searches.
+- **Excel files using the 1904 date system** (older Mac workbooks) are read with the right dates.
+- Database: version 34 (bank match groups).
+
 ## 0.17.3 — Reversals as drafts
 
 - **Reverse…** on a posted journal now drafts the reversing journal (every line the other way round) instead of posting it straight away.

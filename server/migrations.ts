@@ -1194,4 +1194,23 @@ export const MIGRATIONS: (string | Migration)[] = [
     ALTER TABLE lending_self_codes ADD COLUMN purpose TEXT NOT NULL DEFAULT 'library';
     `,
   },
+  // 34 (0.18.0): bank matches in groups — several statement lines against one book line (PayNow gifts against one
+  // offering line) or one statement line against several (a deposit covering several services), when the totals
+  // agree (v0.17.2 review, F5). A one-to-one match stays on the statement line (line_id).
+  {
+    sql: `
+    CREATE TABLE bk_match_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL REFERENCES bk_accounts(id),
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE bk_match_book_lines (
+      group_id INTEGER NOT NULL REFERENCES bk_match_groups(id) ON DELETE CASCADE,
+      line_id INTEGER NOT NULL UNIQUE REFERENCES bk_lines(id) ON DELETE CASCADE
+    );
+    CREATE INDEX bk_match_book_lines_group ON bk_match_book_lines(group_id);
+    ALTER TABLE bk_statement_lines ADD COLUMN group_id INTEGER REFERENCES bk_match_groups(id) ON DELETE SET NULL;
+    `,
+  },
 ];

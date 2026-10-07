@@ -21,10 +21,16 @@ interface SLine {
   line_id: number | null; journal_id: number | null; matched: BookLine | null; suggestions: BookLine[];
   /** a draft made for this line (on this screen or by an AI assistant): posting it matches the line */
   draft_id: number | null;
+  /** matched in a group: its book entries, and how many statement lines share it */
+  group: { id: number; book: BookLine[]; lines: number } | null;
+  /** groups this line could be matched in (several lines against one entry, or one line against several) */
+  group_suggestions: { statement_line_ids: number[]; book: BookLine[]; total: number }[];
 }
 interface Statement {
   statement: StatementRow;
   lines: SLine[];
+  /** open book entries near the statement's dates, to match by hand in a group */
+  book_lines: BookLine[];
   reconciliation: { ends_on: string; book_balance: number; uncleared: BookLine[]; uncleared_total: number; expected_bank_balance: number; statement_balance: number | null; difference: number | null };
 }
 
@@ -191,6 +197,8 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
   const { can } = useSession();
   const mayOffer = can('contributions', 'edit');
   const [show, setShow] = useState<'open' | 'all'>('open');
+  const [picked, setPicked] = useState<number[]>([]);
+  const [grouping, setGrouping] = useState(false);
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Loading />;
   const s = data.statement;
@@ -200,6 +208,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
       await fn();
       return true;
     }, ok)) {
+      setPicked([]);
       reload();
       b.reload();
     }
@@ -235,6 +244,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
 
       <div className="row between">
         <div className="small muted">{t('{n} of {total} line(s) still to match.').replace('{n}', String(open)).replace('{total}', String(data.lines.length))}</div>
+        {b.canEdit && picked.length > 0 && <button className="btn" onClick={() => setGrouping(true)}><Icon name="link" />{t('Match the {n} ticked together…').replace('{n}', String(picked.length))}</button>}
         <select className="mini" value={show} onChange={(e) => setShow(e.target.value as 'open' | 'all')} aria-label={t('Show')}>
           <option value="open">{t('Still to match')}</option>
           <option value="all">{t('All lines')}</option>
@@ -243,10 +253,11 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
       {!lines.length ? <Empty title={t('Every line is matched.')} /> : (
         <div className="card flush table-wrap">
           <table className="t">
-            <thead><tr><th>{t('Date')}</th><th>{t('Description')}</th><th className="bk-num">{t('Money out')}</th><th className="bk-num">{t('Money in')}</th><th>{t('In the books')}</th></tr></thead>
+            <thead><tr>{b.canEdit && <th style={{ width: 28 }} />}<th>{t('Date')}</th><th>{t('Description')}</th><th className="bk-num">{t('Money out')}</th><th className="bk-num">{t('Money in')}</th><th>{t('In the books')}</th></tr></thead>
             <tbody>
               {lines.map((l) => (
                 <tr key={l.id} className={l.status === 'ignored' ? 'bk-ignored' : ''}>
+                  {b.canEdit && <td>{l.status === 'open' && <input type="checkbox" aria-label={t('Tick to match together')} checked={picked.includes(l.id)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, l.id] : p.filter((x) => x !== l.id)))} />}</td>}
                   <td className="nowrap">{fmtDate(l.date, lang)}</td>
                   <td>{l.description}{l.reference && <div className="small muted">{l.reference}</div>}</td>
                   <td className="bk-num">{l.amount < 0 ? fmtMoney(-l.amount) : ''}</td>
@@ -257,6 +268,13 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
                         <span className="badge ok"><Icon name="check" />{l.matched.number}</span>
                         <span className="small muted">{l.matched.memo ?? l.matched.jmemo}</span>
                         {b.canEdit && <button className="btn ghost small" disabled={busy} onClick={() => act(() => api.post(`/bookkeeping/bank/lines/${l.id}/unmatch`))}>{t('Unmatch')}</button>}
+                      </div>
+                    )}
+                    {l.status === 'matched' && l.group && (
+                      <div className="row" style={{ gap: 6 }}>
+                        <span className="badge ok"><Icon name="link" />{l.group.book.map((x) => x.number).join(' + ')}</span>
+                        <span className="small muted">{l.group.lines > 1 ? t('with {n} statement line(s)').replace('{n}', String(l.group.lines)) : t('one deposit, several entries')}</span>
+                        {b.canEdit && <button className="btn ghost small" disabled={busy} onClick={() => confirmAction(t('Unmatch this group? Every line in it is unmatched.')) && act(() => api.post(`/bookkeeping/bank/lines/${l.id}/unmatch`))}>{t('Unmatch')}</button>}
                       </div>
                     )}
                     {l.status === 'ignored' && (
@@ -270,6 +288,13 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
                         {l.suggestions.map((x) => (
                           <button key={x.id} className="btn small" disabled={busy} title={x.memo ?? x.jmemo ?? ''} onClick={() => act(() => api.post(`/bookkeeping/bank/lines/${l.id}/match`, { line_id: x.id }))}>
                             <Icon name="link" />{x.number} · {fmtDate(x.date, lang, { day: 'numeric', month: 'short' })}
+                          </button>
+                        ))}
+                        {l.group_suggestions.map((g) => (
+                          <button key={`${g.statement_line_ids.join()}|${g.book.map((x) => x.id).join()}`} className="btn small" disabled={busy}
+                            title={t('Together these add up to {amount}.').replace('{amount}', fmtMoney(Math.abs(g.total)))}
+                            onClick={() => act(() => api.post('/bookkeeping/bank/match-group', { statement_line_ids: g.statement_line_ids, book_line_ids: g.book.map((x) => x.id) }))}>
+                            <Icon name="link" />{g.book.map((x) => x.number).join(' + ')}{g.statement_line_ids.length > 1 ? ` · ${t('with {n} line(s)').replace('{n}', String(g.statement_line_ids.length))}` : ''}
                           </button>
                         ))}
                         {l.draft_id
@@ -299,6 +324,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
         </details>
       )}
       {offering && <OfferingDialog line={offering} onClose={() => setOffering(null)} onDone={() => { setOffering(null); reload(); b.reload(); }} />}
+      {grouping && <GroupDialog lines={data.lines.filter((l) => picked.includes(l.id))} book={data.book_lines} onClose={() => setGrouping(false)} onMatch={(bookIds) => { setGrouping(false); void act(() => api.post('/bookkeeping/bank/match-group', { statement_line_ids: picked, book_line_ids: bookIds }), t('Matched.')); }} />}
       {entry && <EntryDialog line={entry} bankId={s.account_id} onClose={() => setEntry(null)} onDone={() => { setEntry(null); reload(); b.reload(); }} />}
     </div>
   );
@@ -398,6 +424,43 @@ function OfferingDialog({ line, onClose, onDone }: { line: SLine; onClose: () =>
             </select>
           </Field>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** Match the ticked statement lines with book entries whose total is the same (several gifts, one offering line; one deposit, several services). */
+function GroupDialog({ lines, book, onClose, onMatch }: { lines: SLine[]; book: BookLine[]; onClose: () => void; onMatch: (bookIds: number[]) => void }) {
+  const { t, lang } = useI18n();
+  const [chosen, setChosen] = useState<number[]>([]);
+  const bank = lines.reduce((n, l) => n + l.amount, 0);
+  const books = book.filter((x) => chosen.includes(x.id)).reduce((n, x) => n + x.amount, 0);
+  const diff = bank - books;
+  return (
+    <Modal title={t('Match together')} onClose={onClose} size="lg" footer={
+      <>
+        <span className={`grow small ${diff ? 'bk-off' : 'bk-ok'}`}>{diff ? t('Difference: {amount}').replace('{amount}', fmtSigned(diff)) : chosen.length ? t('The totals agree.') : ''}</span>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn primary" disabled={!chosen.length || diff !== 0} onClick={() => onMatch(chosen)}>{t('Match')}</button>
+      </>
+    }>
+      <div className="stack">
+        <p className="small muted">{t('Tick the book entries these statement lines stand for. They match when the two totals are the same.')}</p>
+        <div className="small"><strong>{t('Statement lines')}</strong>: {lines.map((l) => `${fmtDate(l.date, lang, { day: 'numeric', month: 'short' })} ${fmtSigned(l.amount)}`).join(' · ')} = <strong>{fmtSigned(bank)}</strong></div>
+        {!book.length ? <p className="small muted">{t('No open book entries near these dates.')}</p> : (
+          <table className="t bk-mini">
+            <tbody>
+              {book.map((x) => (
+                <tr key={x.id} className="click" onClick={() => setChosen((c) => (c.includes(x.id) ? c.filter((y) => y !== x.id) : [...c, x.id]))}>
+                  <td style={{ width: 28 }}><input type="checkbox" readOnly checked={chosen.includes(x.id)} aria-label={x.number} /></td>
+                  <td className="nowrap">{fmtDate(x.date, lang)}</td>
+                  <td><span className="code">{x.number}</span> <span className="small muted">{x.memo ?? x.jmemo}</span></td>
+                  <td className="bk-num">{fmtSigned(x.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </Modal>
   );

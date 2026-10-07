@@ -346,7 +346,7 @@ function matchDraftedLines(j: BkJournal) {
   );
   for (const sl of open) {
     const book = all<{ id: number; account_id: number; debit: number; credit: number }>('SELECT id, account_id, debit, credit FROM bk_lines WHERE journal_id = ? ORDER BY position', j.id)
-      .find((l) => l.account_id === sl.account_id && l.debit - l.credit === sl.amount && !get('SELECT 1 FROM bk_statement_lines WHERE line_id = ?', l.id));
+      .find((l) => l.account_id === sl.account_id && l.debit - l.credit === sl.amount && !get('SELECT 1 FROM bk_statement_lines WHERE line_id = ?', l.id) && !get('SELECT 1 FROM bk_match_book_lines WHERE line_id = ?', l.id));
     if (!book) continue;
     run("UPDATE bk_statement_lines SET status = 'matched', line_id = ? WHERE id = ?", book.id, sl.id);
     logChange({ entity: 'bk_statements', entity_id: sl.statement_id, action: 'update', summary: `Line ${sl.date} ${sl.description ?? ''} ${(sl.amount / 100).toFixed(2)} matched to ${j.number}` });

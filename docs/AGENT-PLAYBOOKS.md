@@ -142,7 +142,7 @@ Patterns:
   - **Bank statements:** a person imports the bank's CSV in Canon. `canon_bank_statements` lists the statements, then one statement's open lines with suggestions (an entry already in the books for the same amount) and any `draft_journal_id` already waiting.
     - For an open line the books lack (a bank charge, interest, a direct debit), draft its entry with `canon_draft_journal` and `statement_line`.
     - Include a line on the statement's bank account for its amount: money in = debit, money out = credit. The reply says whether it `matches_when_posted`.
-    - When the treasurer posts the draft, the statement line is matched. Lines with a suggestion are already in the books: leave them for the treasurer to match.
+    - When the treasurer posts the draft, the statement line is matched. Lines with a suggestion (one entry, or a `group_suggestions` combination adding up to the same total) are already in the books: leave them for the treasurer to match.
   - **History:** every change to a journal (its lines too) is in the change log; Canon shows it on the journal.
 - **Expense claims** follow the connection's Book-keeping setting but **not the person's role**: anyone may claim.
   - **Drafting:** a person drafts their own claims with `canon_draft_claim`; someone who keeps the books may name `claimant_person_id`.
