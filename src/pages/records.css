@@ -62,7 +62,7 @@ input.invalid { border-color: var(--danger, #a33); }
 .rec-sig img { display: block; width: 220px; height: auto; }
 .rec-sig figcaption { display: flex; gap: 8px; align-items: center; }
 .sig-pad { position: relative; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.sig-pad canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; background: #fff; border: 1px dashed var(--rule); border-radius: 8px; touch-action: none; cursor: crosshair; }
+.sig-pad canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; background: #fff; border: 1px dashed var(--rule); border-radius: 8px; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .sig-hint { position: absolute; left: 14px; top: 10px; color: #9aa; pointer-events: none; font-size: 13px; }
 .decl-sig { padding: 0 6px !important; }
 .decl-sig img { display: block; max-height: 13mm; max-width: 70mm; }
