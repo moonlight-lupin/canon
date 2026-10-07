@@ -1,5 +1,6 @@
 // Brand pieces shared by the app shell, login, settings and outputs: the 1 Cor 14:40 tagline,
 // the church logo (GET /api/assets/logo), the liturgical season chip and the cover cross.
+import { isChinese, langInfo } from '../../shared/languages.ts';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { L10n, Lang, Season } from '../../shared/types.ts';
 import { SEASONS, seasonInfo } from '../../shared/season.ts';
@@ -22,11 +23,13 @@ export const TAGLINE: { text: L10n; ref: L10n } = {
 export function Tagline({ lang: only, className }: { lang?: Lang; className?: string }) {
   const { lang: ui } = useI18n();
   const lang = only ?? ui;
-  const cjk = lang === 'zh' || lang === 'zh-Hant';
+  // the verse in the language when there is one (KJV; 和合本), else English
+  const shown = TAGLINE.text[lang] || (isChinese(lang) && (TAGLINE.text.zh || TAGLINE.text['zh-Hant'])) ? lang : 'en';
+  const cjk = langInfo(shown).cjk;
   return (
-    <p className={`tagline${className ? ' ' + className : ''}`} lang={cjk ? (lang === 'zh' ? 'zh-Hans' : 'zh-Hant') : 'en'}>
-      <span className="tagline-text">{cjk ? '' : '“'}{pickL10n(TAGLINE.text, lang)}{cjk ? '' : '”'}</span>{' '}
-      <span className="tagline-ref">— {pickL10n(TAGLINE.ref, lang)}</span>
+    <p className={`tagline${className ? ' ' + className : ''}`} lang={langInfo(shown).htmlLang}>
+      <span className="tagline-text">{cjk ? '' : '“'}{pickL10n(TAGLINE.text, shown)}{cjk ? '' : '”'}</span>{' '}
+      <span className="tagline-ref">— {pickL10n(TAGLINE.ref, shown)}</span>
     </p>
   );
 }

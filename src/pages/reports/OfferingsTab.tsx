@@ -1,4 +1,5 @@
 // Reports: offerings by fund, month and method, and the treasurer's monthly summary.
+import { dateLocale } from '../../../shared/languages.ts';
 import { FitToScreen } from '../../components/onscreen.ts';
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -90,7 +91,8 @@ export function OfferingsMonth() {
   const valid = /^\d{4}-\d{2}$/.test(month);
   const last = valid ? new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate() : 28;
   const { data: r, error } = useApi<OfferingsReport>(`/reports/offerings${qs({ from: `${month}-01`, to: `${month}-${last}`, congregation: cong })}`);
-  const bi = (en: string, zh: string) => (lang === 'en' ? en : `${zh} ${en}`);
+  // a printed form for an auditor: the reader's language, with English after it
+  const bi = (en: string) => (lang === 'en' || t(en) === en ? en : `${t(en)} ${en}`);
   if (!valid) return <ErrorBox error={t('Choose a month.')} />;
   if (error) return <ErrorBox error={error} />;
   if (!r) return <Loading />;
@@ -105,32 +107,32 @@ export function OfferingsMonth() {
       </div>
       <FitToScreen className="decl-page">
         <h1>{lt(settings?.church_name ?? { en: 'Church' })}</h1>
-        <h2>{bi('Monthly Offerings Summary', '每月奉献汇总')} · {month}{c ? ` · ${lt(c.name)}` : ''}</h2>
-        <h3>{bi('By fund', '奉献项目')}</h3>
+        <h2>{bi('Monthly Offerings Summary')} · {month}{c ? ` · ${lt(c.name)}` : ''}</h2>
+        <h3>{bi('By fund')}</h3>
         <table className="decl-methods">
           <tbody>
             {r.by_fund.map((f) => <tr key={f.fund}><th>{f.fund}</th><td className="right">{money(f.total, cur)}</td></tr>)}
-            <tr className="sum"><th>{bi('Total', '总额')}</th><td className="right">{money(r.total, cur, true)}</td></tr>
+            <tr className="sum"><th>{bi('Total')}</th><td className="right">{money(r.total, cur, true)}</td></tr>
           </tbody>
         </table>
-        <h3>{bi('By payment method', '奉献方式')}</h3>
+        <h3>{bi('By payment method')}</h3>
         <table className="decl-methods">
           <tbody>
             {r.by_method.map((x) => <tr key={x.method}><th>{t(METHOD_LABEL[x.method])}</th><td className="right">{money(x.total, cur)}</td></tr>)}
-            <tr className="sum"><th>{bi('of which cash', '其中现金')}</th><td className="right">{money(cash, cur, true)}</td></tr>
+            <tr className="sum"><th>{bi('of which cash')}</th><td className="right">{money(cash, cur, true)}</td></tr>
           </tbody>
         </table>
         {r.other_currencies.length > 0 && (
           <>
-            <h3>{bi('Other currencies (not converted)', '其他货币（未兑换）')}</h3>
+            <h3>{bi('Other currencies (not converted)')}</h3>
             <table className="decl-methods">
-              <tbody>{r.other_currencies.map((o) => <tr key={o.currency}><th>{o.currency}</th><td className="right">{money(o.total, o.currency, true)}{o.converted ? ` (${bi('exchanged', '兑换后')}: ${money(o.converted, cur, true)})` : ''}</td></tr>)}</tbody>
+              <tbody>{r.other_currencies.map((o) => <tr key={o.currency}><th>{o.currency}</th><td className="right">{money(o.total, o.currency, true)}{o.converted ? ` (${bi('exchanged')}: ${money(o.converted, cur, true)})` : ''}</td></tr>)}</tbody>
             </table>
           </>
         )}
-        <h3>{bi('Services', '聚会')}</h3>
+        <h3>{bi('Services')}</h3>
         <table className="decl-meta">
-          <thead><tr><th>{bi('Date', '日期')}</th><th>{bi('Service', '聚会')}</th><th className="right">{bi('Total', '总额')}</th><th className="right">{bi('Cash', '现金')}</th><th>{bi('Cash count', '现金点算')}</th></tr></thead>
+          <thead><tr><th>{bi('Date')}</th><th>{bi('Service')}</th><th className="right">{bi('Total')}</th><th className="right">{bi('Cash')}</th><th>{bi('Cash count')}</th></tr></thead>
           <tbody>
             {r.services.map((x) => (
               <tr key={x.service_id}>
@@ -138,17 +140,17 @@ export function OfferingsMonth() {
                 <td>{lt(x.title)}</td>
                 <td className="right">{money(x.total, cur)}{x.other.map((o) => <div key={o.currency} className="small">+ {money(o.total, o.currency, true)}</div>)}</td>
                 <td className="right">{money(x.cash, cur)}</td>
-                <td>{x.verified ? `✓ ${x.signed ? bi('signed', '已签名') : ''} ${x.verified_by ?? ''}` : bi('NOT VERIFIED', '未确认')}</td>
+                <td>{x.verified ? `✓ ${x.signed ? bi('signed') : ''} ${x.verified_by ?? ''}` : bi('NOT VERIFIED')}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {r.unverified.length > 0 && <p className="decl-text"><strong>{bi(`${r.unverified.length} cash count(s) not yet verified.`, `${r.unverified.length} 次现金点算尚未确认。`)}</strong></p>}
+        {r.unverified.length > 0 && <p className="decl-text"><strong>{bi('{n} cash count(s) not yet verified.').replaceAll('{n}', String(r.unverified.length))}</strong></p>}
         <table className="decl-sign" style={{ marginTop: 18 }}>
-          <thead><tr><th>{bi('Prepared by', '制表')}</th><th>{bi('Signature', '签名')}</th><th>{bi('Date', '日期')}</th></tr></thead>
+          <thead><tr><th>{bi('Prepared by')}</th><th>{bi('Signature')}</th><th>{bi('Date')}</th></tr></thead>
           <tbody><tr><td /><td /><td /></tr><tr><td /><td /><td /></tr></tbody>
         </table>
-        <p className="small muted">{bi('From Canon service records; amounts in', '根据 Canon 聚会记录；金额单位')} {cur}. {new Date().toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</p>
+        <p className="small muted">{bi('From Canon service records; amounts in')} {cur}. {new Date().toLocaleString(dateLocale(lang))}</p>
       </FitToScreen>
     </div>
   );

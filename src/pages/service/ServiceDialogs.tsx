@@ -6,7 +6,7 @@ import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
 import { Field, L10nInput, Loading, ErrorBox, Modal, Seg, useAction, useDebounced, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
-import { langInfo } from '../../../shared/languages.ts';
+import { langInfo, dateLocale } from '../../../shared/languages.ts';
 import type { L10n, Lang, ServiceFull } from '../../types-client.ts';
 
 export function DuplicateDialog({ svc, onClose }: { svc: ServiceFull; onClose: () => void }) {
@@ -79,7 +79,7 @@ export type ReminderResult = { sent: number; failed: number; skipped: number; re
 export const sentAt = (s: string, lang: Lang) => {
   const d = new Date(/T/.test(s) ? s : s.replace(' ', 'T') + 'Z');
   if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'zh-Hant' ? 'zh-TW' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(dateLocale(lang), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
 export function ReminderDialog({ svc, onClose }: { svc: ServiceFull; onClose: () => void }) {

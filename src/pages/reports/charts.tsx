@@ -11,7 +11,12 @@ import '../records.css';
 import '../reports.css';
 
 /** L10n → "English 中文" for CSV files. */
-export const both = (v: L10n | null | undefined) => (v ? [v.en, v.zh ?? v['zh-Hant']].filter(Boolean).join(' ') || Object.values(v).find(Boolean) || '' : '');
+/** A name in English and its first other language (any language, e.g. "Ushers 招待"), for report labels. */
+export const both = (v: L10n | null | undefined) => {
+  if (!v) return '';
+  const other = Object.entries(v).find(([l, x]) => l !== 'en' && x?.trim())?.[1];
+  return [...new Set([v.en, other].filter((x): x is string => !!x?.trim()))].join(' ') || Object.values(v).find(Boolean) || '';
+};
 
 export function download(name: string, rows: (string | number | null | undefined)[][]) {
   const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' });

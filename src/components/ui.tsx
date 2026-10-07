@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { L10n, Lang, Role } from '../../shared/types.ts';
 import type { Settings } from '../types-client.ts';
 import { pickL10n, useContentLangs, useI18n } from '../i18n.tsx';
-import { isChinese, langInfo } from '../../shared/languages.ts';
+import { isChinese, langInfo, dateLocale } from '../../shared/languages.ts';
 import { Icon } from './icons.tsx';
 import type { Access, PermModule, RoleDef } from '../../shared/permissions.ts';
 
@@ -438,7 +438,7 @@ export function useLatest<T>(v: T) {
 export function fmtDate(d: string | null | undefined, lang: Lang, opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) {
   if (!d) return '';
   const dt = new Date(d + 'T00:00:00');
-  const locale = lang === 'zh' ? 'zh-CN' : lang === 'zh-Hant' ? 'zh-TW' : lang === 'en' ? 'en-GB' : langInfo(lang).htmlLang;
+  const locale = dateLocale(lang);
   return dt.toLocaleDateString(locale, opts);
 }
 

@@ -45,7 +45,7 @@ export type ChangeFilters = { entity: string; user: string; via: string; action:
 
 /** Settings → Change log: every change by a person, an AI agent or a CSV import. */
 export function ChangeLogTab() {
-  const { t, lang } = useI18n();
+  const { t, lt } = useI18n();
   const log = useLogQuery<ChangeRow, ChangeFilters>('/change-log', { entity: '', user: '', via: '', action: '', from: '', to: '', q: '' });
   const { filters: f, set } = log;
   const data = log.data as (Paged<ChangeRow> & { users: { id: number | null; name: string }[]; entities: Record<string, { en: string; zh: string }> }) | undefined;
@@ -64,7 +64,7 @@ export function ChangeLogTab() {
       <FilterBar active={log.active} onClear={log.clear} csv={`/api/change-log.csv${log.exportQuery}`}>
         <select className="mini" value={f.entity} onChange={(e) => set('entity', e.target.value)} aria-label={t('What')}>
           <option value="">{t('Everything')}</option>
-          {data && Object.entries(data.entities).map(([k, v]) => <option key={k} value={k}>{lang === 'en' ? v.en : v.zh}</option>)}
+          {data && Object.entries(data.entities).map(([k, v]) => <option key={k} value={k}>{t(v.en) !== v.en ? t(v.en) : lt(v)}</option>)}
         </select>
         <select className="mini" value={f.user} onChange={(e) => set('user', e.target.value)} aria-label={t('Who')}>
           <option value="">{t('Everyone')}</option>

@@ -10,7 +10,7 @@ import { CongregationBadge, CongregationField, CongregationFilter, useCongregati
 import type { L10n, ServiceFull, ServiceListRow, Template } from '../types-client.ts';
 
 export default function Services() {
-  const { t, lang } = useI18n();
+  const { t, lang, lt } = useI18n();
   const { canEdit, settings } = useSession();
   const seasons = settings?.season_colours !== false;
   const [params, setParams] = useSearchParams();
@@ -31,8 +31,8 @@ export default function Services() {
       {error && <ErrorBox error={error} />}
       {!data ? <Loading /> : !data.length ? (
         <div className="card">
-          <Empty title={lang === 'zh' ? '尚无聚会程序' : 'Plan your first service'}>
-            <p>{lang === 'zh' ? '选择一个模板，系统会自动放入宣召、信经、祝福等礼文。' : 'Pick a template and Canon drops in the call to worship, creed, benediction and the rest.'}</p>
+          <Empty title={t('Plan your first service')}>
+            <p>{t('Pick a template and Canon drops in the call to worship, creed, benediction and the rest.')}</p>
             {canEdit && <button className="btn primary" onClick={() => setParams({ new: '' })}><Icon name="plus" />{t('New service')}</button>}
           </Empty>
         </div>
@@ -49,7 +49,7 @@ export default function Services() {
                     {seasons && <SeasonChip dotOnly date={s.date} season={s.season} className="svc-season" />}
                     <Link to={`/services/${s.id}`} onClick={(e) => e.stopPropagation()}><strong>{fmtDate(s.date, lang)}</strong></Link> <span className="muted">{s.start_time}</span>
                   </td>
-                  <td><CongregationBadge id={s.congregation_id} list={congs} /> {s.ref && <span className="badge lapis ref-badge">{s.ref}</span>} <Bi v={s.title} />{hasAnyText(s.sermon_title) && <div className="small muted serif">“{s.sermon_title[lang] || s.sermon_title.en || s.sermon_title.zh}”{s.sermon_ref ? ` · ${s.sermon_ref}` : ''}</div>}</td>
+                  <td><CongregationBadge id={s.congregation_id} list={congs} /> {s.ref && <span className="badge lapis ref-badge">{s.ref}</span>} <Bi v={s.title} />{hasAnyText(s.sermon_title) && <div className="small muted serif">“{lt(s.sermon_title)}”{s.sermon_ref ? ` · ${s.sermon_ref}` : ''}</div>}</td>
                   <td>{s.preacher}</td>
                   <td className="right">{s.item_count}</td>
                   <td className="right">{s.assigned_count}</td>

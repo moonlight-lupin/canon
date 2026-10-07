@@ -1,5 +1,6 @@
 // Settings → E-mail: the church's SMTP server (for manual volunteer reminders), a test send, and the e-mail log.
 // The SMTP password is write-only: the server only reports whether one is saved.
+import { dateLocale } from '../../../shared/languages.ts';
 import { useEffect, useMemo, useState } from 'react';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -38,7 +39,7 @@ export function fmtSent(s: string | null | undefined, lang: Lang) {
   if (!s) return '—';
   const d = new Date(/T/.test(s) ? s : s.replace(' ', 'T') + 'Z');
   if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'zh-Hant' ? 'zh-TW' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(dateLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 const PRESETS: { key: string; label: string; host: string; port: number; secure: boolean; hint: string }[] = [

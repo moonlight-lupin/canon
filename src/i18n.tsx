@@ -17,8 +17,33 @@ const LOADERS = import.meta.glob<Record<string, string>>('../locales/*/ui.json',
 /** The interface translations loaded so far (English is the key, so it needs none). */
 export const DICTS: Partial<Record<Lang, Record<string, string>>> = { en: {} };
 
+// Church content in one Chinese script shown to someone reading the other (a hymn title typed only in Simplified, for
+// a Traditional reader): converted on screen, like the server does for printouts and public pages. The converter is
+// fetched only for someone reading Chinese, and only the direction they need.
+type Convert = (s: string) => string;
+const CONVERT: Partial<Record<'zh' | 'zh-Hant', Convert>> = {};
+const converted = new Map<string, string>();
+async function loadChineseConversion(lang: Lang) {
+  if (lang === 'zh-Hant' && !CONVERT['zh-Hant']) CONVERT['zh-Hant'] = (await import('opencc-js/cn2t')).Converter({ from: 'cn', to: 'tw' });
+  if (lang === 'zh' && !CONVERT.zh) CONVERT.zh = (await import('opencc-js/t2cn')).Converter({ from: 'tw', to: 'cn' });
+}
+/** Text in the other Chinese script converted into `lang` (as it is, until the converter has loaded). */
+function convertChinese(s: string, lang: 'zh' | 'zh-Hant'): string {
+  const f = CONVERT[lang];
+  if (!f) return s;
+  const k = lang + s;
+  let v = converted.get(k);
+  if (v === undefined) {
+    v = f(s);
+    if (converted.size > 5000) converted.clear();
+    converted.set(k, v);
+  }
+  return v;
+}
+
 /** Load a language's translation (and its fallback's) if it isn't yet. */
 export async function loadLocale(lang: Lang): Promise<void> {
+  await loadChineseConversion(lang).catch(() => undefined);
   for (const l of [lang, UI_FALLBACK[lang]]) {
     if (!l || DICTS[l]) continue;
     const load = LOADERS[`../locales/${l}/ui.json`];
@@ -44,13 +69,15 @@ export function useLocales(langs: Lang[]) {
 }
 
 /**
- * Pick a localised value for `lang`: exact, then the other Chinese script, then English, then anything.
- * (Script conversion of content is done on the server; here we only fall back.)
+ * Pick a localised value for `lang`: exact, then the other Chinese script (converted), then English, then anything.
  */
 export function pickL10n(v: L10n | null | undefined, lang: Lang): string {
   if (!v) return '';
-  const order = [lang, lang === 'zh' ? 'zh-Hant' : lang === 'zh-Hant' ? 'zh' : '', 'en'].filter(Boolean);
-  for (const l of order) if (v[l]?.trim()) return v[l]!;
+  if (v[lang]?.trim()) return v[lang]!;
+  // the other Chinese script, converted
+  const other = lang === 'zh' ? 'zh-Hant' : lang === 'zh-Hant' ? 'zh' : '';
+  if (other && v[other]?.trim()) return convertChinese(v[other]!, lang as 'zh' | 'zh-Hant');
+  if (v.en?.trim()) return v.en;
   return Object.values(v).find((x) => x?.trim()) ?? '';
 }
 

@@ -1,4 +1,5 @@
 // Records → one service record: attendance, visitors, notes and offerings.
+import { dateLocale } from '../../../shared/languages.ts';
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
@@ -329,7 +330,7 @@ export function RecordEditor() {
                     : <img src={g.image} alt={t('Signature of {name}').replace('{name}', g.name)} />}
                   <figcaption>
                     <strong>{g.name}</strong>
-                    <span className="small muted">{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}{g.via !== 'account' && g.by ? ` · ${t('on {name}’s screen').replace('{name}', g.by)}` : ''}</span>
+                    <span className="small muted">{new Date(g.signed_at).toLocaleString(dateLocale(lang))}{g.via !== 'account' && g.by ? ` · ${t('on {name}’s screen').replace('{name}', g.by)}` : ''}</span>
                     {canEdit && (!d.verified_at || isAdmin) && <button className="btn sm ghost icon danger" onClick={() => unsign(g.name)} disabled={busy} aria-label={t('Remove')}><Icon name="trash" /></button>}
                   </figcaption>
                 </figure>

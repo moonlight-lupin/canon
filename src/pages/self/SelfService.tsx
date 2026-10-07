@@ -2,6 +2,7 @@
 // opens /lending/copy/<number> (this page when not signed in to Canon); /self/loans lists their loans;
 // /self/renew/<token> is the renewal link in reminder e-mails. They sign in with a code e-mailed to the address on
 // the member register. Plain fetch (not the app's api helper): a 401 here must not sign a staff member out.
+import { UI_LANGS, langInfo } from '../../../shared/languages.ts';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { useI18n } from '../../i18n.tsx';
@@ -63,7 +64,9 @@ export default function SelfService() {
 
 function Shell({ children }: { children: ReactNode }) {
   const { t, lt, lang, setLang } = useI18n();
-  const [church, setChurch] = useState<{ church_name: L10n; on: boolean } | null>(null);
+  const [church, setChurch] = useState<{ church_name: L10n; on: boolean; languages?: string[] } | null>(null);
+  // the interface languages this church uses (English always)
+  const choices = UI_LANGS.filter((l) => l === 'en' || (church?.languages ?? ['zh']).includes(l));
   useEffect(() => {
     call<{ church_name: L10n; on: boolean }>('GET', '/status').then(setChurch).catch(() => setChurch({ church_name: {}, on: false }));
   }, []);
@@ -75,7 +78,11 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="eyebrow">{t('Lending library')}</div>
           <strong className="serif">{lt(church?.church_name ?? {}) || 'Canon'}</strong>
         </div>
-        <button className="btn sm ghost" onClick={() => setLang(lang.startsWith('zh') ? 'en' : 'zh')}>{lang.startsWith('zh') ? 'English' : '中文'}</button>
+        {choices.length > 1 && (
+          <select className="sm" value={lang} onChange={(e) => setLang(e.target.value)} aria-label={t('Language')}>
+            {choices.map((l) => <option key={l} value={l}>{langInfo(l).native}</option>)}
+          </select>
+        )}
       </header>
       {church && !church.on ? <Paused /> : children}
     </div>

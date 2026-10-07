@@ -128,7 +128,7 @@ ${t('Their name is still typed on {n} services or records (kept as church record
   };
 
   const title = id ? (detail.data ? (erased ? t('Erased member') : fullName(detail.data)) : t('Person')) : t('Add person');
-  const pdpa = <span className="pdpa left">Personal data is used only for church administration (PDPA). / 个人资料仅用于教会行政用途。</span>;
+  const pdpa = <span className="pdpa left">{t('Personal data is used only for church administration (PDPA).')}</span>;
 
   return (
     <Modal

@@ -1,5 +1,6 @@
 // Shared pieces for long logs (Settings → Change log, AI / MCP → Activity log, a record's History): filters kept in
 // one object, a server query with paging, and a pager. The server returns { rows, total, page, size }.
+import { dateLocale } from '../../shared/languages.ts';
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { qs, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -66,7 +67,7 @@ export function FilterBar({ children, active, onClear, csv }: { children: ReactN
 export const stamp = (s: string | null | undefined, lang: string) => {
   if (!s) return '—';
   const d = new Date(s.includes('T') ? s : `${s.replace(' ', 'T')}Z`);
-  return d.toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(dateLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
 // ---------------------------------------------------------------- the change log
@@ -102,8 +103,8 @@ const show = (v: unknown): string => {
 
 /** One change: who, how, what, and the fields that changed (folded when there are many). */
 export function ChangeList({ rows, entities }: { rows: ChangeRow[]; entities?: Record<string, { en: string; zh: string }> }) {
-  const { t, lang } = useI18n();
-  const ent = (e: string) => (entities?.[e] ? (lang === 'en' ? entities[e].en : entities[e].zh) : e);
+  const { t, lt, lang } = useI18n();
+  const ent = (e: string) => (entities?.[e] ? (t(entities[e].en) !== entities[e].en ? t(entities[e].en) : lt(entities[e])) : e);
   return (
     <div className="table-wrap">
       <table className="t log-table">

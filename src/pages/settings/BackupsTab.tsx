@@ -1,4 +1,5 @@
 // Settings → Backups: back up now, automatic schedule, backup folder, list / download / restore / delete.
+import { dateLocale } from '../../../shared/languages.ts';
 import { StorageCard } from './SecurityTab.tsx';
 import '../reports.css';
 import { useEffect, useRef, useState } from 'react';
@@ -53,7 +54,7 @@ export default function BackupsTab() {
   // the date on this computer's calendar (the ISO string is UTC: early-morning backups showed the day before)
   const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const when = (iso: string | null) =>
-    iso ? `${fmtDate(localDay(new Date(iso)), lang, { day: 'numeric', month: 'short', year: 'numeric' })} ${new Date(iso).toLocaleTimeString(lang === 'en' ? 'en-GB' : 'zh-CN', { hour: '2-digit', minute: '2-digit' })}` : '—';
+    iso ? `${fmtDate(localDay(new Date(iso)), lang, { day: 'numeric', month: 'short', year: 'numeric' })} ${new Date(iso).toLocaleTimeString(dateLocale(lang), { hour: '2-digit', minute: '2-digit' })}` : '—';
   const dirty = dir.trim() !== s.settings.dir || auto !== s.settings.auto || keep !== s.settings.keep;
 
   const backupNow = () => run(async () => {

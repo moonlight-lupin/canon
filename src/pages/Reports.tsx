@@ -50,7 +50,7 @@ function presetRange(p: Preset): [string, string] {
 }
 
 export default function Reports() {
-  const { t, lang } = useI18n();
+  const { t, lang, lt } = useI18n();
   const { canEdit, can, settings } = useSession();
   const [params, setParams] = useSearchParams();
   const tabs = TABS.filter((x) => (!x.money || can('contributions', 'read')) && (x.kind !== 'serving' || settings?.modules?.volunteers !== false));
@@ -78,7 +78,7 @@ export default function Reports() {
         {byKind && of === 'meeting' && (
           <select value={group ?? ''} onChange={(e) => setGroup(Number(e.target.value) || null)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
             <option value="">{t('All groups')}</option>
-            {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+            {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{lt(g.name)}</option>)}
           </select>
         )}
       </PageHead>

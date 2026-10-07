@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n.tsx';
 import { Loading, useAction } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
-import type { L10n, Lang } from '../../types-client.ts';
+import type { L10n } from '../../types-client.ts';
 
 interface Part { key: string; label: { en: string; zh: string }; pii: boolean; query: string }
 interface Summary {
@@ -26,7 +26,7 @@ export function ExportTab() {
   const [scores, setScores] = useState(true);
   const [blocks, setBlocks] = useState(true);
   const [bibles, setBibles] = useState(false);
-  const label = (l: Part['label']) => (lang === 'en' ? l.en : (l as Record<string, string>)[lang as Lang] ?? l.zh ?? l.en);
+  const label = (l: Part['label']) => lt(l as Record<string, string>);
   const q = (o: Record<string, boolean>) => Object.entries(o).map(([k, v]) => `${k}=${v ? 1 : 0}`).join('&');
   return (
     <div className="stack">

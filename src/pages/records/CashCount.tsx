@@ -1,4 +1,5 @@
 // Records: the cash count by denomination, signing it, and the printable declaration.
+import { dateLocale } from '../../../shared/languages.ts';
 import { FitToScreen } from '../../components/onscreen.ts';
 import { useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -116,7 +117,14 @@ export function CashDeclaration() {
   const s = svc.data;
   const cur = r.currency;
   const c = congs.find((x) => x.id === s.congregation_id);
-  const both = (en: string, zh: string) => (lang === 'en' ? en : `${zh} ${en}`);
+  // a printed form for an auditor: the reader's language, with English after it
+  // a printed form for an auditor: the reader's language, with English after it. `key` names the phrase to
+  // translate when the English word alone is ambiguous ("Note" here is a banknote); `vars` fill {cur}
+  const both = (en: string, key = en, vars: Record<string, string> = {}) => {
+    const fill = (x: string) => Object.entries(vars).reduce((a, [k, v]) => a.replaceAll(`{${k}}`, v), x);
+    const tr = fill(t(key));
+    return lang === 'en' || t(key) === key ? fill(en) : `${tr} ${fill(en)}`;
+  };
   const line = (d: number) => {
     const n = r.cash[String(d)] ?? 0;
     return <tr key={d}><td className="right">{denomLabel(d, cur)}</td><td className="right">{n || '—'}</td><td className="right">{n ? money(n * d, cur) : '—'}</td></tr>;
@@ -129,23 +137,23 @@ export function CashDeclaration() {
       </div>
       <FitToScreen className="decl-page">
         <h1>{lt(settings?.church_name ?? { en: 'Church' })}</h1>
-        <h2>{both('Offering Count Declaration', '奉献点算声明')}</h2>
+        <h2>{both('Offering Count Declaration')}</h2>
         <table className="decl-meta">
           <tbody>
-            <tr><th>{both('Service', '聚会')}</th><td><Bi v={s.title} /></td></tr>
-            <tr><th>{both('Date', '日期')}</th><td>{fmtDate(s.date, lang)} · {s.start_time}</td></tr>
+            <tr><th>{both('Service')}</th><td><Bi v={s.title} /></td></tr>
+            <tr><th>{both('Date')}</th><td>{fmtDate(s.date, lang)} · {s.start_time}</td></tr>
             {c && <tr><th>{lt(CONG_LABEL)}</th><td>{lt(c.name)}</td></tr>}
-            <tr><th>{both('Currency', '货币')}</th><td>{cur}</td></tr>
-            <tr><th>{both('Date counted', '点算日期')}</th><td>{fmtDate(r.counted_on ?? s.date, lang)}</td></tr>
+            <tr><th>{both('Currency')}</th><td>{cur}</td></tr>
+            <tr><th>{both('Date counted')}</th><td>{fmtDate(r.counted_on ?? s.date, lang)}</td></tr>
           </tbody>
         </table>
 
-        <h3>{both('Cash count', '现金点算')}</h3>
+        <h3>{both('Cash count')}</h3>
         <div className="decl-cash">
-          <table><thead><tr><th className="right">{both('Note', '纸币')}</th><th className="right">{both('Count', '张数')}</th><th className="right">{both('Amount', '金额')}</th></tr></thead><tbody>{den.notes.map(line)}</tbody></table>
-          <table><thead><tr><th className="right">{both('Coin', '硬币')}</th><th className="right">{both('Count', '枚数')}</th><th className="right">{both('Amount', '金额')}</th></tr></thead><tbody>{den.coins.map(line)}</tbody></table>
+          <table><thead><tr><th className="right">{both('Note', 'Banknote (cash count)')}</th><th className="right">{both('Count', 'Number of notes (cash count)')}</th><th className="right">{both('Amount')}</th></tr></thead><tbody>{den.notes.map(line)}</tbody></table>
+          <table><thead><tr><th className="right">{both('Coin', 'Coin (cash count)')}</th><th className="right">{both('Count', 'Number of coins (cash count)')}</th><th className="right">{both('Amount')}</th></tr></thead><tbody>{den.coins.map(line)}</tbody></table>
         </div>
-        <p className="decl-total">{both('Total cash counted', '现金总额')}: <strong>{money(cashTotal(r.cash), cur, true)}</strong></p>
+        <p className="decl-total">{both('Total cash counted')}: <strong>{money(cashTotal(r.cash), cur, true)}</strong></p>
 
         {foreignCurrencies(r.offerings, cur).map((fc) => {
           const f = r.foreign_cash?.[fc] ?? {};
@@ -156,25 +164,25 @@ export function CashDeclaration() {
           };
           return (
             <div key={fc}>
-              <h3>{both(`Cash in ${fc}`, `${fc} 现金`)}</h3>
+              <h3>{both('Cash in {cur}', 'Cash in {cur}', { cur: fc })}</h3>
               {fd && f.cash && Object.values(f.cash).some(Boolean) && (
-                <table className="decl-methods"><thead><tr><th className="right">{both('Note / coin', '面额')}</th><th className="right">{both('Count', '数量')}</th><th className="right">{both('Amount', '金额')}</th></tr></thead><tbody>{[...fd.notes, ...fd.coins].map(fline)}</tbody></table>
+                <table className="decl-methods"><thead><tr><th className="right">{both('Note / coin', 'Note / coin (cash count)')}</th><th className="right">{both('Count', 'Number (cash count)')}</th><th className="right">{both('Amount')}</th></tr></thead><tbody>{[...fd.notes, ...fd.coins].map(fline)}</tbody></table>
               )}
-              <p className="decl-total">{both(`Total ${fc} cash counted`, `${fc} 现金总额`)}: <strong>{money(foreignCounted(f), fc, true)}</strong>
-                {f.converted != null && <> · {both(`Value in ${cur} once exchanged`, `兑换后价值 (${cur})`)}: {money(f.converted, cur, true)}</>}</p>
+              <p className="decl-total">{both('Total {cur} cash counted', 'Total {cur} cash counted', { cur: fc })}: <strong>{money(foreignCounted(f), fc, true)}</strong>
+                {f.converted != null && <> · {both('Value in {cur} once exchanged', 'Value in {cur} once exchanged', { cur })}: {money(f.converted, cur, true)}</>}</p>
             </div>
           );
         })}
 
-        <h3>{both('Offerings by method', '奉献方式')}</h3>
+        <h3>{both('Offerings by method')}</h3>
         <table className="decl-methods">
           <tbody>
             {OFFERING_METHODS.filter((m) => r.offerings.some((l) => l.method === m && (l.currency ?? cur) === cur)).map((m) => (
               <tr key={m}><th>{t(METHOD_LABEL[m])}</th><td className="right">{money(methodTotal(r.offerings, m, cur, cur), cur)}</td></tr>
             ))}
-            <tr className="sum"><th>{both('Total offerings', '奉献总额')}</th><td className="right">{money(methodTotal(r.offerings, undefined, cur, cur), cur, true)}</td></tr>
+            <tr className="sum"><th>{both('Total offerings')}</th><td className="right">{money(methodTotal(r.offerings, undefined, cur, cur), cur, true)}</td></tr>
             {foreignCurrencies(r.offerings, cur).map((fc) => (
-              <tr key={fc} className="sum"><th>{both(`Total offerings in ${fc} (not converted)`, `${fc} 奉献总额（未兑换）`)}</th><td className="right">{money(methodTotal(r.offerings, undefined, fc, cur), fc, true)}</td></tr>
+              <tr key={fc} className="sum"><th>{both('Total offerings in {cur} (not converted)', 'Total offerings in {cur} (not converted)', { cur: fc })}</th><td className="right">{money(methodTotal(r.offerings, undefined, fc, cur), fc, true)}</td></tr>
             ))}
           </tbody>
         </table>
@@ -185,16 +193,16 @@ export function CashDeclaration() {
             : `我们以下签名的同工声明：我们一同点算了上述聚会的现金奉献，以上点算正确无误，并已按教会规定处理及保管现金。 We, the undersigned, declare that we counted the cash offering of the above service together, that the count above is correct, and that the cash was handled and kept as the church requires.`}
         </p>
         <table className="decl-sign">
-          <thead><tr><th>{both('Name', '姓名')}</th><th>{both('Signature', '签名')}</th><th>{both('Date', '日期')}</th></tr></thead>
+          <thead><tr><th>{both('Name')}</th><th>{both('Signature')}</th><th>{both('Date')}</th></tr></thead>
           <tbody>
             {signed.length
-              ? signed.map((g) => <tr key={g.name}><td>{g.name}</td><td className="decl-sig">{g.via === 'account' ? <span className="small">{both('Approved in Canon from own account', '已在 Canon 以本人帐户核准')}</span> : <img src={g.image} alt="" />}</td><td>{new Date(g.signed_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN', { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)
+              ? signed.map((g) => <tr key={g.name}><td>{g.name}</td><td className="decl-sig">{g.via === 'account' ? <span className="small">{both('Approved in Canon from own account')}</span> : <img src={g.image} alt="" />}</td><td>{new Date(g.signed_at).toLocaleString(dateLocale(lang), { dateStyle: 'medium', timeStyle: 'short' })}</td></tr>)
               : counters.map((n, i) => <tr key={i}><td>{n}</td><td /><td>{n ? fmtDate(r.counted_on ?? s.date, lang, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td></tr>)}
           </tbody>
         </table>
         {r.verified_at && (signed.length
-          ? <p className="small muted">{both('Signed on screen in Canon; the signatures belong to the count above.', '已在 Canon 屏幕上签名；签名对应以上点算。')}</p>
-          : <p className="small muted">{both('Marked as verified in Canon by', '已在 Canon 中由以下人员确认')} {r.verified_by}, {new Date(r.verified_at).toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}</p>)}
+          ? <p className="small muted">{both('Signed on screen in Canon; the signatures belong to the count above.')}</p>
+          : <p className="small muted">{both('Marked as verified in Canon by')} {r.verified_by}, {new Date(r.verified_at).toLocaleString(dateLocale(lang))}</p>)}
       </FitToScreen>
     </div>
   );

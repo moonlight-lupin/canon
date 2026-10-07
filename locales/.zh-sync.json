@@ -728,6 +728,10 @@
       "已以本人帐户核准",
       "已以本人帳戶核准"
     ],
+    "Approved in Canon from own account": [
+      "已在 Canon 以本人帐户核准",
+      "已在 Canon 以本人帳戶核准"
+    ],
     "Approved version": [
       "已核准的版本",
       "已核准的版本"
@@ -823,6 +827,14 @@
     "Ask an administrator to add the SMTP server under Settings → E-mail.": [
       "请管理员在“设置 → 电邮”中添加 SMTP 服务器。",
       "請管理員在“設置 → 電郵”中添加 SMTP 服務器。"
+    ],
+    "Asset": [
+      "资产",
+      "資產"
+    ],
+    "Asset photo or receipt": [
+      "资产照片或收据",
+      "資產照片或收據"
     ],
     "Asset register": [
       "资产登记",
@@ -956,6 +968,10 @@
       "背景图片…",
       "背景圖片…"
     ],
+    "Backup": [
+      "备份",
+      "備份"
+    ],
     "Backup encryption": [
       "备份加密",
       "備份加密"
@@ -999,6 +1015,10 @@
     "Bank transfer": [
       "银行转账",
       "銀行轉賬"
+    ],
+    "Banknote (cash count)": [
+      "纸币",
+      "紙幣"
     ],
     "Banknotes": [
       "纸币",
@@ -1244,6 +1264,10 @@
       "按年龄",
       "按年齡"
     ],
+    "By fund": [
+      "奉献项目",
+      "奉獻項目"
+    ],
     "By fund and month": [
       "按奉献项目和月份",
       "按奉獻項目和月份"
@@ -1288,6 +1312,10 @@
       "日历",
       "日曆"
     ],
+    "Calendar event": [
+      "日历活动",
+      "日曆活動"
+    ],
     "Came back": [
       "再来",
       "再來"
@@ -1312,9 +1340,17 @@
       "Canon 没有这种货币的纸币和硬币面额：请输入点算总额。",
       "Canon 沒有這種貨幣的紙幣和硬幣面額：請輸入點算總額。"
     ],
+    "Canon is a local-first system for churches: service planning with bulletins and slides, member and co-worker registers, groups, a volunteer rota, and a permission-controlled MCP server for AI assistants. It is multilingual and self-hosted — on an office PC, the church’s own server or any Docker host — so the church’s data stays under the church’s control.": [
+      "Canon 是为教会设计的本地优先系统：聚会程序与次序单、投影、会友与同工名册、小组、事奉表，以及供 AI 助手使用、权限可控的 MCP 服务器。支持多种语言；可安装在办公室电脑、自己的服务器或 Docker 上，资料始终由教会自己掌管。",
+      "Canon 是為教會設計的本地優先系統：聚會程序與次序單、投影、會友與同工名冊、小組、事奉表，以及供 AI 助手使用、權限可控的 MCP 服務器。支持多種語言；可安裝在辦公室電腦、自己的服務器或 Docker 上，資料始終由教會自己掌管。"
+    ],
     "Canon is reached through a tunnel or proxy": [
       "Canon 经由隧道或代理访问",
       "Canon 經由隧道或代理訪問"
+    ],
+    "Canon is released under the MIT licence and is built with these open-source projects:": [
+      "Canon 以 MIT 许可证发布，并使用以下开源软件：",
+      "Canon 以 MIT 許可證發佈，並使用以下開源軟件："
     ],
     "Canon sends volunteer reminder e-mails through the church’s own e-mail account. Nothing is sent automatically: an editor presses “Send reminders” on a service’s Team tab.": [
       "Canon 通过教会自己的电邮账户发送同工服事提醒。系统不会自动发送：须由编辑者在聚会的“同工”分页按“发送提醒”。",
@@ -1347,6 +1383,10 @@
     "Cash counts not yet verified": [
       "尚未确认的现金点算",
       "尚未確認的現金點算"
+    ],
+    "Cash in {cur}": [
+      "{cur} 现金",
+      "{cur} 現金"
     ],
     "Cash in {c}": [
       "{c} 现金",
@@ -1459,6 +1499,10 @@
     "Chinese": [
       "中文",
       "中文"
+    ],
+    "Chinese Union Version 和合本 (1919)": [
+      "和合本（简 / 繁）",
+      "和合本（簡 / 繁）"
     ],
     "Chinese name": [
       "中文名",
@@ -1592,6 +1636,10 @@
       "结束语",
       "結束語"
     ],
+    "Co-worker": [
+      "同工",
+      "同工"
+    ],
     "Co-worker positions": [
       "同工职分",
       "同工職分"
@@ -1615,6 +1663,10 @@
     "Code: 2–12 capital letters, digits or hyphens (e.g. ESV, CUNP, TB2).": [
       "代号：2–12 个大写字母、数字或连字符（例如 ESV、CUNP、TB2）。",
       "代號：2–12 個大寫字母、數字或連字符（例如 ESV、CUNP、TB2）。"
+    ],
+    "Coin (cash count)": [
+      "硬币",
+      "硬幣"
     ],
     "Coins": [
       "硬币",
@@ -2832,6 +2884,10 @@
       "从",
       "從"
     ],
+    "From Canon service records; amounts in": [
+      "根据 Canon 聚会记录；金额单位",
+      "根據 Canon 聚會記錄；金額單位"
+    ],
     "From a phone": [
       "用手机",
       "用手機"
@@ -2863,6 +2919,10 @@
     "Full-time": [
       "全职",
       "全職"
+    ],
+    "Fully rostered": [
+      "已排满",
+      "已排滿"
     ],
     "Fund": [
       "奉献项目",
@@ -2923,6 +2983,10 @@
     "Group family members together to see who lives with whom.": [
       "把家人编为一个家庭，方便查看。",
       "把家人編為一個家庭，方便查看。"
+    ],
+    "Group member": [
+      "小组成员",
+      "小組成員"
     ],
     "Group members": [
       "成员",
@@ -3192,6 +3256,14 @@
       "诗歌",
       "詩歌"
     ],
+    "Hymns, Bible versions and images that your church adds remain under their owners’ copyright — use them under your own licences (e.g. CCLI).": [
+      "教会自行加入的诗歌、圣经译本与图片，其版权归原作者所有；请依照您的授权（如 CCLI）使用。",
+      "教會自行加入的詩歌、聖經譯本與圖片，其版權歸原作者所有；請依照您的授權（如 CCLI）使用。"
+    ],
+    "Hymns, psalms and historic liturgy in the starter library": [
+      "资料库中的诗歌、诗篇与历史礼文",
+      "資料庫中的詩歌、詩篇與歷史禮文"
+    ],
     "Hymns, psalms and the doxology": [
       "圣诗、诗篇歌与三一颂",
       "聖詩、詩篇歌與三一頌"
@@ -3412,6 +3484,10 @@
       "类别",
       "類別"
     ],
+    "King James Version (1769)": [
+      "英王钦定本",
+      "英王欽定本"
+    ],
     "Label": [
       "名称",
       "名稱"
@@ -3576,9 +3652,21 @@
       "资料库（诗歌、礼文、圣经）",
       "資料庫（詩歌、禮文、聖經）"
     ],
+    "Library book": [
+      "图书馆书目",
+      "圖書館書目"
+    ],
+    "Library copy": [
+      "图书副本",
+      "圖書副本"
+    ],
     "Library file": [
       "资料库文件",
       "資料庫文件"
+    ],
+    "Library loan": [
+      "借阅",
+      "借閱"
     ],
     "Licence": [
       "许可",
@@ -3772,6 +3860,10 @@
       "已标记为点算并确认。",
       "已標記為點算並確認。"
     ],
+    "Marked as verified in Canon by": [
+      "已在 Canon 中由以下人员确认",
+      "已在 Canon 中由以下人員確認"
+    ],
     "Measured after a few days": [
       "几天后才有数据",
       "幾天後才有數據"
@@ -3807,6 +3899,10 @@
     "Member": [
       "会友",
       "會友"
+    ],
+    "Member data is stored only in your own Canon database (data/canon.db, or the Docker data volume). Share links never include contact details; AI assistants see only the modules an administrator opens in Settings → AI / MCP, and every call is logged.": [
+      "Canon 是为教会设计的本地优先系统：聚会程序与次序单、投影、会友与同工名册、小组、事奉表，以及供 AI 助手使用、权限可控的 MCP 服务器。支持多种语言；可安装在办公室电脑、自己的服务器或 Docker 上，资料始终由教会自己掌管。'\n                  : 'Canon is a local-first system for churches: service planning with bulletins and slides, member and co-worker registers, groups, a volunteer rota, and a permission-controlled MCP server for AI assistants. It is multilingual and self-hosted — on an office PC, the church’s own server or any Docker host — so the church’s data stays under the church’s control.'}\n              </p>\n              <p className=\"small muted\" style={{ margin: 0 }}>\n                {zh\n                  ? '“Canon”一词源自希腊文 κανών，意为量度的芦苇、准则（结 40:3；加 6:16）。'\n                  : 'The name comes from the Greek κανών — a measuring reed, a rule (Ezek 40:3; Gal 6:16).'}\n              </p>\n            </div>\n          </div>\n          <table className=\"t\" style={{ maxWidth: 420 }}>\n            <tbody>\n              <tr><td className=\"muted\">{t('Version')}</td><td>{data?.version ?? '…'}</td></tr>\n              <tr><td className=\"muted\">{t('Licence')}</td><td>{data?.license ?? 'MIT'}</td></tr>\n              <tr><td className=\"muted\">{t('Database schema')}</td><td>{data?.schema ?? '…'}</td></tr>\n              <tr><td className=\"muted\">Node.js</td><td>{data?.node ?? '…'}</td></tr>\n              <tr><td className=\"muted\">{t('Source code')}</td><td><a href=\"https://github.com/moonlight-lupin/canon\" target=\"_blank\" rel=\"noreferrer\">github.com/moonlight-lupin/canon</a></td></tr>\n            </tbody>\n          </table>\n        </section>\n\n        <section className=\"card stack\">\n          <h2>{t('Content credits')}</h2>\n          <div className=\"table-wrap\">\n            <table className=\"t\">\n              <tbody>\n                {CREDITS.map((c) => (\n                  <tr key={c.what}>\n                    <td><strong>{t(c.what)}</strong><div className=\"small muted\">{c.url ? <a href={c.url} target=\"_blank\" rel=\"noreferrer\">{c.source}</a> : c.source}</div></td>\n                    <td className=\"nowrap\"><span className=\"badge ok\">{c.licence}</span></td>\n                  </tr>\n                ))}\n              </tbody>\n            </table>\n          </div>\n          <p className=\"small muted\" style={{ margin: 0 }}>\n            {zh\n              ? '教会自行加入的诗歌、圣经译本与图片，其版权归原作者所有；请依照您的授权（如 CCLI）使用。'\n              : 'Hymns, Bible versions and images that your church adds remain under their owners’ copyright — use them under your own licences (e.g. CCLI).'}\n          </p>\n          <p className=\"small muted\" style={{ margin: 0 }}>\n            {zh\n              ? '“公共领域”视乎国家而定：在英国，钦定本仍属王室永久权利；1929 年前出版的诗歌在美国属公共领域，但在版权延续至作者去世后 70 年的国家，部分歌词、译文或编曲可能仍受版权保护。'\n              : 'Public domain depends on the country: in the United Kingdom the King James Version remains under the Crown’s perpetual rights, and hymns first published before 1929 are public domain in the United States, but where copyright lasts 70 years after the author’s death some words, translations or arrangements may still be in copyright.'}\n          </p>\n        </section>\n\n        <section className=\"card stack\">\n          <h2>{t('Software')}</h2>\n          <p className=\"small\" style={{ margin: 0 }}>\n            {t('Canon is released under the MIT licence and is built with these open-source projects:')}{' '}\n            {SOFTWARE.join(' · ')}\n          </p>\n        </section>\n\n        <section className=\"card stack\">\n          <h2>{t('Privacy')}</h2>\n          <p className=\"small\" style={{ margin: 0 }}>\n            {zh\n              ? '会友资料只存放在您自己的 Canon 数据库中（data/canon.db，或 Docker 的数据卷）。分享链接不含联系方式；AI 助手只能看到管理员在“设置 → AI / MCP”中开放的模块，所有调用都有记录。",
+      "Canon 是為教會設計的本地優先系統：聚會程序與次序單、投影、會友與同工名冊、小組、事奉表，以及供 AI 助手使用、權限可控的 MCP 服務器。支持多種語言；可安裝在辦公室電腦、自己的服務器或 Docker 上，資料始終由教會自己掌管。'\n                  : 'Canon is a local-first system for churches: service planning with bulletins and slides, member and co-worker registers, groups, a volunteer rota, and a permission-controlled MCP server for AI assistants. It is multilingual and self-hosted — on an office PC, the church’s own server or any Docker host — so the church’s data stays under the church’s control.'}\n              </p>\n              <p className=\"small muted\" style={{ margin: 0 }}>\n                {zh\n                  ? '“Canon”一詞源自希臘文 κανών，意為量度的蘆葦、準則（結 40:3；加 6:16）。'\n                  : 'The name comes from the Greek κανών — a measuring reed, a rule (Ezek 40:3; Gal 6:16).'}\n              </p>\n            </div>\n          </div>\n          <table className=\"t\" style={{ maxWidth: 420 }}>\n            <tbody>\n              <tr><td className=\"muted\">{t('Version')}</td><td>{data?.version ?? '…'}</td></tr>\n              <tr><td className=\"muted\">{t('Licence')}</td><td>{data?.license ?? 'MIT'}</td></tr>\n              <tr><td className=\"muted\">{t('Database schema')}</td><td>{data?.schema ?? '…'}</td></tr>\n              <tr><td className=\"muted\">Node.js</td><td>{data?.node ?? '…'}</td></tr>\n              <tr><td className=\"muted\">{t('Source code')}</td><td><a href=\"https://github.com/moonlight-lupin/canon\" target=\"_blank\" rel=\"noreferrer\">github.com/moonlight-lupin/canon</a></td></tr>\n            </tbody>\n          </table>\n        </section>\n\n        <section className=\"card stack\">\n          <h2>{t('Content credits')}</h2>\n          <div className=\"table-wrap\">\n            <table className=\"t\">\n              <tbody>\n                {CREDITS.map((c) => (\n                  <tr key={c.what}>\n                    <td><strong>{t(c.what)}</strong><div className=\"small muted\">{c.url ? <a href={c.url} target=\"_blank\" rel=\"noreferrer\">{c.source}</a> : c.source}</div></td>\n                    <td className=\"nowrap\"><span className=\"badge ok\">{c.licence}</span></td>\n                  </tr>\n                ))}\n              </tbody>\n            </table>\n          </div>\n          <p className=\"small muted\" style={{ margin: 0 }}>\n            {zh\n              ? '教會自行加入的詩歌、聖經譯本與圖片，其版權歸原作者所有；請依照您的授權（如 CCLI）使用。'\n              : 'Hymns, Bible versions and images that your church adds remain under their owners’ copyright — use them under your own licences (e.g. CCLI).'}\n          </p>\n          <p className=\"small muted\" style={{ margin: 0 }}>\n            {zh\n              ? '“公共領域”視乎國家而定：在英國，欽定本仍屬王室永久權利；1929 年前出版的詩歌在美國屬公共領域，但在版權延續至作者去世後 70 年的國家，部分歌詞、譯文或編曲可能仍受版權保護。'\n              : 'Public domain depends on the country: in the United Kingdom the King James Version remains under the Crown’s perpetual rights, and hymns first published before 1929 are public domain in the United States, but where copyright lasts 70 years after the author’s death some words, translations or arrangements may still be in copyright.'}\n          </p>\n        </section>\n\n        <section className=\"card stack\">\n          <h2>{t('Software')}</h2>\n          <p className=\"small\" style={{ margin: 0 }}>\n            {t('Canon is released under the MIT licence and is built with these open-source projects:')}{' '}\n            {SOFTWARE.join(' · ')}\n          </p>\n        </section>\n\n        <section className=\"card stack\">\n          <h2>{t('Privacy')}</h2>\n          <p className=\"small\" style={{ margin: 0 }}>\n            {zh\n              ? '會友資料只存放在您自己的 Canon 數據庫中（data/canon.db，或 Docker 的數據卷）。分享鏈接不含聯繫方式；AI 助手只能看到管理員在“設置 → AI / MCP”中開放的模塊，所有調用都有記錄。"
     ],
     "Member fields": [
       "会友栏位",
@@ -3920,6 +4016,10 @@
       "月份",
       "月份"
     ],
+    "Monthly Offerings Summary": [
+      "每月奉献汇总",
+      "每月奉獻彙總"
+    ],
     "Monthly summary for the treasurer": [
       "给司库的每月汇总",
       "給司庫的每月彙總"
@@ -3979,6 +4079,10 @@
     "My profile": [
       "我的资料",
       "我的資料"
+    ],
+    "NOT VERIFIED": [
+      "未确认",
+      "未確認"
     ],
     "Name": [
       "姓名",
@@ -4163,6 +4267,10 @@
     "Next meeting created.": [
       "已建立下一次聚会。",
       "已建立下一次聚會。"
+    ],
+    "Next service": [
+      "下一堂聚会",
+      "下一堂聚會"
     ],
     "Next slide": [
       "下一张",
@@ -4371,6 +4479,10 @@
     "No services in this period": [
       "此期间没有聚会",
       "此期間沒有聚會"
+    ],
+    "No services planned in the next eight weeks.": [
+      "未来八周没有安排聚会。",
+      "未來八週沒有安排聚會。"
     ],
     "No sheet music yet.": [
       "尚无乐谱。",
@@ -4592,6 +4704,14 @@
       "备注（可选）",
       "備註（可選）"
     ],
+    "Note / coin": [
+      "面额",
+      "面額"
+    ],
+    "Note / coin (cash count)": [
+      "面额",
+      "面額"
+    ],
     "Notes": [
       "备注",
       "備註"
@@ -4672,6 +4792,18 @@
       "编号",
       "編號"
     ],
+    "Number (cash count)": [
+      "数量",
+      "數量"
+    ],
+    "Number of coins (cash count)": [
+      "枚数",
+      "枚數"
+    ],
+    "Number of notes (cash count)": [
+      "张数",
+      "張數"
+    ],
     "Number only: 123 Title": [
       "只印编号：123 诗名",
       "只印編號：123 詩名"
@@ -4708,6 +4840,10 @@
       "奉献",
       "奉獻"
     ],
+    "Offering Count Declaration": [
+      "奉献点算声明",
+      "奉獻點算聲明"
+    ],
     "Offerings": [
       "奉献",
       "奉獻"
@@ -4719,6 +4855,10 @@
     "Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.": [
       "奉献和现金点算，以及奉献报表。属于聚会记录：须先开启聚会记录。永远只读：AI 不会更改金额、签名或确认点算。只读帐户永远看不到奉献。",
       "奉獻和現金點算，以及奉獻報表。屬於聚會記錄：須先開啟聚會記錄。永遠只讀：AI 不會更改金額、簽名或確認點算。只讀帳戶永遠看不到奉獻。"
+    ],
+    "Offerings by method": [
+      "奉献方式",
+      "奉獻方式"
     ],
     "Old Testament": [
       "旧约",
@@ -4952,6 +5092,10 @@
       "其他货币",
       "其他貨幣"
     ],
+    "Other currencies (not converted)": [
+      "其他货币（未兑换）",
+      "其他貨幣（未兌換）"
+    ],
     "Other font…": [
       "其他字体……",
       "其他字體……"
@@ -5152,6 +5296,10 @@
       "个人资料已删除。",
       "個人資料已刪除。"
     ],
+    "Personal data is used only for church administration (PDPA).": [
+      "个人资料仅用于教会行政用途。",
+      "個人資料僅用於教會行政用途。"
+    ],
     "Personal data should be kept only as long as it is needed, and old records can move out of the live database into one read-only file per year. Archive files are copied with every backup.": [
       "个人资料只应保留到有需要为止；旧记录可移出使用中的数据库，每年存成一个只读文件。每次备份都会一并复制归档文件。",
       "個人資料只應保留到有需要為止；舊記錄可移出使用中的數據庫，每年存成一個只讀文件。每次備份都會一併複製歸檔文件。"
@@ -5183,6 +5331,10 @@
     "Photos and receipts": [
       "照片与收据",
       "照片與收據"
+    ],
+    "Pick a template and Canon drops in the call to worship, creed, benediction and the rest.": [
+      "选择一个模板，系统会自动放入宣召、信经、祝福等礼文。",
+      "選擇一個模板，系統會自動放入宣召、信經、祝福等禮文。"
     ],
     "Pick the member who leads this meeting: if their Canon account is linked to them (Settings → Users), they can record it. For someone outside the register, type their name instead.": [
       "选择带领这次聚会的会友：如果他的 Canon 帐户已与本人连结（设置 → 用户），他就可以记录这次聚会。不在名册中的人，请改为输入姓名。",
@@ -5223,6 +5375,10 @@
     "Plan services": [
       "安排聚会",
       "安排聚會"
+    ],
+    "Plan your first service": [
+      "尚无聚会程序",
+      "尚無聚會程序"
     ],
     "Planner": [
       "策划",
@@ -5295,6 +5451,10 @@
     "Preferred name": [
       "常用名",
       "常用名"
+    ],
+    "Prepared by": [
+      "制表",
+      "製表"
     ],
     "Presenter": [
       "主控",
@@ -5423,6 +5583,10 @@
     "Public domain": [
       "公共领域",
       "公共領域"
+    ],
+    "Public domain depends on the country: in the United Kingdom the King James Version remains under the Crown’s perpetual rights, and hymns first published before 1929 are public domain in the United States, but where copyright lasts 70 years after the author’s death some words, translations or arrangements may still be in copyright.": [
+      "“公共领域”视乎国家而定：在英国，钦定本仍属王室永久权利；1929 年前出版的诗歌在美国属公共领域，但在版权延续至作者去世后 70 年的国家，部分歌词、译文或编曲可能仍受版权保护。",
+      "“公共領域”視乎國家而定：在英國，欽定本仍屬王室永久權利；1929 年前出版的詩歌在美國屬公共領域，但在版權延續至作者去世後 70 年的國家，部分歌詞、譯文或編曲可能仍受版權保護。"
     ],
     "Public-domain Bibles can be downloaded and imported here. To use a licensed translation your church has permission for (e.g. ESV, NIV, 和合本修订版, Alkitab), choose Add a Bible and upload it as a CSV file.": [
       "可在此下载并导入公版圣经。若要使用本教会已获授权的译本（如和合本修订版、ESV、NIV、Alkitab），请按「添加圣经译本」并上传 CSV 文件。",
@@ -5888,6 +6052,10 @@
       "职务",
       "職務"
     ],
+    "Role qualification": [
+      "岗位资格",
+      "崗位資格"
+    ],
     "Roles": [
       "岗位",
       "崗位"
@@ -5911,6 +6079,10 @@
     "Rota": [
       "事奉表",
       "事奉表"
+    ],
+    "Rota assignment": [
+      "事奉安排",
+      "事奉安排"
     ],
     "Rota warnings": [
       "事奉表提醒",
@@ -6252,6 +6424,10 @@
       "本堂默认",
       "本堂默認"
     ],
+    "Service item": [
+      "聚会项目",
+      "聚會項目"
+    ],
     "Service notes (the Notes box)": [
       "聚会备注（「备注」栏）",
       "聚會備註（「備註」欄）"
@@ -6259,6 +6435,10 @@
     "Service planner": [
       "聚会程序",
       "聚會程序"
+    ],
+    "Service record": [
+      "聚会记录",
+      "聚會記錄"
     ],
     "Service records": [
       "聚会记录",
@@ -6271,6 +6451,10 @@
     "Service records and reports": [
       "聚会记录与报表",
       "聚會記錄與報表"
+    ],
+    "Service template": [
+      "聚会模板",
+      "聚會模板"
     ],
     "Service templates": [
       "聚会模板",
@@ -6560,6 +6744,10 @@
       "登入",
       "登入"
     ],
+    "Signature": [
+      "签名",
+      "簽名"
+    ],
     "Signature of {name}": [
       "{name} 的签名",
       "{name} 的簽名"
@@ -6567,6 +6755,10 @@
     "Signature pad": [
       "签名板",
       "簽名板"
+    ],
+    "Signed on screen in Canon; the signatures belong to the count above.": [
+      "已在 Canon 屏幕上签名；签名对应以上点算。",
+      "已在 Canon 屏幕上簽名；簽名對應以上點算。"
     ],
     "Signed.": [
       "已签名。",
@@ -6876,6 +7068,10 @@
       "队长",
       "隊長"
     ],
+    "Team member": [
+      "团队成员",
+      "團隊成員"
+    ],
     "Team members": [
       "团队成员",
       "團隊成員"
@@ -7119,6 +7315,10 @@
     "The member this account belongs to. A member who leads a group or a meeting can then record those meetings, even with a read-only account.": [
       "这个帐户所属的会友。带领某个群组或聚会活动的会友，即使使用只读帐户，也可以记录那些聚会活动。",
       "這個帳戶所屬的會友。帶領某個群組或聚會活動的會友，即使使用只讀帳戶，也可以記錄那些聚會活動。"
+    ],
+    "The name comes from the Greek κανών — a measuring reed, a rule (Ezek 40:3; Gal 6:16).": [
+      "“Canon”一词源自希腊文 κανών，意为量度的芦苇、准则（结 40:3；加 6:16）。",
+      "“Canon”一詞源自希臘文 κανών，意為量度的蘆葦、準則（結 40:3；加 6:16）。"
     ],
     "The new password needs at least 8 characters.": [
       "新密码至少需要 8 个字符。",
@@ -7460,6 +7660,22 @@
       "合计",
       "合計"
     ],
+    "Total cash counted": [
+      "现金总额",
+      "現金總額"
+    ],
+    "Total offerings": [
+      "奉献总额",
+      "奉獻總額"
+    ],
+    "Total offerings in {cur} (not converted)": [
+      "{cur} 奉献总额（未兑换）",
+      "{cur} 奉獻總額（未兌換）"
+    ],
+    "Total {cur} cash counted": [
+      "{cur} 现金总额",
+      "{cur} 現金總額"
+    ],
     "Traditional Chinese": [
       "繁体中文",
       "繁體中文"
@@ -7724,6 +7940,10 @@
       "用户",
       "用戶"
     ],
+    "User account": [
+      "用户帐户",
+      "用戶帳戶"
+    ],
     "User accounts": [
       "用户帐户",
       "用戶帳戶"
@@ -7743,6 +7963,10 @@
     "Usually the full e-mail address of the sending account.": [
       "通常是发信账户的完整电邮地址。",
       "通常是發信賬戶的完整電郵地址。"
+    ],
+    "Value in {cur} once exchanged": [
+      "兑换后价值 ({cur})",
+      "兌換後價值 ({cur})"
     ],
     "Value in {c} once exchanged": [
       "兑换后价值（{c}）",
@@ -7907,6 +8131,10 @@
     "Welcome to Canon": [
       "欢迎使用 Canon",
       "歡迎使用 Canon"
+    ],
+    "Westminster Confession and Catechisms (1647)": [
+      "威斯敏斯特信条与教理问答",
+      "威斯敏斯特信條與教理問答"
     ],
     "Westminster Standards": [
       "威斯敏斯德信仰准则",
@@ -8308,6 +8536,10 @@
       "空白",
       "空白"
     ],
+    "exchanged": [
+      "兑换后",
+      "兌換後"
+    ],
     "first verse": [
       "第一节",
       "第一節"
@@ -8516,6 +8748,10 @@
       "张纸",
       "張紙"
     ],
+    "signed": [
+      "已签名",
+      "已簽名"
+    ],
     "size": [
       "大小",
       "大小"
@@ -8656,6 +8892,10 @@
       "已有 {n} 人以本人帐户核准 · 至少需要 {m} 人",
       "已有 {n} 人以本人帳戶核准 · 至少需要 {m} 人"
     ],
+    "{n} cash count(s) not yet verified.": [
+      "{n} 次现金点算尚未确认。",
+      "{n} 次現金點算尚未確認。"
+    ],
     "{n} cash counts not yet verified": [
       "有 {n} 次现金点算尚未确认",
       "有 {n} 次現金點算尚未確認"
@@ -8743,6 +8983,10 @@
     "{n} on loan": [
       "借出 {n} 项",
       "借出 {n} 項"
+    ],
+    "{n} open roles": [
+      "{n} 个岗位待排",
+      "{n} 個崗位待排"
     ],
     "{n} orders of worship: Lord's Day, Lord's Supper, Evening Worship, Baptism, Lessons and Carols. They use the hymns and texts above.": [
       "{n} 个聚会次序：主日崇拜、圣餐、晚间崇拜、洗礼、九段经课与颂歌。它们使用上面的诗歌与礼文。",

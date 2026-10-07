@@ -1,5 +1,6 @@
 // The visitor form in the web app: the service's Visitor form tab (switch it on, choose where its QR code shows,
 // print cards), the review of visitors' entries (also on the service record), and the printable cards.
+import { dateLocale } from '../../shared/languages.ts';
 import { FitToScreen } from '../components/onscreen.ts';
 import { useParams, Link } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
@@ -108,7 +109,7 @@ export function VisitorCardsReview({ serviceId, onAccepted }: { serviceId: numbe
             {c.about && <div className="small">{t('About them')}: {c.about}</div>}
             {c.source && <div className="small">{t('How they came')}: {c.source}</div>}
             {c.prayer && <div className="small vf-prayer"><strong>{t('Prayer request')}:</strong> {c.prayer}</div>}
-            <div className="small muted">{new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleString(lang === 'en' ? 'en-GB' : 'zh-CN')}{c.consent ? ` · ${t('agreed to the church keeping these details')}` : ''}</div>
+            <div className="small muted">{new Date(c.created_at.replace(' ', 'T') + 'Z').toLocaleString(dateLocale(lang))}{c.consent ? ` · ${t('agreed to the church keeping these details')}` : ''}</div>
           </div>
           <div className="row" style={{ gap: 6 }}>
             <button className="btn sm primary" onClick={() => accept(c)} disabled={busy}><Icon name="check" />{t('Accept')}</button>

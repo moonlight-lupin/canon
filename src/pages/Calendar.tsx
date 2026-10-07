@@ -1,6 +1,7 @@
 // The church calendar: services, meetings and the church's other events (a retreat, a wedding, a working bee …) by
 // month, week or as a list, for a congregation and a group. Services and meetings open their own pages; events are
 // added and changed here (editors). On a phone the month and week show as a list.
+import { dateLocale } from '../../shared/languages.ts';
 import { SpaceClashes, SpaceField } from '../components/Spaces.tsx';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -51,7 +52,7 @@ const daysOf = (it: Item, from: string, to: string) => {
 };
 
 export default function Calendar() {
-  const { t, lang } = useI18n();
+  const { t, lang, lt } = useI18n();
   const { canEdit } = useSession();
   const nav = useNavigate();
   const [view, setView] = useState<View>(() => (typeof window !== 'undefined' && window.innerWidth < 700 ? 'list' : 'month'));
@@ -78,15 +79,15 @@ export default function Calendar() {
   };
   const step = (n: number) => setAnchor(view === 'month' ? shiftMonth(anchor, n) : addDays(anchor, n * (view === 'week' ? 7 : 56)));
   const heading = view === 'month'
-    ? new Date(`${monthStart(anchor)}T12:00:00Z`).toLocaleDateString(lang === 'en' ? 'en-GB' : 'zh-CN', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    ? new Date(`${monthStart(anchor)}T12:00:00Z`).toLocaleDateString(dateLocale(lang), { month: 'long', year: 'numeric', timeZone: 'UTC' })
     : `${fmtDate(from, lang)} – ${fmtDate(to, lang)}`;
   const days: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
-  const weekdays = days.slice(0, 7).map((d) => new Date(`${d}T12:00:00Z`).toLocaleDateString(lang === 'en' ? 'en-GB' : 'zh-CN', { weekday: 'short', timeZone: 'UTC' }));
+  const weekdays = days.slice(0, 7).map((d) => new Date(`${d}T12:00:00Z`).toLocaleDateString(dateLocale(lang), { weekday: 'short', timeZone: 'UTC' }));
 
   const chip = (it: Item, d: string) => (
     <button key={`${it.type}-${it.id}-${d}`} type="button" className={`cal-item ${it.type}`} onClick={() => open(it)}
-      style={it.color ? { ['--gc' as string]: it.color } : undefined} title={`${it.start_time ?? ''} ${it.title[lang] || it.title.en || it.title.zh || ''}`}>
+      style={it.color ? { ['--gc' as string]: it.color } : undefined} title={`${it.start_time ?? ''} ${lt(it.title)}`}>
       {it.start_time && d === it.date && <span className="cal-time">{it.start_time}</span>}
       <Bi v={it.title} />
     </button>
@@ -98,7 +99,7 @@ export default function Calendar() {
         <CongregationFilter value={cong} onChange={setCong} list={congs} />
         <select value={group ?? ''} onChange={(e) => setGroup(Number(e.target.value) || null)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
           <option value="">{t('All groups')}</option>
-          {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+          {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{lt(g.name)}</option>)}
         </select>
         <Seg<View> value={view} onChange={setView} options={[{ value: 'month', label: t('Month') }, { value: 'week', label: t('Week') }, { value: 'list', label: t('List') }]} />
         {canEdit && <button className="btn primary" onClick={() => setEditing('new')}><Icon name="plus" />{t('New event')}</button>}
@@ -150,7 +151,7 @@ interface EventRow { title: L10n; date: string; end_date: string | null; start_t
 
 /** Add or change one of the church's events (editors; others see it read-only). */
 function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null; initialDate: string; onClose: () => void; onSaved: () => void }) {
-  const { t, lang } = useI18n();
+  const { t, lt } = useI18n();
   const { canEdit } = useSession();
   const { run, busy } = useAction();
   const existing = useApi<EventRow>(id ? `/events/${id}` : null);
@@ -195,7 +196,7 @@ function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null;
             <Field label={t('Group')}>
               <select value={e.group_id ?? ''} onChange={(x) => set({ group_id: Number(x.target.value) || null })}>
                 <option value="">—</option>
-                {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+                {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{lt(g.name)}</option>)}
               </select>
             </Field>
           </div>

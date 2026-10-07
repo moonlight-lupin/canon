@@ -17,7 +17,7 @@ export type MeetingRow = ServiceListRow & { group_name: L10n | null; group_color
 
 
 export default function Meetings() {
-  const { t, lang } = useI18n();
+  const { t, lang, lt } = useI18n();
   const { canEdit, user } = useSession();
   // leaders may start meetings of the groups they lead
   const mayCreate = canEdit || (user.leads ?? []).length > 0;
@@ -42,7 +42,7 @@ export default function Meetings() {
         <select value={group ?? ''} onChange={(e) => setGroup(e.target.value)} aria-label={t('Group')} style={{ maxWidth: 220 }}>
           <option value="">{t('All meetings')}</option>
           <option value="none">{t('One-off meetings')}</option>
-          {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+          {meetingGroups(groups.data).map((g) => <option key={g.id} value={g.id}>{lt(g.name)}</option>)}
         </select>
         <Seg value={when} onChange={setWhen} options={[{ value: 'upcoming', label: t('Upcoming') }, { value: 'past', label: t('Past') }]} />
         {mayCreate && <button className="btn primary" onClick={() => setParams({ ...(group ? { group: String(group) } : {}), new: '' })}><Icon name="plus" />{t('New meeting')}</button>}
@@ -80,7 +80,7 @@ export default function Meetings() {
 
 /** A new meeting: of a group (the rest is copied from its previous meeting) or a one-off with its own title. */
 export function NewMeetingDialog({ onClose, initialGroup }: { onClose: () => void; initialGroup?: number | null }) {
-  const { t, lang } = useI18n();
+  const { t, lt } = useI18n();
   const nav = useNavigate();
   const { run, busy } = useAction();
   const { canEdit, user } = useSession();
@@ -114,7 +114,7 @@ export function NewMeetingDialog({ onClose, initialGroup }: { onClose: () => voi
             <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value === '' ? null : Number(e.target.value))}>
               <option value="">{t('Choose…')}</option>
               {canEdit && <option value="0">{t('No group (a one-off meeting)')}</option>}
-              {offered.map((g) => <option key={g.id} value={g.id}>{g.name[lang] || g.name.en || g.name.zh}</option>)}
+              {offered.map((g) => <option key={g.id} value={g.id}>{lt(g.name)}</option>)}
             </select>
           </Field>
           <Field label={t('Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>

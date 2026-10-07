@@ -43,7 +43,7 @@ export default function Dashboard() {
       <div className="grid cols-2">
         <div className="card">
           <div className="card-head">
-            <h2><Icon name="calendar" width={18} height={18} />{lang === 'zh' ? '下一堂聚会' : 'Next service'}</h2>
+            <h2><Icon name="calendar" width={18} height={18} />{t('Next service')}</h2>
             {next && <span className={`badge ${next.status === 'final' ? 'ok' : ''}`}>{t(next.status === 'final' ? 'Final' : 'Draft')}</span>}
           </div>
           {next ? (
@@ -66,7 +66,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="muted">{lang === 'zh' ? '未来八周没有安排聚会。' : 'No services planned in the next eight weeks.'}</div>
+            <div className="muted">{t('No services planned in the next eight weeks.')}</div>
           )}
         </div>
 
@@ -118,9 +118,9 @@ export default function Dashboard() {
                       )}{' '}
                       {unfilled > 0 ? (
                         <HoverTip tap content={<WarningList title={t('Unassigned')} items={s.warnings.filter((w) => w.type === 'unfilled').map((w) => w.message)} />}>
-                          <button type="button" className="badge badge-btn">{unfilled} {lang === 'zh' ? '岗位待排' : 'open roles'}</button>
+                          <button type="button" className="badge badge-btn">{t('{n} open roles').replace('{n}', String(unfilled))}</button>
                         </HoverTip>
-                      ) : <span className="badge ok">{lang === 'zh' ? '已排满' : 'Fully rostered'}</span>}
+                      ) : <span className="badge ok">{t('Fully rostered')}</span>}
                     </td>
                   </tr>
                 );

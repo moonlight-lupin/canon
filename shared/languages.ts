@@ -78,6 +78,9 @@ export function langInfo(code: string): LanguageInfo {
 export const isCJK = (code: string) => langInfo(code).cjk;
 export const isChinese = (code: string) => code === 'zh' || code.startsWith('zh-');
 
+/** The locale for dates and numbers in a language: British English, Chinese as written in China / Taiwan, else its own. */
+export const dateLocale = (code: string) => (code === 'en' ? 'en-GB' : code === 'zh' ? 'zh-CN' : code === 'zh-Hant' ? 'zh-TW' : langInfo(code).htmlLang);
+
 // a language has an interface when it has a translation: locales/<code>/ui.json (shared/locales.generated.ts)
 for (const l of LANGUAGE_CATALOG) l.ui = UI_LOCALES.includes(l.code);
 

@@ -1,4 +1,5 @@
 // Settings: pieces shared by several tabs.
+import { dateLocale } from '../../../shared/languages.ts';
 import { useState } from 'react';
 import { api } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -12,7 +13,7 @@ export function fmtStamp(s: string | null | undefined, lang: Lang) {
   if (!s) return '—';
   const d = new Date(/T/.test(s) ? s : s.replace(' ', 'T') + 'Z');
   if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'zh-Hant' ? 'zh-TW' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(dateLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 /** Text box for the public https address, so nobody has to edit environment variables. */
