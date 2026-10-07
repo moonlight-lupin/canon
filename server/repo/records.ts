@@ -100,7 +100,9 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
   if (MONEY_FIELDS.some((k) => k in rest)) assertMoney(who);
   // signatures belong to one exact count: when the cash changes they no longer apply (a verified count cannot change, above)
   if (cur.saved && cashChanged && (cur.signatures?.length ?? 0) > 0) Object.assign(rest, { signatures: [] });
-  return cur.saved ? records.update(cur.id, rest) : records.insert({ ...blank(serviceId), ...rest });
+  const out = cur.saved ? records.update(cur.id, rest) : records.insert({ ...blank(serviceId), ...rest });
+  // a verified count's other lines (PayNow, transfers) may still change: the books' draft follows them
+  return cur.verified_at && 'offerings' in rest ? afterCount(serviceId, out) : out;
 }
 
 /**

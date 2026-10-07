@@ -356,3 +356,16 @@ test('the books in Settings → Export data and on the dashboard', async () => {
   assert.equal(typeof dash.bookkeeping.drafts, 'number');
   assert.equal((await call(as.editor, 'GET', '/dashboard')).body.bookkeeping, null, 'editors don’t see the books');
 });
+
+test('a PayNow line added after the count is verified is drafted into the books too', () => {
+  const s = svc.createService({ date: '2031-07-06' }).service;
+  const ed = { name: 'Ed Itor', admin: false, money: true };
+  web(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'paynow', amount: 5000 }], counters: ['Ann', 'Ben'] }, ed));
+  web(() => R.setVerified(s.id, true, ed));
+  const first = get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND status = 'draft'", s.id)!.id;
+  web(() => B.postJournal(first));
+  // found later (e.g. at the bank reconciliation): a Missions gift by PayNow for that service
+  web(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'paynow', amount: 5000 }, { fund: 'Missions', method: 'paynow', amount: 2000 }] }, ed));
+  const add = B.getJournal(get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND status = 'draft'", s.id)!.id);
+  assert.deepEqual(add.lines.map((l) => [l.account_id, l.fund_id, l.debit, l.credit]).sort(), [[acc('1100'), fund('MIS'), 2000, 0], [acc('4000'), fund('MIS'), 0, 2000]].sort());
+});
