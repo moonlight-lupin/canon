@@ -7,6 +7,7 @@ import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { SEED_TEMPLATES } from '../seed/templates.ts';
 import { songs, texts } from './library.ts';
 import { roleByName, roles, serviceAssignments } from './volunteers.ts';
+import { joinNames, sermonLeaders } from '../../shared/leaders.ts';
 import { getSettings } from './settings.ts';
 import { listCongregations } from './congregations.ts';
 import { backgroundByName } from './backgrounds.ts';
@@ -30,9 +31,9 @@ export const items = table<ServiceItem>({
   name: 'service_items',
   cols: [
     'service_id', 'position', 'kind', 'title', 'ref_id', 'scripture_ref', 'stanzas', 'hymnal_id', 'bulletin_text', 'posture', 'bibles', 'slide_blocks', 'body', 'duration_min', 'role_id',
-    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id', 'slide_cover',
+    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id', 'slide_cover', 'leader_people',
   ],
-  json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks'],
+  json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks', 'leader_people'],
   bool: ['in_bulletin', 'on_slides'],
   log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
   guard: { refs: { service_id: 'services' } },
@@ -74,6 +75,22 @@ export interface ServiceQuery {
   group_id?: number | 'none' | null;
 }
 
+/** Who preaches at each service: whoever leads its sermon item, from the rota (else a name typed before 0.15.10). */
+export function preachersOf(rows: { id: number; preacher: string | null }[]): Map<number, string | null> {
+  const out = new Map<number, string | null>();
+  if (!rows.length) return out;
+  const sermons = all<{ service_id: number; kind: string; role_id: number | null; leader_people: string | null }>(
+    `SELECT service_id, kind, role_id, leader_people FROM service_items WHERE kind = 'sermon' AND service_id IN (${rows.map(() => '?').join(',')}) ORDER BY position`,
+    ...rows.map((r) => r.id),
+  );
+  for (const r of rows) {
+    const its = sermons.filter((s) => s.service_id === r.id).map((s) => ({ ...s, leader_people: s.leader_people ? (JSON.parse(s.leader_people) as number[]) : null }));
+    const names = its.length ? joinNames(sermonLeaders(its, serviceAssignments(r.id))) : '';
+    out.set(r.id, names || r.preacher);
+  }
+  return out;
+}
+
 export function listServices(q: ServiceQuery = {}) {
   const rows = all<Record<string, unknown>>(
     `SELECT s.*, (SELECT COUNT(*) FROM service_items i WHERE i.service_id = s.id) AS item_count,
@@ -89,8 +106,10 @@ export function listServices(q: ServiceQuery = {}) {
     q.kind ?? 'service', q.from ?? null, q.from ?? null, q.to ?? null, q.to ?? null, q.congregation_id ?? null, q.congregation_id ?? null,
     typeof q.group_id === 'number' ? q.group_id : null, typeof q.group_id === 'number' ? q.group_id : null, ...wallSql('s.congregation_id').params, q.limit ?? 200,
   );
-  return rows.map((r) => ({
-    ...services.decode(r)!, item_count: r.item_count as number, assigned_count: r.assigned_count as number,
+  const decoded = rows.map((r) => services.decode(r)!);
+  const preachers = preachersOf(decoded);
+  return rows.map((r, i) => ({
+    ...decoded[i], preacher: preachers.get(decoded[i].id) ?? null, item_count: r.item_count as number, assigned_count: r.assigned_count as number,
     group_name: r.group_name ? JSON.parse(String(r.group_name)) as L10n : null, group_color: (r.group_color as string | null) ?? null,
     attendance: (r.attendance as number | null) ?? null, recorded: !!r.recorded, leader_name: (r.leader_name as string | null) ?? null,
   }));
@@ -156,8 +175,21 @@ function validateBackground(input: Partial<ServiceItem>) {
   }
 }
 
+/** Leaders come from the rota (0.15.10): a name typed before can be removed, not set; ticked people must be on it. */
+function validateLeaders(serviceId: number, input: Partial<ServiceItem>, cur?: ServiceItem) {
+  if (typeof input.leader === 'string' && input.leader.trim() && input.leader !== cur?.leader) {
+    throw new BadRequest('Leaders come from the rota: put the person on the rota (Team & roster), then tick them for this item (leader_people). Typed names can only be removed (leader: null).');
+  }
+  if (input.leader_people?.length) {
+    const on = new Set(serviceAssignments(serviceId).filter((a) => a.status !== 'declined').map((a) => a.person_id));
+    const off = input.leader_people.filter((id) => !on.has(id));
+    if (off.length) throw new BadRequest(`leader_people ${off.join(', ')} ${off.length > 1 ? 'are' : 'is'} not on this service's rota`);
+  }
+}
+
 export function addItem(serviceId: number, input: Partial<ServiceItem>, position?: number): ServiceItem {
   services.get(serviceId);
+  validateLeaders(serviceId, input);
   validateRefs(input);
   validateBackground(input);
   return tx(() => {
@@ -172,6 +204,7 @@ export function addItem(serviceId: number, input: Partial<ServiceItem>, position
 
 export function updateItem(itemId: number, patch: Partial<ServiceItem>): ServiceItem {
   const cur = items.get(itemId);
+  validateLeaders(cur.service_id, patch, cur);
   validateRefs({ ...cur, ...patch });
   if (patch.slide_background_id !== undefined) validateBackground(patch);
   const { service_id: _s, position: _p, id: _i, ...rest } = patch as ServiceItem;
@@ -227,7 +260,8 @@ export function materialise(tItems: TemplateItem[]) {
       body: t.body ?? {},
       duration_min: t.duration_min,
       role_id: role?.id ?? null,
-      leader: t.leader ?? null,
+      // a template's typed leader is not used: leaders come from the rota (0.15.10)
+      leader: null,
       notes: t.notes ?? null,
       ...(t.in_bulletin !== undefined ? { in_bulletin: t.in_bulletin } : {}),
       ...(t.on_slides !== undefined ? { on_slides: t.on_slides } : {}),
@@ -362,10 +396,11 @@ export function duplicateService(id: number, date: string, withRoster = false) {
   return tx(() => {
     // a copy gets no share link, reference or visitor form of its own (they are unique to the original)
     const { id: _id, items: its, assignments: as, share_token: _t, created_at: _c, updated_at: _u, ref: _r, visitor_form: _vf, attendee: _at, ...rest } = src;
-    const svc = services.insert({ ...rest, date, status: 'draft', share_token: null, ref: null, visitor_form: {}, attendee: {} });
+    // names typed before 0.15.10 are not copied: a new service takes its leaders and preacher from its own rota
+    const svc = services.insert({ ...rest, date, status: 'draft', share_token: null, ref: null, visitor_form: {}, attendee: {}, preacher: null });
     for (const it of its) {
       const { id: _iid, service_id: _sid, ...r } = it;
-      items.insert({ ...r, service_id: svc.id });
+      items.insert({ ...r, service_id: svc.id, leader: null, leader_people: withRoster ? (r.leader_people ?? null) : null });
     }
     if (withRoster) {
       for (const a of as) {

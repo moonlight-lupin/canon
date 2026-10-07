@@ -57,9 +57,11 @@ before(async () => {
   run('INSERT INTO team_members_v08 (team_id, person_id, is_leader) VALUES (?, ?, 0)', team, pid);
   run("INSERT INTO unavailability (person_id, start_date, end_date, reason) VALUES (?, '2030-01-01', '2030-01-10', 'Overseas for surgery')", pid);
   run("INSERT INTO coworkers (person_id, position, category) VALUES (?, 'Youth worker', 'ministry_staff')", pid);
-  const ps = await call(ed, "POST", "/services", { date: "2026-01-04", title: { en: "Past Sunday" }, preacher: NAME });
+  const ps = await call(ed, "POST", "/services", { date: "2026-01-04", title: { en: "Past Sunday" } });
   assert.equal(ps.status, 200, JSON.stringify(ps.body));
   const past = ps.body.service.id;
+  // a preacher typed before 0.15.10 (names come from the rota now)
+  run('UPDATE services SET preacher = ? WHERE id = ?', NAME, past);
   const future = (await call(ed, 'POST', '/services', { date: '2031-01-05', title: { en: "Future Sunday" } })).body.service.id;
   run("INSERT INTO assignments (service_id, role_id, person_id, status, notes) VALUES (?, ?, ?, 'confirmed', 'Will bring keys')", past, role, pid);
   run("INSERT INTO assignments (service_id, role_id, person_id, status) VALUES (?, ?, ?, 'invited')", future, role, pid);

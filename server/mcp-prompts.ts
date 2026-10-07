@@ -108,7 +108,7 @@ export const PROMPTS: PromptDef[] = [
         a.template ? `- Template: ${q(a.template)}` : '- Template: the church\'s usual Lord\'s Day template (ask if there are several).',
         a.sermon_ref ? `- Sermon text: ${q(a.sermon_ref)}` : '- Sermon text: not given — ask the user, or check whether the service already has one.',
         a.sermon_title ? `- Sermon title: ${q(a.sermon_title)}` : null,
-        a.preacher ? `- Preacher: ${q(a.preacher)}` : null,
+        a.preacher ? `- Preacher: ${q(a.preacher)} — Canon takes the preacher from the rota (the sermon item's role): put them on it with canon_update_rota; it cannot be typed.` : null,
         '',
         '## Steps',
         `1. Find the service: canon_find_services {"from":"${date}","to":"${date}"}. If it exists, read it with canon_get_service {"id":…}.`,

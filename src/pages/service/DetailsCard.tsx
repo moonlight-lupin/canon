@@ -1,4 +1,5 @@
 // The service planner: the service's details (date, title, preacher, languages, cover, templates…).
+import { joinNames, sermonLeaders } from '../../../shared/leaders.ts';
 import { SpaceClashes, SpaceField } from '../../components/Spaces.tsx';
 import { useState } from 'react';
 import { useContentLangs, useI18n } from '../../i18n.tsx';
@@ -24,9 +25,10 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
   const churchLangs = [...new Set([...useContentLangs(), ...svc.languages])];
   const churchBible = useChurchBible();
   const [d, setD] = useState(svc);
-  // who the rota has for the sermon item's role (the order of service prints them rather than the Preacher typed here)
-  const sermonRoles = new Set(svc.items.filter((it) => it.kind === 'sermon' && it.role_id).map((it) => it.role_id));
-  const sermonRota = [...new Set(svc.assignments.filter((a) => sermonRoles.has(a.role_id) && a.status !== 'declined').map((a) => a.person_name))].join(', ');
+  // the preacher (0.15.10): whoever leads the sermon item, from the rota — chosen on that item, never typed here
+  const sermonRota = joinNames(sermonLeaders(svc.items, svc.assignments));
+  const hasSermon = svc.items.some((it) => it.kind === 'sermon');
+  const typedPreacher = svc.preacher?.trim();
   const set = <K extends keyof ServiceFull>(k: K, v: ServiceFull[K]) => setD((x) => ({ ...x, [k]: v }));
   const toggleLang = (l: Lang) => {
     const has = d.languages.includes(l);
@@ -40,10 +42,21 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
         <div className="form-grid">
           <Field label={t('Date')}><input type="date" value={d.date} onChange={(e) => set('date', e.target.value)} /></Field>
           <Field label={t('Start time')}><input type="time" value={d.start_time} onChange={(e) => set('start_time', e.target.value)} /></Field>
-          <Field label={t('Preacher')} hint={sermonRota && d.preacher?.trim() && d.preacher.trim() !== sermonRota
-            ? <span className="warn-text">{t('The rota has {names} for the sermon, so the order of service shows them, not this name.').replace('{names}', sermonRota)}</span>
-            : undefined}>
-            <input value={d.preacher ?? ''} placeholder={sermonRota} onChange={(e) => set('preacher', e.target.value)} />
+          <Field
+            label={t('Preacher')}
+            hint={
+              <>
+                {hasSermon ? t('Whoever leads the Sermon item, from the rota.') : t('Add a Sermon item and give it the preacher’s role.')}
+                {typedPreacher && (
+                  <span className="warn-text">
+                    {' '}{(sermonRota ? t('Typed earlier: “{name}” — not on the rota, not printed.') : t('Typed earlier: “{name}” — not on the rota; printed until someone on the rota is chosen.')).replace('{name}', typedPreacher)}{' '}
+                    <button type="button" className="btn ghost sm" onClick={() => onSave({ preacher: null })}>{t('Remove')}</button>
+                  </span>
+                )}
+              </>
+            }
+          >
+            <input value={sermonRota || typedPreacher || ''} readOnly placeholder={t('(from the rota)')} />
           </Field>
           <Field label={t('Sermon text')}><input value={d.sermon_ref ?? ''} placeholder="Isaiah 6:1-8" onChange={(e) => set('sermon_ref', e.target.value)} /></Field>
           <Field label={<>{t('Reference')} <InfoTip text={t('Your own short code for this service, e.g. EN-2026-12-25: letters, digits and - _ . without spaces. People and AI assistants can then name it.')} /></>}>
@@ -97,7 +110,7 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
         <Field label={t('Notes')}><textarea rows={2} value={d.notes ?? ''} onChange={(e) => set('notes', e.target.value)} /></Field>
         <div className="row end">
           <button className="btn primary" onClick={() => onSave({
-            date: d.date, start_time: d.start_time, preacher: d.preacher || null, sermon_ref: d.sermon_ref || null,
+            date: d.date, start_time: d.start_time, sermon_ref: d.sermon_ref || null,
             languages: d.languages, title: d.title, sermon_title: d.sermon_title, theme: d.theme, notes: d.notes || null,
             season: d.season ?? null, cover: { style: d.cover?.style, verse_ref: d.cover?.verse_ref?.trim() || undefined },
             slide_theme_id: d.slide_theme_id ?? null, bulletin_template_id: d.bulletin_template_id ?? null, congregation_id: d.congregation_id ?? null, space_id: d.space_id ?? null, ref: d.ref || null,

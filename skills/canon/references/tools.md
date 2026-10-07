@@ -58,7 +58,7 @@ Look at precedent before proposing or writing any plan, and name the services yo
 - song: `ref_id` (song id), `stanzas` `["1","3","R"]`, `hymnal_id`.
 - scripture: `scripture_ref` `"Romans 8:28-39"`; optional `bibles` `{"en":"ESV"}` for this reading.
 - text: `ref_id` (liturgical text id); catechism / confession parts in `stanzas` `["1","2","3"]`.
-- all: `title` (L10n), `duration_min`, `role_id` / `leader`, `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `slide_cover` cover | both | null (a title-and-leader slide instead of / before the words), `notes`, `slide_blocks` [block ids], `slide_background_id` (picture from Library → Slide backgrounds behind this item's slides; `null` = template background).
+- all: `title` (L10n), `duration_min`, `role_id`, `leader_people` [person ids on this service's rota; null = the role's whole rota / nobody without a role; names are never typed — `leader: null` only removes an old typed one], `posture` stand | sit | kneel, `in_bulletin`, `bulletin_text` full | title, `on_slides`, `slide_cover` cover | both | null (a title-and-leader slide instead of / before the words), `notes`, `slide_blocks` [block ids], `slide_background_id` (picture from Library → Slide backgrounds behind this item's slides; `null` = template background).
 
 ## Weekly bulletin sections
 

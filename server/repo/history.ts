@@ -1,6 +1,7 @@
 // Precedent: what the church did before. Similar past services (same Sunday last year, same sermon book, same
 // season…), when each song was last sung, and how far a catechism / confession series has got. Pure SQL + scoring;
 // used by the MCP tools (agents look at precedent before proposing a plan) and the planner's "last sung" badges.
+import { preachersOf } from './services.ts';
 import type { L10n, Season } from '../../shared/types.ts';
 import { BOOKS, parseRef, type RefSegment } from '../../shared/bible.ts';
 import { easter, seasonOf } from '../../shared/season.ts';
@@ -383,6 +384,8 @@ export function similarServices(
   const sermonTitles = new Map(top.map((x) => [x.s.id, brief(parseJson<L10n>(x.s.sermon_title, {}))]));
   const outs = opts.outline === false ? new Map<number, OutlineItem[]>() : outlines(ids, sermonTitles);
   const rosters = opts.roster === false ? new Map<number, string>() : rosterSummaries(ids);
+  // who preached: from the rota (the sermon item), else a name typed before 0.15.10
+  const preachers = preachersOf(top.map((x) => x.s));
   return top.map(({ s, season, score, reasons }) => ({
     id: s.id,
     date: s.date,
@@ -391,7 +394,7 @@ export function similarServices(
     season,
     sermon_ref: s.sermon_ref ?? undefined,
     sermon_title: sermonTitles.get(s.id) || undefined,
-    preacher: s.preacher ?? undefined,
+    preacher: preachers.get(s.id) ?? undefined,
     score,
     reasons,
     outline: outs.get(s.id) ?? [],

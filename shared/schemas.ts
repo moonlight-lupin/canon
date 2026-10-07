@@ -175,7 +175,10 @@ export const ServiceItemInput = z.object({
   body: L10nSchema.optional(),
   duration_min: z.number().min(0).max(240).optional(),
   role_id: z.number().int().nullable().optional(),
-  leader: optStr,
+  /** a name typed before 0.15.10: it can only be removed (null); leaders come from the rota */
+  leader: z.string().max(200).nullable().optional(),
+  /** who leads it, ticked from the rota (person ids); null = the role's whole rota, or nobody without a role */
+  leader_people: z.array(z.number().int()).max(20).nullable().optional(),
   notes: optStr,
   in_bulletin: z.boolean().optional(),
   on_slides: z.boolean().optional(),
@@ -186,7 +189,8 @@ export const ServiceInput = z.object({
   start_time: time.optional(),
   title: L10nSchema.optional(),
   service_type: z.string().max(50).optional(),
-  preacher: optStr,
+  /** a name typed before 0.15.10 can only be removed (null): the preacher comes from the rota (the sermon item) */
+  preacher: z.null().optional(),
   sermon_title: L10nSchema.optional(),
   sermon_ref: z.string().max(200).nullable().optional(),
   theme: L10nSchema.optional(),

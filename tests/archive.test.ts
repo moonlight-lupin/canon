@@ -123,7 +123,7 @@ test('an archived record is read-only: no new record, no deleting or moving the 
   assert.match(put.json!.error, /2018 archive/);
   assert.equal((await call(as.editor, 'DELETE', `/services/${sid}`)).status, 409, 'the service stays');
   assert.equal((await call(as.editor, 'PATCH', `/services/${sid}`, { date: '2025-01-05' })).status, 409, 'nor moves to another year');
-  assert.equal((await call(as.editor, 'PATCH', `/services/${sid}`, { preacher: 'Rev. Test' })).status, 200, 'other details can change');
+  assert.equal((await call(as.editor, 'PATCH', `/services/${sid}`, { sermon_ref: 'John 3:16' })).status, 200, 'other details can change');
   const row = (await call(as.editor, 'GET', '/records?from=2018-01-01&to=2018-12-31')).json!.find((r: Json) => r.service_id === sid);
   assert.equal(row.archived_year, 2018);
 

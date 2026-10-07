@@ -72,7 +72,6 @@ export function NewServiceDialog({ onClose, initialTemplate, initialCongregation
   const { data: templates } = useApi<Template[]>('/templates');
   const [date, setDate] = useState(nextSunday(today()));
   const [templateId, setTemplateId] = useState<number | null>(initialTemplate ?? null);
-  const [preacher, setPreacher] = useState('');
   const [sermonTitle, setSermonTitle] = useState<L10n>({});
   const [sermonRef, setSermonRef] = useState('');
   const { settings } = useSession();
@@ -85,7 +84,7 @@ export function NewServiceDialog({ onClose, initialTemplate, initialCongregation
 
   const create = async () => {
     const r = await run(() => api.post<{ service: ServiceFull; missing: string[] }>('/services', {
-      date, template_id: tid === -1 ? null : tid, preacher: preacher || null, sermon_title: sermonTitle, sermon_ref: sermonRef || null, congregation_id: congregation ?? null,
+      date, template_id: tid === -1 ? null : tid, sermon_title: sermonTitle, sermon_ref: sermonRef || null, congregation_id: congregation ?? null,
     }));
     if (r) {
       onClose();
@@ -104,7 +103,6 @@ export function NewServiceDialog({ onClose, initialTemplate, initialCongregation
         <div className="form-grid">
           <Field label={t('Date')}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
           <CongregationField value={congregation} onChange={setCongPick} hint={t('New services start with this congregation’s languages.')} />
-          <Field label={t('Preacher')}><input value={preacher} onChange={(e) => setPreacher(e.target.value)} placeholder="Rev. Tan" /></Field>
           <Field label={t('Sermon text')}><input value={sermonRef} onChange={(e) => setSermonRef(e.target.value)} placeholder="Isaiah 6:1-8" /></Field>
         </div>
         <Field label={t('Sermon title')}><L10nInput value={sermonTitle} onChange={setSermonTitle} /></Field>

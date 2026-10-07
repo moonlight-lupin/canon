@@ -13,6 +13,7 @@ import { hymnals, selectParts, singingOrder, songs, texts } from './library.ts';
 import { getServiceFull, itemTimes } from './services.ts';
 import { getSettings } from './settings.ts';
 import { roles, serviceAssignments, teams } from './volunteers.ts';
+import { itemLeaders, sermonLeaders } from '../../shared/leaders.ts';
 import { people } from './registers.ts';
 import { personL10n } from '../../shared/people-names.ts';
 import { complete, pick } from '../lib/chinese.ts';
@@ -154,7 +155,9 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
 
   const items: RenderedItem[] = svc.items.map((it, i) => {
     const role = it.role_id ? roles.find(it.role_id) : undefined;
-    const assigned = namesForRole(it.role_id);
+    // who leads it: people on the rota only (a name typed before 0.15.10 when the rota gives nobody)
+    const who = itemLeaders(it, active);
+    const assigned = who.map((a) => a.person_name);
     let leader = assigned.length ? assigned.join(', ') : it.leader;
     if (!leader && it.kind === 'sermon') leader = svc.preacher;
     const out: RenderedItem = {
@@ -167,7 +170,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
       duration_min: it.duration_min,
       role_name: role?.name ?? null,
       leader: leader ?? null,
-      leader_l10n: assigned.length ? joinL10n(l10nForRole(it.role_id)) : leader ? Object.fromEntries(langs.map((l) => [l, leader!])) : undefined,
+      leader_l10n: assigned.length ? joinL10n(who.map(nameL10n)) : leader ? Object.fromEntries(langs.map((l) => [l, leader!])) : undefined,
       posture: it.posture ?? null,
       notes: it.notes,
       in_bulletin: it.in_bulletin,
@@ -301,7 +304,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
     end_time: itemTimes(svc, [{ duration_min: total }])[0].end,
     title: complete(svc.title, langs),
     theme: complete(svc.theme, langs),
-    preacher: svc.preacher,
+    preacher: sermonLeaders(svc.items, active).map((a) => a.person_name).join(', ') || svc.preacher,
     sermon_title: complete(svc.sermon_title, langs),
     sermon_ref: refL10n(svc.sermon_ref, langs).ref,
     languages: langs,

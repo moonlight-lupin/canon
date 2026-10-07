@@ -1,5 +1,6 @@
 // The service planner — the heart of Canon. The order of worship runs down a "measuring reed"
 // with clock times; items are reordered by drag, filled from the library panel, and edited inline.
+import { itemLeaders, joinNames, sermonLeaders } from '../../shared/leaders.ts';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { hasAnyText } from '../../shared/labels.ts';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -224,10 +225,11 @@ export default function ServiceEditor() {
   };
   // the same rule as the bulletin, slides and run sheet: who is on the rota for the item's role, else the name typed
   // in Leader, else (a sermon) the preacher; with nobody at all, the role's name as a reminder
-  const rostered = (it: ServiceItem) =>
-    it.role_id ? svc.assignments.filter((a) => a.role_id === it.role_id && a.status !== 'declined').map((a) => a.person_name).join(', ') : '';
+  // the preacher: whoever leads the sermon item, from the rota (else a name typed before 0.15.10)
+  const preacher = joinNames(sermonLeaders(svc.items, svc.assignments)) || svc.preacher;
+  // who leads an item: people on the rota only (shared/leaders.ts, the same rule as every output)
   const leaderOf = (it: ServiceItem) => {
-    const names = rostered(it);
+    const names = joinNames(itemLeaders(it, svc.assignments));
     if (names) return names;
     const typed = it.leader || (it.kind === 'sermon' ? svc.preacher : null);
     if (typed) return typed;
@@ -255,7 +257,7 @@ export default function ServiceEditor() {
         title={<Bi v={svc.title} />}
         sub={
           <span className="row" style={{ gap: 10 }}>
-            {svc.preacher && <span>{t('Preacher')}: {svc.preacher}</span>}
+            {preacher && <span>{t('Preacher')}: {preacher}</span>}
             {hasAnyText(svc.sermon_title) && <span className="serif">“{lt(svc.sermon_title)}”{svc.sermon_ref ? ` · ${svc.sermon_ref}` : ''}</span>}
             <span className="badge reed">{total} {t('min')}</span>
           </span>
@@ -365,7 +367,7 @@ export default function ServiceEditor() {
                                 item={it}
                                 langs={langs}
                                 svcBibles={svc.bibles}
-                                rostered={rostered(it)}
+                                rota={svc.assignments}
                                 songs={songMap}
                                 texts={textMap}
                                 teams={teams ?? []}

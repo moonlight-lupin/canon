@@ -6,7 +6,7 @@ Every playbook that plans or checks a service starts by **checking past services
 
 ## plan_service — plan a Lord's Day service
 
-Inputs: date (default next Sunday), template, sermon_ref, sermon_title, preacher.
+Inputs: date (default next Sunday), template, sermon_ref, sermon_title, preacher (put on the rota for the sermon's role with canon_update_rota — Canon never takes a typed preacher).
 
 1. `canon_find_services {"from": date, "to": date}`. If found, `canon_get_service {"id"}`. If not, `canon_get_templates` and pick the usual Lord's Day template — but don't create the service until the plan is confirmed.
 2. **Check past services**: `canon_find_services {"similar_to": <id>}` (or `{"like": {"date", "sermon_ref"}}` when the service doesn't exist yet). Study the same Sunday last year, the same season and the same sermon book: order, usual hymns per slot, durations, who served (`roster_summary`).

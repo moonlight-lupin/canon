@@ -11,6 +11,8 @@ import { parsePartSelection, partRuns, shiftBlock } from '../../../shared/parts.
 import type { ItemKind, Lang, LiturgyText, Posture, ServiceItem, Song, TeamWithRoles } from '../../types-client.ts';
 import type { Hymnal, TextPart } from '../../types-client.ts';
 import { BulletinChoice } from '../presentation-pickers.tsx';
+import { MultiPick } from '../../components/MultiPick.tsx';
+import { itemLeaders, leaderPool, type RotaEntry } from '../../../shared/leaders.ts';
 import { SlideBlocksPicker } from '../Blocks.tsx';
 import { SlideBackgroundPicker } from '../Backgrounds.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
@@ -19,12 +21,53 @@ import type { BulletinBlock } from '../../../shared/presentation.ts';
 import { BibleSelect, useBibles, useChurchBible } from '../../components/BibleTools.tsx';
 import { KIND_LABEL, KINDS } from './common.ts';
 
+/**
+ * Who leads the item (0.15.10): people on the service's rota only — the role's (all ticked unless the planner unticks
+ * some), or, for an item without a role, anyone on the rota. A name typed before is shown, flagged, with Remove.
+ */
+function LeaderField({ item, rota, onPatch }: { item: ServiceItem; rota: RotaEntry[]; onPatch: (p: Partial<ServiceItem>, immediate?: boolean) => void }) {
+  const { t } = useI18n();
+  const pool = leaderPool(item, rota);
+  const shown = itemLeaders(item, rota).map((a) => a.person_id);
+  const set = (ids: number[]) => {
+    // a role's whole rota is the default (null), so people added to the rota later are included
+    const all = item.role_id && ids.length === pool.length;
+    onPatch({ leader_people: all ? null : ids }, true);
+  };
+  const typed = item.leader?.trim();
+  return (
+    <Field
+      label={t('Leader')}
+      hint={
+        <>
+          {!pool.length && (item.role_id ? t('Nobody is on the rota for this role yet — add them in Team & roster.') : t('Nobody is on this service’s rota yet — add them in Team & roster.'))}
+          {typed && (
+            <span className="warn-text">
+              {' '}{(shown.length ? t('Typed earlier: “{name}” — not on the rota, not printed.') : t('Typed earlier: “{name}” — not on the rota; printed until someone on the rota is chosen.')).replace('{name}', typed)}{' '}
+              <button type="button" className="btn ghost sm" onClick={() => onPatch({ leader: null }, true)}>{t('Remove')}</button>
+            </span>
+          )}
+        </>
+      }
+    >
+      <MultiPick
+        value={shown}
+        options={pool.map((a) => ({ value: a.person_id, label: a.person_name }))}
+        onChange={set}
+        disabled={!pool.length}
+        ariaLabel={t('Leader')}
+        placeholder={item.role_id ? t('(from the rota)') : t('Nobody')}
+      />
+    </Field>
+  );
+}
+
 export function ItemEditor({
-  item, langs, songs, texts, teams, canEdit, onPatch, onDelete, onMove, isFirst, isLast, svcBibles, rostered = '',
+  item, langs, songs, texts, teams, canEdit, onPatch, onDelete, onMove, isFirst, isLast, svcBibles, rota = [],
 }: {
   svcBibles?: Record<Lang, string>;
-  /** who is on the rota for the item's role (they are printed, not the name typed in Leader) */
-  rostered?: string;
+  /** the service's rota: the only people an item's Leader can name (0.15.10) */
+  rota?: RotaEntry[];
   item: ServiceItem; langs: Lang[]; songs: Map<number, Song>; texts: Map<number, LiturgyText>; teams: TeamWithRoles[];
   canEdit: boolean; onPatch: (p: Partial<ServiceItem>, immediate?: boolean) => void; onDelete: () => void;
   onMove: (delta: number) => void; isFirst: boolean; isLast: boolean;
@@ -54,14 +97,7 @@ export function ItemEditor({
                   onChange={(v) => onPatch({ role_id: v ? Number(v) : null }, true)}
                 />
               </Field>
-              <Field
-                label={t('Leader')}
-                hint={rostered && item.leader?.trim() && item.leader.trim() !== rostered
-                  ? <span className="warn-text">{t('The rota has {names} for this role, so they are printed, not the name typed here. To print this name, clear Role.').replace('{names}', rostered)}</span>
-                  : undefined}
-              >
-                <input value={item.leader ?? ''} placeholder={rostered || (item.role_id ? t('(from the rota)') : '')} onChange={(e) => onPatch({ leader: e.target.value || null })} />
-              </Field>
+              <LeaderField item={item} rota={rota} onPatch={onPatch} />
               <PostureField value={item.posture ?? null} langs={langs} onChange={(p) => onPatch({ posture: p }, true)} />
             </>
           )}

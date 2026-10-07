@@ -104,7 +104,7 @@ The [Calendar](/calendar) shows services, meetings and the church's other events
 ### 1. Plan Sunday's service
 
 1. Go to [Services](/services) and press **＋ New service**.
-2. Check the **Date** (next Sunday is filled in), add the **Preacher**, **Sermon text** (e.g. Isaiah 6:1-8) and **Sermon title**.
+2. Check the **Date** (next Sunday is filled in), add the **Sermon text** (e.g. Isaiah 6:1-8) and **Sermon title**. The **Preacher** comes from the rota (whoever leads the Sermon item).
 3. Choose a **Template** (or **Blank service**) and press **New service**. The planner opens.
 4. Under the service's details, choose the **Space** it is held in (once an administrator has added the church's spaces in Settings → Spaces). If the same space is booked at the same time — another service, a meeting or an event — a warning lists them; it doesn't stop you saving, since sharing a hall can be on purpose.
 
@@ -124,7 +124,7 @@ The [Calendar](/calendar) shows services, meetings and the church's other events
 - **Posture**: stand (众立) or sit (众坐) prints on the bulletin.
 - **In bulletin**: **Template default**, **Full text**, **Title only** or **Hidden**. **On slides** includes or leaves out the item.
 - **Slides** (next to **On slides**): **Content only** (the words, as usual), **Cover only** — one slide with the item's title and who leads it, e.g. just "Threefold Amen" instead of three amens — or **Cover, then content**, e.g. "Scripture Reading · Ruth Lee" before the passage. The PowerPoint and FreeShow files do the same.
-- **Role** fills the leader from the rota; **Leader** is free text. When the rota has someone for the item's role, they are the ones printed (bulletin, slides, run sheet, share pages) and shown in the order — a name typed in **Leader** is used only when nobody is on the rota for that role (or the item has no role), and a note under **Leader** says so. Likewise the service's **Preacher** gives way to whoever the rota has for the sermon's role.
+- **Leader** names only people on this service's rota — nobody can be typed. With a **Role**, everyone on the rota for that role is ticked; untick some to print only those (e.g. one of two ushers). Without a role, tick anyone on the service's rota (nobody by default). Put people on the rota in **Team & roster** first. A name typed before 0.15.10 still prints while nobody from the rota is chosen; the planner shows it as **Typed earlier**, with **Remove**. A copied service starts without typed names. The service's **Preacher** is whoever leads the **Sermon** item (choose on that item); it can't be typed.
 - **QR codes & notes on slides** adds a QR code or a short note to the item's slides.
 - **Slide background** puts a picture behind this item's slides only (for example bread and cup for the Lord's Supper), instead of the slide template's background. Choose from **Library → Slide backgrounds** (type to search). The picture is faded with the template's background colour so the words stay readable, and it is used in the PowerPoint download too.
 

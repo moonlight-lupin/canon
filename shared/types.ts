@@ -298,8 +298,10 @@ export interface ServiceItem {
   body: L10n;
   duration_min: number;
   role_id: number | null;
-  /** free-text leader, e.g. "Rev. Tan" when not tied to a role */
+  /** a name typed before 0.15.10 (leaders now come from the rota); prints only when the rota gives nobody */
   leader: string | null;
+  /** who leads it, ticked from the rota (person ids): null = the role's whole rota, or nobody when it has no role */
+  leader_people?: number[] | null;
   notes: string | null;
   in_bulletin: boolean;
   on_slides: boolean;

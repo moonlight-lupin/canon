@@ -39,7 +39,8 @@ export function serviceSummary(s: Service & { item_count?: number; assigned_coun
     title: s.title,
     status: s.status,
     congregation: congregationLabel(s.congregation_id),
-    preacher: s.preacher,
+    // whoever leads the sermon item, from the rota (a name typed before 0.15.10 if the rota gives nobody)
+    preacher: svc.preachersOf([s]).get(s.id) ?? null,
     sermon_title: l10n(s.sermon_title),
     sermon_ref: s.sermon_ref,
     theme: l10n(s.theme),
@@ -96,6 +97,10 @@ function serviceDetail(id: number, includeText: boolean) {
         role_id: it.role_id,
         role: ri.role_name,
         leader: ri.leader,
+        // ticked from the rota (person ids); absent = the role's whole rota
+        leader_people: it.leader_people ?? undefined,
+        // a name typed before 0.15.10, not on the rota: replace it by putting the person on the rota
+        typed_leader: it.leader ?? undefined,
         notes: it.notes,
         in_bulletin: it.in_bulletin,
         on_slides: it.on_slides,
@@ -216,7 +221,8 @@ function downloads(id: number, base: string, userId: number, files: DownloadKind
 // ---------------------------------------------------------------- order-of-service batch
 
 /** A service's fields for agents: meetings are made and edited in Canon, so their own fields are left out. */
-const SERVICE_FIELDS = S.ServiceInput.omit({ group_id: true, place: true, leader_id: true, chair: true, topic: true, offering: true });
+// the preacher is not typed: it is whoever leads the sermon item, from the rota (0.15.10)
+const SERVICE_FIELDS = S.ServiceInput.omit({ group_id: true, place: true, leader_id: true, chair: true, topic: true, offering: true, preacher: true });
 
 const OrderOp = z.object({
   op: z.enum(['add', 'update', 'move', 'remove']),
@@ -321,7 +327,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_create_service', module: 'services', access: 'write', title: 'Create a service', annotations: WRITE,
-    description: 'Create a service on a date from a template (template: id or reference, see canon_get_templates) or as a copy of a service (copy_from; with_roster also copies the rota). Other fields override; L10n fields are {lang: text}. Details: handbook "Writing services and songs". Returns the summary, items and library items the template lacks. Example: {"date":"2026-10-11","template":"EN-001","preacher":"Rev. Tan"}.',
+    description: 'Create a service on a date from a template (template: id or reference, see canon_get_templates) or as a copy of a service (copy_from; with_roster also copies the rota). Other fields override; L10n fields are {lang: text}. Details: handbook "Writing services and songs". Returns the summary, items and library items the template lacks. The preacher is whoever leads the sermon item: put them on the rota (canon_update_rota). Example: {"date":"2026-10-11","template":"EN-001"}.',
     input: {
       ...SERVICE_FIELDS.shape,
       template: IdOrRef.optional().describe('service template id or reference'),

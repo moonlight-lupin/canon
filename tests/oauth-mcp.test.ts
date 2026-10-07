@@ -425,9 +425,9 @@ test('canon_edit_order: add + move + remove in one call; a bad op applies nothin
 test('canon_create_service copy_from duplicates a service', async () => {
   const at = tokens.access_token;
   const src = (await call(at, 'canon_find_services', { from: '2026-10-18', to: '2026-10-18' })).json!.data[0];
-  const cp = await call(at, 'canon_create_service', { date: '2026-10-25', copy_from: src.id, preacher: 'Rev. Lee' });
+  const cp = await call(at, 'canon_create_service', { date: '2026-10-25', copy_from: src.id, sermon_ref: 'Luke 2:1-7' });
   assert.equal(cp.isError, false, cp.text);
-  assert.equal(cp.json!.data.service.preacher, 'Rev. Lee');
+  assert.equal(cp.json!.data.service.sermon_ref, 'Luke 2:1-7');
   assert.equal(cp.json!.data.service.status, 'draft');
   assert.equal(cp.json!.data.items.length, 3);
   const both = await call(at, 'canon_create_service', { date: '2026-11-01', copy_from: src.id, template_id: 1 });

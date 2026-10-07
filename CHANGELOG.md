@@ -4,6 +4,16 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.15.10 — not released yet
+
+- **Leaders come from the rota only.** An item's **Leader** is now a list of tick boxes with the people on the service's rota — no typed names:
+  - with a **Role**, everyone on the rota for that role is ticked; untick some to print only those (e.g. one of two ushers);
+  - without a role, tick anyone on the service's rota (nobody by default);
+  - the **Preacher** is whoever leads the Sermon item; the Preacher box and the New service dialog no longer take a typed name.
+
+  Names typed before still print while nobody from the rota is chosen; the planner flags them as **Typed earlier** with **Remove**. A copied service, or one made from a template, starts without typed names. AI assistants tick people with `leader_people`; they cannot type a leader or preacher.
+- Database: version 31 — the people ticked for an item. Canon upgrades by itself on start.
+
 ## 0.15.9 — Cover slides, a closing slide, and who leads an item
 
 - **An item's cover slide:** next to **On slides**, **Slides** chooses **Content only** (as before), **Cover only** — one slide with the item's title and who leads it, e.g. "Threefold Amen" instead of three amens — or **Cover, then content** (e.g. the reading's title and reader, then the passage). Service templates and their CSV (`slide_cover`), the PowerPoint and FreeShow files and AI assistants (`slide_cover` on `canon_edit_order`) follow it.

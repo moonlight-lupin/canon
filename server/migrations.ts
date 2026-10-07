@@ -958,4 +958,9 @@ export const MIGRATIONS: (string | Migration)[] = [
   {
     sql: `ALTER TABLE service_items ADD COLUMN slide_cover TEXT;`,
   },
+  // 31 (0.15.10): who leads an item comes from the rota only: the people ticked (person ids; null = the role's
+  // whole rota, or nobody for an item without a role). Names typed before stay in \`leader\` / services.preacher.
+  {
+    sql: `ALTER TABLE service_items ADD COLUMN leader_people TEXT;`,
+  },
 ];

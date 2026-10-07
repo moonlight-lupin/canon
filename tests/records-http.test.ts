@@ -153,14 +153,14 @@ test('edit conflicts: a save based on an older revision is refused, even within 
   };
   // no waiting: two saves in the same second are still told apart
   const opened = String((await call(as.editor, 'GET', `/services/${s2}`)).body.revision);
-  const other = await withVersion(as.admin, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Other' }, opened);
+  const other = await withVersion(as.admin, 'PATCH', `/services/${s2}`, { sermon_ref: 'Mark 1:1' }, opened);
   assert.equal(other.status, 200);
   assert.equal(other.body.revision, Number(opened) + 1);
-  const stale = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, opened);
+  const stale = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { sermon_ref: 'Mark 2:2' }, opened);
   assert.equal(stale.status, 409, 'same base revision, same second: the second save is refused');
   assert.match(stale.body.error, /changed this by Test admin/);
-  assert.equal((await call(as.editor, 'GET', `/services/${s2}`)).body.preacher, 'Rev. Other', 'the first save stands');
-  const fresh = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { preacher: 'Rev. Mine' }, String(other.body.revision));
+  assert.equal((await call(as.editor, 'GET', `/services/${s2}`)).body.sermon_ref, 'Mark 1:1', 'the first save stands');
+  const fresh = await withVersion(as.editor, 'PATCH', `/services/${s2}`, { sermon_ref: 'Mark 2:2' }, String(other.body.revision));
   assert.equal(fresh.status, 200, 'saving on top of the latest revision is fine');
   assert.equal((await call(as.editor, 'PATCH', `/services/${s2}`, { theme: { en: 'x' } })).status, 200, 'no version sent (agents, imports): not checked');
   // a screen opened before 0.11.1 sends the time of the last save: still understood
