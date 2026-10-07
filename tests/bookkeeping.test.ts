@@ -205,3 +205,53 @@ test('the journal export for an accountant', async () => {
   assert.match(lines[0], /^Journal,Date,Narration/);
   assert.ok(lines.some((l) => l.startsWith('2030-0001,2030-01-01,Opening balances,opening,1100')));
 });
+
+test('bank statements: the layout found under the bank’s own header lines, matches suggested, a bank charge entered, reconciled', async () => {
+  const bank = acc('1100');
+  // a fictional bank's export: account details first, then the columns
+  const csv = [
+    'Account Details For:,Example Bank Current Account 000-0000000',
+    'Statement as at:,30 Apr 2031',
+    '',
+    'Transaction Date,Reference,Debit Amount,Credit Amount,Transaction Ref1',
+    '02 Apr 2031,PAYNOW,,150.00,Offerings',
+    '15 Apr 2031,CHG,5.00,,Service charge',
+    '20 Apr 2031,GIRO,"1,500.00",,Rent April',
+    'Total,,,,',
+  ].join('\r\n');
+  const file = Buffer.from(csv).toString('base64');
+  const pv = await call(as.treasurer, 'POST', '/bookkeeping/bank/preview', { account_id: bank, file });
+  assert.equal(pv.status, 200, pv.text);
+  const L = pv.body.layout;
+  assert.equal(L.header_row, 2, 'the column names, counting non-blank rows');
+  assert.equal(L.date, 'Transaction Date');
+  assert.equal(L.debit, 'Debit Amount');
+  assert.equal(L.credit, 'Credit Amount');
+  assert.equal(L.date_format, 'DD MMM YYYY');
+  // the books: an offering of 150.00 by PayNow on 2 Apr, rent paid on 20 Apr
+  const off = web(() => B.postJournal(B.saveDraft(null, { date: '2031-04-02', memo: 'Offerings', lines: [
+    { account_id: bank, fund_id: fund('GEN'), debit: 15000, credit: 0 }, { account_id: acc('4000'), fund_id: fund('GEN'), debit: 0, credit: 15000 },
+  ] }).id));
+  web(() => B.postJournal(B.saveDraft(null, { date: '2031-04-19', memo: 'Rent April', lines: [
+    { account_id: acc('5500'), fund_id: fund('GEN'), debit: 150000, credit: 0 }, { account_id: bank, fund_id: fund('GEN'), debit: 0, credit: 150000 },
+  ] }).id));
+  const imp = await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: bank, file, layout: L, file_name: 'april.csv', closing_balance: null });
+  assert.equal(imp.status, 200, imp.text);
+  assert.equal(imp.body.lines, 3);
+  assert.equal((await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: bank, file, layout: L })).body.already, 3, 'a second import adds nothing');
+  const sid = imp.body.statement_id;
+  let st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${sid}`)).body;
+  const rent = st.lines.find((l: Json) => l.amount === -150000);
+  assert.equal(rent.suggestions[0].date, '2031-04-19', 'a day apart, same amount');
+  assert.equal((await call(as.treasurer, 'POST', `/bookkeeping/bank/statements/${sid}/auto-match`)).body.matched, 1, 'only the same-day one');
+  await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${rent.id}/match`, { line_id: rent.suggestions[0].id });
+  const chg = st.lines.find((l: Json) => l.amount === -500);
+  const e = await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${chg.id}/entry`, { account_id: acc('5700'), fund_id: fund('GEN'), post: true });
+  assert.equal(e.status, 200, e.text);
+  st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${sid}`)).body;
+  assert.ok(st.lines.every((l: Json) => l.status === 'matched'));
+  assert.equal(st.lines.find((l: Json) => l.amount === 15000).matched.journal_id, off.id);
+  // everything in the books for April is on the statement: nothing uncleared
+  assert.equal(st.reconciliation.uncleared.length, 0, JSON.stringify(st.reconciliation.uncleared));
+  assert.equal(st.reconciliation.expected_bank_balance, st.reconciliation.book_balance);
+});

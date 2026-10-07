@@ -6,6 +6,7 @@ import { all, get } from '../db.ts';
 import * as B from '../repo/bookkeeping.ts';
 import * as R from '../repo/bk-reports.ts';
 import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
+import * as Bank from '../repo/bk-bank.ts';
 import { getSettings } from '../repo/settings.ts';
 import { isAdmin } from '../lib/permissions.ts';
 import { L10nSchema } from '../../shared/schemas.ts';
@@ -213,3 +214,60 @@ bookkeepingRoutes.get('/bookkeeping/export/journals.csv', h((req, res) => {
     ...rows.map((r) => [r.number, r.date, r.journal_memo, r.kind, r.account_code, name(r.account_name), r.fund, r.project, r.ministry, r.congregation, money(r.debit as number), money(r.credit as number), r.memo, r.orig_currency, r.orig_amount != null ? (Number(r.orig_amount) / 100).toFixed(2) : '']),
   ]);
 }));
+
+// ---------------------------------------------------------------- bank statements
+
+const Layout = z.object({
+  header_row: z.number().int().min(0).max(200),
+  date: z.string().max(200),
+  description: z.string().max(200),
+  amount: z.string().max(200).optional(),
+  debit: z.string().max(200).optional(),
+  credit: z.string().max(200).optional(),
+  reference: z.string().max(200).optional(),
+  date_format: z.string().max(20),
+});
+const fileData = (b64: string) => {
+  const data = Buffer.from(b64, 'base64');
+  if (!data.length) throw Object.assign(new Error('Choose the statement file.'), { status: 400 });
+  if (data.length > 1_500_000) throw Object.assign(new Error('The file is larger than 1.5 MB: export a shorter period.'), { status: 400 });
+  return data;
+};
+bookkeepingRoutes.get('/bookkeeping/bank/statements', h((req) => Bank.listStatements(num((req.query as Record<string, unknown>).account_id))));
+bookkeepingRoutes.get('/bookkeeping/bank/statements/:id', h((req) => Bank.getStatement(id(req))));
+bookkeepingRoutes.post('/bookkeeping/bank/preview', h((req) => {
+  const b = z.object({ account_id: z.number().int(), file: z.string().max(8_000_000) }).parse(req.body);
+  return Bank.previewStatement(b.account_id, fileData(b.file));
+}));
+bookkeepingRoutes.post('/bookkeeping/bank/statements', h((req) => {
+  const b = z.object({
+    account_id: z.number().int(), file: z.string().max(8_000_000), file_name: z.string().max(200).optional(), layout: Layout,
+    opening_balance: z.number().int().nullable().optional(), closing_balance: z.number().int().nullable().optional(),
+  }).parse(req.body);
+  return Bank.importStatement({ account_id: b.account_id, data: fileData(b.file), layout: b.layout, file_name: b.file_name, opening_balance: b.opening_balance, closing_balance: b.closing_balance });
+}));
+bookkeepingRoutes.delete('/bookkeeping/bank/statements/:id', h((req) => {
+  Bank.deleteStatement(id(req));
+  return { deleted: true };
+}));
+bookkeepingRoutes.post('/bookkeeping/bank/statements/:id/auto-match', h((req) => ({ matched: Bank.autoMatch(id(req)) })));
+bookkeepingRoutes.post('/bookkeeping/bank/statements/:id/done', h((req) => {
+  Bank.setStatementDone(id(req), z.object({ done: z.boolean() }).parse(req.body).done);
+  return Bank.getStatement(id(req));
+}));
+bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/match', h((req) => {
+  Bank.matchLine(id(req), z.object({ line_id: z.number().int() }).parse(req.body).line_id);
+  return { ok: true };
+}));
+bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/unmatch', h((req) => {
+  Bank.unmatchLine(id(req));
+  return { ok: true };
+}));
+bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/ignore', h((req) => {
+  Bank.ignoreLine(id(req), z.object({ ignored: z.boolean() }).parse(req.body).ignored);
+  return { ok: true };
+}));
+bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/entry', h((req) => Bank.entryFromLine(id(req), z.object({
+  account_id: z.number().int(), fund_id: z.number().int(), memo: z.string().max(500).nullable().optional(),
+  project_id: z.number().int().nullable().optional(), ministry_id: z.number().int().nullable().optional(), post: z.boolean(),
+}).parse(req.body))));

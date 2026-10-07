@@ -100,6 +100,8 @@ export interface BkJournal {
 
 /** How a bank's CSV statement is laid out: which column holds what, and how dates are written. */
 export interface BankCsvLayout {
+  /** the row holding the column names (banks put account details above it); 0 = the first row */
+  header_row: number;
   date: string;
   description: string;
   /** one signed amount column, or separate money-out / money-in columns */
