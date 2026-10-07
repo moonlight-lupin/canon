@@ -4,7 +4,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.15.10 — not released yet
+## 0.15.10 — Leaders from the rota, a size for each language, and warnings you can read
 
 - **Leaders come from the rota only.** An item's **Leader** is now a list of tick boxes with the people on the service's rota — no typed names:
   - with a **Role**, everyone on the rota for that role is ticked; untick some to print only those (e.g. one of two ushers);
