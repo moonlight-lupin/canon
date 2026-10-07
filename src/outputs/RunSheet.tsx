@@ -3,7 +3,7 @@ import { FitToScreen } from '../components/onscreen.ts';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
-import { tr, useI18n } from '../i18n.tsx';
+import { tr, useI18n, useLocales } from '../i18n.tsx';
 import { ErrorBox, Loading, Seg } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import type { L10n, Lang, RenderedItem, RenderedService } from '../types-client.ts';
@@ -53,6 +53,8 @@ export default function RunSheet() {
   const labelMode: LangMode = labelSel ?? initialLabelMode(lang, svcLangs);
 
   const labelLangs: Lang[] = labelMode === 'both' ? svcLangs : [labelMode];
+  // the label languages' words (they may not be the interface's)
+  useLocales(labelLangs);
   /** A fixed label in the chosen label language(s). */
   const L = (en: string) => labelLangs.map((l) => tr(en, l)).filter((v, i, a) => a.indexOf(v) === i).join(' ');
   const cueText = (it: RenderedItem, n: number) => labelLangs.map((l) => avCue(it, n, l)).filter((x, i, a) => x && a.indexOf(x) === i).join(' / ');

@@ -39,7 +39,7 @@ test('weekdays: time of day or the season, the same all day, varied across days'
 test('every greeting is in the Chinese dictionary', () => {
   const src = fs.readFileSync(new URL('../shared/greeting.ts', import.meta.url), 'utf8');
   const phrases = [...new Set([...src.matchAll(/'([A-Z][^']+)'/g)].map((m) => m[1]))];
-  const zh = fs.readFileSync(new URL('../src/i18n/zh.ts', import.meta.url), 'utf8');
-  const missing = phrases.filter((p) => !zh.includes(`'${p}'`) && !zh.includes(`"${p}"`) && !zh.includes(`  ${p}: `));
+  const zh = JSON.parse(fs.readFileSync(new URL('../locales/zh/ui.json', import.meta.url), 'utf8')) as Record<string, string>;
+  const missing = phrases.filter((p) => !zh[p]);
   assert.deepEqual(missing, []);
 });

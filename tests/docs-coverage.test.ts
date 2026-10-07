@@ -15,11 +15,9 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-docs-'));
 process.env.CANON_DB = path.join(tmp, 'canon.db');
 
 let zhDict: Record<string, string> = {};
-before(async () => {
-  for (const f of fs.readdirSync(path.join(root, 'src/i18n')).filter((f) => f.endsWith('.ts') && !f.includes('generated'))) {
-    const mod = (await import(path.join(root, 'src/i18n', f).replace(/\\/g, '/').replace(/^([A-Za-z]):/, 'file:///$1:'))) as { default: Record<string, string> };
-    Object.assign(zhDict, mod.default);
-  }
+before(() => {
+  // the Simplified Chinese interface (0.16.0: locales/zh/ui.json)
+  zhDict = JSON.parse(read('locales/zh/ui.json')) as Record<string, string>;
 });
 
 /** Sidebar labels, read from the navigation definition so new pages are picked up automatically. */

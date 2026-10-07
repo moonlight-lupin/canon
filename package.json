@@ -32,7 +32,9 @@
     "test": "node --disable-warning=ExperimentalWarning --test \"tests/**/*.test.ts\"",
     "backup": "node --disable-warning=ExperimentalWarning scripts/backup.ts",
     "decrypt-backup": "node --disable-warning=ExperimentalWarning scripts/decrypt-backup.ts",
-    "i18n": "node --disable-warning=ExperimentalWarning scripts/gen-i18n-hant.ts",
+    "i18n": "node --disable-warning=ExperimentalWarning scripts/i18n.ts",
+    "i18n:check": "node --disable-warning=ExperimentalWarning scripts/i18n.ts --check",
+    "i18n:new": "node --disable-warning=ExperimentalWarning scripts/i18n.ts new",
     "prebuild": "npm run i18n"
   },
   "dependencies": {

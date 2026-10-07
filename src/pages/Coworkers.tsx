@@ -1,7 +1,7 @@
 // Co-worker register: pastors, elders, deacons, staff and lay leaders, grouped by category.
 import { useMemo, useState } from 'react';
 import { api, qs, useApi } from '../api.ts';
-import { DICTS, useI18n } from '../i18n.tsx';
+import { tr, useI18n, useLocales } from '../i18n.tsx';
 import {
   Bi, Empty, ErrorBox, Field, Loading, Modal, PageHead, SearchBox, confirmAction, fmtDate, today, useAction, useDebounced, useSession,
 } from '../components/ui.tsx';
@@ -27,6 +27,8 @@ const isPast = (c: CoworkerRow) => !!c.end_date && c.end_date < today();
 
 export default function Coworkers() {
   const { t, lang } = useI18n();
+  // the second heading is in Chinese when the interface is English
+  useLocales(lang === 'en' ? ['zh'] : []);
   const { canEdit } = useSession();
   const { data, error, loading, reload } = useApi<CoworkerRow[]>('/coworkers');
   const [showPast, setShowPast] = useState(false);
@@ -71,7 +73,7 @@ export default function Coworkers() {
           <section key={g.cat} className="cw-section">
             <h2>
               {t(CAT_PLURAL[g.cat])}
-              <span className="zh">{lang === 'en' ? DICTS.zh[CAT_PLURAL[g.cat]] : CAT_PLURAL[g.cat]}</span>
+              <span className="zh">{lang === 'en' ? tr(CAT_PLURAL[g.cat], 'zh') : CAT_PLURAL[g.cat]}</span>
               <span className="badge">{g.items.length}</span>
             </h2>
             <div className="grid cols-3">

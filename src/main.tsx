@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './styles.css';
 import { api, onUnauthorised, setCsrf, useApi } from './api.ts';
-import { ChurchLanguages, I18nProvider, useI18n } from './i18n.tsx';
+import { ChurchLanguages, I18nProvider, useI18n, initialLang, loadLocale } from './i18n.tsx';
 import type { Settings } from './types-client.ts';
 import { allows, pageModule, type Access, type PermModule } from '../shared/permissions.ts';
 import { Loading, SessionCtx, ToastProvider, type SessionUser } from './components/ui.tsx';
@@ -177,6 +177,9 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
     </SessionCtx.Provider>
   );
 }
+
+// the interface language's words first, so the first screen is not English for a moment
+await loadLocale(initialLang()).catch(() => undefined);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

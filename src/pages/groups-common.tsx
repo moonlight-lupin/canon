@@ -4,7 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { hasAnyText } from '../../shared/labels.ts';
 import { isChinese } from '../../shared/languages.ts';
 import { api, useApi } from '../api.ts';
-import { tr, useContentLangs, useI18n } from '../i18n.tsx';
+import { tr, useContentLangs, useI18n, useLocales } from '../i18n.tsx';
 import { Bi, ErrorBox, Field, L10nInput, Loading, Modal, confirmAction, fmtDate, useAction, useSession, useToast } from '../components/ui.tsx';
 import { CongregationField } from '../components/Congregations.tsx';
 import { Link } from 'react-router-dom';
@@ -53,7 +53,14 @@ export const KIND_PLURAL: Record<GroupKind, string> = {
 
 /** Suggested member roles. Stored as typed; these English values have translations. Free text is allowed. */
 export const ROLE_PRESETS = ['Moderator', 'Chair', 'Vice-chair', 'Secretary', 'Clerk', 'Treasurer', 'Leader', 'Assistant leader', 'Teacher', 'Assistant teacher', 'Advisor', 'Member', 'Pupil'];
-const roleKey = (role: string) => `Group role · ${role}`;
+// the translation keys of the preset roles, written out in full so `npm run i18n` lists them for translators
+const ROLE_KEYS: Record<string, string> = {
+  Moderator: 'Group role · Moderator', Chair: 'Group role · Chair', 'Vice-chair': 'Group role · Vice-chair', Secretary: 'Group role · Secretary',
+  Clerk: 'Group role · Clerk', Treasurer: 'Group role · Treasurer', Leader: 'Group role · Leader', 'Assistant leader': 'Group role · Assistant leader',
+  Teacher: 'Group role · Teacher', 'Assistant teacher': 'Group role · Assistant teacher', Advisor: 'Group role · Advisor', Member: 'Group role · Member',
+  Pupil: 'Group role · Pupil',
+};
+const roleKey = (role: string) => ROLE_KEYS[role] ?? role;
 /** A stored member role in a given UI language (preset roles are translated; anything else is shown as typed). */
 export const roleIn = (role: string | null | undefined, lang: string) => {
   if (!role) return '';
@@ -66,9 +73,10 @@ export const roleIn = (role: string | null | undefined, lang: string) => {
 export function RoleLabel({ role, className }: { role: string | null | undefined; className?: string }) {
   const { lang } = useI18n();
   const church = useContentLangs();
+  const other = church.find((l) => l !== lang && !(isChinese(l) && isChinese(lang)));
+  useLocales(other ? [other] : []);
   if (!role) return null;
   const first = roleIn(role, lang);
-  const other = church.find((l) => l !== lang && !(isChinese(l) && isChinese(lang)));
   const second = other ? roleIn(role, other) : '';
   return (
     <span className={className}>
@@ -179,7 +187,8 @@ const cleanPattern = (p: MeetingPattern): MeetingPattern => (!p.every ? { ...(p.
   ...(p.time ? { time: p.time } : {}), ...(p.place?.trim() ? { place: p.place.trim() } : {}), ahead_weeks: p.ahead_weeks ?? 0,
 });
 export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const NTH = ['', 'first', 'second', 'third', 'fourth', 'last'];
+// written out in full so `npm run i18n` lists them for translators
+const NTH = ['', 'Week · first', 'Week · second', 'Week · third', 'Week · fourth', 'Week · last'];
 
 /** When the group meets: the rhythm, day, time and place its meetings are created with. */
 function PatternFields({ value: p, onChange }: { value: MeetingPattern; onChange: (p: MeetingPattern) => void }) {
@@ -200,7 +209,7 @@ function PatternFields({ value: p, onChange }: { value: MeetingPattern; onChange
         {p.every === 'month' && (
           <Field label={t('Which')}>
             <select value={p.nth ?? 1} onChange={(e) => set({ nth: Number(e.target.value) })}>
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t(`Week · ${NTH[n]}`)}</option>)}
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t(NTH[n])}</option>)}
             </select>
           </Field>
         )}

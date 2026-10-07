@@ -1,32 +1,47 @@
 // UI internationalisation and the church's content languages.
 //
-// UI strings: English text is the key. Simplified Chinese lives in src/i18n/*.ts; Traditional Chinese is
-// generated from it (src/i18n/zh-Hant.generated.ts, `npm run i18n`). Other UI languages fall back to English.
+// UI strings: English text is the key. Each language's translation is locales/<code>/ui.json (see
+// CONTRIBUTING-TRANSLATIONS.md); a language is loaded the first time it is used. A phrase a language lacks comes
+// from its fallback (UI_FALLBACK, e.g. Traditional ⇄ Simplified Chinese), then English.
 //
 // Content languages: the languages the church worships in (Settings → Languages) are provided by
 // <ChurchLanguages>; bilingual inputs and labels read them from useContentLangs().
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { L10n, Lang } from '../shared/types.ts';
 import { UI_LANGS, langInfo } from '../shared/languages.ts';
-import zhCore from './i18n/zh.ts';
-import zhOutputs from './i18n/outputs.ts';
-import zhPeople from './i18n/people.ts';
-import zhWorship from './i18n/worship.ts';
-import zhEmail from './i18n/email.ts';
-import zhPresentation from './i18n/presentation.ts';
-import zhGuide from './i18n/guide.ts';
-import zhResources from './i18n/resources.ts';
-import zhHant from './i18n/zh-Hant.generated.ts';
+import { UI_FALLBACK } from '../shared/locales.generated.ts';
 
-export const DICTS: Record<Lang, Record<string, string>> = {
-  en: {},
-  // the newest file first: a word already translated elsewhere keeps its translation
-  zh: { ...zhResources, ...zhCore, ...zhOutputs, ...zhPeople, ...zhWorship, ...zhEmail, ...zhPresentation, ...zhGuide },
-  'zh-Hant': zhHant,
-};
+// every locales/<code>/ui.json, each its own file in the build, fetched only when that language is used
+const LOADERS = import.meta.glob<Record<string, string>>('../locales/*/ui.json', { import: 'default' });
 
-/** Translate a UI string into a specific language (used for printed labels in another language). */
-export const tr = (s: string, lang: Lang) => DICTS[lang]?.[s] ?? (lang === 'zh-Hant' ? DICTS.zh[s] : undefined) ?? s;
+/** The interface translations loaded so far (English is the key, so it needs none). */
+export const DICTS: Partial<Record<Lang, Record<string, string>>> = { en: {} };
+
+/** Load a language's translation (and its fallback's) if it isn't yet. */
+export async function loadLocale(lang: Lang): Promise<void> {
+  for (const l of [lang, UI_FALLBACK[lang]]) {
+    if (!l || DICTS[l]) continue;
+    const load = LOADERS[`../locales/${l}/ui.json`];
+    if (load) DICTS[l] = await load();
+  }
+}
+
+/** Translate a UI string into a specific language (also used for printed labels in another language). */
+export const tr = (s: string, lang: Lang) => DICTS[lang]?.[s] ?? (UI_FALLBACK[lang] ? DICTS[UI_FALLBACK[lang]]?.[s] : undefined) ?? s;
+
+/** Make sure these languages' translations are loaded (e.g. a run sheet's label languages); re-renders when they are. */
+export function useLocales(langs: Lang[]) {
+  const [, loaded] = useState(0);
+  const key = langs.join(',');
+  useEffect(() => {
+    let live = true;
+    if (langs.some((l) => l !== 'en' && !DICTS[l])) Promise.all(langs.map(loadLocale)).then(() => live && loaded((n) => n + 1));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+}
 
 /**
  * Pick a localised value for `lang`: exact, then the other Chinese script, then English, then anything.
@@ -50,7 +65,7 @@ interface I18n {
 
 const Ctx = createContext<I18n>(null!);
 
-function initialLang(): Lang {
+export function initialLang(): Lang {
   try {
     const s = localStorage.getItem('canon.lang');
     if (s && UI_LANGS.includes(s)) return s;
@@ -65,20 +80,20 @@ function initialLang(): Lang {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(initialLang);
   const value = useMemo<I18n>(() => {
-    const dict = DICTS[lang] ?? {};
     document.documentElement.lang = langInfo(lang).htmlLang;
     return {
       lang,
       setLang: (l) => {
         const ui = UI_LANGS.includes(l) ? l : 'en';
-        setLangState(ui);
+        // switch once its words are here (no flash of English)
+        loadLocale(ui).then(() => setLangState(ui));
         try {
           localStorage.setItem('canon.lang', ui);
         } catch {
           /* ignore */
         }
       },
-      t: (s) => dict[s] ?? s,
+      t: (s) => tr(s, lang),
       lt: (v) => pickL10n(v, lang),
     };
   }, [lang]);
