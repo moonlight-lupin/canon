@@ -376,7 +376,7 @@ function MappingDialog({ onClose }: { onClose: () => void }) {
                 <AccountSelect value={fmap[name]?.income_account_id} types={['income']} label={t('Income account')} empty={t('Income account…')} onChange={(id) => setFmap((x) => ({ ...x, [name]: { ...x[name], income_account_id: id ?? 0 } }))} />
               </div>
             ))}
-            {missing.length > 0 && <div className="callout warn small">{t('Offerings to {funds} can’t be drafted until they have a fund and an income account.').replace('{funds}', missing.join(', '))}</div>}
+            {missing.length > 0 && <div className="callout warn small">{t('Until they have a fund and an income account, offerings to {funds} are drafted into the general fund (with a note on the draft).').replace('{funds}', missing.join(', '))}</div>}
           </div>
         </div>
       </div>

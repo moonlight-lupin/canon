@@ -5516,10 +5516,6 @@
       "未存入银行的奉献",
       "未存入銀行的奉獻"
     ],
-    "Offerings to {funds} can’t be drafted until they have a fund and an income account.": [
-      "{funds} 的奉献需要先指定款项和收入科目，才能起草分录。",
-      "{funds} 的奉獻需要先指定款項和收入科目，才能起草分錄。"
-    ],
     "Offerings: {n}": [
       "奉献：{n}",
       "奉獻：{n}"
@@ -8827,6 +8823,10 @@
     "Until a public address is set, the connector URL above only works on the network where Canon runs.": [
       "设定公开网址之前，上面的连接网址只能在 Canon 所在的网络中使用。",
       "設定公開網址之前，上面的連接網址只能在 Canon 所在的網絡中使用。"
+    ],
+    "Until they have a fund and an income account, offerings to {funds} are drafted into the general fund (with a note on the draft).": [
+      "{funds} 的奉献在指定款项和收入科目之前，会起草到常费（草稿上附有说明）。",
+      "{funds} 的奉獻在指定款項和收入科目之前，會起草到常費（草稿上附有說明）。"
     ],
     "Up to 3. Each service can change this.": [
       "最多 3 种，每堂聚会可另行调整。",
