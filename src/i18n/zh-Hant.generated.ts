@@ -1587,6 +1587,7 @@ const zhHant: Record<string, string> = {
  "Asset register: items": "資產登記：物品",
  "Maintenance due: {n}": "需要保養：{n}",
  "Roles & permissions": "角色與權限",
+ "Rota warnings": "事奉表提醒",
  "Languages on this template": "此模板的語言",
  "The languages this template is for. The font and size of each one follow below.": "此模板所用的語言。下面會列出每種語言的字體和大小。",
  "font": "字體",

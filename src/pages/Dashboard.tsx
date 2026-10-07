@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { HoverTip } from '../components/InfoTip.tsx';
 import { hasAnyText } from '../../shared/labels.ts';
 import { useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -109,8 +110,17 @@ export default function Dashboard() {
                     <td><Bi v={s.title} /></td>
                     <td className="muted">{s.preacher}</td>
                     <td className="right nowrap">
-                      {issues > 0 && <span className="badge warn">{issues} ⚠</span>}{' '}
-                      {unfilled > 0 ? <span className="badge">{unfilled} {lang === 'zh' ? '岗位待排' : 'open roles'}</span> : <span className="badge ok">{lang === 'zh' ? '已排满' : 'Fully rostered'}</span>}
+                      {/* hover, or tap on a phone, to read what the warnings are */}
+                      {issues > 0 && (
+                        <HoverTip tap content={<WarningList items={s.warnings.filter((w) => w.type !== 'unfilled').map((w) => w.message)} />}>
+                          <button type="button" className="badge warn badge-btn" aria-label={t('Rota warnings')}>{issues} ⚠</button>
+                        </HoverTip>
+                      )}{' '}
+                      {unfilled > 0 ? (
+                        <HoverTip tap content={<WarningList title={t('Unassigned')} items={s.warnings.filter((w) => w.type === 'unfilled').map((w) => w.message)} />}>
+                          <button type="button" className="badge badge-btn">{unfilled} {lang === 'zh' ? '岗位待排' : 'open roles'}</button>
+                        </HoverTip>
+                      ) : <span className="badge ok">{lang === 'zh' ? '已排满' : 'Fully rostered'}</span>}
                     </td>
                   </tr>
                 );
@@ -163,6 +173,16 @@ export default function Dashboard() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** The warnings behind a ⚠ badge, one per line (shown on hover, or on a tap on a phone). */
+function WarningList({ items, title }: { items: string[]; title?: string }) {
+  return (
+    <div className="warning-list">
+      {title && <div className="hover-tip-head">{title}</div>}
+      <ul>{items.map((m, i) => <li key={i}>{m}</li>)}</ul>
     </div>
   );
 }

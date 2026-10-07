@@ -154,6 +154,7 @@ const zh: Record<string, string> = {
   'Asset register: items': '资产登记：物品',
   'Maintenance due: {n}': '需要保养：{n}',
   "Roles & permissions": "角色与权限",
+  "Rota warnings": "事奉表提醒",
   "Languages on this template": "此模板的语言",
   "The languages this template is for. The font and size of each one follow below.": "此模板所用的语言。下面会列出每种语言的字体和大小。",
   "font": "字体",

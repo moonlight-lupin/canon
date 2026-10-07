@@ -86,7 +86,11 @@ export function InfoTip({ text }: { text: string }) {
  * focus — the same on every system, unlike a browser's own title tooltip (slow on a Mac, cut short on Windows).
  * Long content scrolls inside the panel; the panel stays open while the pointer is on it.
  */
-export function HoverTip({ content, children, lang }: { content: ReactNode; children: ReactNode; lang?: string }) {
+export function HoverTip({ content, children, lang, tap }: {
+  content: ReactNode; children: ReactNode; lang?: string;
+  /** a tap (or click) opens and closes it, for phones and tablets; tapping elsewhere closes it */
+  tap?: boolean;
+}) {
   const id = useId();
   const ref = useRef<HTMLSpanElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -117,21 +121,33 @@ export function HoverTip({ content, children, lang }: { content: ReactNode; chil
   useEffect(() => {
     if (!open) return;
     const close = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    // a tap anywhere else closes a tapped-open panel
+    const away = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node) && !box.current?.contains(e.target as Node)) later(false, 0);
+    };
     window.addEventListener('scroll', place, true);
     window.addEventListener('resize', place);
     window.addEventListener('keydown', close);
+    if (tap) window.addEventListener('pointerdown', away);
     return () => {
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
       window.removeEventListener('keydown', close);
+      window.removeEventListener('pointerdown', away);
     };
-  }, [open, place]);
+  }, [open, place, tap]);
 
   return (
     <>
-      <span ref={ref} className="hover-tip" aria-describedby={open ? id : undefined}
+      <span ref={ref} className={`hover-tip${tap ? ' tap' : ''}`} aria-describedby={open ? id : undefined}
         onMouseEnter={() => later(true, 250)} onMouseLeave={() => later(false, 150)}
-        onFocus={() => later(true, 0)} onBlur={() => later(false, 0)} onClick={() => later(false, 0)}>
+        onFocus={() => later(true, 0)} onBlur={() => later(false, 0)}
+        onClick={(e) => {
+          if (!tap) return later(false, 0);
+          e.preventDefault();
+          window.clearTimeout(timer.current);
+          setOpen((o) => !o);
+        }}>
         {children}
       </span>
       {open && createPortal(

@@ -423,6 +423,11 @@ table.t tr.click:hover td { background: var(--sunk); }
 /* searchable dropdowns (components/Combo.tsx): the list is a portal on <body> */
 .combo-input { cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 30px; text-overflow: ellipsis; }
 .combo-input:focus { cursor: text; }
+/* a badge that opens a panel on hover or tap (Dashboard ⚠) */
+.badge-btn { border: 0; cursor: pointer; font: inherit; }
+.badge-btn:focus-visible { outline: 2px solid var(--lapis); outline-offset: 1px; }
+.warning-list ul { margin: 0; padding-left: 1.1em; }
+.warning-list li { margin: 2px 0; }
 /* MultiPick: a button that looks like the other fields, with a list of tick boxes */
 .multipick { font: 13.5px var(--sans); color: var(--ink); background-color: var(--paper-3); border: 1px solid var(--rule-strong); border-radius: var(--r); padding: 6px 30px 6px 9px; min-height: 34px; width: 100%; text-align: left; overflow: hidden; white-space: nowrap; }
 .multipick:focus { cursor: pointer; }
