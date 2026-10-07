@@ -247,3 +247,36 @@ test('lists export as Excel with a title block, and the same file imports back u
   const tpl = await fetch(`${base}/api/csv/members/template.xlsx?lang=en`, { headers: { Cookie: as.admin.cookie } });
   assert.equal(tpl.status, 200);
 });
+
+test('removing sample data keeps what gained real records and never removes a reused number (review F3, F4)', async () => {
+  const sd = await import('../server/repo/sample-data.ts');
+  const reg = await import('../server/repo/registers.ts');
+  const svc = await import('../server/repo/services.ts');
+  const R = await import('../server/repo/records.ts');
+  // the church's next service, so the sample copies it a week later and fills its rota
+  const sunday = (svc.createService({ date: '2032-03-07' }) as { service: { id: number } }).service;
+  const st = sd.addSampleData({ today: '2032-03-05' }) as Json;
+  assert.equal(st.present, true);
+  const copy = get<{ id: number }>("SELECT id FROM services WHERE date = '2032-03-14'")!;
+  assert.ok(copy, 'the copied service');
+  // F3: the copied service gets a real, verified cash count
+  const who = { name: 'Ad Min', admin: true, money: true };
+  R.saveRecord(copy.id, { attendance: 80, offerings: [{ fund: 'General', method: 'cash', amount: 5000 }], cash: { '5000': 1 }, counters: ['Ann', 'Ben'] } as never, who);
+  R.setVerified(copy.id, true, who);
+  assert.ok(R.recordFor(copy.id).verified_at);
+  // F4: the newest sample person is deleted, and a real member is added — SQLite may give them the same number
+  const last = get<{ id: number }>('SELECT MAX(id) id FROM people')!.id;
+  reg.people.remove(last);
+  const real = reg.people.insert({ first_name: 'Real', last_name: 'Newcomer', status: 'member' } as never) as { id: number };
+  assert.equal(real.id, last, 'the number was reused (the case the review found)');
+
+  const r = await fetch(`${base}/api/sample-data`, { method: 'DELETE', headers: { Cookie: as.admin.cookie, 'x-csrf-token': as.admin.csrf } });
+  assert.equal(r.status, 200);
+  const out = await r.json() as Json;
+  assert.ok(get('SELECT 1 FROM people WHERE id = ?', real.id), 'the real member stays');
+  assert.ok(get('SELECT 1 FROM services WHERE id = ?', copy.id), 'the service with a verified record stays');
+  assert.ok(R.recordFor(copy.id).verified_at, 'and its verified record');
+  assert.ok(out.kept.some((k: Json) => k.what === 'service' && k.why.includes('has a service record')));
+  assert.ok(!get("SELECT 1 FROM people WHERE notes LIKE 'Sample person (fictional)%'"), 'the sample people go');
+  assert.ok(get('SELECT 1 FROM services WHERE id = ?', sunday.id));
+});

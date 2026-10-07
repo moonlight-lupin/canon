@@ -22,8 +22,10 @@ export function SampleDataTab() {
   const remove = () => {
     if (!confirmAction(t('Remove all the sample data? Everything else stays as it is.'))) return;
     run(async () => {
-      await api.del('/sample-data');
+      const r = await api.del<{ kept?: { what: string; name: string; why: string[] }[] }>('/sample-data');
       reload();
+      // what gained real records stays, and is listed
+      if (r?.kept?.length) window.alert(`${t('Kept, because real records now belong to them:')}\n${r.kept.map((k) => `• ${k.name} — ${k.why.join(', ')}`).join('\n')}`);
     }, t('Sample data removed.'));
   };
   return (

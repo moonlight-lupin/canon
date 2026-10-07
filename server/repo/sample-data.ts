@@ -200,24 +200,83 @@ export function addSampleData(opts: { rota?: boolean; today?: string } = {}) {
   return sampleDataStatus();
 }
 
-/** Take out everything the sample data added (people with their places on teams, groups and rotas; households;
- *  groups; the copied service) and nothing else. */
+/** Created within an hour of the sample data (stored UTC "YYYY-MM-DD HH:MM:SS" or ISO). */
+const near = (created: string | null | undefined, addedAt: string) => {
+  if (!created) return false;
+  const c = Date.parse(created.includes('T') ? created : `${created.replace(' ', 'T')}Z`);
+  return Math.abs(c - Date.parse(addedAt)) < 3_600_000;
+};
+const SAMPLE_HOUSEHOLDS = new Set(HOUSEHOLDS.map((h) => h.name));
+const sampleGroupNames = () => new Set<string>([
+  ...CELLS.map(([, n]) => n.en), 'Church Council', 'Missions Committee', 'Finance Committee', 'Worship Committee', 'Young Adults Fellowship', 'Seniors Fellowship', 'Sunday School',
+]);
+
+/** Why a sample person must stay: real records now hang on them. */
+function personTies(id: number): string[] {
+  const has = (sql: string) => !!get(sql, id);
+  return [
+    has('SELECT 1 FROM users WHERE person_id = ?') && 'linked to a user account',
+    has('SELECT 1 FROM coworkers WHERE person_id = ?') && 'a co-worker',
+    has('SELECT 1 FROM lending_loans WHERE person_id = ?') && 'has library loans',
+    has('SELECT 1 FROM equipment WHERE custodian_id = ?') && 'looks after equipment',
+    has('SELECT 1 FROM bk_claims WHERE person_id = ?') && 'has expense claims',
+    has('SELECT 1 FROM bk_claim_approvers WHERE person_id = ?') && 'is a claims approver',
+    has('SELECT 1 FROM bk_claim_approvals WHERE person_id = ?') && 'approved claims',
+  ].filter((x): x is string => !!x);
+}
+/** Why the copied sample service must stay: it has a record (attendance, offerings, a cash count) or journals. */
+function serviceTies(id: number): string[] {
+  const has = (sql: string) => !!get(sql, id);
+  return [
+    has('SELECT 1 FROM service_records WHERE service_id = ?') && 'has a service record',
+    has('SELECT 1 FROM bk_journals WHERE service_id = ?') && 'has journals in the books',
+  ].filter((x): x is string => !!x);
+}
+
+/**
+ * Take out what the sample data added (people with their places on teams, groups and rotas; households; groups; the
+ * copied service) and nothing else (v0.17.2 review, F3 and F4):
+ * - only rows that are still the sample's: a person still marked as sample data and created when it was added, a
+ *   household or group with a sample name, a service created when it was added — so a number reused by something
+ *   real is never removed;
+ * - and only what has gained no real records: a sample person linked to an account, with loans or claims, or a
+ *   service with a record or journals, stays (and is listed as kept).
+ */
 export function removeSampleData() {
   const a = added();
   if (!a) throw new BadRequest('There is no sample data to remove.');
   const done = { people: 0, households: 0, groups: 0, services: 0 };
+  const kept: { what: 'person' | 'service' | 'household' | 'group'; id: number; name: string; why: string[] }[] = [];
   tx(() => {
-    for (const id of a.services) if (get('SELECT 1 FROM services WHERE id = ?', id)) { svc.services.remove(id); done.services++; }
-    // a person's team places, role pools, group places and rota places go with them
-    for (const id of a.people) if (get('SELECT 1 FROM people WHERE id = ?', id)) { reg.people.remove(id); done.people++; }
-    for (const id of a.households) {
-      // a household someone real has since joined stays
-      if (get('SELECT 1 FROM households WHERE id = ?', id) && !get('SELECT 1 FROM people WHERE household_id = ?', id)) { reg.households.remove(id); done.households++; }
+    for (const id of a.services) {
+      const sv = get<{ created_at: string; date: string }>('SELECT created_at, date FROM services WHERE id = ?', id);
+      if (!sv || !near(sv.created_at, a.added_at)) continue; // gone, or the number is something else's now
+      const ties = serviceTies(id);
+      if (ties.length) kept.push({ what: 'service', id, name: sv.date, why: ties });
+      else { svc.services.remove(id); done.services++; }
     }
+    // a person's team places, role pools, group places and rota places go with them
+    for (const id of a.people) {
+      const p = get<{ notes: string | null; created_at: string; first_name: string; last_name: string }>('SELECT notes, created_at, first_name, last_name FROM people WHERE id = ?', id);
+      if (!p || !(p.notes ?? '').includes(SAMPLE_NOTE) || !near(p.created_at, a.added_at)) continue;
+      const ties = personTies(id);
+      if (ties.length) kept.push({ what: 'person', id, name: `${p.first_name} ${p.last_name}`.trim(), why: ties });
+      else { reg.people.remove(id); done.people++; }
+    }
+    for (const id of a.households) {
+      // a household someone real (or a kept sample person) belongs to stays
+      const h = get<{ name: string }>('SELECT name FROM households WHERE id = ?', id);
+      if (!h || !SAMPLE_HOUSEHOLDS.has(h.name)) continue;
+      if (!get('SELECT 1 FROM people WHERE household_id = ?', id)) { reg.households.remove(id); done.households++; }
+    }
+    const names = sampleGroupNames();
     for (const id of a.groups) {
-      if (get('SELECT 1 FROM groups WHERE id = ?', id) && !get('SELECT 1 FROM group_members WHERE group_id = ?', id)) { grp.deleteGroup(id); done.groups++; }
+      const g = get<{ name: string }>('SELECT name FROM groups WHERE id = ?', id);
+      const en = g ? ((): string => { try { return (JSON.parse(g.name) as { en?: string }).en ?? ''; } catch { return g.name; } })() : '';
+      if (!g || !names.has(en)) continue;
+      if (!get('SELECT 1 FROM group_members WHERE group_id = ?', id)) { grp.deleteGroup(id); done.groups++; }
     }
     deleteMeta('sample_data');
   });
-  return done;
+  return { ...done, kept };
 }
