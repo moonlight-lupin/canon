@@ -4,7 +4,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.15.9 — not released yet
+## 0.15.9 — Cover slides, a closing slide, and who leads an item
 
 - **An item's cover slide:** next to **On slides**, **Slides** chooses **Content only** (as before), **Cover only** — one slide with the item's title and who leads it, e.g. "Threefold Amen" instead of three amens — or **Cover, then content** (e.g. the reading's title and reader, then the passage). Service templates and their CSV (`slide_cover`), the PowerPoint and FreeShow files and AI assistants (`slide_cover` on `canon_edit_order`) follow it.
 - **A closing slide:** each slide template can end the deck with a closing message in every language and the church name (on unless turned off; "Thank you for worshipping with us" until you change it), in Canon, the PowerPoint file and FreeShow.
