@@ -1,6 +1,6 @@
 # Roadmap
 
-What is planned for Canon after v0.14.0. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
+What is planned for Canon after v0.17. Plans change: each release is scoped in detail when work on it starts, and the user guide describes only what has shipped.
 
 | Version | Theme |
 |---|---|
@@ -19,7 +19,8 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.16.1 | Backups to the church's own Google Drive — done |
 | 0.17.0 | Book-keeping: double-entry accounts (optional module) — done |
 | 0.17.1 | Claim forms — done |
-| 0.18.0 | Third hardening round |
+| 0.17.2–0.17.3 | Excel exports with a title block, Excel imports, importing journals; reversals as drafts (also by AI assistants) — done |
+| 0.18.0 | Third hardening round: financial correctness first (the v0.17.2 review), then security, recovery and the Windows service |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
@@ -93,7 +94,7 @@ Shipped (see [CHANGELOG.md](../CHANGELOG.md)):
 Differences from the plan:
 - **Roles for the new modules** (librarian, equipment keeper, claims approver) come with those modules (0.15, 0.16); the permission model they plug into is in place. Group leaders keep the leader mark from 0.12.
 - **Content rights** cover Bible versions; songs keep their public-domain flag and copyright line.
-- **Running Canon as a Windows service** is left for the third hardening round (0.17).
+- **Running Canon as a Windows service** is left for the third hardening round (0.18.0).
 
 ## 0.14.0 — UI/UX audit (done)
 
@@ -191,6 +192,23 @@ Decided (2026-10-08):
 ## 0.18.0 — Third hardening round
 
 After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals). Also carried forward from 0.13: running Canon as a Windows service instead of a console window.
+
+**Financial correctness first.** An external review of v0.17.2 (8 October 2026) confirmed these. They block calling Canon the church's main books, so they come before anything else:
+
+1. **Stop data loss and duplicate money:**
+   - **Bank re-imports:** overlapping imports must not drop a genuine second transaction (same date, amount and description). Use the bank's reference where there is one, and count occurrences where there isn't.
+   - **One offering per receipt:** a bank receipt added to a service's offerings is added once only, however often the action is repeated.
+   - **Sample data cleanup:** it never deletes what has gained real records (a verified cash count, posted journals). Sample rows carry a lasting marker, so a reused id can never delete a real member.
+2. **Complete bank reconciliation:** group matching. Several statement lines can match one book line (PayNow gifts against one offering line), and one statement line can match several book lines (a deposit covering several services), when the totals agree.
+3. **Close privacy and interchange gaps:**
+   - Library loans and asset custodians respect congregation walls in every list, detail and export.
+   - The Excel reader honours the 1904 date system.
+4. **Validate the whole financial cycle** on a fictional reference church, with expected balances checked by a test: opening balances, offerings, claims (approval, expense, payment), bank clearance, corrections, a month locked and reopened, the year's end, and the accountant's export.
+5. **Recovery and operation:** upgrade and restore with posted journals, claims and bank links; encrypted Drive upload and restore; the Windows service; signing on a phone.
+
+Until 1 and 2 ship, run Canon's books alongside the church's existing books, not instead of them.
+
+**Documentation:** the chart of accounts can be exported but not imported yet (the 0.17.0 plan said CSV import); add the import or drop the promise. Reports carry each year's surplus into its fund; there is no posted year-end closing journal.
 
 ## Later
 
