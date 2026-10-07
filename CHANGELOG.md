@@ -4,6 +4,14 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.17.3 — Reversals as drafts
+
+- **Reverse…** on a posted journal now drafts the reversing journal (every line the other way round) instead of posting it straight away.
+  - The posted journal stays as it is until the reversal is posted; then the two are linked and cancel out.
+  - The draft can be checked and its date or narration changed first. Deleting it changes nothing.
+  - One reversing draft at a time. The journal shows it is waiting, with a link to open it.
+- Database: no change.
+
 ## 0.17.2 — Excel exports, and importing journals
 
 - **Exports are Excel files.**

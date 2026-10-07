@@ -438,7 +438,10 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - debits must equal credits;
   - the date must not be before the books start, nor in a closed period;
   - its accounts and funds must be in use.
-- **A posted journal is never changed.** It gets a number (e.g. 2026-0042). A mistake is corrected with **Reverse…**: a new posted journal with every line the other way round, so the two cancel out. Then enter it again correctly.
+- **A posted journal is never changed.** It gets a number (e.g. 2026-0042). A mistake is corrected with **Reverse…**:
+  - Canon drafts a reversing journal, with every line the other way round, on the date you choose. The posted journal stays as it is.
+  - Check the draft (you can change its date and narration) and post it. Only then are the two linked, and they cancel out. Deleting the draft changes nothing.
+  - Then enter the journal again correctly, if needed.
 - **Drafts** come from you, from verified offerings, from the bank screen and from AI assistants (marked **AI draft**). Tick several and **Post … selected** posts them together; any with a problem stay drafts.
 - **Export (Excel)** gives every posted line in a period. **CSV** gives the same for accounting software that imports a manual journal file. **Settings → Export data** has the journals, the chart of accounts and the funds too, and in its zip.
 - **Import…** brings journals in from an Excel or CSV file: **Download the template**, one row per line, the rows of a journal sharing its reference in the **Journal** column; accounts and funds by their code, projects and ministries by code or name. Another Canon's journal export imports too.

@@ -319,10 +319,18 @@ export function postJournal(id: number): BkJournal {
     const j = getJournal(id);
     if (j.status === 'posted') throw new Conflict(`Journal ${j.number} is already posted.`);
     const problems = postingProblems(j);
+    // a reversal: the journal it reverses must still be posted and not reversed already
+    const original = j.kind === 'reversal' && j.reverses_id ? getJournal(j.reverses_id) : null;
+    if (original && original.reversed_by_id) problems.push(`Journal ${original.number} is already reversed.`);
     if (problems.length) throw new BadRequest(problems.join(' '));
     journals.update(id, { status: 'posted', number: nextNumber(j.date), posted_by: who(), posted_at: new Date().toISOString() });
     const posted = getJournal(id);
     logJournal('update', j, posted, `Posted as ${posted.number}`);
+    if (original) {
+      // only now are the two linked: together they cancel out
+      journals.update(original.id, { reversed_by_id: id });
+      logJournal('update', original, getJournal(original.id), `Reversed by ${posted.number}`);
+    }
     matchDraftedLines(posted);
     return posted;
   });
@@ -345,28 +353,31 @@ function matchDraftedLines(j: BkJournal) {
   }
 }
 
-/** Reverse a posted journal: a new posted journal with debits and credits swapped, on `date` (default today). */
+/** A draft that reverses this journal (one at a time), if there is one. */
+export const reversalDraftOf = (id: number) => get<{ id: number }>("SELECT id FROM bk_journals WHERE reverses_id = ? AND status = 'draft' ORDER BY id LIMIT 1", id)?.id ?? null;
+
+/**
+ * Draft the reversal of a posted journal: every line the other way round, on `date` (default today). The posted
+ * journal stays as it is; the draft is reviewed and posted like any other, and only then are the two linked (and
+ * cancel out). Deleting the draft changes nothing.
+ */
 export function reverseJournal(id: number, date?: string, memo?: string): BkJournal {
-  if (currentActor()?.via === 'mcp') throw new Forbidden('AI assistants prepare drafts; a person posts and reverses journals.');
   return tx(() => {
     const j = getJournal(id);
     if (j.status !== 'posted') throw new BadRequest('Only a posted journal is reversed (a draft is simply changed or deleted).');
     if (j.reversed_by_id) throw new Conflict(`Journal ${j.number} is already reversed.`);
     if (j.kind === 'reversal') throw new BadRequest('This journal is itself a reversal: post a new journal instead.');
+    const waiting = reversalDraftOf(id);
+    if (waiting) throw new Conflict(`A draft reversing ${j.number} is waiting already (journal ${waiting}): post or delete it.`);
     const on = date && DATE.test(date) ? date : new Date().toISOString().slice(0, 10);
     const lines = j.lines.map((l) => ({ ...l, id: undefined, debit: l.credit, credit: l.debit }));
-    const problems = postingProblems({ date: on, kind: 'reversal', lines });
-    if (problems.length) throw new BadRequest(problems.join(' '));
     const r = journals.insert({
       date: on, memo: memo?.trim() || `Reverses ${j.number}${j.memo ? ` (${j.memo})` : ''}`, status: 'draft', kind: 'reversal', reverses_id: id,
-      service_id: j.service_id, created_via: via(), created_by: who(),
+      service_id: j.service_id, claim_id: j.claim_id ?? null, created_via: via(), created_by: who(),
     });
     writeLines(r.id, lines);
-    journals.update(r.id, { status: 'posted', number: nextNumber(on), posted_by: who(), posted_at: new Date().toISOString() });
-    journals.update(id, { reversed_by_id: r.id });
     const rev = getJournal(r.id);
-    logJournal('create', null, rev, `Reverses ${j.number}`);
-    logJournal('update', j, getJournal(id), `Reversed by ${rev.number}`);
+    logJournal('create', null, rev, `Drafted to reverse ${j.number}`);
     return rev;
   });
 }

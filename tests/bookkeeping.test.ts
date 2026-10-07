@@ -117,12 +117,22 @@ test('opening balances, then journals: balanced to post, numbered, never changed
   assert.throws(() => run('UPDATE bk_lines SET debit = 1 WHERE journal_id = ?', rent.id), /cannot be changed/);
   assert.throws(() => run('UPDATE bk_journals SET date = ? WHERE id = ?', '2030-03-01', rent.id), /cannot be changed/);
   assert.throws(() => run('DELETE FROM bk_journals WHERE id = ?', rent.id), /cannot be deleted/);
-  // reversed instead
+  // reversed instead: a reversing DRAFT first — the posted journal stays as it is until the reversal is posted
   const rev = (await call(as.treasurer, 'POST', `/bookkeeping/journals/${rent.id}/reverse`, { date: '2030-02-03' })).body;
   assert.equal(rev.kind, 'reversal');
+  assert.equal(rev.status, 'draft');
   assert.equal(rev.lines[0].credit, 150000);
+  assert.equal(B.getJournal(rent.id).reversed_by_id, null, 'not reversed yet');
+  assert.equal((await call(as.treasurer, 'GET', `/bookkeeping/journals/${rent.id}`)).body.reversal_draft_id, rev.id);
+  assert.equal((await call(as.treasurer, 'POST', `/bookkeeping/journals/${rent.id}/reverse`, {})).status, 409, 'one reversing draft at a time');
+  // deleting the draft changes nothing; drafting again works
+  await call(as.treasurer, 'DELETE', `/bookkeeping/journals/${rev.id}`);
+  assert.equal(B.getJournal(rent.id).reversed_by_id, null);
+  const rev2 = (await call(as.treasurer, 'POST', `/bookkeeping/journals/${rent.id}/reverse`, { date: '2030-02-03' })).body;
+  const revPosted = (await call(as.treasurer, 'POST', `/bookkeeping/journals/${rev2.id}/post`)).body;
+  assert.ok(revPosted.number);
+  assert.equal(B.getJournal(rent.id).reversed_by_id, rev2.id, 'linked once the reversal is posted');
   assert.equal((await call(as.treasurer, 'POST', `/bookkeeping/journals/${rent.id}/reverse`, {})).status, 409, 'only once');
-  assert.equal(B.getJournal(rent.id).reversed_by_id, rev.id);
   // AI assistants draft, never post
   const draft = web(() => B.saveDraft(null, { date: '2030-02-05', lines: [
     { account_id: acc('5700'), fund_id: fund('GEN'), debit: 500, credit: 0 }, { account_id: acc('1100'), fund_id: fund('GEN'), debit: 0, credit: 500 },

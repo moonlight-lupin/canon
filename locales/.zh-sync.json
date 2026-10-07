@@ -88,6 +88,10 @@
       "还原前的资料已另存为",
       "還原前的資料已另存為"
     ],
+    "A draft reversing this journal is waiting to be posted. Until it is, this journal stands as it is.": [
+      "有一份冲销这笔分录的草稿等待过账。在它过账之前，这笔分录保持不变。",
+      "有一份沖銷這筆分錄的草稿等待過賬。在它過賬之前，這筆分錄保持不變。"
+    ],
     "A fictional church to try Canon with: about 40 people in households, with English and Chinese names and birthdays; cell groups by area, committees, fellowships and a Sunday school; people on every serving team. Their notes say they are sample data.": [
       "一间虚构的教会，方便试用 Canon：约 40 人分属各家庭，有英文名、中文名和生日；按地区分的小组、委员会、团契和主日学；每个事奉团队也有人。他们的备注会注明是示例数据。",
       "一間虛構的教會，方便試用 Canon：約 40 人分屬各家庭，有英文名、中文名和生日；按地區分的小組、委員會、團契和主日學；每個事奉團隊也有人。他們的備註會註明是示例數據。"
@@ -1576,6 +1580,10 @@
       "Canon 可作为自定义连接器接入 Claude（claude.ai），让 AI 助手协助安排聚会和事奉表。由你决定 AI 能查看或修改教会的哪些资料。每个 AI 代理以批准它的用户身份运作：只读用户只会获得只读权限。",
       "Canon 可作為自定義連接器接入 Claude（claude.ai），讓 AI 助手協助安排聚會和事奉表。由你決定 AI 能查看或修改教會的哪些資料。每個 AI 代理以批准它的用戶身份運作：只讀用戶只會獲得只讀權限。"
     ],
+    "Canon drafts a journal with every line the other way round. This journal stays as it is until you post the draft; then the two cancel out. Deleting the draft changes nothing.": [
+      "Canon 会起草一笔每一行借贷对调的分录。在你把草稿过账之前，这笔分录保持不变；过账后两笔互相抵销。删除草稿则什么都不会改变。",
+      "Canon 會起草一筆每一行借貸對調的分錄。在你把草稿過賬之前，這筆分錄保持不變；過賬後兩筆互相抵銷。刪除草稿則什麼都不會改變。"
+    ],
     "Canon first saves a copy of the current data, so you can undo this by restoring that copy. Changes made since the backup are lost. You may need to sign in again.": [
       "Canon 会先保存一份目前资料的副本，之后可以还原那份副本来撤销。备份之后所做的修改会丢失。你可能需要重新登入。",
       "Canon 會先保存一份目前資料的副本，之後可以還原那份副本來撤銷。備份之後所做的修改會丟失。你可能需要重新登入。"
@@ -2831,6 +2839,10 @@
     "Draft offerings verified before the books started, or check them again": [
       "为账簿开始前已核实的奉献起草分录，或重新检查",
       "為賬簿開始前已核實的奉獻起草分錄，或重新檢查"
+    ],
+    "Draft the reversal": [
+      "起草冲销分录",
+      "起草沖銷分錄"
     ],
     "Draft waiting": [
       "草稿待过账",
@@ -6080,6 +6092,10 @@
       "打开记录",
       "打開記錄"
     ],
+    "Open the reversal": [
+      "打开冲销分录",
+      "打開沖銷分錄"
+    ],
     "Open the service": [
       "打开聚会",
       "打開聚會"
@@ -8848,6 +8864,10 @@
       "前一部分下方的余下版面",
       "前一部分下方的餘下版面"
     ],
+    "The reversing draft is ready: check it, then post it.": [
+      "冲销草稿已准备好：请检查后再过账。",
+      "沖銷草稿已準備好：請檢查後再過賬。"
+    ],
     "The roster of the next service, one column per role.": [
       "下次聚会的服事表，每个岗位一栏。",
       "下次聚會的服事表，每個崗位一欄。"
@@ -8960,6 +8980,10 @@
       "这册已注销。",
       "這冊已註銷。"
     ],
+    "This draft reverses journal {n}. Check it, then post it: only then are the two linked, and they cancel out.": [
+      "这份草稿冲销分录 {n}。请检查后再过账：过账后两笔才会连在一起，互相抵销。",
+      "這份草稿沖銷分錄 {n}。請檢查後再過賬：過賬後兩筆才會連在一起，互相抵銷。"
+    ],
     "This file would add:": [
       "这个文件会加入：",
       "這個文件會加入："
@@ -8979,6 +9003,10 @@
     "This journal reverses another.": [
       "这笔分录冲销了另一笔。",
       "這筆分錄沖銷了另一筆。"
+    ],
+    "This journal reverses journal {n}.": [
+      "这笔分录冲销了分录 {n}。",
+      "這筆分錄沖銷了分錄 {n}。"
     ],
     "This link does not work.": [
       "这个链接无法使用。",
@@ -10846,8 +10874,8 @@
     ]
   },
   "guide": [
-    "ff65c8cf1b501e57",
-    "63b1991b1c8c7f5d"
+    "5775d13e99d7f95e",
+    "d57f28e3ad45b61a"
   ],
   "outputs": {
     "Advent": [

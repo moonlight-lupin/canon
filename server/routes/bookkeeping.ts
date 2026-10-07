@@ -127,7 +127,8 @@ bookkeepingRoutes.get('/bookkeeping/journals', h((req) => {
 }));
 bookkeepingRoutes.get('/bookkeeping/journals/:id', h((req) => {
   const j = B.getJournal(id(req));
-  return { ...j, problems: j.status === 'draft' ? B.postingProblems(j) : [] };
+  const reversesNumber = j.reverses_id ? B.getJournal(j.reverses_id).number : null;
+  return { ...j, problems: j.status === 'draft' ? B.postingProblems(j) : [], reversal_draft_id: j.status === 'posted' ? B.reversalDraftOf(j.id) : null, reverses_number: reversesNumber };
 }));
 /** A journal's history: every change to it (lines included), and for offerings the cash count behind it. */
 bookkeepingRoutes.get('/bookkeeping/journals/:id/history', h((req) => B.journalHistory(id(req))));

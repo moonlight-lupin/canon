@@ -107,7 +107,7 @@ export function JournalsTab() {
         </div>
       )}
       {importing && <ImportJournals onClose={() => setImporting(false)} onDone={() => { setImporting(false); setParam('status', 'draft'); changed(); }} />}
-      {open !== null && <JournalDialog id={open === 'new' ? null : open} onClose={() => setParam('open', null)} onChanged={changed} />}
+      {open !== null && <JournalDialog key={open} id={open === 'new' ? null : open} onClose={() => setParam('open', null)} onChanged={changed} onOpen={(j) => setParam('open', String(j))} />}
     </div>
   );
 }
@@ -115,13 +115,13 @@ export function JournalsTab() {
 const blank = (fund_id?: number): BkLine => ({ account_id: 0, fund_id: fund_id ?? 0, debit: 0, credit: 0, memo: null, project_id: null, ministry_id: null, congregation_id: null });
 
 /** One journal: editable while a draft (and the role may edit), read-only once posted, with Reverse. */
-export function JournalDialog({ id, onClose, onChanged }: { id: number | null; onClose: () => void; onChanged: () => void }) {
+export function JournalDialog({ id, onClose, onChanged, onOpen }: { id: number | null; onClose: () => void; onChanged: () => void; onOpen?: (id: number) => void }) {
   const { t, lt, lang } = useI18n();
   const b = useBooks();
   const n = useNames();
   const congs = useCongregations();
   const { run, busy } = useAction();
-  const full = useApi<BkJournal & { problems: string[] }>(id ? `/bookkeeping/journals/${id}` : null);
+  const full = useApi<BkJournal & { problems: string[]; reversal_draft_id?: number | null; reverses_number?: string | null }>(id ? `/bookkeeping/journals/${id}` : null);
   const general = b.funds.find((f) => f.restriction === 'unrestricted' && f.active)?.id;
   const [date, setDate] = useState(today());
   const [memo, setMemo] = useState('');
@@ -178,7 +178,9 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
   };
   const doReverse = async () => {
     if (!id || !reverse) return;
-    if (await run(() => api.post(`/bookkeeping/journals/${id}/reverse`, { date: reverse.date, memo: reverse.memo || undefined }), t('Reversed.'))) {
+    const r = await run(() => api.post<BkJournal>(`/bookkeeping/journals/${id}/reverse`, { date: reverse.date, memo: reverse.memo || undefined }), t('The reversing draft is ready: check it, then post it.'));
+    if (r) {
+      onOpen?.(r.id);
       onChanged();
       setReverse(null);
       full.reload();
@@ -194,15 +196,21 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
         <button className="btn" onClick={onClose}>{editable ? t('Cancel') : t('Close')}</button>
         {editable && <button className="btn" disabled={busy} onClick={() => save(false)}>{t('Save draft')}</button>}
         {editable && <button className="btn primary" disabled={busy || !tot.balanced} onClick={() => save(true)}>{t('Save and post')}</button>}
-        {b.canEdit && j?.status === 'posted' && !j.reversed_by_id && !reverse && <button className="btn" onClick={() => setReverse({ date: today(), memo: '' })}><Icon name="refresh" />{t('Reverse…')}</button>}
+        {b.canEdit && j?.status === 'posted' && !j.reversed_by_id && j.kind !== 'reversal' && !j.reversal_draft_id && !reverse && <button className="btn" onClick={() => setReverse({ date: today(), memo: '' })}><Icon name="refresh" />{t('Reverse…')}</button>}
       </>
     }>
       {id && !j ? (full.error ? <ErrorBox error={full.error} /> : <Loading />) : (
         <div className="stack">
           {j?.created_via === 'mcp' && j.status === 'draft' && <div className="callout lapis small">{t('Drafted by an AI assistant: check every line before posting.')}</div>}
           {j?.kind === 'offering' && j.service_id && <div className="small">{t('From the offerings of')} <Link to={`/records/${j.service_id}`}>{t('the service record')}</Link></div>}
-          {j?.reverses_id && <div className="small muted">{t('This journal reverses another.')}</div>}
-          {j?.reversed_by_id && <div className="callout small">{t('This journal has been reversed: together they cancel out.')}</div>}
+          {j?.reverses_id && (
+            <div className={`small ${j.status === 'draft' ? 'callout lapis' : 'muted'}`}>
+              {j.status === 'draft' ? t('This draft reverses journal {n}. Check it, then post it: only then are the two linked, and they cancel out.').replace('{n}', j.reverses_number ?? '') : t('This journal reverses journal {n}.').replace('{n}', j.reverses_number ?? '')}
+              {onOpen && <> <button className="btn ghost small" onClick={() => onOpen(j.reverses_id!)}>{t('Open it')}</button></>}
+            </div>
+          )}
+          {j?.reversed_by_id && <div className="callout small">{t('This journal has been reversed: together they cancel out.')} {onOpen && <button className="btn ghost small" onClick={() => onOpen(j.reversed_by_id!)}>{t('Open the reversal')}</button>}</div>}
+          {j?.reversal_draft_id && <div className="callout warn small">{t('A draft reversing this journal is waiting to be posted. Until it is, this journal stands as it is.')} {onOpen && <button className="btn ghost small" onClick={() => onOpen(j.reversal_draft_id!)}>{t('Open it')}</button>}</div>}
           {j?.status === 'posted' && <div className="small muted">{t('Posted by {who} on {date}.').replace('{who}', j.posted_by ?? '').replace('{date}', fmtDate(j.posted_at?.slice(0, 10), lang))}</div>}
           <div className="grid cols-3">
             <Field label={t('Date')}><input type="date" value={date} disabled={!editable || j?.kind === 'opening'} onChange={(e) => setDate(e.target.value)} /></Field>
@@ -274,12 +282,12 @@ export function JournalDialog({ id, onClose, onChanged }: { id: number | null; o
           {reverse && (
             <div className="card stack tight">
               <h3>{t('Reverse this journal')}</h3>
-              <p className="small muted">{t('A new posted journal with every line the other way round, so the two cancel out. Then enter it again correctly, if needed.')}</p>
+              <p className="small muted">{t('Canon drafts a journal with every line the other way round. This journal stays as it is until you post the draft; then the two cancel out. Deleting the draft changes nothing.')}</p>
               <div className="row">
                 <input type="date" value={reverse.date} onChange={(e) => setReverse({ ...reverse, date: e.target.value })} aria-label={t('Date')} />
                 <input className="grow" value={reverse.memo} onChange={(e) => setReverse({ ...reverse, memo: e.target.value })} placeholder={t('Why (optional)')} aria-label={t('Why (optional)')} />
                 <button className="btn" onClick={() => setReverse(null)}>{t('Cancel')}</button>
-                <button className="btn primary" disabled={busy} onClick={doReverse}>{t('Reverse')}</button>
+                <button className="btn primary" disabled={busy} onClick={doReverse}>{t('Draft the reversal')}</button>
               </div>
             </div>
           )}
