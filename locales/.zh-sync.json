@@ -776,6 +776,10 @@
       "AI 助手可以和你一起处理：使用 check_library 工作步骤。",
       "AI 助手可以和你一起處理：使用 check_library 工作步驟。"
     ],
+    "An Excel file with the right columns and a few example rows": [
+      "含正确栏位和几行范例的 Excel 文件",
+      "含正確欄位和幾行範例的 Excel 文件"
+    ],
     "An account limited to one congregation sees its services, meetings, records, members and groups, and the whole church’s — not those of other congregations. Administrators always see everything.": [
       "限定于某个堂的帐户，只看到该堂以及全教会的聚会、聚会活动、记录、会友和群组——看不到其他堂的资料。管理员始终可以看到全部。",
       "限定於某個堂的帳戶，只看到該堂以及全教會的聚會、聚會活動、記錄、會友和群組——看不到其他堂的資料。管理員始終可以看到全部。"
@@ -1728,6 +1732,10 @@
       "会计科目表（CSV）",
       "會計科目表（CSV）"
     ],
+    "Chart of accounts (Excel)": [
+      "会计科目表（Excel）",
+      "會計科目表（Excel）"
+    ],
     "Check": [
       "检查",
       "檢查"
@@ -1796,6 +1804,10 @@
       "选择一栏…",
       "選擇一欄…"
     ],
+    "Choose a file (Excel or CSV)": [
+      "选择文件（Excel 或 CSV）",
+      "選擇文件（Excel 或 CSV）"
+    ],
     "Choose a fund…": [
       "选择款项…",
       "選擇款項…"
@@ -1807,6 +1819,10 @@
     "Choose a person.": [
       "请选择一位人员。",
       "請選擇一位人員。"
+    ],
+    "Choose an Excel or CSV file, or drop it here": [
+      "选择 Excel 或 CSV 文件，或把文件拖到这里",
+      "選擇 Excel 或 CSV 文件，或把文件拖到這裡"
     ],
     "Choose an account.": [
       "请选择科目。",
@@ -2159,6 +2175,10 @@
     "Contains personal data — keep the file safe.": [
       "内含个人资料——请妥善保管文件。",
       "內含個人資料——請妥善保管文件。"
+    ],
+    "Contains personal data: keep it where only the office can open it.": [
+      "含个人资料：请保存在只有办公室能打开的地方。",
+      "含個人資料：請保存在只有辦公室能打開的地方。"
     ],
     "Content credits": [
       "内容来源",
@@ -2740,6 +2760,10 @@
       "下载（CSV）",
       "下載（CSV）"
     ],
+    "Download (Excel)": [
+      "下载（Excel）",
+      "下載（Excel）"
+    ],
     "Download PNG": [
       "下载 PNG",
       "下載 PNG"
@@ -2764,6 +2788,10 @@
       "把全部资料下载为可用 Excel 打开的 CSV 文件",
       "把全部資料下載為可用 Excel 打開的 CSV 文件"
     ],
+    "Download everything as an Excel file": [
+      "把全部下载为 Excel 文件",
+      "把全部下載為 Excel 文件"
+    ],
     "Download template": [
       "下载模板",
       "下載模板"
@@ -2780,9 +2808,17 @@
       "下载清单（CSV）",
       "下載清單（CSV）"
     ],
+    "Download the list (Excel)": [
+      "下载清单（Excel）",
+      "下載清單（Excel）"
+    ],
     "Download the service as a file": [
       "把聚会下载为文件",
       "把聚會下載為文件"
+    ],
+    "Download the template": [
+      "下载模板",
+      "下載模板"
     ],
     "Draft": [
       "草稿",
@@ -2803,6 +2839,10 @@
     "Draft what’s missing": [
       "起草缺少的分录",
       "起草缺少的分錄"
+    ],
+    "Draft; before posting:": [
+      "草稿；过账前需要：",
+      "草稿；過賬前需要："
     ],
     "Drafted by an AI assistant: check every line before posting.": [
       "由 AI 助手起草：过账前请逐行检查。",
@@ -3208,6 +3248,10 @@
       "例如：.slide-lyrics { font-size: 1.2em; } 会把歌词放大 20%。url(/api/assets/…) 只能用于已上传到 Canon 的图片。",
       "例如：.slide-lyrics { font-size: 1.2em; } 會把歌詞放大 20%。url(/api/assets/…) 只能用於已上傳到 Canon 的圖片。"
     ],
+    "Excel": [
+      "Excel",
+      "Excel"
+    ],
     "Expenditure": [
       "支出",
       "支出"
@@ -3236,6 +3280,10 @@
       "导出（CSV）",
       "導出（CSV）"
     ],
+    "Export (Excel)": [
+      "导出（Excel）",
+      "導出（Excel）"
+    ],
     "Export CSV": [
       "导出 CSV",
       "導出 CSV"
@@ -3251,6 +3299,10 @@
     "Export to a file": [
       "导出为文件",
       "導出為文件"
+    ],
+    "Exported {at} by {who}": [
+      "导出时间：{at}，导出者：{who}",
+      "導出時間：{at}，導出者：{who}"
     ],
     "External guest: no member": [
       "外部访客：无会友",
@@ -3404,6 +3456,10 @@
       "PayNow / 银行二维码请上传银行提供的正式图片，切勿自行生成。",
       "PayNow / 銀行二維碼請上傳銀行提供的正式圖片，切勿自行生成。"
     ],
+    "For accounting software that imports a manual journal file": [
+      "用于导入手工分录文件的会计软件",
+      "用於導入手工分錄文件的會計軟件"
+    ],
     "For catechisms and confessions: each question or section is a part that services can pick.": [
       "适用于要理问答与信条：每一问或每一条为一部分，聚会程序可自行选用。",
       "適用於要理問答與信條：每一問或每一條為一部分，聚會程序可自行選用。"
@@ -3535,6 +3591,10 @@
     "Funds (CSV)": [
       "款项（CSV）",
       "款項（CSV）"
+    ],
+    "Funds (Excel)": [
+      "款项（Excel）",
+      "款項（Excel）"
     ],
     "Funds‖books": [
       "款项",
@@ -3940,6 +4000,10 @@
       "已忽略",
       "已忽略"
     ],
+    "Ignored columns:": [
+      "已忽略的栏位：",
+      "已忽略的欄位："
+    ],
     "Import": [
       "导入",
       "導入"
@@ -3972,6 +4036,10 @@
       "导入模板文件…",
       "導入模板文件…"
     ],
+    "Import journals": [
+      "导入分录",
+      "導入分錄"
+    ],
     "Import readable verses and skip problem rows": [
       "导入可读取的经文并跳过有问题的行",
       "導入可讀取的經文並跳過有問題的行"
@@ -3983,6 +4051,10 @@
     "Import valid rows and skip errors": [
       "导入有效的行并跳过错误",
       "導入有效的行並跳過錯誤"
+    ],
+    "Import {n} as drafts": [
+      "导入 {n} 笔为草稿",
+      "導入 {n} 筆為草稿"
     ],
     "Import {n} rows": [
       "导入 {n} 行",
@@ -4003,6 +4075,10 @@
     "Imported:": [
       "已导入：",
       "已導入："
+    ],
+    "Import…": [
+      "导入…",
+      "導入…"
     ],
     "In Canon": [
       "在 Canon 中",
@@ -4155,6 +4231,14 @@
     "Journals (CSV)": [
       "分录（CSV）",
       "分錄（CSV）"
+    ],
+    "Journals (CSV, for accounting software)": [
+      "分录（CSV，用于会计软件）",
+      "分錄（CSV，用於會計軟件）"
+    ],
+    "Journals (Excel)": [
+      "分录（Excel）",
+      "分錄（Excel）"
     ],
     "Keep": [
       "保留",
@@ -5520,6 +5604,10 @@
       "资料库中找不到",
       "資料庫中找不到"
     ],
+    "Not imported:": [
+      "未导入：",
+      "未導入："
+    ],
     "Not in a hymnal": [
       "未收入诗本",
       "未收入詩本"
@@ -5907,6 +5995,10 @@
     "One printable page per month: totals by fund and method, each service with its cash count, other currencies, and lines to sign.": [
       "每月一页可打印的汇总：按奉献项目和方式的总额、每次聚会及其现金点算、其他货币，以及签名栏。",
       "每月一頁可打印的彙總：按奉獻項目和方式的總額、每次聚會及其現金點算、其他貨幣，以及簽名欄。"
+    ],
+    "One row per line; the rows of a journal share its reference in the Journal column. Accounts and funds by their code. Journals come in as drafts: nothing is posted until you post it.": [
+      "每行是分录的一项；同一笔分录的各行在“Journal”栏用同一个编号。科目和款项用代号。分录会以草稿导入：在你过账之前，不会过账任何分录。",
+      "每行是分錄的一項；同一筆分錄的各行在“Journal”欄用同一個編號。科目和款項用代號。分錄會以草稿導入：在你過賬之前，不會過賬任何分錄。"
     ],
     "One zip with every part below as a CSV, and the library file. It is not a backup: services, records and accounts are only in a backup (Settings → Backups). It holds members’ personal data: keep it where only the office can open it.": [
       "一个 zip 文件，内含下列每个部分的 CSV 和资料库文件。这不是备份：聚会、记录和帐户只在备份中（设置 → 备份）。文件含会友个人资料：请存放在只有办公室能打开的地方。",
@@ -6807,6 +6899,10 @@
     "Readings are the Scripture items of each service; sermons are the sermon passage. A darker square was read or preached more often. Click a square to see when.": [
       "读经是每次聚会的经文项目；讲道是讲道经文。颜色越深表示读或讲的次数越多。点选方格可看日期。",
       "讀經是每次聚會的經文項目；講道是講道經文。顏色越深表示讀或講的次數越多。點選方格可看日期。"
+    ],
+    "Ready": [
+      "可以导入",
+      "可以導入"
     ],
     "Ready to archive:": [
       "可归档：",
@@ -8264,6 +8360,10 @@
       "以「全文小册子」为起点",
       "以「全文小冊子」為起點"
     ],
+    "Statement file (CSV or Excel)": [
+      "对账单文件（CSV 或 Excel）",
+      "對賬單文件（CSV 或 Excel）"
+    ],
     "Statement file (CSV)": [
       "对账单文件（CSV）",
       "對賬單文件（CSV）"
@@ -8963,6 +9063,10 @@
     "Times": [
       "次数",
       "次數"
+    ],
+    "Tip: start from the template, fill it in Excel and save it as it is (.xlsx). CSV files work too.": [
+      "提示：从模板开始，在 Excel 中填写后直接保存（.xlsx）。也可以用 CSV 文件。",
+      "提示：從模板開始，在 Excel 中填寫後直接保存（.xlsx）。也可以用 CSV 文件。"
     ],
     "Tip: start from the template, fill it in Excel, then Save As \"CSV UTF-8 (Comma delimited)\".": [
       "提示：先下载模板，在 Excel 中填写，然后「另存为」→「CSV UTF-8（逗号分隔）」。",
@@ -10556,6 +10660,10 @@
       "加入 {n} 个诗本编号",
       "加入 {n} 個詩本編號"
     ],
+    "{n} journal(s) imported as drafts. Review them, then post.": [
+      "已导入 {n} 笔分录为草稿。请检查后再过账。",
+      "已導入 {n} 筆分錄為草稿。請檢查後再過賬。"
+    ],
     "{n} line(s) matched where there was exactly one entry for the same amount on the same day.": [
       "已配对 {n} 行（同一天恰好只有一笔相同金额的分录）。",
       "已配對 {n} 行（同一天恰好只有一筆相同金額的分錄）。"
@@ -10738,8 +10846,8 @@
     ]
   },
   "guide": [
-    "ed26e5128ce09597",
-    "3f84ec182abd070a"
+    "ff65c8cf1b501e57",
+    "63b1991b1c8c7f5d"
   ],
   "outputs": {
     "Advent": [
@@ -10884,6 +10992,10 @@
       "AI 访问已关闭",
       "AI 訪問已關閉"
     ],
+    "AI activity log": [
+      "AI 使用记录",
+      "AI 使用記錄"
+    ],
     "Access will be sent to": [
       "授权将发送至",
       "授權將發送至"
@@ -10916,6 +11028,14 @@
       "Canon 测试邮件",
       "Canon 測試郵件"
     ],
+    "Change log": [
+      "修改记录",
+      "修改記錄"
+    ],
+    "Chart of accounts": [
+      "会计科目表",
+      "會計科目表"
+    ],
     "Co-workers register": [
       "同工名册",
       "同工名冊"
@@ -10927,6 +11047,10 @@
     "Connecting AI apps (MCP) is currently disabled for this Canon installation. An administrator can enable it in Settings → AI / MCP.": [
       "此 Canon 系统目前未开放 AI 应用（MCP）连接。管理员可在“设置 → AI / MCP”中开启。",
       "此 Canon 系統目前未開放 AI 應用（MCP）連接。管理員可在“設置 → AI / MCP”中開啟。"
+    ],
+    "Contains personal data: keep it where only the office can open it.": [
+      "含个人资料：请保存在只有办公室能打开的地方。",
+      "含個人資料：請保存在只有辦公室能打開的地方。"
     ],
     "Create and change data in modules set to “Read & edit”": [
       "在设为“读写”的模块中新增和修改资料",
@@ -10943,6 +11067,14 @@
     "Expense claim to approve: {number} ({claimant}, {amount})": [
       "待审批的报销申请：{number}（{claimant}，{amount}）",
       "待審批的報銷申請：{number}（{claimant}，{amount}）"
+    ],
+    "Exported {at} by {who}": [
+      "导出时间：{at}，导出者：{who}",
+      "導出時間：{at}，導出者：{who}"
+    ],
+    "Funds": [
+      "款项",
+      "款項"
     ],
     "Grace and peace,": [
       "主内平安，",
@@ -10984,6 +11116,14 @@
       "您负责的程序",
       "您負責的程序"
     ],
+    "Journals": [
+      "分录",
+      "分錄"
+    ],
+    "Journals: template": [
+      "分录：模板",
+      "分錄：模板"
+    ],
     "Lending library": [
       "图书馆",
       "圖書館"
@@ -10999,6 +11139,10 @@
     "Limited to read only for this connection.": [
       "此连接仅限只读。",
       "此連接僅限只讀。"
+    ],
+    "Maintenance due": [
+      "需要保养",
+      "需要保養"
     ],
     "Member contact details, addresses & birthdays": [
       "会友联系资料、地址与生日",
@@ -11180,6 +11324,10 @@
       "哪一项最适合形容您？（可不填）",
       "哪一項最適合形容您？（可不填）"
     ],
+    "Who viewed member records": [
+      "谁查看了会友资料",
+      "誰查看了會友資料"
+    ],
     "With contact details": [
       "含联络资料",
       "含聯絡資料"
@@ -11263,6 +11411,10 @@
     "editor": [
       "编辑",
       "編輯"
+    ],
+    "template": [
+      "模板",
+      "模板"
     ],
     "viewer": [
       "只读用户",

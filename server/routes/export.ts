@@ -3,7 +3,8 @@
 import express, { type Response } from 'express';
 import { requireAdmin } from '../auth.ts';
 import { CSV_ENTITIES } from '../csv/index.ts';
-import { exportCsv, makeCtx } from '../csv/engine.ts';
+import { exportRows, makeCtx, say } from '../csv/engine.ts';
+import { sendXlsx, tableXlsx } from '../lib/xlsx-export.ts';
 import { moduleOff } from '../../shared/modules.ts';
 import { getSettings } from '../repo/settings.ts';
 import { exportLibrary, importLibrary, type LibrarySection } from '../repo/library-file.ts';
@@ -44,12 +45,26 @@ exportRoutes.get('/export', h(() => ({
   bookkeeping: !moduleOff('GET', '/bookkeeping', getSettings().modules),
 })));
 
-/** The books as CSV (Settings → Export data): every posted journal line, the chart of accounts, the funds. */
+/** The books (Settings → Export data): every posted journal line, the chart of accounts, the funds. */
 const BK_CSV: Record<string, () => (string | number | null | undefined)[][]> = { journals: () => journalsCsv(), accounts: accountsCsv, funds: fundsCsv };
+const BK_TITLE: Record<string, string> = { journals: 'Journals', accounts: 'Chart of accounts', funds: 'Funds' };
+const BK_MONEY: Record<string, number[]> = { journals: [10, 11, 14] };
+const bkOff = () => moduleOff('GET', '/bookkeeping', getSettings().modules);
+/** As Excel (people); the journals also as CSV (accounting software). */
+exportRoutes.get('/export/bookkeeping/:what.xlsx', (req, res, next) => {
+  try {
+    const make = BK_CSV[String(req.params.what)];
+    if (!make || bkOff()) return void res.status(404).json({ error: 'Not found' });
+    const [header, ...rows] = make();
+    sendXlsx(req, res, uiLang(req), { file: `bookkeeping-${req.params.what}-${today()}`, title: BK_TITLE[String(req.params.what)], header: header as string[], rows, money: BK_MONEY[String(req.params.what)] });
+  } catch (e) {
+    next(e);
+  }
+});
 exportRoutes.get('/export/bookkeeping/:what.csv', (req, res, next) => {
   try {
     const make = BK_CSV[String(req.params.what)];
-    if (!make || moduleOff('GET', '/bookkeeping', getSettings().modules)) return void res.status(404).json({ error: 'Not found' });
+    if (!make || bkOff()) return void res.status(404).json({ error: 'Not found' });
     download(res, `bookkeeping-${req.params.what}-${today()}.csv`, 'text/csv; charset=utf-8', toCsv(make()));
   } catch (e) {
     next(e);
@@ -81,14 +96,25 @@ exportRoutes.get('/export/all.zip', (req, res, next) => {
     const list = entities();
     const files: { name: string; data: string | Buffer }[] = [];
     for (const e of list) {
+      const book = (rows: string[][], title: string) => {
+        const [header, ...data] = rows;
+        return Buffer.from(tableXlsx(req, lang, { file: '', title, header, rows: data, pii: !!e.pii }));
+      };
       if (e.needs?.includes('hymnal_id')) {
         // one index per hymnal
-        for (const hy of hymnals.list('', [], 'sort, id')) files.push({ name: `hymnal-index-${hy.abbr.replace(/[^\w-]+/g, '_')}.csv`, data: exportCsv(e, makeCtx(lang, { hymnal_id: String(hy.id) })) });
+        for (const hy of hymnals.list('', [], 'sort, id')) files.push({ name: `hymnal-index-${hy.abbr.replace(/[^\w-]+/g, '_')}.xlsx`, data: book(exportRows(e, makeCtx(lang, { hymnal_id: String(hy.id) })), `${say(e.label, lang)}: ${hy.abbr}`) });
       } else if (!e.needs?.length) {
-        files.push({ name: `${e.key.replace(/_/g, '-')}.csv`, data: exportCsv(e, makeCtx(lang, {})) });
+        files.push({ name: `${e.key.replace(/_/g, '-')}.xlsx`, data: book(exportRows(e, makeCtx(lang, {})), say(e.label, lang)) });
       }
     }
-    if (!moduleOff('GET', '/bookkeeping', getSettings().modules)) for (const [k, make] of Object.entries(BK_CSV)) files.push({ name: `bookkeeping-${k}.csv`, data: toCsv(make()) });
+    if (!bkOff()) {
+      for (const [k, make] of Object.entries(BK_CSV)) {
+        const [header, ...rows] = make();
+        files.push({ name: `bookkeeping-${k}.xlsx`, data: Buffer.from(tableXlsx(req, lang, { file: '', title: BK_TITLE[k], header: header as string[], rows, money: BK_MONEY[k] })) });
+      }
+      // and the journals as CSV, for accounting software
+      files.push({ name: 'bookkeeping-journals.csv', data: toCsv(journalsCsv()) });
+    }
     files.push({ name: `canon-library-${today()}.canonlib`, data: exportLibrary({ scores: true, blocks: true, bibles: false }) });
     files.push({
       name: 'README.txt',

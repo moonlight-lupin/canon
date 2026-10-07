@@ -29,7 +29,7 @@ export function useLogQuery<T, F extends Record<string, string>>(path: string, i
     setPage(1);
   };
   const active = Object.entries(filters).some(([k, v]) => v && v !== initial[k]);
-  /** the same filters without paging, for a CSV export at `${path}.csv` */
+  /** the same filters without paging, for the Excel export */
   const exportQuery = qs(Object.fromEntries(Object.entries(filters).filter(([, v]) => v)));
   return { ...res, filters, set, clear, active, page, setPage, exportQuery };
 }
@@ -59,7 +59,7 @@ export function FilterBar({ children, active, onClear, csv }: { children: ReactN
     <div className="log-filters">
       {children}
       {active && <button className="btn sm ghost" onClick={onClear}><Icon name="x" />{t('Clear filters')}</button>}
-      {csv && <a className="btn sm log-export" href={csv} download title={t('Download every entry matching these filters (up to 20,000) for Excel.')}><Icon name="download" />{t('Export CSV')}</a>}
+      {csv && <a className="btn sm log-export" href={csv} download title={t('Download every entry matching these filters (up to 20,000) for Excel.')}><Icon name="download" />{t('Export (Excel)')}</a>}
     </div>
   );
 }

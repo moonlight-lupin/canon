@@ -10,6 +10,7 @@ import { Seg, useSession } from './ui.tsx';
 import type { Settings } from '../types-client.ts';
 import { allows, pageModule } from '../../shared/permissions.ts';
 import { pageOff } from '../../shared/modules.ts';
+import { setExportContext } from './xlsx-download.ts';
 
 // newTab: a page outside Canon's frame (the phone claims page) opens in a tab of its own
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean; newTab?: boolean }[] }[] = [
@@ -75,6 +76,13 @@ export function Layout() {
     } catch { /* private window: folding still works for this visit */ }
     return next;
   });
+  useEffect(() => {
+    const role = lt(me.role_def?.name);
+    setExportContext({
+      church: lt(church?.church_name), who: `${me.display_name}${role ? ` (${role})` : ''}`, lang,
+      exported: t('Exported {at} by {who}'), pii: t('Contains personal data: keep it where only the office can open it.'),
+    });
+  }, [lang, me, church]); // eslint-disable-line react-hooks/exhaustive-deps
   const isActive = (to: string) => (to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(to));
   // going to a page in a folded section opens that section (it can be folded again by hand)
   useEffect(() => {

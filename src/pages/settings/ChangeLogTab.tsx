@@ -61,7 +61,7 @@ export function ChangeLogTab() {
           <button className="btn ghost sm icon" onClick={log.reload} aria-label={t('Refresh')} title={t('Refresh')}><Icon name="refresh" /></button>
         </div>
       </div>
-      <FilterBar active={log.active} onClear={log.clear} csv={`/api/change-log.csv${log.exportQuery}`}>
+      <FilterBar active={log.active} onClear={log.clear} csv={`/api/change-log.xlsx${log.exportQuery}`}>
         <select className="mini" value={f.entity} onChange={(e) => set('entity', e.target.value)} aria-label={t('What')}>
           <option value="">{t('Everything')}</option>
           {data && Object.entries(data.entities).map(([k, v]) => <option key={k} value={k}>{t(v.en) !== v.en ? t(v.en) : lt(v)}</option>)}

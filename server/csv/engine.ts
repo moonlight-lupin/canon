@@ -5,6 +5,7 @@ import type { Lang, ModuleKey } from '../../shared/types.ts';
 import { db, tx } from '../db.ts';
 import { getSettings } from '../repo/settings.ts';
 import { toTraditional } from '../lib/chinese.ts';
+import { isXlsx, readXlsx, rowsToCsv, tableRows } from '../lib/xlsx-read.ts';
 import { decodeCsv, detectDelimiter, headerKey, langFromSuffix, matchHeaders, parseRecords, readCell, writeCsv } from '../lib/csv.ts';
 import { LANG_CODE_RE } from '../../shared/languages.ts';
 
@@ -114,8 +115,15 @@ export function say(m: Msg, lang: Lang): string {
 // ---------------------------------------------------------------- downloads
 
 function sheet(cols: Column[], rows: Record<string, unknown>[]) {
-  return writeCsv([cols.map((c) => c.key), ...rows.map((r) => cols.map((c) => r[c.key] ?? ''))]);
+  return writeCsv(table(cols, rows));
 }
+/** The headings (column keys, so the file imports back) and the rows, as cells. */
+function table(cols: Column[], rows: Record<string, unknown>[]): string[][] {
+  return [cols.map((c) => c.key), ...rows.map((r) => cols.map((c) => { const v = r[c.key]; return v === null || v === undefined ? '' : String(v); }))];
+}
+/** The same as templateCsv / exportCsv, as rows for an Excel file. */
+export const templateRows = (e: Entity, ctx: Ctx) => table(e.columns(ctx), e.example(ctx));
+export const exportRows = (e: Entity, ctx: Ctx) => table(e.columns(ctx), e.export(ctx));
 
 export function templateCsv(e: Entity, ctx: Ctx) {
   return sheet(e.columns(ctx), e.example(ctx));
@@ -132,7 +140,7 @@ export function guide(e: Entity, ctx: Ctx) {
     label: say(e.label, l),
     intro: say(e.intro, l),
     general: [
-      say(M('Save from Excel as "CSV UTF-8 (Comma delimited)". Other CSV types also work; Chinese is converted automatically.', '在 Excel 中请另存为「CSV UTF-8（逗号分隔）」。其他 CSV 格式也可以，中文会自动转换。'), l),
+      say(M('Fill in the template in Excel and save it as it is (.xlsx). CSV files work too; Chinese in them is converted automatically.', '在 Excel 中填写模板后直接保存（.xlsx）即可。也可以用 CSV 文件，其中的中文会自动转换。'), l),
       say(M('Columns you leave out are not changed. An empty cell clears that field.', '文件中没有的栏位不会被更改；空白的格子会清除该栏的资料。'), l),
       say(M('Dates: 2025-03-31 is best; 31/3/2025 (day first) also works. Yes/no columns accept yes, no, y, n, 1, 0, 是, 否.', '日期最好写成 2025-03-31；31/3/2025（日在前）也可以。是/否栏位可填 yes、no、y、n、1、0、是、否。'), l),
       say(M('Nothing is saved until you have checked the preview and pressed Import.', '在您检查预览并按「导入」之前，不会保存任何资料。'), l),
@@ -201,7 +209,17 @@ export function runImport(
   opts: { dryRun: boolean; skipErrors: boolean; lang: Lang; query: Record<string, string | undefined> },
 ): Preview {
   const l = opts.lang;
-  const { text, encoding } = decodeCsv(buf);
+  // an Excel file (.xlsx): its first sheet, without the title block Canon puts above an exported table
+  const excel = isXlsx(buf);
+  if (excel) {
+    try {
+      buf = new TextEncoder().encode(rowsToCsv(tableRows(readXlsx(buf))));
+    } catch (err) {
+      return { entity: e.key, dry_run: opts.dryRun, applied: false, encoding: 'xlsx', delimiter: ',', notes: [], fatal: (err as Error).message, columns: [], counts: { create: 0, update: 0, unchanged: 0, error: 0 }, rows: [] };
+    }
+  }
+  const { text, encoding: enc } = decodeCsv(buf);
+  const encoding = excel ? 'xlsx' : enc;
   const delimiter = detectDelimiter(text);
   const notes: string[] = [];
   if (encoding === 'gb18030' || encoding === 'big5') {

@@ -42,7 +42,7 @@ export function VisitorsTab({ q, congs }: Ctx) {
             </Section>
           </div>
           <Section title={t('By month')}><Columns items={r.months.map((m) => ({ label: m.month, value: m.count }))} /></Section>
-          <Section title={t('Visitors')} csv={() => download(`visitors-${r.period.from}-${r.period.to}.csv`, [['Date', 'Service', 'Name', ...(hasContact ? ['Contact'] : []), 'How they came', 'Follow-up by', 'Follow-up'], ...r.visitors.map((v) => [v.date, both(v.title), v.name, ...(hasContact ? [v.contact] : []), v.source, v.follow_up_by, VISITOR_STATUS_LABEL[v.status]])])}>
+          <Section title={t('Visitors')} pii csv={() => download(`visitors-${r.period.from}-${r.period.to}.csv`, [['Date', 'Service', 'Name', ...(hasContact ? ['Contact'] : []), 'How they came', 'Follow-up by', 'Follow-up'], ...r.visitors.map((v) => [v.date, both(v.title), v.name, ...(hasContact ? [v.contact] : []), v.source, v.follow_up_by, VISITOR_STATUS_LABEL[v.status]])])}>
             {hasContact && <div className="small muted pdpa">{t('Visitors’ details are personal data: keep exports safe and delete them when done (PDPA).')}</div>}
             <div className="table-wrap">
               <table className="t">

@@ -18,6 +18,8 @@ import { MembershipTab, ServingTab, VisitorsTab } from './reports/PeopleTabs.tsx
 import { AttendanceTab, ScriptureTab, SongsTab } from './reports/WorshipTabs.tsx';
 import type { Ctx } from './reports/charts.tsx';
 import { meetingGroups, type GroupRow } from './groups-common.tsx';
+import { setExportScope } from '../components/xlsx-download.ts';
+import { useEffect } from 'react';
 
 const TABS: { kind: ReportKind; label: string; money?: boolean }[] = [
   { kind: 'attendance', label: 'Attendance' },
@@ -68,6 +70,17 @@ export default function Reports() {
   const q = qs({ from, to, congregation: cong, ...(byKind && of === 'meeting' ? { kind: 'meeting', group } : {}) });
   const ctx: Ctx = { q, from, to, cong, congs };
   // years in archive files that this period touches: reports read the live records only
+  // the title block of the Excel files made on this page
+  const congName = congs.find((c) => c.id === cong)?.name;
+  const groupName = groups.data?.find((g) => g.id === group)?.name;
+  useEffect(() => {
+    setExportScope({
+      report: t(TABS.find((x) => x.kind === kind)?.label ?? ''),
+      period: `${fmtDate(from, lang)} – ${fmtDate(to, lang)}`,
+      filters: [congName ? lt(congName) : '', byKind && of === 'meeting' ? (groupName ? lt(groupName) : t('Meetings')) : ''].filter(Boolean),
+    });
+    return () => setExportScope({});
+  }, [kind, from, to, lang, congName, groupName, of, byKind]); // eslint-disable-line react-hooks/exhaustive-deps
   const archivedIn = (archived.data?.years ?? []).filter((y) => String(y) >= from.slice(0, 4) && String(y) <= to.slice(0, 4));
 
   return (

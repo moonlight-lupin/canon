@@ -130,7 +130,7 @@ function ImportDialog({ onClose, onDone }: { onClose: () => void; onDone: (state
       <div className="stack">
         <div className="grid cols-2">
           <Field label={t('Bank account')}><AccountSelect value={account} kinds={['bank']} onChange={(v) => { setAccount(v); setPreview(null); setFile(null); }} /></Field>
-          <Field label={t('Statement file (CSV)')}><input type="file" accept=".csv,text/csv" onChange={(e) => choose(e.target.files?.[0])} /></Field>
+          <Field label={t('Statement file (CSV or Excel)')}><input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => choose(e.target.files?.[0])} /></Field>
         </div>
         {preview && layout && (
           <>

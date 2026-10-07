@@ -392,3 +392,40 @@ test('a PayNow gift first seen on the bank statement: added to the service’s o
   const rental = st.lines.find((l: Json) => l.amount === 30000);
   assert.equal((await call(as.viewer, 'POST', `/bookkeeping/bank/lines/${rental.id}/offering`, { service_id: s.id, fund: 'General', method: 'transfer', post: false })).status, 403);
 });
+
+test('importing journals from Excel or CSV: the template, a preview with what stops each, drafts only', async () => {
+  const { readXlsx, tableRows } = await import('../server/lib/xlsx-read.ts');
+  const { buildXlsx } = await import('../shared/xlsx.ts');
+  const tpl = await fetch(`${base}/api/bookkeeping/import/journals-template.xlsx`, { headers: { Cookie: as.treasurer.cookie } });
+  assert.equal(tpl.status, 200);
+  const head = tableRows(readXlsx(new Uint8Array(await tpl.arrayBuffer())))[0];
+  assert.deepEqual(head.slice(0, 5), ['Journal', 'Date', 'Narration', 'Kind', 'Account code']);
+  // an Excel file with a title block above the table, three journals: fine, unbalanced, an unknown account
+  const file = buildXlsx([{ name: 'x', lines: ['Some church — journals'], header: ['Journal', 'Date', 'Narration', 'Account code', 'Fund', 'Debit', 'Credit'], rows: [
+    ['A', '2031-09-01', 'Hall rent (fictional)', '5500', 'GEN', 100, null], ['A', '2031-09-01', '', '1100', 'GEN', null, 100],
+    ['B', '01/09/2031', 'Unbalanced (fictional)', '5500', 'GEN', '20.00', ''], ['B', '', '', '1100', 'GEN', '', '10.00'],
+    ['C', '2031-09-02', 'Typo (fictional)', '9999', 'GEN', 5, null], ['C', '2031-09-02', '', '1100', 'GEN', null, 5],
+  ] }]);
+  const up = (url: string, body: Uint8Array) => fetch(`${base}/api${url}`, { method: 'POST', headers: { Cookie: as.treasurer.cookie, 'X-CSRF-Token': as.treasurer.csrf, 'Content-Type': 'application/octet-stream' }, body: body as unknown as BodyInit }).then((r) => r.json() as Promise<Json>);
+  const pv = await up('/bookkeeping/import/journals?dry_run=1', file);
+  assert.equal(pv.fatal, null);
+  const by = (ref: string) => pv.journals.find((j: Json) => j.ref === ref);
+  assert.deepEqual([by('A').errors, by('A').problems], [[], []]);
+  assert.equal(by('B').date, '2031-09-01', 'DD/MM/YYYY read too');
+  assert.ok(by('B').problems.some((p: string) => /must be equal/.test(p)), 'unbalanced: a draft, not postable yet');
+  assert.ok(by('C').errors.some((e: string) => /9999/.test(e)), 'an unknown account stops that journal');
+  const before = get<{ n: number }>("SELECT COUNT(*) n FROM bk_journals WHERE status = 'draft'")!.n;
+  const done = await up('/bookkeeping/import/journals', file);
+  assert.equal(done.imported.length, 2);
+  assert.equal(get<{ n: number }>("SELECT COUNT(*) n FROM bk_journals WHERE status = 'draft'")!.n, before + 2, 'drafts only');
+  assert.ok(get("SELECT 1 FROM change_log WHERE entity = 'bk_journals' AND via = 'import'"), 'logged as an import');
+  // a CSV file works the same
+  const csv = new TextEncoder().encode('Journal,Date,Narration,Account code,Fund,Debit,Credit\nX,2031-09-03,Fictional,5500,GEN,1.00,\nX,2031-09-03,,1100,GEN,,1.00\n');
+  assert.equal((await up('/bookkeeping/import/journals?dry_run=1', csv)).journals[0].errors.length, 0);
+  // a bank statement as Excel
+  const stmt = buildXlsx([{ name: 's', header: ['Date', 'Description', 'Amount'], rows: [['2031-09-04', 'INTEREST (fictional)', 0.5]] }]);
+  const prev = await call(as.treasurer, 'POST', '/bookkeeping/bank/preview', { account_id: acc('1110'), file: Buffer.from(stmt).toString('base64') });
+  assert.equal(prev.status, 200, prev.text);
+  assert.equal(prev.body.layout.date, 'Date');
+  assert.equal(prev.body.layout.amount, 'Amount');
+});

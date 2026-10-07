@@ -85,7 +85,7 @@ Choose a role:
 | Visitor form: switch it on for the church, its texts | ✓ | — | — |
 | Reports: attendance, visitors, serving, songs and Scripture, membership | ✓ | ✓ | ✓ (visitors without contact details) |
 | Reports: offerings, and the monthly summary for the treasurer | ✓ | ✓ | — |
-| Import CSV; export personal data | ✓ | ✓ | — |
+| Import from Excel or CSV; export personal data | ✓ | ✓ | — |
 | Send reminder e-mails | ✓ | ✓ | — |
 | Church defaults (slide, bulletin and service templates) | ✓ | — | — |
 | Settings: church, congregations, languages, users, offerings, e-mail, backups and restore, change log, AI / MCP | ✓ | — | — |
@@ -228,7 +228,7 @@ Open [Library](/library).
     - **Upload sheet music** (above the list): many scans at once. Name each file by its hymnal number, e.g. `HP 178.jpg`, and `HP 178-2.jpg` for page 2 (a bare `178.jpg` uses the first hymnal with that number). Canon matches the files to the hymns. Check the list, change or skip any, choose whether to **replace** the pages a hymn already has, and upload.
 - **Canon's library** (administrators, on the Hymns & songs and Liturgical texts tabs) adds Canon's public-domain hymns & psalms, liturgical texts, service templates and the Westminster Standards: the same choice as when Canon was set up. Each part says how much of it is already in your library. The hymns have English words, credits, tune and metre; a few have a note that their usual tune or harmony is still in copyright, but the words are free to print and project. Add your own language's words to a hymn's stanzas, or delete what you don't use: a deleted item doesn't come back when Canon is updated. **Also add back the ones you deleted** brings it back.
 - **Hymnals**: **New hymnal** with an **Abbreviation** (shown before numbers, e.g. HP 123). The first hymnal is the default for numbers.
-- To load a hymnal's index (numbers and titles), use **Import CSV…** on the hymnal. Songs not yet in the library are added as title-only songs tagged *needs-words*; words are never imported.
+- To load a hymnal's index (numbers and titles), use **Import…** on the hymnal. Songs not yet in the library are added as title-only songs tagged *needs-words*; words are never imported.
 
 > **Tip:** Copyrighted hymn words may only be typed in under your church's licence.
 
@@ -323,14 +323,22 @@ The editor shows the settings in numbered steps that fold open, with a large liv
 
 ## Importing from Excel
 
-Most lists have **Download template**, **Export** and **Import CSV…**.
+Most lists have **Download template**, **Export (Excel)** and **Import…**.
 
-1. Press **Download template** and fill it in Excel.
-2. Save with **Save As → CSV UTF-8 (Comma delimited)**.
-3. Press **Import CSV…** and choose the file. Nothing is saved yet: the preview shows what is **new**, **to update**, **unchanged** and **with problems**.
+1. Press **Download template** (an Excel file) and fill it in.
+2. Save it as it is (.xlsx). CSV files work too.
+3. Press **Import…** and choose the file. Nothing is saved yet: the preview shows what is **new**, **to update**, **unchanged** and **with problems**.
 4. Press **Import N rows**, or **Import valid rows and skip errors**.
 
 > **Tip:** Importing the same file twice is safe: existing records are matched and updated, not duplicated.
+
+**Exports are Excel files.** Every list, report and log downloads as an .xlsx file. Above the table is a title block:
+- the church and what the file is;
+- the period and the filters chosen;
+- when it was exported, and by whom (with their role);
+- a note when the file holds members' or visitors' personal data.
+
+The headings are frozen, with filters. An exported list imports back as it is, title block and all. CSV is kept only where another program reads the file: the journals for accounting software, and Bible texts.
 
 Exports and imports follow the account's access, like the screens: an account limited to one congregation exports, previews and updates only its congregation's people (and the whole church's), and a role that doesn't see sensitive member fields gets no column for them — a column for one in a file it imports is ignored, so the stored values stay.
 
@@ -367,7 +375,7 @@ The form is a public page: anyone with the service's link or QR code can open it
 
 ## Reports {#reports}
 
-[Reports](/reports) (under **Records** in the sidebar) sums up a period: choose **Last 3 / 6 / 12 months**, **This year**, **Last year** or **Choose dates…**, and a congregation if your church has several. Reports are about services unless you choose **Meetings** (and a group, or **All groups**); serving and membership are always about services and people. **Print** prints the report on the screen; the **CSV** button on each table downloads it for Excel.
+[Reports](/reports) (under **Records** in the sidebar) sums up a period: choose **Last 3 / 6 / 12 months**, **This year**, **Last year** or **Choose dates…**, and a congregation if your church has several. Reports are about services unless you choose **Meetings** (and a group, or **All groups**); serving and membership are always about services and people. **Print** prints the report on the screen; the **Excel** button on each table downloads it, with the period and filters in its title block.
 
 - **Attendance**: the average, the same period last year (with the change in %), the highest service, children and online, a chart of each service with a four-week average (dashed), and averages per month and congregation.
 - **Offerings** (editors and administrators): totals by fund and month and by payment method, in the church's currency; other currencies listed separately and never converted; cash counts still waiting to be verified, with how many days they have waited. **Monthly summary for the treasurer** opens one printable A4 page for a month: totals by fund and method, each service with its cash count, other currencies, and lines to sign.
@@ -386,7 +394,7 @@ The [Lending library](/lending) is for the church's books, DVDs and curricula le
 - **New book**: type or scan the **ISBN** (the barcode number on the back) and press **Look up**. Canon fills in the title, author, publisher, year and cover from Open Library, or else Google Books; only the ISBN is sent. Without internet, or for a book without an ISBN, type the details. Choose the **Kind** (book, DVD, curriculum), **Category**, **Language** and **Shelf**, and how many **Copies** the library has.
 - Each copy gets a number (**B0001**, **B0002** …). **Print labels** (in a book, for all its copies) prints QR labels on **A4 sticker sheets** (24, 21 or 65 to a sheet; **Start at label** uses a part-used sheet) or on a **label printer** (62 × 29 mm). The label shows the QR code, the number, the title and the shelf. Print at 100%. The QR code opens the copy in Canon at the office computer's network address, on a phone on the church network.
 - A copy can be marked **Lost** or **Withdrawn**; one that was never lent can be deleted.
-- **Import CSV** brings in a whole list (one row per title, with how many copies); **Export CSV** gives the catalogue back.
+- **Import…** brings in a whole list (one row per title, with how many copies); **Export (Excel)** gives the catalogue back.
 
 **Lend & return**: type the copy's number (or scan its QR label with a scanner) and press **Find**.
 - **Available**: choose the **Borrower** (type part of a name; members only), check **Due back** (the loan period from **Loan rules**) and press **Lend**.
@@ -412,7 +420,7 @@ The [Asset register](/equipment) is for the church's equipment and property. It 
 - **Photos and receipts**: add photos (PNG, JPEG, WebP) and PDF receipts or warranties, up to 10 MB each. They are kept in Canon's database, so backups include them.
 - **Maintenance**: **Every (months)** and **Next maintenance**. **Record** in the **Maintenance log** what was done, when, by whom and at what cost; with a regular interval, the next date moves on by that many months. **Maintenance due** in the list shows what is due in the next two weeks or overdue, and the dashboard counts it.
 - **Print labels** prints QR labels for the items in the list, the same way as for books. The QR code opens the item: what it is, where it belongs and who looks after it.
-- **Import CSV** brings in an existing inventory (one row per item); **Export CSV** gives the register back.
+- **Import…** brings in an existing inventory (one row per item); **Export (Excel)** gives the register back.
 
 ## Book-keeping {#bookkeeping}
 
@@ -432,7 +440,12 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - its accounts and funds must be in use.
 - **A posted journal is never changed.** It gets a number (e.g. 2026-0042). A mistake is corrected with **Reverse…**: a new posted journal with every line the other way round, so the two cancel out. Then enter it again correctly.
 - **Drafts** come from you, from verified offerings, from the bank screen and from AI assistants (marked **AI draft**). Tick several and **Post … selected** posts them together; any with a problem stay drafts.
-- **Export (CSV)** gives every posted line in a period for the church's accountant or other accounting software. **Settings → Export data** has the journals, the chart of accounts and the funds as CSV too, and in its zip.
+- **Export (Excel)** gives every posted line in a period. **CSV** gives the same for accounting software that imports a manual journal file. **Settings → Export data** has the journals, the chart of accounts and the funds too, and in its zip.
+- **Import…** brings journals in from an Excel or CSV file: **Download the template**, one row per line, the rows of a journal sharing its reference in the **Journal** column; accounts and funds by their code, projects and ministries by code or name. Another Canon's journal export imports too.
+  - The preview shows each journal and what stops it.
+  - Journals with an unknown account or fund, or a date that can't be read, are left out.
+  - Unbalanced ones come in but can't be posted until they are fixed.
+  - Everything comes in as **drafts**: nothing is posted until you post it.
 - **History** on a journal shows every change to it, before and after posting: who changed what, and each line's account, fund and amount before → after.
   - Drafts can be changed until they are posted, but nothing goes unrecorded.
   - For an offering journal, the History also shows the cash count's changes (amounts, counts, verifying and reopening) and any earlier drafts for that service that were withdrawn.
@@ -447,7 +460,7 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
 - Foreign cash is booked at its **Value once exchanged**. The original amount is kept on the line.
 
 **Bank**
-- **Import a statement**: export the statement from the bank's website as CSV and choose the file.
+- **Import a statement**: export the statement from the bank's website as CSV or Excel and choose the file.
   - Canon finds the row with the column names and guesses the columns (date, description, one amount column or money out / money in) and the date format. Check them; they are remembered for that bank account.
   - Lines already imported are skipped.
   - Enter the statement's opening and closing balances to reconcile.
@@ -464,7 +477,7 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - Every match, unmatch and ignore is recorded in the change log.
 - The **reconciliation** at the top: the balance in the books, less what isn't on a statement yet, should equal the statement's closing balance. A **Difference** of 0.00 means the books and the bank agree. **Mark reconciled** when they do.
 
-**Reports**: from posted journals only. Each one can be **Print**ed (with the church's name and the period) or downloaded as CSV.
+**Reports**: from posted journals only. Each one can be **Print**ed (with the church's name and the period) or downloaded as Excel, with the period and filters in its title block.
 - **Income and expenditure**: for a period, by fund, optionally for one fund, project or ministry.
 - **Balance sheet**: what the church has and owes on a date, and each fund's balance.
 - **Fund movements**: each fund's opening balance, income, expenditure, transfers and closing balance.
@@ -536,21 +549,21 @@ Open [Settings](/settings). Administrators see its sections listed down the left
 - **My profile** (everyone; for administrators it is the first section): display name, interface language, **Change password**.
 - **Church**, **Languages**, **User accounts**, **Roles & permissions**: see [Getting started](#getting-started).
 - **Spaces** (administrators): the church's halls, rooms and other places — a **Name** in each language, the **Capacity** and **Notes** (e.g. projector, piano). Services, meetings and calendar events can each be in one. The ⋯ menu edits, archives (it stays on its bookings but isn't offered for new ones) or deletes a space nothing was ever booked in.
-- **Export data** (administrators): one click for each part of Canon — every list's CSV (it opens in Excel, and imports back with **Import CSV**), with the ones holding personal data marked — and **Download everything (zip)** with all of them and the library file. This is not a backup: services, records and accounts are only in a backup.
+- **Export data** (administrators): one click for each part of Canon — every list as an Excel file (it imports back with **Import…**), with the ones holding personal data marked — and **Download everything (zip)** with all of them and the library file. This is not a backup: services, records and accounts are only in a backup.
   - **Library file**: the hymnals, songs with their words, hymnal numbers and **sheet music**, liturgical texts and **QR codes & notes** (tick what to include; **Bibles you uploaded** only if their licence allows sharing) in one `.canonlib` file. **Import a library file…** on another Canon — another church, or a new computer — shows what it would add, then adds only what that Canon doesn't have: songs and texts match by key or title, hymnals by abbreviation. Existing songs only gain hymnal numbers and sheet music they lack. Uploaded Bibles are added only when you confirm the church may use them.
   - **The library, section by section**: the same kind of file for one section at a time — **Hymns** one hymnal at a time (words, numbers and sheet music), **Songs in no hymnal**, **Liturgical texts**, each **Bible** you uploaded, **QR codes & notes** and **Slide backgrounds**. Administrators also find an **Export** button on each Library tab (on Hymns & songs, a list of the hymnals) and **Import a library file…** beside it.
 - **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library**, the **Asset register** and **Book-keeping** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it; values already entered are kept and come back if the field is added again.
 - **Offerings** (administrators): the church's currency, the funds offerings go to, **Signing the count** (on paper or on screen) and the **Minimum counters** — see [Service records](#service-records).
 - **E-mail**: choose the **Provider** (Gmail, Microsoft 365 or other), fill in the SMTP details and **Save**, then **Send test**. Gmail needs an app password.
-- **Security & privacy** (administrators): a **Security checklist** in plain words — disk encryption (tick **Done** once BitLocker or similar is on; Canon cannot see it), automatic backups and their age, where backups are kept, backup encryption, the public address, how many administrators, two-step sign-in, whether every account belongs to a church member (or an external guest), accounts not used for six months, whether AI assistants receive members' or visitors' contact details, the visitor form, the lending library's self-service (when on) and how long logs are kept — each with what to do. Below it, **Who viewed member records**: every time someone opened a member's page, an AI assistant read a member, or the members list was exported (the same person and page within 10 minutes count once), with filters, **Export CSV** and the change log's **Keep** period. **Keeping and archiving**: **Erase visitors' contact details after** (default 24 months — phone or e-mail, prayer request, how they described themselves and notes go; names, how they came and follow-up stay, so reports still count) and **Archive records older than** (default 5 years) for service records with their offerings, and **Archive logs older than** (**Same as records** unless you choose fewer or more years) for the change log, AI activity and record views. **Check what can be archived** shows which whole years qualify; **Archive now** moves those years' service records (with offerings) and log entries into one read-only file per year in `data/archives` — the services themselves stay. Archived years can be **Open**ed (service records and change log, read-only) or **Download**ed, and every backup copies the archive files too.
+- **Security & privacy** (administrators): a **Security checklist** in plain words — disk encryption (tick **Done** once BitLocker or similar is on; Canon cannot see it), automatic backups and their age, where backups are kept, backup encryption, the public address, how many administrators, two-step sign-in, whether every account belongs to a church member (or an external guest), accounts not used for six months, whether AI assistants receive members' or visitors' contact details, the visitor form, the lending library's self-service (when on) and how long logs are kept — each with what to do. Below it, **Who viewed member records**: every time someone opened a member's page, an AI assistant read a member, or the members list was exported (the same person and page within 10 minutes count once), with filters, **Export (Excel)** and the change log's **Keep** period. **Keeping and archiving**: **Erase visitors' contact details after** (default 24 months — phone or e-mail, prayer request, how they described themselves and notes go; names, how they came and follow-up stay, so reports still count) and **Archive records older than** (default 5 years) for service records with their offerings, and **Archive logs older than** (**Same as records** unless you choose fewer or more years) for the change log, AI activity and record views. **Check what can be archived** shows which whole years qualify; **Archive now** moves those years' service records (with offerings) and log entries into one read-only file per year in `data/archives` — the services themselves stay. Archived years can be **Open**ed (service records and change log, read-only) or **Download**ed, and every backup copies the archive files too.
   - **Archiving never overwrites a record.** If a restored backup brings back a record that is also in an archive, archiving goes ahead only when the two are exactly the same. Otherwise it stops and leaves the live record as it is; bring the archived one back and compare them.
   - **An archived record is read-only.** Its service shows **Archived** on Service records. Nobody can start a new record for it, delete the service or move it to another date. To correct an archived record, open its year and press **Bring back**: the record returns to Service records (logged), and the next archiving files it again.
   - **Erasing visitors' details covers every copy Canon keeps:** the service records, the archive files and the change log, including entries for services that were deleted since. Archiving erases first, so expired details never reach an archive. Backups keep their copies until they are removed (Settings → Backups → keep the newest); a restored backup is erased again straight away.
   - **The change log's Keep period still applies:** if it is shorter than the archive age, log entries are removed before they are old enough to archive, and Canon says so here. Keep the change log longer if the archives should hold the history too.
   - **Reports cover the live records only:** when a period includes archived years, the Reports page says which.
 - **Sample data** (administrators): **Add sample church** fills Canon with a fictional church to try it with — about 40 people in households (husband, wife and children), each with an English name and a Chinese name of their own (not a translation) and a birthday; cell groups by area (East, West, North and young adults), four committees, two fellowships and a Sunday school; and people on every serving team. Ticked, **Also put them on the rota…** fills the empty places of the next service and of a copy of it a week later, so the bulletin's **Serving next week** and the team's share page have names. Each sample person's notes say so. **Remove sample data** takes out exactly what was added — the people with their places in groups, teams and rotas, their households and groups, and the copied service — and nothing anyone typed (a group someone real has joined stays).
-- **Change log** (administrators): every change made in Canon, by an AI agent or by a CSV import — who, when, how, and each field's old → new value. Filter by what (members, services, songs…), who, how, added / changed / deleted, dates or words, and page through older entries. **Export CSV** downloads every entry matching the filters (up to 20,000) for Excel. **Keep** sets how many months are kept (older entries are deleted once a day). Passwords are never recorded. A member's **History** button shows the changes to that person.
+- **Change log** (administrators): every change made in Canon, by an AI agent or by an import — who, when, how, and each field's old → new value. Filter by what (members, services, songs…), who, how, added / changed / deleted, dates or words, and page through older entries. **Export (Excel)** downloads every entry matching the filters (up to 20,000) for Excel. **Keep** sets how many months are kept (older entries are deleted once a day). Passwords are never recorded. A member's **History** button shows the changes to that person.
 - **AI / MCP**: see below.
 
 ## AI assistants
@@ -579,7 +592,7 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - It cannot send e-mail or delete people. It asks before changing things.
 - **Book-keeping** (off by default): Claude reads the books, the reports and the imported bank statements, and can **draft** journals for the treasurer to post — also for a statement line the books lack. With **Read & write** it still only drafts: it can never post, reverse or change a posted journal, import a statement or match lines.
 - **Administration** (off by default; only for a connection approved by an administrator): **Read only** lets Claude read the security checklist, backups, accounts (never passwords), the change log, who viewed member records and a settings overview — ask "anything I should fix this week?" or "who changed Sunday's order?". **Read & write** adds two actions: back up now, and run the checks (public address, backup folder, e-mail). Accounts, roles and settings are only ever changed in Canon. The change log shows old and new values only when members' contact details are shared.
-- **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export CSV** (every entry matching the filters) and its own **Keep** period.
+- **Connected agents** lists connections (**Revoke** to cut one off); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export (Excel)** (every entry matching the filters) and its own **Keep** period.
 
 ## Backups and moving to Docker
 
@@ -662,7 +675,7 @@ Use the church's Google account, not someone's personal one, so the backups stay
 Two people edited the same service details, service record or member at the same time. Canon keeps the first save and refuses the second instead of silently overwriting it, and says who changed it and when. Copy anything you typed, reload the page to see their changes, then make yours again.
 
 **Chinese text is garbled when I open an export in Excel.**
-Canon's exports open correctly in Excel. If a file became garbled after you saved it, save it again as **CSV UTF-8**. Canon still reads files saved in Chinese encodings.
+Canon's exports are Excel files. CSV files still import: if one became garbled after you saved it, save it again as **CSV UTF-8**. Canon also reads CSV files saved in Chinese encodings.
 
 **The slides use the wrong Chinese font.**
 Slides use fonts installed on the projector computer. Choose another font in [Slide templates](/slide-templates) (e.g. 黑体 or 楷体), or install the font on that computer.

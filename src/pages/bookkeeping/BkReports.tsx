@@ -8,7 +8,9 @@ import { useI18n } from '../../i18n.tsx';
 import { Empty, ErrorBox, Loading, fmtDate, today, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { useCongregations } from '../../components/Congregations.tsx';
-import { download } from '../reports/charts.tsx';
+import { downloadTable } from '../../components/xlsx-download.ts';
+import { setExportScope } from '../../components/xlsx-download.ts';
+import { useEffect } from 'react';
 import { ACCOUNT_TYPE_LABEL, FUND_RESTRICTION_LABEL, JOURNAL_KIND_LABEL, yearStart, type AccountType, type FundRestriction, type JournalKind } from '../../../shared/bookkeeping.ts';
 import type { L10n } from '../../../shared/types.ts';
 import { AccountSelect, FundSelect, TagSelect, csvMoney, fmtMoney, fmtSigned, useBooks } from './common.tsx';
@@ -61,7 +63,16 @@ export function ReportsTab() {
   const setParam = (p: Record<string, string>) => setSp({ tab: 'reports', report, ...(account ? { account: String(account) } : {}), ...p }, { replace: true });
   const title = t(REPORTS.find((r) => r.key === report)!.label);
   const period = asOfReport ? t('As at {date}').replace('{date}', fmtDate(to, lang)) : `${fmtDate(from, lang)} – ${fmtDate(to, lang)}`;
-  const file = (name: string) => `${name}-${asOfReport ? to : `${from}-to-${to}`}.csv`;
+  const file = (name: string) => `${name}-${asOfReport ? to : `${from}-to-${to}`}`;
+  // the title block of the Excel files: the report, its period and filters
+  useEffect(() => {
+    setExportScope({
+      report: title,
+      period,
+      filters: [b.overview.currency, fund ? lt(b.funds.find((f) => f.id === fund)?.name) : '', project ? lt(b.projects.find((x) => x.id === project)?.name) : '', ministry ? lt(b.ministries.find((x) => x.id === ministry)?.name) : '', report === 'ledger' && account ? `${b.accounts.find((a) => a.id === account)?.code ?? ''} ${lt(b.accounts.find((a) => a.id === account)?.name)}` : ''].filter(Boolean),
+    });
+    return () => setExportScope({});
+  }, [title, period, fund, project, ministry, account, report]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="stack bk-reports">
       <div className="row bk-toolbar no-print">
@@ -98,9 +109,16 @@ export function ReportsTab() {
   );
 }
 
+/** The report as Excel: amounts as money (every column after the names). */
 function CsvButton({ name, rows }: { name: string; rows: () => (string | number | null | undefined)[][] }) {
   const { t } = useI18n();
-  return <button className="btn small no-print" onClick={() => download(name, rows())}><Icon name="download" />{t('Download (CSV)')}</button>;
+  const make = () => {
+    const r = rows();
+    // money: the columns whose values are amounts written as "1234.50"
+    const money = (r[0] ?? []).map((_, i) => i).filter((i) => r.slice(1).some((x) => typeof x[i] === 'string' && /^-?\d+\.\d{2}$/.test(String(x[i]))));
+    downloadTable(name, r, { money });
+  };
+  return <button className="btn small no-print" onClick={make}><Icon name="download" />{t('Download (Excel)')}</button>;
 }
 
 function useReport<T>(path: string) {

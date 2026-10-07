@@ -7,6 +7,14 @@ import { all, get, run, tx } from '../db.ts';
 import { BadRequest, Conflict, NotFound } from '../lib/table.ts';
 import { currentActor } from '../lib/actor.ts';
 import { decodeCsv, parseCsv } from '../lib/csv.ts';
+import { isXlsx, readXlsx } from '../lib/xlsx-read.ts';
+
+/** A statement's rows: from the bank's CSV, or an Excel file (its first sheet). Empty rows left out. */
+function statementRows(data: Buffer): string[][] {
+  const b = new Uint8Array(data);
+  const rows = isXlsx(b) ? readXlsx(b) : parseCsv(decodeCsv(b).text);
+  return rows.filter((r) => r.some((c) => c?.trim()));
+}
 import { logChange } from './changelog.ts';
 import { accounts, activeAccount, activeFund, getJournal, postJournal, postingProblems, saveDraft } from './bookkeeping.ts';
 import { recordFor, saveRecord, type Who } from './records.ts';
@@ -71,8 +79,7 @@ function headerIndex(rows: string[][], L: BankCsvLayout): number {
 /** Read a statement file: its rows, and a guess at the layout (or the account's saved one). */
 export function previewStatement(accountId: number, data: Buffer) {
   const a = accounts.get(accountId);
-  const { text } = decodeCsv(new Uint8Array(data));
-  const rows = parseCsv(text).filter((r) => r.some((c) => c.trim()));
+  const rows = statementRows(data);
   if (!rows.length) throw new BadRequest('The file is empty.');
   const saved = a.bank_csv;
   const at = saved ? rows.findIndex((r) => r.some((c) => c.trim() === saved.date)) : -1;
@@ -106,8 +113,7 @@ export function guessLayout(rows: string[][]): BankCsvLayout {
 export function importStatement(input: { account_id: number; data: Buffer; layout: BankCsvLayout; file_name?: string; opening_balance?: number | null; closing_balance?: number | null }) {
   const a = activeAccount(input.account_id);
   if (a.kind !== 'bank') throw new BadRequest(`${a.code} is not a bank account (Book-keeping → Accounts: kind “bank”).`);
-  const { text } = decodeCsv(new Uint8Array(input.data));
-  const rows = parseCsv(text).filter((r) => r.some((c) => c.trim()));
+  const rows = statementRows(input.data);
   const L = { ...input.layout, header_row: headerIndex(rows, input.layout) };
   const h = rows[L.header_row] ?? [];
   const col = (name?: string) => (name ? h.indexOf(name) : -1);

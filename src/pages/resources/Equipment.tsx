@@ -102,7 +102,7 @@ export default function Equipment() {
             </table>
           </div>
         )}
-        {due && !!data?.length && <p className="small"><a href="/api/equipment/maintenance-due.csv">{t('Download the list (CSV)')}</a></p>}
+        {due && !!data?.length && <p className="small"><a href="/api/equipment/maintenance-due.xlsx">{t('Download the list (Excel)')}</a></p>}
       </div>
       {open !== null && <ItemDialog id={open === 'new' ? null : open} lists={lists.data ?? { categories: [], locations: [] }} onClose={close} onChanged={() => { reload(); lists.reload(); }} />}
     </div>

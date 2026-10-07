@@ -125,23 +125,26 @@ test('a service with a record cannot be deleted; the record only by an administr
   assert.equal((await call(as.editor, 'DELETE', `/services/${sid}`)).status, 200);
 });
 
-test('logs export as CSV for administrators, with the filters applied', async () => {
+test('logs export as Excel for administrators, with a title block and the filters applied', async () => {
+  const { readXlsx, tableRows } = await import('../server/lib/xlsx-read.ts');
   const get = (who: Session, url: string) => fetch(`${base}/api${url}`, { headers: { Cookie: who.cookie } });
-  const r = await get(as.admin, '/change-log.csv?entity=service_records');
+  const r = await get(as.admin, '/change-log.xlsx?entity=service_records');
   assert.equal(r.status, 200);
-  assert.match(r.headers.get('content-type') ?? '', /text\/csv/);
-  assert.match(r.headers.get('content-disposition') ?? '', /attachment; filename="canon-change-log-/);
-  const bytes = new Uint8Array(await r.arrayBuffer());
-  assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf], 'BOM, so Excel reads Chinese correctly');
-  const text = new TextDecoder().decode(bytes);
-  assert.ok(text.startsWith('Time (UTC),Who,How,Client,What,Record,Action,Summary,Changes'));
-  assert.ok(text.includes('Service record'), 'filtered to service records');
-  assert.ok(!text.includes(',Service,'), 'other kinds left out');
-  const a = await get(as.admin, '/mcp/audit.csv');
+  assert.match(r.headers.get('content-type') ?? '', /spreadsheetml/);
+  assert.match(r.headers.get('content-disposition') ?? '', /attachment; filename="canon-change-log-.*\.xlsx"/);
+  const all = readXlsx(new Uint8Array(await r.arrayBuffer()));
+  assert.match(all[0][0], /Change log$/, 'the title: church — report');
+  assert.ok(all.some((row) => /^entity: service_records$/.test(row[0] ?? '') || /entity: service_records/.test(row[0] ?? '')), 'the filters');
+  assert.ok(all.some((row) => /^Exported .* by Test admin/.test(row[0] ?? '')), 'when and by whom');
+  const [head, ...rows] = tableRows(all);
+  assert.deepEqual(head, ['Time', 'Who', 'How', 'Client', 'What', 'Record', 'Action', 'Summary', 'Changes']);
+  assert.ok(rows.some((x) => x[4] === 'Service record'), 'filtered to service records');
+  assert.ok(!rows.some((x) => x[4] === 'Service'), 'other kinds left out');
+  const a = await get(as.admin, '/mcp/audit.xlsx');
   assert.equal(a.status, 200);
-  assert.ok((await a.text()).startsWith('Time (UTC),User,Client,Tool'));
-  assert.equal((await get(as.editor, '/change-log.csv')).status, 403);
-  assert.equal((await get(as.viewer, '/mcp/audit.csv')).status, 403);
+  assert.deepEqual(tableRows(readXlsx(new Uint8Array(await a.arrayBuffer())))[0].slice(0, 4), ['Time', 'User', 'Client', 'Tool']);
+  assert.equal((await get(as.editor, '/change-log.xlsx')).status, 403);
+  assert.equal((await get(as.viewer, '/mcp/audit.xlsx')).status, 403);
 });
 
 test('edit conflicts: a save based on an older revision is refused, even within the same second; own saves pass', async () => {

@@ -10,7 +10,9 @@ import * as arc from '../repo/archive.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { listGrants, revokeGrant, externalBase } from '../oauth.ts';
 import { toolCatalog } from '../mcp.ts';
-import { h, id, sendCsv, str } from './helpers.ts';
+import { h, id, str } from './helpers.ts';
+import { localTime, sendXlsx } from '../lib/xlsx-export.ts';
+import { uiLang } from './csv.ts';
 import * as ar from '../repo/access-roles.ts';
 import { listRoles } from '../lib/permissions.ts';
 import { PERM_MODULES } from '../../shared/permissions.ts';
@@ -33,14 +35,21 @@ const auditQuery = (q: Record<string, string | undefined>) => ({
   page: Number(q.page) || 1, size: Number(q.size) || 50,
 });
 adminRoutes.get('/mcp/audit', requireAdmin, h((req) => listAudit(auditQuery(req.query as Record<string, string | undefined>))));
-/** The AI activity log as CSV: every row matching the filters (up to 20,000). */
-adminRoutes.get('/mcp/audit.csv', requireAdmin, h((req, res) => {
-  const r = listAudit({ ...auditQuery(req.query as Record<string, string | undefined>), all: true });
+/** The filters a log export was made with, for its title block. */
+const logFilters = (q: Record<string, string | undefined>) => ({
+  period: q.from || q.to ? `${q.from ?? '…'} – ${q.to ?? '…'}` : null,
+  filters: Object.entries(q).filter(([k, v]) => v && !['from', 'to', 'page', 'size', 'lang'].includes(k)).map(([k, v]) => `${k}: ${v}`),
+});
+/** The AI activity log as Excel: every row matching the filters (up to 20,000). */
+adminRoutes.get('/mcp/audit.xlsx', requireAdmin, h((req, res) => {
+  const q = req.query as Record<string, string | undefined>;
+  const r = listAudit({ ...auditQuery(q), all: true });
   const rows = r.rows as { at: string; user_name: string | null; client_name: string | null; client_id: string | null; tool: string; module: string | null; access: string | null; ok: number; error: string | null; args: string | null }[];
-  sendCsv(res, `canon-ai-activity-${new Date().toISOString().slice(0, 10)}.csv`, [
-    ['Time (UTC)', 'User', 'Client', 'Tool', 'Module', 'Access', 'Result', 'Error', 'Arguments'],
-    ...rows.map((a) => [a.at, a.user_name, a.client_name ?? a.client_id, a.tool, a.module, a.access, a.ok ? 'OK' : 'Error', a.error, a.args]),
-  ]);
+  sendXlsx(req, res, uiLang(req), {
+    file: `canon-ai-activity-${new Date().toISOString().slice(0, 10)}`, title: 'AI activity log', ...logFilters(q),
+    header: ['Time', 'User', 'Client', 'Tool', 'Module', 'Access', 'Result', 'Error', 'Arguments'],
+    rows: rows.map((a) => [localTime(a.at), a.user_name, a.client_name ?? a.client_id, a.tool, a.module, a.access, a.ok ? 'OK' : 'Error', a.error, a.args]),
+  });
 }));
 
 /** The change log (administrators): who changed what and when; a record's history with entity + entity_id. */
@@ -53,19 +62,21 @@ adminRoutes.get('/change-log', requireAdmin, h((req) => {
   const r = listChanges(changeQuery(req.query as Record<string, string | undefined>));
   return { ...r, users: changeLogUsers(), entities: ENTITY_LABEL };
 }));
-/** The change log as CSV: every row matching the filters (up to 20,000), one row per change with its fields. */
-adminRoutes.get('/change-log.csv', requireAdmin, h((req, res) => {
-  const r = listChanges({ ...changeQuery(req.query as Record<string, string | undefined>), all: true });
+/** The change log as Excel: every row matching the filters (up to 20,000), one row per change with its fields. */
+adminRoutes.get('/change-log.xlsx', requireAdmin, h((req, res) => {
+  const q = req.query as Record<string, string | undefined>;
+  const r = listChanges({ ...changeQuery(q), all: true });
   const val = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : typeof v === 'string' ? v : JSON.stringify(v));
   const VIA: Record<string, string> = { web: 'In Canon', mcp: 'AI agent', import: 'CSV import', system: 'Canon' };
   const ACTION: Record<string, string> = { create: 'Added', update: 'Changed', delete: 'Deleted' };
-  sendCsv(res, `canon-change-log-${new Date().toISOString().slice(0, 10)}.csv`, [
-    ['Time (UTC)', 'Who', 'How', 'Client', 'What', 'Record', 'Action', 'Summary', 'Changes'],
-    ...r.rows.map((c) => [
-      c.at, c.user_name, VIA[c.via] ?? c.via, c.client, ENTITY_LABEL[c.entity]?.en ?? c.entity, c.name, ACTION[c.action] ?? c.action, c.summary,
-      Object.entries(c.changes ?? {}).map(([k, [a, b]]) => `${k}: ${val(a)} → ${val(b)}`).join('; '),
+  sendXlsx(req, res, uiLang(req), {
+    file: `canon-change-log-${new Date().toISOString().slice(0, 10)}`, title: 'Change log', ...logFilters(q),
+    header: ['Time', 'Who', 'How', 'Client', 'What', 'Record', 'Action', 'Summary', 'Changes'],
+    rows: r.rows.map((c) => [
+      localTime(c.at), c.user_name, VIA[c.via] ?? c.via, c.client, ENTITY_LABEL[c.entity]?.en ?? c.entity, c.name, ACTION[c.action] ?? c.action, c.summary,
+      Object.entries(c.changes ?? {}).map(([k, [a, b]]) => `${k}: ${val(a)} → ${val(b)}`).join('\n'),
     ]),
-  ]);
+  });
 }));
 adminRoutes.put('/log-retention', requireAdmin, h((req) => {
   const b = z.object({

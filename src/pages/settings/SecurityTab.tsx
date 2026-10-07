@@ -229,7 +229,7 @@ function MemberViewsCard() {
       <div className="card-head" style={{ padding: '14px 16px 0' }}>
         <h3>{t('Who viewed member records')} <InfoTip text={t('Each time someone opens a member’s page, an AI assistant reads a member, or the members list is exported. The same person opening the same page within 10 minutes counts once. Kept as long as the change log.')} /></h3>
       </div>
-      <FilterBar active={log.active} onClear={log.clear} csv={`/api/member-views.csv${log.exportQuery}`}>
+      <FilterBar active={log.active} onClear={log.clear} csv={`/api/member-views.xlsx${log.exportQuery}`}>
         <select className="mini" value={f.user} onChange={(e) => log.set('user', e.target.value)} aria-label={t('Who')}>
           <option value="">{t('Everyone')}</option>
           {data?.users?.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}

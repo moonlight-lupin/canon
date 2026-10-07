@@ -6,7 +6,9 @@ import { all } from '../db.ts';
 import * as E from '../repo/equipment.ts';
 import { qrSvg } from '../repo/presentation.ts';
 import { BadRequest } from '../lib/table.ts';
-import { h, id, sendCsv, str } from './helpers.ts';
+import { h, id, str } from './helpers.ts';
+import { sendXlsx } from '../lib/xlsx-export.ts';
+import { uiLang } from './csv.ts';
 import { addressForOthers } from '../lib/lan.ts';
 
 export const equipmentRoutes = express.Router();
@@ -99,8 +101,11 @@ equipmentRoutes.get('/equipment/labels', h(async (req) => {
     : [];
   return { base: origin, labels: await Promise.all(rows.map(async (r) => ({ ...r, qr: await qrSvg(`${origin}/equipment/item/${encodeURIComponent(r.number)}`) }))) };
 }));
-equipmentRoutes.get('/equipment/maintenance-due.csv', h((_req, res) => {
+equipmentRoutes.get('/equipment/maintenance-due.xlsx', h((req, res) => {
   const rows = E.listItems({ due: true });
-  sendCsv(res, 'maintenance-due.csv', [['number', 'name', 'location', 'looked_after_by', 'next_maintenance_on', 'every_months'],
-    ...rows.map((r) => [r.number, r.name, r.location, r.custodian, r.next_maintenance_on, r.maintenance_every_months])]);
+  sendXlsx(req, res, uiLang(req), {
+    file: `maintenance-due-${new Date().toISOString().slice(0, 10)}`, title: 'Maintenance due',
+    header: ['number', 'name', 'location', 'looked_after_by', 'next_maintenance_on', 'every_months'],
+    rows: rows.map((r) => [r.number, r.name, r.location, r.custodian, r.next_maintenance_on, r.maintenance_every_months]),
+  });
 }));

@@ -41,9 +41,10 @@ export function ExportTab() {
           <h3 style={{ margin: 0 }}>{t('Book-keeping')}</h3>
           <p className="small muted" style={{ margin: 0 }}>{t('Every posted journal line since the books started (for the church’s accountant or other accounting software), the chart of accounts and the funds. Also in the zip above.')}</p>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <a className="btn" href="/api/export/bookkeeping/journals.csv"><Icon name="download" />{t('Journals (CSV)')}</a>
-            <a className="btn" href="/api/export/bookkeeping/accounts.csv"><Icon name="download" />{t('Chart of accounts (CSV)')}</a>
-            <a className="btn" href="/api/export/bookkeeping/funds.csv"><Icon name="download" />{t('Funds (CSV)')}</a>
+            <a className="btn" href="/api/export/bookkeeping/journals.xlsx"><Icon name="download" />{t('Journals (Excel)')}</a>
+            <a className="btn" href="/api/export/bookkeeping/accounts.xlsx"><Icon name="download" />{t('Chart of accounts (Excel)')}</a>
+            <a className="btn" href="/api/export/bookkeeping/funds.xlsx"><Icon name="download" />{t('Funds (Excel)')}</a>
+            <a className="btn ghost" href="/api/export/bookkeeping/journals.csv" title={t('For accounting software that imports a manual journal file')}><Icon name="download" />{t('Journals (CSV, for accounting software)')}</a>
           </div>
         </section>
       )}
@@ -92,7 +93,7 @@ export function ExportTab() {
                 {parts.data.csv.map((p) => (
                   <tr key={`${p.key}${p.query}`}>
                     <td><strong>{label(p.label)}</strong>{p.pii && <span className="badge warn" style={{ marginLeft: 6 }}>{t('personal data')}</span>}</td>
-                    <td className="right"><a className="btn sm" href={`/api/csv/${p.key}/export.csv?lang=${lang}${p.query ? `&${p.query}` : ''}`}><Icon name="download" />CSV</a></td>
+                    <td className="right"><a className="btn sm" href={`/api/csv/${p.key}/export.xlsx?lang=${lang}${p.query ? `&${p.query}` : ''}`}><Icon name="download" />CSV</a></td>
                   </tr>
                 ))}
               </tbody>

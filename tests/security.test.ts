@@ -73,9 +73,13 @@ test('signing in records when; a member page, an AI read and a CSV export are lo
   ].sort());
   const only = await call(as.admin, 'GET', '/member-views?via=web');
   assert.equal(only.json!.rows.length, 1);
-  const csv = await call(as.admin, 'GET', '/member-views.csv');
-  assert.ok(csv.text.replace(/^﻿/, '').startsWith('Time (UTC),Who,How,Member,Detail'));
-  assert.ok(csv.text.includes('Member page') && csv.text.includes('Viewed Person'));
+  const { readXlsx, tableRows } = await import('../server/lib/xlsx-read.ts');
+  const x = await fetch(`${base}/api/member-views.xlsx`, { headers: { Cookie: as.admin.cookie } });
+  const all = readXlsx(new Uint8Array(await x.arrayBuffer()));
+  assert.ok(all.some((row) => /personal data/.test(row[0] ?? '')), 'marked as holding personal data');
+  const [head, ...viewRows] = tableRows(all);
+  assert.deepEqual(head, ['Time', 'Who', 'How', 'Member', 'Detail']);
+  assert.ok(viewRows.some((r) => r[2] === 'Member page' && r[3] === 'Viewed Person'));
 });
 
 test('the checklist: plain items with a status; confirming disk encryption turns it to ok', async () => {

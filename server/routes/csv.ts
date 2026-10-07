@@ -5,11 +5,13 @@ import { getSettings } from '../repo/settings.ts';
 import { moduleOff } from '../../shared/modules.ts';
 import { logMemberView } from '../repo/security.ts';
 import { asActor } from '../lib/actor.ts';
+import { sendXlsx } from '../lib/xlsx-export.ts';
+import { st } from '../lib/server-text.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type { Lang } from '../../shared/types.ts';
 import { LANG_CODE_RE } from '../../shared/languages.ts';
 import {
-  CSV_ENTITIES, ImportBlocked, RowError, exportCsv, guide, makeCtx, runImport, say, templateCsv, type Entity,
+  CSV_ENTITIES, ImportBlocked, RowError, exportCsv, guide, makeCtx, runImport, say, templateCsv, type Entity, templateRows, exportRows,
 } from '../csv/index.ts';
 import { editsAnything, seesMemberDetails } from '../lib/permissions.ts';
 import { wallOf } from '../auth.ts';
@@ -77,6 +79,23 @@ csvRoutes.get('/csv/:entity/guide', h((req) => {
 csvRoutes.get('/csv/:entity/template.csv', h((req, res) => {
   const e = entity(req);
   sendCsv(res, `${stem(e, req)}-template.csv`, templateCsv(e, makeCtx(uiLang(req), query(req))));
+}));
+
+/** The template as an Excel file (the column headings, example rows and a title block). */
+csvRoutes.get('/csv/:entity/template.xlsx', h((req, res) => {
+  const e = entity(req);
+  const lang = uiLang(req);
+  const [header, ...rows] = templateRows(e, makeCtx(lang, query(req)));
+  sendXlsx(req, res, lang, { file: `${stem(e, req)}-template`, title: `${say(e.label, lang)}: ${st('template', lang)}`, header, rows });
+}));
+/** Everything as an Excel file, with a title block (it imports back as it is). */
+csvRoutes.get('/csv/:entity/export.xlsx', h((req, res) => {
+  const e = entity(req);
+  mayExport(req, e);
+  const lang = uiLang(req);
+  if (e.pii) logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: null, via: 'export', detail: `${e.key} Excel` });
+  const [header, ...rows] = exportRows(e, makeCtx(lang, query(req)));
+  sendXlsx(req, res, lang, { file: `${stem(e, req)}-${new Date().toISOString().slice(0, 10)}`, title: say(e.label, lang), header, rows, pii: !!e.pii });
 }));
 
 csvRoutes.get('/csv/:entity/export.csv', h((req, res) => {

@@ -5,7 +5,8 @@ import { useI18n } from '../../i18n.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { useCongregations } from '../../components/Congregations.tsx';
-import { movingAverage, toCsv, type ReportKind } from '../../../shared/reports.ts';
+import { movingAverage, type ReportKind } from '../../../shared/reports.ts';
+import { downloadTable, withTitle, type TableMeta } from '../../components/xlsx-download.ts';
 import type { L10n } from '../../types-client.ts';
 import '../records.css';
 import '../reports.css';
@@ -18,13 +19,9 @@ export const both = (v: L10n | null | undefined) => {
   return [...new Set([v.en, other].filter((x): x is string => !!x?.trim()))].join(' ') || Object.values(v).find(Boolean) || '';
 };
 
-export function download(name: string, rows: (string | number | null | undefined)[][]) {
-  const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+/** A report table as an Excel file with its title block (the section's title, the page's period and filters). */
+export function download(name: string, rows: (string | number | null | undefined)[][], meta?: TableMeta) {
+  downloadTable(name, rows, meta);
 }
 
 export interface Ctx { q: string; from: string; to: string; cong: number | null; congs: ReturnType<typeof useCongregations> }
@@ -41,13 +38,13 @@ export function Stat({ label, value, sub, tip }: { label: string; value: ReactNo
   );
 }
 
-export function Section({ title, tip, csv, children }: { title: string; tip?: string; csv?: () => void; children: ReactNode }) {
+export function Section({ title, tip, csv, pii, children }: { title: string; tip?: string; csv?: () => void; pii?: boolean; children: ReactNode }) {
   const { t } = useI18n();
   return (
     <section className="card stack rep-sect">
       <div className="row between">
         <h2 className="h3">{title}{tip && <InfoTip text={tip} />}</h2>
-        {csv && <button className="btn sm ghost no-print" onClick={csv}><Icon name="download" />{t('CSV')}</button>}
+        {csv && <button className="btn sm ghost no-print" onClick={() => withTitle({ title, pii }, csv)}><Icon name="download" />{t('Excel')}</button>}
       </div>
       {children}
     </section>

@@ -4,6 +4,22 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.17.2 — Excel exports, and importing journals
+
+- **Exports are Excel files.**
+  - **What:** every list, report and log downloads as an .xlsx file — the members, the library, Reports, the book-keeping reports, the change log, AI activity, who viewed member records, Export data and its zip.
+  - **The title block** above each table: the church and what the file is; the period and the filters chosen; when it was exported and by whom (with their role); and a note when it holds personal data.
+  - **The table:** the headings are frozen, with filters. Dates are real dates and amounts are numbers.
+  - **Importing back:** an exported list imports back as it is.
+  - **Where CSV stays:** where another program reads the file — the journals for accounting software, and Bible texts.
+- **Imports read Excel files** (.xlsx) as well as CSV: the lists, bank statements and journals. Templates are Excel files.
+- **Importing journals** (Book-keeping → Journals → Import…):
+  - **The file:** from the template or another Canon's export. One row per line; the rows of a journal share its reference.
+  - **The preview** shows what stops each journal.
+  - **Everything comes in as drafts** for the treasurer to post.
+- **My claims** opens in a tab of its own, and the claims page links back to Canon.
+- Database: no change.
+
 ## 0.17.1 — Expense claims
 
 - **Expense claims** (part of Book-keeping): anyone can claim back what they spent for the church, with several receipts in one claim, on their phone or from **My claims**.

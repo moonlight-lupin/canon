@@ -26,6 +26,7 @@ export function JournalsTab() {
   const dq = useDebounced(q, 250);
   const { data, error, reload } = useApi<Row[]>(`/bookkeeping/journals${qs({ status, kind, from, to, account_id: account, q: dq, limit: 300 })}`);
   const [picked, setPicked] = useState<number[]>([]);
+  const [importing, setImporting] = useState(false);
   const { run, busy } = useAction();
   const openId = sp.get('open');
   const open = openId === 'new' ? 'new' : Number(openId) || null;
@@ -66,7 +67,9 @@ export function JournalsTab() {
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={t('From')} />
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label={t('To')} />
         <div className="grow" />
-        <a className="btn" href={`/api/bookkeeping/export/journals.csv${qs({ from: from || b.overview.settings.start_date, to: to || today() })}`}><Icon name="download" />{t('Export (CSV)')}</a>
+        <a className="btn" href={`/api/bookkeeping/export/journals.xlsx${qs({ from: from || b.overview.settings.start_date, to: to || today() })}`}><Icon name="download" />{t('Export (Excel)')}</a>
+        <a className="btn ghost" href={`/api/bookkeeping/export/journals.csv${qs({ from: from || b.overview.settings.start_date, to: to || today() })}`} title={t('For accounting software that imports a manual journal file')}>{t('CSV')}</a>
+        {b.canEdit && <button className="btn" onClick={() => setImporting(true)}><Icon name="upload" />{t('Import…')}</button>}
         {b.canEdit && picked.length > 0 && <button className="btn" disabled={busy} onClick={postPicked}><Icon name="check" />{t('Post {n} selected').replace('{n}', String(picked.length))}</button>}
         {b.canEdit && <button className="btn primary" onClick={() => setParam('open', 'new')}><Icon name="plus" />{t('New journal')}</button>}
       </div>
@@ -103,6 +106,7 @@ export function JournalsTab() {
           </table>
         </div>
       )}
+      {importing && <ImportJournals onClose={() => setImporting(false)} onDone={() => { setImporting(false); setParam('status', 'draft'); changed(); }} />}
       {open !== null && <JournalDialog id={open === 'new' ? null : open} onClose={() => setParam('open', null)} onChanged={changed} />}
     </div>
   );
@@ -295,5 +299,79 @@ function JournalHistory({ id }: { id: number }) {
       <p className="small muted">{t('Every change to this journal, its lines included, before and after it was posted. For offerings, also the cash count’s changes and any earlier drafts for the service.')}</p>
       {h.error ? <ErrorBox error={h.error} /> : !h.data ? <Loading /> : !h.data.rows.length ? <p className="small muted">{t('No changes recorded yet.')}</p> : <ChangeList rows={h.data.rows} entities={h.data.entities} />}
     </div>
+  );
+}
+
+interface ImportPreview {
+  fatal: string | null;
+  ignored: string[];
+  journals: { ref: string; date: string | null; memo: string | null; rows: number[]; lines: unknown[]; debit: number; credit: number; errors: string[]; problems: string[] }[];
+  imported?: number[];
+}
+
+/** Journals from an Excel or CSV file (the template, or another Canon's export): previewed, then imported as drafts. */
+function ImportJournals({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const { t, lang } = useI18n();
+  const { run, busy } = useAction();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const check = async (f: File | undefined) => {
+    if (!f) return;
+    setFile(f);
+    setPreview(await run(() => api.upload<ImportPreview>('/bookkeeping/import/journals?dry_run=1', f)) ?? null);
+  };
+  const ok = (preview?.journals ?? []).filter((j) => !j.errors.length);
+  const go = async () => {
+    if (!file) return;
+    const r = await run(() => api.upload<ImportPreview>('/bookkeeping/import/journals', file));
+    if (r) {
+      window.alert(t('{n} journal(s) imported as drafts. Review them, then post.').replace('{n}', String(r.imported?.length ?? 0)));
+      onDone();
+    }
+  };
+  return (
+    <Modal title={t('Import journals')} onClose={onClose} size="lg" footer={
+      <>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn primary" disabled={busy || !ok.length} onClick={go}>{t('Import {n} as drafts').replace('{n}', String(ok.length))}</button>
+      </>
+    }>
+      <div className="stack">
+        <p className="small">{t('One row per line; the rows of a journal share its reference in the Journal column. Accounts and funds by their code. Journals come in as drafts: nothing is posted until you post it.')}</p>
+        <div className="row">
+          <a className="btn" href="/api/bookkeeping/import/journals-template.xlsx" download><Icon name="download" />{t('Download the template')}</a>
+          <label className="btn primary"><Icon name="upload" />{t('Choose a file (Excel or CSV)')}
+            <input type="file" hidden accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => check(e.target.files?.[0])} />
+          </label>
+          {file && <span className="small muted">{file.name}</span>}
+        </div>
+        {preview?.fatal && <ErrorBox error={preview.fatal} />}
+        {!!preview?.ignored.length && <p className="small muted">{t('Ignored columns:')} {preview.ignored.join(', ')}</p>}
+        {preview && !preview.fatal && (
+          <div className="table-wrap">
+            <table className="t bk-mini">
+              <thead><tr><th>{t('Journal')}</th><th>{t('Date')}</th><th>{t('Narration')}</th><th className="bk-num">{t('Lines')}</th><th className="bk-num">{t('Debit')}</th><th className="bk-num">{t('Credit')}</th><th /></tr></thead>
+              <tbody>
+                {preview.journals.map((j) => (
+                  <tr key={j.ref}>
+                    <td className="nowrap"><span className="code">{j.ref}</span></td>
+                    <td className="nowrap">{j.date ? fmtDate(j.date, lang) : ''}</td>
+                    <td>{j.memo}</td>
+                    <td className="bk-num">{j.lines.length}</td>
+                    <td className="bk-num">{fmtMoney(j.debit)}</td>
+                    <td className="bk-num">{fmtMoney(j.credit)}</td>
+                    <td className="small">
+                      {j.errors.length ? <span style={{ color: 'var(--danger)' }}>{t('Not imported:')} {j.errors.join(' ')}</span>
+                        : j.problems.length ? <span style={{ color: 'var(--warn)' }}>{t('Draft; before posting:')} {j.problems.join(' ')}</span>
+                          : <span className="badge ok">{t('Ready')}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

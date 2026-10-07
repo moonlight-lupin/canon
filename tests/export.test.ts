@@ -136,7 +136,7 @@ test('Export data: administrators only; everything comes as one zip', async () =
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/zip');
   const files = unzip(Buffer.from(await r.arrayBuffer()));
-  assert.ok(files.has('songs.csv') && files.has('members.csv') && files.has('README.txt'));
+  assert.ok(files.has('songs.xlsx') && files.has('members.xlsx') && files.has('README.txt'), [...files.keys()].join(', '));
   assert.ok([...files.keys()].some((n) => n.endsWith('.canonlib')));
   assert.equal((await fetch(`${base}/api/export/library.canonlib`, { headers: { Cookie: as.editor.cookie } })).status, 403);
 });
@@ -228,4 +228,22 @@ test('sample data (0.15.8): a fictional church in, then exactly that out again',
   assert.ok(get('SELECT 1 FROM groups WHERE id = ?', council.id), 'a group someone real joined stays');
   assert.ok(!get("SELECT 1 FROM groups WHERE json_extract(name, '$.zh') = '东区小组'"));
   assert.deepEqual(sd.sampleDataStatus(), { present: false });
+});
+
+test('lists export as Excel with a title block, and the same file imports back unchanged (0.17.2)', async () => {
+  const { readXlsx } = await import('../server/lib/xlsx-read.ts');
+  const r = await fetch(`${base}/api/csv/songs/export.xlsx?lang=en`, { headers: { Cookie: as.admin.cookie } });
+  assert.equal(r.status, 200);
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  const rows = readXlsx(bytes);
+  assert.match(rows[0][0], /songs/i);
+  assert.ok(rows.some((x) => /^Exported .* by /.test(x[0] ?? '')));
+  const back = await fetch(`${base}/api/csv/songs/import?dry_run=1&lang=en`, { method: 'POST', headers: { Cookie: as.admin.cookie, 'x-csrf-token': as.admin.csrf, 'Content-Type': 'application/octet-stream' }, body: bytes as unknown as BodyInit });
+  const p = await back.json() as Json;
+  assert.equal(p.fatal ?? null, null, JSON.stringify(p).slice(0, 300));
+  assert.equal(p.encoding, 'xlsx');
+  assert.equal(p.counts.error, 0);
+  assert.equal(p.counts.create, 0, 'nothing new: the same songs');
+  const tpl = await fetch(`${base}/api/csv/members/template.xlsx?lang=en`, { headers: { Cookie: as.admin.cookie } });
+  assert.equal(tpl.status, 200);
 });

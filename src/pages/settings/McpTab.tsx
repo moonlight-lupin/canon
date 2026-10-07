@@ -290,7 +290,7 @@ export function AuditCard() {
           <button className="btn ghost sm icon" onClick={reload} aria-label={t('Refresh')} title={t('Refresh')}><Icon name="refresh" /></button>
         </div>
       </div>
-      <FilterBar active={log.active} onClear={log.clear} csv={`/api/mcp/audit.csv${log.exportQuery}`}>
+      <FilterBar active={log.active} onClear={log.clear} csv={`/api/mcp/audit.xlsx${log.exportQuery}`}>
         <select className="mini" value={f.module} onChange={(e) => set('module', e.target.value)} aria-label={t('Module')}>
           <option value="">{t('All modules')}</option>
           {MODULES.map((m) => <option key={m} value={m}>{t(MOD_LABEL[m])}</option>)}

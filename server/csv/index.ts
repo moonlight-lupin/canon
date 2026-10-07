@@ -12,5 +12,5 @@ export const CSV_ENTITIES: Record<string, Entity> = Object.fromEntries(
   [members, coworkers, groupsCsv, teamMembersCsv, unavailabilityCsv, songsCsv, textsCsv, templatesCsv, hymnalIndexCsv, booksCsv, equipmentCsv].map((e) => [e.key, e]),
 );
 
-export { runImport, templateCsv, exportCsv, guide, makeCtx, ImportBlocked, RowError, say } from './engine.ts';
+export { runImport, templateCsv, exportCsv, templateRows, exportRows, guide, makeCtx, ImportBlocked, RowError, say } from './engine.ts';
 export type { Entity, Preview } from './engine.ts';

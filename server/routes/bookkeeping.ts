@@ -18,6 +18,10 @@ import { can, isAdmin, mayReopenCounts } from '../lib/permissions.ts';
 import { L10nSchema } from '../../shared/schemas.ts';
 import { JOURNAL_KIND_LABEL, type JournalKind } from '../../shared/bookkeeping.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
+import { sendXlsx } from '../lib/xlsx-export.ts';
+import { bodyBytes, rawBody, uiLang } from './csv.ts';
+import { importJournals, journalTemplateRows, readJournalFile } from '../repo/bk-import.ts';
+import { asActor } from '../lib/actor.ts';
 
 export const bookkeepingRoutes = express.Router();
 
@@ -210,6 +214,12 @@ bookkeepingRoutes.get('/bookkeeping/export/journals.csv', h((req, res) => {
   const p = period(req.query);
   sendCsv(res, `journals-${p.from}-to-${p.to}.csv`, journalsCsv(p.from, p.to));
 }));
+/** The same journal lines as an Excel file with a title block (the CSV is for accounting software). */
+bookkeepingRoutes.get('/bookkeeping/export/journals.xlsx', h((req, res) => {
+  const p = period(req.query);
+  const [header, ...rows] = journalsCsv(p.from, p.to);
+  sendXlsx(req, res, uiLang(req), { file: `journals-${p.from}-to-${p.to}`, title: 'Journals', period: `${p.from} – ${p.to}`, header: header as string[], rows, money: [10, 11, 14] });
+}));
 
 // ---------------------------------------------------------------- bank statements
 
@@ -384,4 +394,18 @@ bookkeepingRoutes.put('/bookkeeping/claim-settings', h(async (req) => {
 bookkeepingRoutes.get('/bookkeeping/claims-link', h(async (req) => {
   const link = `${publicUrl() || addressForOthers(`${req.protocol}://${req.get('host')}`)}/self/claims`;
   return { link, public: !!publicUrl(), qr: await qrSvg(link) };
+}));
+
+// ---------------------------------------------------------------- importing journals (0.17.2)
+
+/** The template to fill in (Excel; CSV also accepted when importing). */
+bookkeepingRoutes.get('/bookkeeping/import/journals-template.xlsx', h((req, res) => {
+  const [header, ...rows] = journalTemplateRows();
+  sendXlsx(req, res, uiLang(req), { file: 'canon-journals-template', title: 'Journals: template', header, rows, money: [9, 10] });
+}));
+/** Preview (?dry_run=1) or import: journals without errors come in as drafts, for the treasurer to post. */
+bookkeepingRoutes.post('/bookkeeping/import/journals', rawBody, h((req) => {
+  const data = bodyBytes(req);
+  if (req.query.dry_run === '1') return readJournalFile(data);
+  return asActor({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, via: 'import' }, () => importJournals(data));
 }));

@@ -59,16 +59,16 @@ export function CsvTools({
   return (
     <div className="csv-tools">
       {canEdit && (
-        <a className={`${cls} ghost`} href={`/api/csv/${entity}/template.csv${q}`} download title={t('A CSV file with the right columns and a few example rows')}>
+        <a className={`${cls} ghost`} href={`/api/csv/${entity}/template.xlsx${q}`} download title={t('An Excel file with the right columns and a few example rows')}>
           <Icon name="file" />{t('Download template')}
         </a>
       )}
-      <a className={cls} href={`/api/csv/${entity}/export.csv${q}`} download title={t('Download everything as a CSV file for Excel')}>
-        <Icon name="download" />{t('Export')}
+      <a className={cls} href={`/api/csv/${entity}/export.xlsx${q}`} download title={t('Download everything as an Excel file')}>
+        <Icon name="download" />{t('Export (Excel)')}
       </a>
       {canEdit && (
         <button type="button" className={cls} onClick={() => setOpen(true)}>
-          <Icon name="upload" />{t('Import CSV…')}
+          <Icon name="upload" />{t('Import…')}
         </button>
       )}
       {open && <ImportDialog entity={entity} label={label} params={params} onClose={() => setOpen(false)} onImported={onImported} />}
@@ -133,8 +133,8 @@ function ImportDialog({ entity, label, params, onClose, onImported }: { entity: 
   );
 
   return (
-    <Modal title={`${t('Import CSV')} · ${label}`} onClose={onClose} size="lg" footer={footer}>
-      <input ref={input} type="file" accept=".csv,.txt,text/csv,text/plain" hidden onChange={(e) => {
+    <Modal title={`${t('Import')} · ${label}`} onClose={onClose} size="lg" footer={footer}>
+      <input ref={input} type="file" accept=".xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(e) => {
         const f = e.target.files?.[0];
         e.target.value = '';
         if (f) check(f);
@@ -149,12 +149,12 @@ function ImportDialog({ entity, label, params, onClose, onImported }: { entity: 
               onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={onDrop}
             >
               <Icon name="upload" />
-              <strong>{t('Choose a CSV file or drop it here')}</strong>
+              <strong>{t('Choose an Excel or CSV file, or drop it here')}</strong>
               <span className="small">{t('Nothing is saved yet: you will see a preview first.')}</span>
             </div>
             <div className="small muted">
-              {t('Tip: start from the template, fill it in Excel, then Save As "CSV UTF-8 (Comma delimited)".')}{' '}
-              <a href={`/api/csv/${entity}/template.csv${qs({ ...params, lang })}`} download>{t('Download template')}</a>
+              {t('Tip: start from the template, fill it in Excel and save it as it is (.xlsx). CSV files work too.')}{' '}
+              <a href={`/api/csv/${entity}/template.xlsx${qs({ ...params, lang })}`} download>{t('Download template')}</a>
             </div>
           </>
         )}

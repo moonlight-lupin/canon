@@ -3,7 +3,7 @@ import { openLoanCount } from '../repo/lending.ts';
 import express from 'express';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
-import { legacyExport, legacyImport, rawBody } from './csv.ts';
+import { legacyExport, legacyImport, rawBody, uiLang } from './csv.ts';
 import { requireAdmin } from '../auth.ts';
 import { all, run } from '../db.ts';
 import { logChange } from '../repo/changelog.ts';
@@ -15,7 +15,8 @@ import * as sec from '../repo/security.ts';
 import * as pdpa from '../repo/pdpa.ts';
 import * as grp from '../repo/groups.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
-import { h, id, sendCsv, str } from './helpers.ts';
+import { h, id, str } from './helpers.ts';
+import { localTime, sendXlsx } from '../lib/xlsx-export.ts';
 import { seesMemberDetails, seesSensitiveFields } from '../lib/permissions.ts';
 import { inWall } from '../lib/walls.ts';
 
@@ -70,13 +71,16 @@ const viewQuery = (q: Record<string, string | undefined>) => ({
   from: q.from, to: q.to, q: q.q, page: Number(q.page) || 1, size: Number(q.size) || 50,
 });
 peopleRoutes.get('/member-views', requireAdmin, h((req) => sec.listMemberViews(viewQuery(req.query as Record<string, string | undefined>))));
-peopleRoutes.get('/member-views.csv', requireAdmin, h((req, res) => {
-  const r = sec.listMemberViews({ ...viewQuery(req.query as Record<string, string | undefined>), all: true });
-  const HOW: Record<string, string> = { web: 'Member page', mcp: 'AI agent', export: 'CSV export' };
-  sendCsv(res, `canon-member-views-${new Date().toISOString().slice(0, 10)}.csv`, [
-    ['Time (UTC)', 'Who', 'How', 'Member', 'Detail'],
-    ...r.rows.map((v) => [v.at, v.user_name, HOW[v.via] ?? v.via, v.person_name, v.detail]),
-  ]);
+peopleRoutes.get('/member-views.xlsx', requireAdmin, h((req, res) => {
+  const q = req.query as Record<string, string | undefined>;
+  const r = sec.listMemberViews({ ...viewQuery(q), all: true });
+  const HOW: Record<string, string> = { web: 'Member page', mcp: 'AI agent', export: 'Export' };
+  sendXlsx(req, res, uiLang(req), {
+    file: `canon-member-views-${new Date().toISOString().slice(0, 10)}`, title: 'Who viewed member records', pii: true,
+    period: q.from || q.to ? `${q.from ?? '…'} – ${q.to ?? '…'}` : null,
+    header: ['Time', 'Who', 'How', 'Member', 'Detail'],
+    rows: r.rows.map((v) => [localTime(v.at), v.user_name, HOW[v.via] ?? v.via, v.person_name, v.detail]),
+  });
 }));
 peopleRoutes.get('/storage', requireAdmin, h(() => sec.storageReport()));
 /** Settings → Member fields (administrators): the church's own fields on the member register. */
