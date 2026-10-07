@@ -9,6 +9,9 @@ import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
 import { journalsCsv } from '../repo/bk-export.ts';
 import * as Claims from '../repo/bk-claims.ts';
 import { claimsSignInStatus } from './claims-self.ts';
+import { publicUrl } from '../lib/public-url.ts';
+import { addressForOthers } from '../lib/lan.ts';
+import { qrSvg } from '../repo/presentation.ts';
 import * as Bank from '../repo/bk-bank.ts';
 import { getSettings } from '../repo/settings.ts';
 import { can, isAdmin, mayReopenCounts } from '../lib/permissions.ts';
@@ -376,4 +379,9 @@ bookkeepingRoutes.put('/bookkeeping/claim-settings', h(async (req) => {
     if (bad.length) throw Object.assign(new Error(`Phone sign-in needs ${bad.map((g) => (g.key === 'email' ? 'working e-mail (Settings → E-mail: send a test)' : 'a public https address (Settings → AI / MCP)')).join(' and ')}.`), { status: 400 });
   }
   return { settings: Claims.saveClaimSettings(b), sign_in: await claimsSignInStatus() };
+}));
+/** The claims page for members (to share, or print as a QR code for the notice board). */
+bookkeepingRoutes.get('/bookkeeping/claims-link', h(async (req) => {
+  const link = `${publicUrl() || addressForOthers(`${req.protocol}://${req.get('host')}`)}/self/claims`;
+  return { link, public: !!publicUrl(), qr: await qrSvg(link) };
 }));

@@ -55,7 +55,7 @@ Choose a role:
 - **Pastor / Elder**: members with their details and notes, groups, meetings and services; sees the records and offerings.
 - **Editor**: plans services and edits the registers, library, rota and records (as before 0.13).
 - **Service planner**: services, templates, the library and the rota; members by name only.
-- **Treasurer**: service records and offerings — enters, verifies and reopens cash counts — and the [Book-keeping](#bookkeeping) (when switched on); reads the rest.
+- **Treasurer**: service records and offerings — enters, verifies and reopens cash counts — and the [Book-keeping](#bookkeeping) with [expense claims](#claims) (when switched on); reads the rest. Anyone may make a claim; claims are approved by named people, not by a role.
 - **Secretary**: the registers — members, co-workers, groups, meetings and service records (not offerings).
 - **Read-only**: can view and print; no money, no members' contact details or notes.
 - **Librarian** and **Asset keeper**: the [Lending library](#lending-library) or the [Asset register](#asset-register) only (when the church has switched it on).
@@ -485,7 +485,49 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
 - They also see the **bank statements** you imported and the lines still to match. Ask "draft the bank charges and interest on the October statement": the drafts wait on those lines (**Draft waiting**) and match them when posted.
 - Importing statements and matching lines stay with you.
 
-**Dashboard**: for those who read the books, a **Book-keeping** card shows the drafts waiting to be posted (how many are offerings) and the bank lines still to match.
+**Dashboard**: for those who read the books, a **Book-keeping** card shows the drafts waiting to be posted (how many are offerings), the bank lines still to match, and claims waiting for approval or payment.
+
+### Expense claims {#claims}
+
+Anyone can claim back what they spent for the church, with **several receipts in one claim**: on their phone, or from **My claims** in the sidebar (under **Finance**).
+
+**Making a claim**
+1. **New claim**: what it is for and, if it belongs to one, the ministry.
+2. One line for each receipt: what it was for, the date on the receipt, the amount and the shop. **Add a photo of the receipt** opens the phone's camera; PDFs work too. **Another receipt** adds a line.
+3. **Where to repay you**, e.g. a PayNow number or a bank account. Only the claimant and the treasurer see it.
+4. Canon lists what is still missing. When nothing is, **sign** in the box and **Sign and submit**. The claim gets its number (e.g. C2026-0001), and the approvers who may decide it get an e-mail.
+
+A claim being prepared can be changed or deleted. A submitted claim can be withdrawn until it is approved.
+
+**Who signs in, and how**
+- Someone signed in to Canon is signed in on **My claims** as their own member record. Their account must be linked to it (Settings → User accounts).
+- Others open the claims link on their phone and sign in with a code e-mailed to the address on their member record, as for the lending library. The treasurer switches this on under **Approvers and settings → Signing in on a phone**. It needs working e-mail and a public https address.
+- **Link for members** gives the link and a QR code to share or put on the notice board.
+
+**Approving**
+- Approvers are **people, not a role**: anyone on the member list, with or without a Canon account. Add them under **Book-keeping → Claims → Approvers and settings**.
+  - An approver can be limited to some ministries and up to an amount.
+  - **Two approvers above** an amount means larger claims need two different people. Leave it empty for one.
+- An approver opens the claim from the e-mail or **My claims**, checks each receipt against its line, and then:
+  - **Approves** by signing;
+  - **Sends it back** with a reason: the claimant changes it and signs again;
+  - or **Rejects** it with a reason.
+- **Nobody approves their own claim.** When the person who pays a claim also approved it, Canon allows it but marks the claim **Approver paid**.
+
+**The office (Book-keeping → Claims)**
+- **Waiting for approval or payment** lists every claim. Click one to see its receipts, signature and approvals.
+- **How each line is booked**: the expense account, fund, ministry and project for each line. A line left alone goes to the default expense account (account 5990 unless you choose another). Changing this doesn't change what the claimant signed.
+- **Enter a paper claim** types in a claim handed in on paper for a member. Attach the receipts and the signed form, then **Signed on paper: submit**.
+- **Into the books:**
+  - **When a claim is approved**, Canon drafts its expense: Dr each line's expense account / Cr **2100 Claims to repay**. The balance sheet then shows what is owed to claimants.
+  - **Paying it:** repay the claimant (e.g. by PayNow), then **Pay…** with the date, the account it was paid from and the reference. Canon drafts (or, with **Record and post**, posts) Dr Claims to repay / Cr the bank. The bank line on the statement is then suggested for it.
+  - As for every journal, the treasurer posts both in **Journals**.
+
+**AI assistants and claims**: send Claude photos of your receipts and ask it to make a claim.
+- Claude reads the shop, date and amounts, and drafts the claim with one line per receipt.
+- It replies with the claim's link: open it on your phone, attach the receipt photos, check the lines, say where to repay you and sign.
+- Claude can't attach the photos itself, submit, approve or pay.
+- This works for anyone whose AI connection has Book-keeping set to **Read & write**, whatever their role: people draft their own claims only. Those who keep the books may draft for another member.
 
 ## Settings
 

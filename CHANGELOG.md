@@ -4,6 +4,23 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.17.1 — Expense claims
+
+- **Expense claims** (part of Book-keeping): anyone can claim back what they spent for the church, with several receipts in one claim, on their phone or from **My claims**.
+  - **Claiming:** one line per receipt, a photo of each, where to repay them, signed on screen. Members without a Canon account sign in with a code e-mailed to their member record, once the treasurer switches this on.
+  - **Approving:** by named people (not a role), optionally for some ministries and up to an amount, with an on-screen signature.
+    - Above an amount you set, two different approvers.
+    - Nobody approves their own claim, and an approver who also pays is marked.
+    - Approvers can send a claim back or reject it, with a reason.
+  - **The books:** approval drafts the expense owed (Dr expense / Cr Claims to repay); paying drafts the payment (Dr Claims to repay / Cr bank), matched later on the bank statement.
+  - **The office:** chooses how each line is booked, enters claims handed in on paper, and pays.
+  - **E-mails:** approvers hear of new claims; claimants hear when theirs is approved, sent back, rejected or paid.
+- **AI assistants:** anyone can send Claude photos of their receipts to draft a claim; Claude replies with the claim's link to attach the photos and sign. Two new tools: `canon_claims` and `canon_draft_claim`.
+- **Fixed:**
+  - The language picker on the phone pages stays small.
+  - The "Sign here" hint no longer overlaps the Clear button on narrow screens.
+- Database: version 33 (the claims tables). Upgrading adds them; nothing else changes.
+
 ## 0.17.0 — Book-keeping
 
 - **Book-keeping** (an optional module, off until switched on in Settings → Modules): the church's double-entry books, kept in Canon, under **Finance** in the sidebar. The **Treasurer** keeps them; Pastor / Elder and the external guest can read them.

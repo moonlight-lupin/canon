@@ -151,7 +151,7 @@ export const DEFAULT_BOOKKEEPING: BookkeepingSettings = {
  */
 export type ClaimStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'paid' | 'withdrawn';
 export const CLAIM_STATUS_LABEL: Record<ClaimStatus, string> = {
-  draft: 'Being prepared', submitted: 'Waiting for approval', approved: 'Approved, to pay', rejected: 'Rejected', paid: 'Paid', withdrawn: 'Withdrawn',
+  draft: 'Being prepared', submitted: 'Waiting for approval', approved: 'Approved, to pay', rejected: 'Rejected', paid: 'Paid', withdrawn: 'Withdrawn‖claims',
 };
 
 export interface ClaimLine {

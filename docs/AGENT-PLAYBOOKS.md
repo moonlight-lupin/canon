@@ -110,6 +110,7 @@ Read tools are safe to call freely. Write tools change church data: confirm firs
 | reports in other modules | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
 | lending (lending library; optional) | `canon_lending` (catalogue, a title's copies, `loans` open / overdue / returned, `isbn` lookup) | `canon_save_book` (titles and copies — not lending or returning) |
 | equipment (asset register; optional) | `canon_equipment` (the register, `due` maintenance, one item by id or `number`) | `canon_save_equipment` (items, and `maintenance` done) |
+| bookkeeping: claims (anyone, for their own claims; optional) | `canon_claims` (your claims and those waiting for your approval; all claims for those who keep the books) | `canon_draft_claim` (a claim from receipts the user shows you; reply with its link for the claimant to attach the photos and sign) |
 | bookkeeping (the church's books; optional) | `canon_books` (chart of accounts, funds, projects, ministries, balances, drafts waiting), `canon_books_report` (trial balance, income & expenditure, balance sheet, fund movements, by project / ministry / congregation, an account's ledger), `canon_books_journals` (journals; one with what stops it posting), `canon_bank_statements` (imported bank statements: the lines still to match, with suggestions and any draft waiting, and the reconciliation) | `canon_draft_journal` (a DRAFT for a person to post — never posted by an agent; with `statement_line`, the draft for that bank line, matched to it when posted) |
 | library → sheet music (only when shared; off by default) | `canon_sheet_music` (a service's songs in order, or one song: its pages; `pictures: true` returns the image pages) | — |
 | library (write) | — | `canon_sheet_music_upload_link` (a short-lived link for the user to add a song's pages from a phone; by `song_id` or `number` like "HP 178") |
@@ -143,6 +144,11 @@ Patterns:
     - Include a line on the statement's bank account for its amount: money in = debit, money out = credit. The reply says whether it `matches_when_posted`.
     - When the treasurer posts the draft, the statement line is matched. Lines with a suggestion are already in the books: leave them for the treasurer to match.
   - **History:** every change to a journal (its lines too) is in the change log; Canon shows it on the journal.
+- **Expense claims** follow the connection's Book-keeping setting but **not the person's role**: anyone may claim.
+  - **Drafting:** a person drafts their own claims with `canon_draft_claim`; someone who keeps the books may name `claimant_person_id`.
+  - **From receipt photos:** when the user shows you receipts, read the shop, date, items and total. Confirm the lines with the user, then draft one line per receipt with `amount_cents`.
+  - **The link:** you cannot attach the photos, submit, approve or pay. Give the user the `link` from the result; on their phone they attach the receipt photos, check the lines, say where to repay them and sign.
+  - **Status:** `canon_claims` shows the status and what is `still_needed`. Where a claimant is repaid is never shown.
 - Dates are `YYYY-MM-DD`, times `HH:MM` (24h). Results are `{"ok":true,"data":…}` or `{"ok":false,"error":…,"errors":[…]}`.
 
 ### Writing services and songs

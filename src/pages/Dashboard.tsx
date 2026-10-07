@@ -19,7 +19,7 @@ interface Dash {
   /** the optional modules, when on and readable (null otherwise) */
   lending?: { on_loan: number; overdue: number; titles: number; to_check_in?: number } | null;
   equipment?: { items: number; maintenance_due: number } | null;
-  bookkeeping?: { started: boolean; drafts: number; offering_drafts: number; to_match: number } | null;
+  bookkeeping?: { started: boolean; drafts: number; offering_drafts: number; to_match: number; claims?: { to_approve: number; to_pay: number } } | null;
 }
 
 export default function Dashboard() {
@@ -179,6 +179,8 @@ export default function Dashboard() {
                 <span className="l">{data.bookkeeping.started ? t('Book-keeping: drafts to post') : t('Book-keeping: not started yet')}</span>
                 {data.bookkeeping.offering_drafts > 0 && <span className="badge lapis" style={{ alignSelf: 'flex-start' }}>{t('Offerings: {n}').replace('{n}', String(data.bookkeeping.offering_drafts))}</span>}
                 {data.bookkeeping.to_match > 0 && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('Bank lines to match: {n}').replace('{n}', String(data.bookkeeping.to_match))}</span>}
+                {!!data.bookkeeping.claims?.to_approve && <span className="badge warn" style={{ alignSelf: 'flex-start' }}>{t('Claims waiting for approval: {n}').replace('{n}', String(data.bookkeeping.claims.to_approve))}</span>}
+                {!!data.bookkeeping.claims?.to_pay && <span className="badge lapis" style={{ alignSelf: 'flex-start' }}>{t('Claims to pay: {n}').replace('{n}', String(data.bookkeeping.claims.to_pay))}</span>}
               </div>
             </Link>
           )}

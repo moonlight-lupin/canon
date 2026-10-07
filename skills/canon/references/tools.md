@@ -20,6 +20,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
 | lending (optional) | `canon_lending` (catalogue; a title's copies; `loans` open / overdue / returned; `isbn` lookup) | `canon_save_book` (titles and copies; not lending / returning) |
 | equipment (optional) | `canon_equipment` (register; `due` maintenance; one item by id or `number`) | `canon_save_equipment` (items; `maintenance` done) |
+| claims (book-keeping; anyone's own) | `canon_claims` (own claims, those to approve; all for book-keepers) | `canon_draft_claim` (from receipt photos the user shows; returns the link to attach photos and sign) |
 | bookkeeping (optional) | `canon_books` (accounts, funds, tags, balances), `canon_books_report` (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger), `canon_books_journals`, `canon_bank_statements` (statements, lines to match, reconciliation) | `canon_draft_journal` (drafts only — a person posts; `statement_line` ties it to a bank line) |
 | library → sheet music (only when shared) | `canon_sheet_music` (`service_id` or `song_id`; `pictures: true` returns image pages) | — |
 | library (write) | — | `canon_sheet_music_upload_link` (`song_id` or `number` "HP 178"; the user adds pages from a phone) |
@@ -47,6 +48,10 @@ Whether a tool appears depends on the administrator's module settings (off / rea
   - Bank: `canon_bank_statements` (no id: the statements; with id: open lines, suggestions, `draft_journal_id`, reconciliation).
     - For a line the books lack, `canon_draft_journal` with `statement_line` and a line on the bank account for the same amount (money in = debit).
     - Posting the draft matches the line. Importing statements and matching stay with people.
+- Expense claims:
+  - Anyone may claim (the role doesn't matter, only the connection's Book-keeping setting).
+  - Read receipt photos the user shows you, confirm, then `canon_draft_claim` (one line per receipt, amounts in cents).
+  - Give the user the returned `link`: they attach the photos and sign on their phone. You never attach, submit, approve or pay.
 - Lending library (books, DVDs, curricula lent to members — not the song Library) and asset register: optional modules, off by default. `canon_lending` `q` matches title, author, ISBN or copy number (`B0012`); `loans: "overdue"` for follow-up; `isbn` looks a book up before adding. `canon_save_book`: search first, then add copies to an existing title rather than a duplicate; lending and returns happen in Canon. `canon_equipment` `due: true` = maintenance due within 14 days or overdue; `canon_save_equipment` `maintenance: {what, done_on?, cost?, done_by?}` moves the next date on by `maintenance_every_months`. Photos and receipts are added in Canon.
 
 ## Precedent: past services first

@@ -12,6 +12,7 @@ import Login from './pages/Login.tsx';
 
 const Dashboard = lazy(() => import('./pages/Dashboard.tsx'));
 const SelfService = lazy(() => import('./pages/self/SelfService.tsx'));
+const ClaimsSelf = lazy(() => import('./pages/self/Claims.tsx'));
 const TwoStepRequired = lazy(() => import('./pages/TwoStepRequired.tsx'));
 const Services = lazy(() => import('./pages/Services.tsx'));
 const ServiceEditor = lazy(() => import('./pages/ServiceEditor.tsx'));
@@ -83,6 +84,14 @@ function App() {
           <Route path="/b/:token/*" element={<Share attendee />} />
           <Route path="/upload/:token" element={<UploadPage />} />
         </Routes>
+      </Suspense>
+    );
+  }
+  // expense claims on a phone: claimants and approvers (signed in to Canon, or by an e-mailed code)
+  if (loc.pathname.startsWith('/self/claims')) {
+    return (
+      <Suspense fallback={<Loading />}>
+        <ClaimsSelf />
       </Suspense>
     );
   }

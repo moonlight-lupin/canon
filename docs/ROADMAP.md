@@ -18,7 +18,7 @@ What is planned for Canon after v0.14.0. Plans change: each release is scoped in
 | 0.16.0 | Languages anyone can add (translations in `locales/`), Simplified ⇄ Traditional Chinese everywhere — done |
 | 0.16.1 | Backups to the church's own Google Drive — done |
 | 0.17.0 | Book-keeping: double-entry accounts (optional module) — done |
-| 0.17.1 | Claim forms |
+| 0.17.1 | Claim forms — done |
 | 0.18.0 | Third hardening round |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.

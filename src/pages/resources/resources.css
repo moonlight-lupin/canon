@@ -62,3 +62,15 @@
 .self-page input { font-size: 17px; padding: 11px 12px; width: 100%; box-sizing: border-box; }
 .self-code { letter-spacing: 0.4em; font-size: 22px !important; text-align: center; }
 .self-btn { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }
+/* expense claims on a phone (pages/self/Claims.tsx) */
+.claims-self .self-card select, .claims-self textarea { font-size: 16px; padding: 10px 12px; width: 100%; box-sizing: border-box; }
+.claim-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rule); color: inherit; text-decoration: none; }
+.claim-row:first-of-type { border-top: 0; }
+.claim-total { font: 600 26px/1.2 var(--sans); font-variant-numeric: tabular-nums; }
+.claim-receipts { display: flex; flex-wrap: wrap; gap: 8px; }
+.claim-receipt { position: relative; display: flex; align-items: flex-start; gap: 2px; }
+.claim-receipt img { width: 92px; height: 92px; object-fit: cover; border-radius: 6px; border: 1px solid var(--rule); }
+.claim-pdf { display: inline-flex; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; font-size: 13px; }
+.claim-ink { max-width: 100%; height: 70px; object-fit: contain; align-self: flex-start; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+
+.self-head select { width: auto; flex: none; max-width: 40%; }

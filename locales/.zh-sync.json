@@ -4,6 +4,10 @@
       "（PDF：请打开后打印）",
       "（PDF：請打開後打印）"
     ],
+    "(empty = any amount)": [
+      "（留空 = 不限金额）",
+      "（留空 = 不限金額）"
+    ],
     "(empty = nothing closed)": [
       "（留空 = 不关闭任何期间）",
       "（留空 = 不關閉任何期間）"
@@ -108,6 +112,10 @@
       "聚会活动可以属于某个群组——每次新建时会复制上一次——也可以单独举行，例如一次性的祷告会。",
       "聚會活動可以屬於某個群組——每次新建時會複製上一次——也可以單獨舉行，例如一次性的禱告會。"
     ],
+    "A member’s name": [
+      "会友姓名",
+      "會友姓名"
+    ],
     "A new password applies to new backups; older ones keep the password they were made with.": [
       "新密码只用于之后的备份；较早的备份仍使用当时的密码。",
       "新密碼只用於之後的備份；較早的備份仍使用當時的密碼。"
@@ -123,6 +131,10 @@
     "A picture behind this item’s slides only, e.g. bread and cup for the Lord’s Supper. It is faded with the slide template’s background colour so the words stay readable. Pictures live in Library → Slide backgrounds.": [
       "只用于这个项目投影片的背景图片，例如圣餐的饼与杯。图片会用投影模板的背景色淡化，让文字清楚易读。图片存放在「资料库 → 投影背景」。",
       "只用於這個項目投影片的背景圖片，例如聖餐的餅與杯。圖片會用投影模板的背景色淡化，讓文字清楚易讀。圖片存放在「資料庫 → 投影背景」。"
+    ],
+    "A public https address (Settings → AI / MCP), so phones reach Canon from anywhere": [
+      "公开的 https 网址（设置 → AI / MCP），手机在任何地方都能连上 Canon",
+      "公開的 https 網址（設置 → AI / MCP），手機在任何地方都能連上 Canon"
     ],
     "A public https address that reaches this Canon": [
       "可连到这个 Canon 的公开 https 网址",
@@ -348,6 +360,10 @@
       "添加一行",
       "添加一行"
     ],
+    "Add a photo of the receipt": [
+      "拍照加入收据",
+      "拍照加入收據"
+    ],
     "Add a picture in Library → Slide backgrounds": [
       "请先在「资料库 → 投影背景」加入图片",
       "請先在「資料庫 → 投影背景」加入圖片"
@@ -367,6 +383,10 @@
     "Add an Announcements or Weekly text section to its page layout to type them here each week.": [
       "在模板的页面编排中加入「报告事项」或「每周内容」，就可以每周在这里输入。",
       "在模板的頁面編排中加入「報告事項」或「每週內容」，就可以每週在這裡輸入。"
+    ],
+    "Add an approver": [
+      "加入审批人",
+      "加入審批人"
     ],
     "Add an empty slot to fill later": [
       "先加入空位，稍后填写",
@@ -463,6 +483,10 @@
     "Add person": [
       "添加会友",
       "添加會友"
+    ],
+    "Add receipts or the signed form": [
+      "加入收据或已签名的表格",
+      "加入收據或已簽名的表格"
     ],
     "Add role": [
       "添加岗位",
@@ -640,6 +664,10 @@
       "所有分类",
       "所有分類"
     ],
+    "All claims": [
+      "所有报销申请",
+      "所有報銷申請"
+    ],
     "All clients": [
       "所有客户端",
       "所有客戶端"
@@ -776,6 +804,10 @@
       "报告",
       "報告"
     ],
+    "Another receipt": [
+      "再加一张收据",
+      "再加一張收據"
+    ],
     "Any account": [
       "任何科目",
       "任何科目"
@@ -800,6 +832,10 @@
       "应用密码",
       "應用密碼"
     ],
+    "Approvals": [
+      "审批",
+      "審批"
+    ],
     "Approve": [
       "核准",
       "核准"
@@ -807,6 +843,10 @@
     "Approve from my account ({name})": [
       "以我的帐户核准（{name}）",
       "以我的帳戶核准（{name}）"
+    ],
+    "Approve or send back…": [
+      "批准或退回…",
+      "批准或退回…"
     ],
     "Approve the bulletin and slides as they are now, and open earlier approved versions": [
       "核准目前的次序单和投影，并可打开之前核准的版本",
@@ -836,9 +876,29 @@
       "已核准的版本",
       "已核准的版本"
     ],
+    "Approved, to pay": [
+      "已批准，待付款",
+      "已批准，待付款"
+    ],
+    "Approved, to pay: {n} ({amount})": [
+      "已批准待付款：{n}（{amount}）",
+      "已批准待付款：{n}（{amount}）"
+    ],
     "Approved.": [
       "已核准。",
       "已核准。"
+    ],
+    "Approver paid": [
+      "审批人付款",
+      "審批人付款"
+    ],
+    "Approvers": [
+      "审批人",
+      "審批人"
+    ],
+    "Approvers and settings": [
+      "审批人与设置",
+      "審批人與設置"
     ],
     "Approving keeps a copy of the bulletin and slides as they are now — the words, order, people and templates — so that version can be printed or projected again exactly, even after the service changes. Pictures are not copied.": [
       "核准会保存次序单和投影目前的副本——文字、次序、人员和模板——即使聚会之后有所更改，也能原样再次打印或投影那个版本。图片不会复制。",
@@ -1204,6 +1264,10 @@
       "过账之前需要：",
       "過賬之前需要："
     ],
+    "Being prepared": [
+      "准备中",
+      "準備中"
+    ],
     "Bible": [
       "圣经",
       "聖經"
@@ -1516,6 +1580,10 @@
       "Canon 没有这种货币的纸币和硬币面额：请输入点算总额。",
       "Canon 沒有這種貨幣的紙幣和硬幣面額：請輸入點算總額。"
     ],
+    "Canon has no public address yet: this link works on the church’s network only (Settings → AI / MCP).": [
+      "Canon 还没有公开网址：这个链接只在教会的网络内有效（设置 → AI / MCP）。",
+      "Canon 還沒有公開網址：這個鏈接只在教會的網絡內有效（設置 → AI / MCP）。"
+    ],
     "Canon is a local-first system for churches: service planning with bulletins and slides, member and co-worker registers, groups, a volunteer rota, and a permission-controlled MCP server for AI assistants. It is multilingual and self-hosted — on an office PC, the church’s own server or any Docker host — so the church’s data stays under the church’s control.": [
       "Canon 是为教会设计的本地优先系统：聚会程序与次序单、投影、会友与同工名册、小组、事奉表，以及供 AI 助手使用、权限可控的 MCP 服务器。支持多种语言；可安装在办公室电脑、自己的服务器或 Docker 上，资料始终由教会自己掌管。",
       "Canon 是為教會設計的本地優先系統：聚會程序與次序單、投影、會友與同工名冊、小組、事奉表，以及供 AI 助手使用、權限可控的 MCP 服務器。支持多種語言；可安裝在辦公室電腦、自己的服務器或 Docker 上，資料始終由教會自己掌管。"
@@ -1664,6 +1732,10 @@
       "再检查一次",
       "再檢查一次"
     ],
+    "Check each receipt against its line. Approve by signing, or send it back to the claimant to change, or reject it.": [
+      "逐一核对每张收据和对应的项目。签名即批准；也可以退回给申请人修改，或者拒绝。",
+      "逐一核對每張收據和對應的項目。簽名即批准；也可以退回給申請人修改，或者拒絕。"
+    ],
     "Check in": [
       "登记归还",
       "登記歸還"
@@ -1811,6 +1883,42 @@
     "Church name": [
       "教会名称",
       "教會名稱"
+    ],
+    "Claim": [
+      "报销",
+      "報銷"
+    ],
+    "Claimant": [
+      "申请人",
+      "申請人"
+    ],
+    "Claimant (a member)": [
+      "申请人（会友）",
+      "申請人（會友）"
+    ],
+    "Claimant, number or what for": [
+      "申请人、编号或用途",
+      "申請人、編號或用途"
+    ],
+    "Claims": [
+      "报销",
+      "報銷"
+    ],
+    "Claims above this amount need two different approvers. Empty = one is always enough.": [
+      "超过这个金额的报销需要两位不同的审批人批准。留空 = 一位就够了。",
+      "超過這個金額的報銷需要兩位不同的審批人批准。留空 = 一位就夠了。"
+    ],
+    "Claims to pay: {n}": [
+      "待付款的报销：{n}",
+      "待付款的報銷：{n}"
+    ],
+    "Claims to repay (liability)": [
+      "应付报销款（负债）",
+      "應付報銷款（負債）"
+    ],
+    "Claims waiting for approval: {n}": [
+      "待审批的报销：{n}",
+      "待審批的報銷：{n}"
     ],
     "Class names and settings you can use": [
       "可使用的类名与设定",
@@ -2100,6 +2208,10 @@
       "把备份文件复制到「data」，改名为 canon.db（取代旧文件）。",
       "把備份文件複製到「data」，改名為 canon.db（取代舊文件）。"
     ],
+    "Copy the claim’s link": [
+      "复制这份报销的链接",
+      "複製這份報銷的鏈接"
+    ],
     "Copy to this computer": [
       "复制到这台电脑",
       "複製到這臺電腦"
@@ -2320,6 +2432,10 @@
       "下一次聚会的日期",
       "下一次聚會的日期"
     ],
+    "Date on the receipt": [
+      "收据日期",
+      "收據日期"
+    ],
     "Dates are written": [
       "日期格式",
       "日期格式"
@@ -2364,6 +2480,10 @@
       "默认",
       "默認"
     ],
+    "Default expense account": [
+      "默认支出科目",
+      "默認支出科目"
+    ],
     "Default start time": [
       "默认开始时间",
       "默認開始時間"
@@ -2371,6 +2491,14 @@
     "Default version": [
       "默认译本",
       "默認譯本"
+    ],
+    "Default: account 2100": [
+      "默认：科目 2100",
+      "默認：科目 2100"
+    ],
+    "Default: account 5990": [
+      "默认：科目 5990",
+      "默認：科目 5990"
     ],
     "Deficit": [
       "亏损",
@@ -2419,6 +2547,14 @@
     "Delete this block? Bulletins and slides that use it will leave it out.": [
       "删除此项目吗？使用它的次序单和投影片将不再显示。",
       "刪除此項目嗎？使用它的次序單和投影片將不再顯示。"
+    ],
+    "Delete this claim": [
+      "删除这份报销",
+      "刪除這份報銷"
+    ],
+    "Delete this claim?": [
+      "删除这份报销申请？",
+      "刪除這份報銷申請？"
     ],
     "Delete this congregation? Its services, members and groups stay; they just lose the tag.": [
       "要删除这个堂吗？它的聚会、会友和小组都会保留，只是不再标记所属堂。",
@@ -2732,6 +2868,10 @@
       "电邮正常",
       "電郵正常"
     ],
+    "E-mail works (Settings → E-mail: send a test)": [
+      "电邮可以发送（设置 → 电邮：发送测试）",
+      "電郵可以發送（設置 → 電郵：發送測試）"
+    ],
     "E-mails cannot be recalled once sent.": [
       "电邮一经发出便无法撤回。",
       "電郵一經發出便無法撤回。"
@@ -2920,6 +3060,10 @@
       "录入一笔银行交易",
       "錄入一筆銀行交易"
     ],
+    "Enter a paper claim": [
+      "录入纸本报销",
+      "錄入紙本報銷"
+    ],
     "Enter the bank and cash balances, anything owed to or by the church, and each fund’s balance on {date}.": [
       "录入 {date} 的银行和现金余额、教会的应收应付，以及每个款项的余额。",
       "錄入 {date} 的銀行和現金餘額、教會的應收應付，以及每個款項的餘額。"
@@ -2983,6 +3127,10 @@
     "Every check must pass first": [
       "必须先通过所有检查",
       "必須先通過所有檢查"
+    ],
+    "Every claim": [
+      "所有报销",
+      "所有報銷"
     ],
     "Every line is matched.": [
       "每一行都已配对。",
@@ -3059,6 +3207,14 @@
     "Expenditure": [
       "支出",
       "支出"
+    ],
+    "Expense claim": [
+      "报销申请",
+      "報銷申請"
+    ],
+    "Expense claims": [
+      "报销申请",
+      "報銷申請"
     ],
     "Expenses": [
       "支出",
@@ -3260,6 +3416,10 @@
       "例如：慕道友、已信主未受洗、已受洗的基督徒、路过或旅行中。新朋友可选一项或不选。全部删除即不问这一题。与联络资料一样保密。",
       "例如：慕道友、已信主未受洗、已受洗的基督徒、路過或旅行中。新朋友可選一項或不選。全部刪除即不問這一題。與聯絡資料一樣保密。"
     ],
+    "For lines nobody has booked yet; the office can change each line before the expense is posted.": [
+      "用于还没有人指定科目的项目；在支出过账前，办公室可以逐项更改。",
+      "用於還沒有人指定科目的項目；在支出過賬前，辦公室可以逐項更改。"
+    ],
     "For new rows": [
       "新增时必填",
       "新增時必填"
@@ -3383,6 +3543,10 @@
     "Gender": [
       "性别",
       "性別"
+    ],
+    "General fund": [
+      "常费",
+      "常費"
     ],
     "Getting started": [
       "开始设置",
@@ -3604,6 +3768,10 @@
       "方式",
       "方式"
     ],
+    "How each line is booked doesn’t change what the claimant signed. A line without an account goes to the default expense account (Approvers and settings).": [
+      "每一项的记账方式不影响申请人签名的内容。没有指定科目的项目会记入默认支出科目（审批人与设置）。",
+      "每一項的記賬方式不影響申請人簽名的內容。沒有指定科目的項目會記入默認支出科目（審批人與設置）。"
+    ],
     "How far the follow-up has come. Records → Reports → New visitors counts each step.": [
       "跟进进度。记录 → 报表 → 新朋友 会统计每一步。",
       "跟進進度。記錄 → 報表 → 新朋友 會統計每一步。"
@@ -3739,6 +3907,10 @@
     "Hymns, readings and liturgy all use the size that fits the fullest slide, so the words do not grow and shrink from slide to slide. Turn it off to make each slide as large as it can be.": [
       "诗歌、经文与礼文都采用能容纳最满一张投影片的字号，文字不会忽大忽小。关闭后，每张投影片各自尽量放大。",
       "詩歌、經文與禮文都採用能容納最滿一張投影片的字號，文字不會忽大忽小。關閉後，每張投影片各自盡量放大。"
+    ],
+    "I declare these were spent for the church, and have not been claimed before.": [
+      "我声明以上费用是为教会支出的，并且没有重复申请。",
+      "我聲明以上費用是為教會支出的，並且沒有重複申請。"
     ],
     "ISBN": [
       "ISBN",
@@ -4248,6 +4420,14 @@
       "行数不一致",
       "行數不一致"
     ],
+    "Link copied.": [
+      "链接已复制。",
+      "鏈接已複製。"
+    ],
+    "Link for members": [
+      "会友用的链接",
+      "會友用的鏈接"
+    ],
     "Link my account": [
       "连结我的帐户",
       "連結我的帳戶"
@@ -4492,9 +4672,17 @@
       "会友用自己的手机借书、续借和告知归还，不需要 Canon 帐户：扫描书上的二维码标签，再用寄到会友名册电邮地址的验证码登入。提醒电邮会附上续借链接。归还的书由图书管理员登记。",
       "會友用自己的手機借書、續借和告知歸還，不需要 Canon 帳戶：掃描書上的二維碼標籤，再用寄到會友名冊電郵地址的驗證碼登入。提醒電郵會附上續借鏈接。歸還的書由圖書管理員登記。"
     ],
+    "Members may sign in with a code sent to the e-mail address on their member record": [
+      "会友可以用寄到会友资料中电邮地址的验证码登录",
+      "會友可以用寄到會友資料中電郵地址的驗證碼登錄"
+    ],
     "Members of a serving team who were not on the rota in this period.": [
       "这段期间没有排入事奉表的事奉团队成员。",
       "這段期間沒有排入事奉表的事奉團隊成員。"
+    ],
+    "Members open this to make a claim on their phone; approvers, to approve. Share it, or print the QR code for the notice board.": [
+      "会友用手机打开这个链接申请报销，审批人用它来审批。可以分享链接，或打印二维码贴在布告栏。",
+      "會友用手機打開這個鏈接申請報銷，審批人用它來審批。可以分享鏈接，或打印二維碼貼在佈告欄。"
     ],
     "Members register": [
       "会友名册",
@@ -4644,6 +4832,10 @@
       "我的帐户",
       "我的帳戶"
     ],
+    "My claims": [
+      "我的报销",
+      "我的報銷"
+    ],
     "My loans": [
       "我的借阅",
       "我的借閱"
@@ -4676,6 +4868,10 @@
       "姓名、中文名、电邮或电话…",
       "姓名、中文名、電郵或電話…"
     ],
+    "Named approvers decide claims on their phones (or from My claims in Canon). Nobody approves their own claim.": [
+      "指定的审批人用手机审批（或在 Canon 的“我的报销”中）。任何人都不能审批自己的报销。",
+      "指定的審批人用手機審批（或在 Canon 的“我的報銷”中）。任何人都不能審批自己的報銷。"
+    ],
     "Names & follow-up": [
       "姓名与跟进",
       "姓名與跟進"
@@ -4699,6 +4895,10 @@
     "Needed per service": [
       "每堂所需人数",
       "每堂所需人數"
+    ],
+    "Needs {n} approval(s). Who may approve it: {names}.": [
+      "需要 {n} 位审批。可以审批的人：{names}。",
+      "需要 {n} 位審批。可以審批的人：{names}。"
     ],
     "Net": [
       "净额",
@@ -4743,6 +4943,10 @@
     "New book": [
       "新增书籍",
       "新增書籍"
+    ],
+    "New claim": [
+      "新报销申请",
+      "新報銷申請"
     ],
     "New event": [
       "新增活动",
@@ -4904,6 +5108,10 @@
       "目前没有已连接的 AI。",
       "目前沒有已連接的 AI。"
     ],
+    "No approvers yet: claims wait until there is one.": [
+      "还没有审批人：报销会一直等到有审批人为止。",
+      "還沒有審批人：報銷會一直等到有審批人為止。"
+    ],
     "No attendance recorded in this period": [
       "这段期间没有出席记录",
       "這段期間沒有出席記錄"
@@ -4940,6 +5148,14 @@
       "尚无修改记录。",
       "尚無修改記錄。"
     ],
+    "No claims waiting.": [
+      "没有待处理的报销。",
+      "沒有待處理的報銷。"
+    ],
+    "No claims.": [
+      "没有报销申请。",
+      "沒有報銷申請。"
+    ],
     "No co-workers yet": [
       "还没有同工资料",
       "還沒有同工資料"
@@ -4963,6 +5179,10 @@
     "No details found for this ISBN: type them in.": [
       "找不到这个 ISBN 的资料，请自行输入。",
       "找不到這個 ISBN 的資料，請自行輸入。"
+    ],
+    "No e-mail address: can approve only from a Canon account linked to them": [
+      "没有电邮地址：只能用连结到他的 Canon 帐户审批",
+      "沒有電郵地址：只能用連結到他的 Canon 帳戶審批"
     ],
     "No e-mails sent yet.": [
       "尚未发送任何电邮。",
@@ -5100,6 +5320,10 @@
       "这段期间没有读经或讲道经文。",
       "這段期間沒有讀經或講道經文。"
     ],
+    "No receipts attached.": [
+      "没有附上收据。",
+      "沒有附上收據。"
+    ],
     "No records": [
       "没有记录",
       "沒有記錄"
@@ -5216,6 +5440,14 @@
       "无",
       "無"
     ],
+    "None yet.": [
+      "还没有。",
+      "還沒有。"
+    ],
+    "None yet. A claim can have several receipts: one line for each.": [
+      "还没有。一份报销可以有几张收据：每张一项。",
+      "還沒有。一份報銷可以有幾張收據：每張一項。"
+    ],
     "None — Canon treats the church as one congregation.": [
       "没有 — Canon 把教会视为一个堂。",
       "沒有 — Canon 把教會視為一個堂。"
@@ -5231,6 +5463,10 @@
     "Not approved yet.": [
       "尚未核准。",
       "尚未核准。"
+    ],
+    "Not approved:": [
+      "未获批准：",
+      "未獲批准："
     ],
     "Not available": [
       "不可借",
@@ -5259,6 +5495,10 @@
     "Not enough recorded services for a chart yet.": [
       "已记录的聚会还不够画图表。",
       "已記錄的聚會還不夠畫圖表。"
+    ],
+    "Not for a particular ministry": [
+      "不属于特定事工",
+      "不屬於特定事工"
     ],
     "Not for printing": [
       "不可印刷",
@@ -5704,6 +5944,10 @@
       "须在「设置 → 教会」开启节期颜色。",
       "須在「設置 → 教會」開啟節期顏色。"
     ],
+    "Only you and the treasurer see this.": [
+      "只有你和财务看得到。",
+      "只有你和財務看得到。"
+    ],
     "Open": [
       "打开",
       "打開"
@@ -5784,6 +6028,10 @@
       "或输入一个恢复码。",
       "或輸入一個恢復碼。"
     ],
+    "Or say why, for the claimant": [
+      "或者写下原因，让申请人知道",
+      "或者寫下原因，讓申請人知道"
+    ],
     "Or the leader’s name": [
       "或输入带领者姓名",
       "或輸入帶領者姓名"
@@ -5851,6 +6099,10 @@
     "Other provider": [
       "其他服务商",
       "其他服務商"
+    ],
+    "Other receipts": [
+      "其他收据",
+      "其他收據"
     ],
     "Other scripts (Tamil, Korean, Japanese)": [
       "其他文字（淡米尔文、韩文、日文）",
@@ -5920,6 +6172,22 @@
       "页面编排",
       "頁面編排"
     ],
+    "Paid": [
+      "已付款",
+      "已付款"
+    ],
+    "Paid by one of its approvers.": [
+      "由其中一位审批人付款。",
+      "由其中一位審批人付款。"
+    ],
+    "Paid on": [
+      "付款日期",
+      "付款日期"
+    ],
+    "Paid on {date} by {who}": [
+      "{who} 于 {date} 付款",
+      "{who} 於 {date} 付款"
+    ],
     "Paper": [
       "纸张",
       "紙張"
@@ -5984,9 +6252,17 @@
       "暂停",
       "暫停"
     ],
+    "Pay this claim": [
+      "支付这份报销",
+      "支付這份報銷"
+    ],
     "PayNow": [
       "PayNow",
       "PayNow"
+    ],
+    "Pay…": [
+      "付款…",
+      "付款…"
     ],
     "Peace be with you": [
       "愿你平安",
@@ -6007,6 +6283,10 @@
     "People serving": [
       "事奉人数",
       "事奉人數"
+    ],
+    "People, not a role: anyone on the member list, with or without a Canon account. They approve on their phone (signing in with a code by e-mail, or from My claims in Canon). Nobody approves their own claim.": [
+      "是指定的人，不是角色：会友名单上的任何人，有没有 Canon 帐户都可以。他们用手机审批（以电邮验证码登录，或在 Canon 的“我的报销”中）。任何人都不能审批自己的报销。",
+      "是指定的人，不是角色：會友名單上的任何人，有沒有 Canon 帳戶都可以。他們用手機審批（以電郵驗證碼登錄，或在 Canon 的“我的報銷”中）。任何人都不能審批自己的報銷。"
     ],
     "Period": [
       "期间",
@@ -6536,6 +6816,14 @@
       "收据",
       "收據"
     ],
+    "Receipt {n}": [
+      "收据 {n}",
+      "收據 {n}"
+    ],
+    "Receipts": [
+      "收据",
+      "收據"
+    ],
     "Recent e-mails": [
       "最近的电邮",
       "最近的電郵"
@@ -6552,9 +6840,21 @@
       "记录",
       "記錄"
     ],
+    "Record (draft)": [
+      "记录（草稿）",
+      "記錄（草稿）"
+    ],
+    "Record and post": [
+      "记录并过账",
+      "記錄並過賬"
+    ],
     "Record pastors, elders, deacons, staff and lay leaders here.": [
       "在此记录牧师、长老、执事、同工和平信徒领袖。",
       "在此記錄牧師、長老、執事、同工和平信徒領袖。"
+    ],
+    "Record that the claimant signed this claim on paper? Attach the signed form among the receipts first.": [
+      "记录申请人已在纸本上签名？请先把签了名的表格和收据一起附上。",
+      "記錄申請人已在紙本上簽名？請先把簽了名的表格和收據一起附上。"
     ],
     "Record this meeting": [
       "记录这次聚会",
@@ -6599,6 +6899,14 @@
     "Regulars": [
       "常来聚会者",
       "常來聚會者"
+    ],
+    "Reject": [
+      "拒绝",
+      "拒絕"
+    ],
+    "Rejected": [
+      "已拒绝",
+      "已拒絕"
     ],
     "Remind me later": [
       "稍后提醒",
@@ -6647,6 +6955,10 @@
     "Remove the signature of {name}?": [
       "删除 {name} 的签名？",
       "刪除 {name} 的簽名？"
+    ],
+    "Remove this approver?": [
+      "移除这位审批人？",
+      "移除這位審批人？"
     ],
     "Remove this co-worker record? The person stays in the member register.": [
       "确定删除此同工记录？此人仍保留在会友名册中。",
@@ -6723,6 +7035,14 @@
     "Reopens verified cash counts and deletes service records": [
       "可重开已核实的现金点算并删除聚会记录",
       "可重開已核實的現金點算並刪除聚會記錄"
+    ],
+    "Repay the claimant first (e.g. by PayNow or bank transfer), then record it here: Canon drafts Dr Claims to repay / Cr the bank, matched later on the bank statement.": [
+      "先把钱还给申请人（例如用 PayNow 或银行转账），再在这里记录：Canon 会起草 借 应付报销款 / 贷 银行，之后在银行对账单上配对。",
+      "先把錢還給申請人（例如用 PayNow 或銀行轉賬），再在這裡記錄：Canon 會起草 借 應付報銷款 / 貸 銀行，之後在銀行對賬單上配對。"
+    ],
+    "Repay to": [
+      "还款给",
+      "還款給"
     ],
     "Repeat as a pattern": [
       "重复平铺",
@@ -6948,6 +7268,10 @@
       "第 {n} 行",
       "第 {n} 行"
     ],
+    "Rules": [
+      "规则",
+      "規則"
+    ],
     "Run sheet": [
       "流程表",
       "流程表"
@@ -7036,9 +7360,21 @@
       "保存草稿",
       "保存草稿"
     ],
+    "Save first, then add the photo": [
+      "先保存，再加入照片",
+      "先保存，再加入照片"
+    ],
+    "Save how it is booked": [
+      "保存记账方式",
+      "保存記賬方式"
+    ],
     "Save it from Excel as \"CSV UTF-8 (Comma delimited)\". A scrollmapper JSON file also works.": [
       "在 Excel 中另存为「CSV UTF-8（逗号分隔）」。scrollmapper 的 JSON 文件也可以。",
       "在 Excel 中另存為「CSV UTF-8（逗號分隔）」。scrollmapper 的 JSON 文件也可以。"
+    ],
+    "Save settings": [
+      "保存设置",
+      "保存設置"
     ],
     "Save the SMTP server first.": [
       "请先保存 SMTP 服务器设定。",
@@ -7212,6 +7548,10 @@
       "请在 设置 → 电邮 中发送测试电邮（电邮设定更改后需要再测试）。",
       "請在 設置 → 電郵 中發送測試電郵（電郵設定更改後需要再測試）。"
     ],
+    "Send back": [
+      "退回",
+      "退回"
+    ],
     "Send me a code": [
       "发送验证码给我",
       "發送驗證碼給我"
@@ -7263,6 +7603,10 @@
     "Sent": [
       "已发送",
       "已發送"
+    ],
+    "Sent back:": [
+      "已退回：",
+      "已退回："
     ],
     "Sent by": [
       "发送者",
@@ -7504,6 +7848,10 @@
       "书架",
       "書架"
     ],
+    "Shop or payee": [
+      "商店或收款人",
+      "商店或收款人"
+    ],
     "Short at": [
       "人手不足",
       "人手不足"
@@ -7612,6 +7960,10 @@
       "「并排」让每行与译文对照；「先后排列」适合较窄的纸张。",
       "「並排」讓每行與譯文對照；「先後排列」適合較窄的紙張。"
     ],
+    "Sign and submit": [
+      "签名并提交",
+      "簽名並提交"
+    ],
     "Sign here": [
       "在此签名",
       "在此簽名"
@@ -7619,6 +7971,14 @@
     "Sign in": [
       "登入",
       "登入"
+    ],
+    "Sign in to Canon": [
+      "登录 Canon",
+      "登錄 Canon"
+    ],
+    "Sign in to Canon in this browser, then open this page again. (Signing in with a code by e-mail is not switched on: ask the treasurer.)": [
+      "请在这个浏览器登录 Canon，然后再打开这一页。（电邮验证码登录没有开启：请问财务。）",
+      "請在這個瀏覽器登錄 Canon，然後再打開這一頁。（電郵驗證碼登錄沒有開啟：請問財務。）"
     ],
     "Sign in to Canon when asked and approve the access.": [
       "按提示登入 Canon 并批准授权。",
@@ -7656,6 +8016,22 @@
       "签名板",
       "簽名板"
     ],
+    "Signed by {name} on {date}": [
+      "{name} 于 {date} 签名",
+      "{name} 於 {date} 簽名"
+    ],
+    "Signed on paper": [
+      "在纸本上签名",
+      "在紙本上簽名"
+    ],
+    "Signed on paper (recorded by {who})": [
+      "在纸本上签名（由 {who} 记录）",
+      "在紙本上簽名（由 {who} 記錄）"
+    ],
+    "Signed on paper: submit": [
+      "已在纸本签名：提交",
+      "已在紙本簽名：提交"
+    ],
     "Signed on screen in Canon; the signatures belong to the count above.": [
       "已在 Canon 屏幕上签名；签名对应以上点算。",
       "已在 Canon 屏幕上簽名；簽名對應以上點算。"
@@ -7667,6 +8043,10 @@
     "Signing finished: the count is verified.": [
       "签名完成：点算已确认。",
       "簽名完成：點算已確認。"
+    ],
+    "Signing in on a phone": [
+      "用手机登录",
+      "用手機登錄"
     ],
     "Signing opens when the offerings are entered and every cash count matches its cash lines.": [
       "输入奉献、且每种货币的现金点算与现金奉献相符后，才可签名。",
@@ -8136,6 +8516,10 @@
       "账簿还没有开始：由司库在这里开始。",
       "賬簿還沒有開始：由司庫在這裡開始。"
     ],
+    "The books haven’t been started: the expense will be drafted once they are.": [
+      "账簿还没有开始：开始后才会起草这笔支出。",
+      "賬簿還沒有開始：開始後才會起草這筆支出。"
+    ],
     "The books start on": [
       "账簿开始日期",
       "賬簿開始日期"
@@ -8228,6 +8612,10 @@
       "结束日期早于开始日期。",
       "結束日期早於開始日期。"
     ],
+    "The expense journal": [
+      "支出分录",
+      "支出分錄"
+    ],
     "The file is larger than 10 MB.": [
       "文件超过 10 MB。",
       "文件超過 10 MB。"
@@ -8311,6 +8699,10 @@
     "The password needs at least 8 characters.": [
       "密码至少需要 8 个字符。",
       "密碼至少需要 8 個字符。"
+    ],
+    "The payment journal": [
+      "付款分录",
+      "付款分錄"
     ],
     "The picture must be 10 MB or smaller": [
       "图片必须小于 10 MB",
@@ -8424,6 +8816,14 @@
       "主题",
       "主題"
     ],
+    "Then attach the receipts and the signed form, and record that it was signed on paper.": [
+      "然后附上收据和签了名的表格，并记录已在纸本上签名。",
+      "然後附上收據和簽了名的表格，並記錄已在紙本上簽名。"
+    ],
+    "These ministries only": [
+      "只限这些事工",
+      "只限這些事工"
+    ],
     "They go out automatically once a day.": [
       "提醒每天自动发送一次。",
       "提醒每天自動發送一次。"
@@ -8439,6 +8839,10 @@
     "This church requires two-step sign-in for every account. Set it up to continue: you need an authenticator app on your phone.": [
       "本教会要求每个帐户使用两步登入。请先设置才能继续：您需要手机上的验证器应用。",
       "本教會要求每個帳戶使用兩步登入。請先設置才能繼續：您需要手機上的驗證器應用。"
+    ],
+    "This claim needs {n} approvals.": [
+      "这份报销需要 {n} 位审批。",
+      "這份報銷需要 {n} 位審批。"
     ],
     "This code belongs to a public-domain Bible in another language; choose another code.": [
       "此代号属于另一种语言的公版圣经，请换一个代号。",
@@ -8744,6 +9148,10 @@
       "将满（岁）",
       "將滿（歲）"
     ],
+    "Two approvers above": [
+      "超过此金额需两位审批",
+      "超過此金額需兩位審批"
+    ],
     "Two languages": [
       "双语排列",
       "雙語排列"
@@ -8868,6 +9276,10 @@
       "{funds} 的奉献在指定款项和收入科目之前，会起草到常费（草稿上附有说明）。",
       "{funds} 的奉獻在指定款項和收入科目之前，會起草到常費（草稿上附有說明）。"
     ],
+    "Up to": [
+      "最多",
+      "最多"
+    ],
     "Up to 3. Each service can change this.": [
       "最多 3 种，每堂聚会可另行调整。",
       "最多 3 種，每堂聚會可另行調整。"
@@ -8915,6 +9327,10 @@
     "Uploaded Bibles are only shown inside your church’s Canon and its bulletins and slides. Some publishers (e.g. ESV, NIV) limit how many verses may be printed or projected; your church is responsible for following the licence.": [
       "上传的圣经译本只在本教会的 Canon 及其次序单和投影片中显示。部分出版社（如 ESV、NIV）限制可印刷或投影的经文节数；教会须自行遵守授权条款。",
       "上傳的聖經譯本只在本教會的 Canon 及其次序單和投影片中顯示。部分出版社（如 ESV、NIV）限制可印刷或投影的經文節數；教會須自行遵守授權條款。"
+    ],
+    "Uploading…": [
+      "上传中…",
+      "上傳中…"
     ],
     "Upper left": [
       "左上角",
@@ -9104,6 +9520,22 @@
       "已等候",
       "已等候"
     ],
+    "Waiting for approval": [
+      "待审批",
+      "待審批"
+    ],
+    "Waiting for approval or payment": [
+      "待审批或待付款",
+      "待審批或待付款"
+    ],
+    "Waiting for approval: {n}": [
+      "待审批：{n}",
+      "待審批：{n}"
+    ],
+    "Waiting for your approval": [
+      "等你审批",
+      "等你審批"
+    ],
     "Waiting to be posted": [
       "等待过账",
       "等待過賬"
@@ -9200,6 +9632,10 @@
       "每个角色可以查看和更改的内容。Canon 预设的角色可以按教会需要调整；其他情况可新增角色。代表某人工作的 AI 助手也遵循同一个角色。",
       "每個角色可以查看和更改的內容。Canon 預設的角色可以按教會需要調整；其他情況可新增角色。代表某人工作的 AI 助手也遵循同一個角色。"
     ],
+    "What for": [
+      "用途",
+      "用途"
+    ],
     "What it is for": [
       "用途",
       "用途"
@@ -9219,6 +9655,10 @@
     "What the church had and owed on the day the books start, and how its funds stood. Entered once; posted like any journal.": [
       "账簿开始当天教会的资产和负债，以及各款项的余额。只录入一次，像其他分录一样过账。",
       "賬簿開始當天教會的資產和負債，以及各款項的餘額。只錄入一次，像其他分錄一樣過賬。"
+    ],
+    "What the claim is for": [
+      "这份报销的用途",
+      "這份報銷的用途"
     ],
     "What the code opens": [
       "二维码打开的内容",
@@ -9288,6 +9728,10 @@
       "次序单链接的二维码在标题投影上的位置和大小（分享 → 给会众的次序单 → 在标题投影角落显示二维码）。PowerPoint 下载也相同。",
       "次序單鏈接的二維碼在標題投影上的位置和大小（分享 → 給會眾的次序單 → 在標題投影角落顯示二維碼）。PowerPoint 下載也相同。"
     ],
+    "Where to repay you": [
+      "还款到哪里",
+      "還款到哪裡"
+    ],
     "Which": [
       "第几个",
       "第幾個"
@@ -9344,9 +9788,29 @@
       "含联络资料",
       "含聯絡資料"
     ],
+    "Withdraw": [
+      "撤回",
+      "撤回"
+    ],
+    "Withdraw this claim": [
+      "撤回这份报销",
+      "撤回這份報銷"
+    ],
+    "Withdraw this claim?": [
+      "撤回这份报销申请？",
+      "撤回這份報銷申請？"
+    ],
     "Withdrawn": [
       "已注销",
       "已註銷"
+    ],
+    "Withdrawn‖claims": [
+      "已撤回",
+      "已撤回"
+    ],
+    "Without it, people with a Canon account still claim and approve from My claims.": [
+      "没有开启时，有 Canon 帐户的人仍可以在“我的报销”中申请和审批。",
+      "沒有開啟時，有 Canon 帳戶的人仍可以在“我的報銷”中申請和審批。"
     ],
     "Without this cover": [
       "不使用这个封面",
@@ -9388,6 +9852,10 @@
       "你",
       "你"
     ],
+    "You approved this claim. You may pay it too; the claim will be marked “approver paid”.": [
+      "你批准了这份报销。你也可以付款，这份报销会被标示为“审批人付款”。",
+      "你批准了這份報銷。你也可以付款，這份報銷會被標示為“審批人付款”。"
+    ],
     "You can look at this template, but only editors can change it.": [
       "你可以查看这个模板，但只有编辑者可以修改。",
       "你可以查看這個模板，但只有編輯者可以修改。"
@@ -9407,6 +9875,14 @@
     "Your account is not linked to your member record.": [
       "您的帐户尚未连结到您的会友资料。",
       "您的帳戶尚未連結到您的會友資料。"
+    ],
+    "Your claims": [
+      "你的报销",
+      "你的報銷"
+    ],
+    "Your decision": [
+      "你的决定",
+      "你的決定"
     ],
     "Your e-mail address": [
       "您的电邮地址",
@@ -9468,6 +9944,10 @@
       "并输入这个验证码：",
       "並輸入這個驗證碼："
     ],
+    "approved": [
+      "已批准",
+      "已批准"
+    ],
     "automatic when a public address is set": [
       "设定公开网址后自动启用",
       "設定公開網址後自動啟用"
@@ -9520,6 +10000,10 @@
       "婉拒",
       "婉拒"
     ],
+    "did not approve": [
+      "不批准",
+      "不批准"
+    ],
     "draft journals, {n} of them offerings": [
       "份草稿分录，其中 {n} 份是奉献",
       "份草稿分錄，其中 {n} 份是奉獻"
@@ -9560,6 +10044,10 @@
       "如：更换灯泡、调音、保养",
       "如：更換燈泡、調音、保養"
     ],
+    "e.g. PayNow mobile number, or bank and account number": [
+      "例如 PayNow 手机号码，或银行及户口号码",
+      "例如 PayNow 手機號碼，或銀行及戶口號碼"
+    ],
     "e.g. Projector, Keyboard, Folding tables": [
       "如：投影机、电子琴、折叠桌",
       "如：投影機、電子琴、摺疊桌"
@@ -9580,9 +10068,17 @@
       "例如：堂会、执事会、宣教委员会。",
       "例如：堂會、執事會、宣教委員會。"
     ],
+    "e.g. Snacks for the cell group": [
+      "例如小组的点心",
+      "例如小組的點心"
+    ],
     "e.g. Tan family": [
       "例如：陈家",
       "例如：陳家"
+    ],
+    "e.g. Youth camp supplies": [
+      "例如青年营用品",
+      "例如青年營用品"
     ],
     "e.g. Youth, Chinese congregation": [
       "例如：青少年、华文堂",
@@ -9619,6 +10115,10 @@
     "e.g. the church name": [
       "例如教会名称",
       "例如教會名稱"
+    ],
+    "e.g. the transfer reference": [
+      "例如转账参考编号",
+      "例如轉賬參考編號"
     ],
     "e.g. the year of the text": [
       "例如经文的年份版本",
@@ -9711,6 +10211,10 @@
     "no sheet music": [
       "没有乐谱",
       "沒有樂譜"
+    ],
+    "nobody yet: add an approver (Approvers and settings)": [
+      "还没有人：请加入审批人（审批人与设置）",
+      "還沒有人：請加入審批人（審批人與設置）"
     ],
     "not licensed to be": [
       "未获许可",
@@ -9839,6 +10343,10 @@
     "selected": [
       "已选",
       "已選"
+    ],
+    "sent it back": [
+      "已退回",
+      "已退回"
     ],
     "serving": [
       "在任",
@@ -10136,6 +10644,10 @@
       "{n} 首公共领域的诗歌、韵文诗篇与礼仪短歌（三一颂、荣耀颂……）：英文歌词、作者、曲调与格律；少数也有中文。",
       "{n} 首公共領域的詩歌、韻文詩篇與禮儀短歌（三一頌、榮耀頌……）：英文歌詞、作者、曲調與格律；少數也有中文。"
     ],
+    "{n} receipt(s)": [
+      "{n} 张收据",
+      "{n} 張收據"
+    ],
     "{n} reminder(s) sent.": [
       "已发送 {n} 封提醒。",
       "已發送 {n} 封提醒。"
@@ -10222,8 +10734,8 @@
     ]
   },
   "guide": [
-    "4c560c0ff4c47e8d",
-    "da2066c3ef66b603"
+    "ed26e5128ce09597",
+    "3f84ec182abd070a"
   ],
   "outputs": {
     "Advent": [
@@ -10423,6 +10935,10 @@
     "Deny": [
       "拒绝",
       "拒絕"
+    ],
+    "Expense claim to approve: {number} ({claimant}, {amount})": [
+      "待审批的报销申请：{number}（{claimant}，{amount}）",
+      "待審批的報銷申請：{number}（{claimant}，{amount}）"
     ],
     "Grace and peace,": [
       "主内平安，",
@@ -10672,6 +11188,10 @@
       "您可以关闭此窗口。",
       "您可以關閉此窗口。"
     ],
+    "Your code for expense claims: {code}": [
+      "报销申请验证码：{code}",
+      "報銷申請驗證碼：{code}"
+    ],
     "Your code for the church library is {code}. It works for 10 minutes.": [
       "您的教会图书馆验证码是 {code}，10 分钟内有效。",
       "您的教會圖書館驗證碼是 {code}，10 分鐘內有效。"
@@ -10679,6 +11199,42 @@
     "Your code for the church library: {code}": [
       "教会图书馆验证码：{code}",
       "教會圖書館驗證碼：{code}"
+    ],
+    "Your code for the church's expense claims is {code}. It works for 10 minutes.": [
+      "您的教会报销申请验证码是 {code}，10 分钟内有效。",
+      "您的教會報銷申請驗證碼是 {code}，10 分鐘內有效。"
+    ],
+    "Your expense claim {number} for {amount} has been approved. The treasurer will repay you.": [
+      "您的报销申请 {number}（{amount}）已获批准。财务会把钱还给您。",
+      "您的報銷申請 {number}（{amount}）已獲批准。財務會把錢還給您。"
+    ],
+    "Your expense claim {number} for {amount} was paid on {date}.": [
+      "您的报销申请 {number}（{amount}）已于 {date} 付款。",
+      "您的報銷申請 {number}（{amount}）已於 {date} 付款。"
+    ],
+    "Your expense claim {number} has been paid": [
+      "您的报销申请 {number} 已付款",
+      "您的報銷申請 {number} 已付款"
+    ],
+    "Your expense claim {number} is approved": [
+      "您的报销申请 {number} 已获批准",
+      "您的報銷申請 {number} 已獲批准"
+    ],
+    "Your expense claim {number} was not approved": [
+      "您的报销申请 {number} 未获批准",
+      "您的報銷申請 {number} 未獲批准"
+    ],
+    "Your expense claim {number} was not approved: {note}.": [
+      "您的报销申请 {number} 未获批准：{note}。",
+      "您的報銷申請 {number} 未獲批准：{note}。"
+    ],
+    "Your expense claim {number} was sent back": [
+      "您的报销申请 {number} 已被退回",
+      "您的報銷申請 {number} 已被退回"
+    ],
+    "Your expense claim {number} was sent back to you: {note}. Change it and submit it again:": [
+      "您的报销申请 {number} 已被退回：{note}。请修改后再次提交：",
+      "您的報銷申請 {number} 已被退回：{note}。請修改後再次提交："
     ],
     "Your name": [
       "您的姓名",
@@ -10707,6 +11263,10 @@
     "viewer": [
       "只读用户",
       "只讀用戶"
+    ],
+    "{claimant} has submitted expense claim {number} for {amount}. Open it to look at the receipts and approve it, send it back or reject it:": [
+      "{claimant} 提交了报销申请 {number}，金额 {amount}。请打开查看收据，然后批准、退回或拒绝：",
+      "{claimant} 提交了報銷申請 {number}，金額 {amount}。請打開查看收據，然後批准、退回或拒絕："
     ]
   }
 }

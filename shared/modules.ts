@@ -45,6 +45,6 @@ export function pageOff(pathname: string, on: Partial<ModuleSwitches> | undefine
   if (on?.volunteers === false && /^\/volunteers(\/|$)/.test(pathname)) return true;
   if (on?.lending === false && /^\/lending(\/|$)/.test(pathname)) return true;
   if (on?.equipment === false && /^\/equipment(\/|$)/.test(pathname)) return true;
-  if (on?.bookkeeping === false && /^\/bookkeeping(\/|$)/.test(pathname)) return true;
+  if (on?.bookkeeping === false && /^\/(bookkeeping|self\/claims)(\/|$)/.test(pathname)) return true;
   return false;
 }

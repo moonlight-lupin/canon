@@ -13,12 +13,15 @@ import { JournalsTab } from './Journals.tsx';
 import { ChartTab } from './Chart.tsx';
 import { BankTab } from './Bank.tsx';
 import { ReportsTab } from './BkReports.tsx';
+import { ClaimsTab } from './Claims.tsx';
+import '../resources/resources.css';
 import './bookkeeping.css';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'journals', label: 'Journals' },
   { key: 'bank', label: 'Bank' },
+  { key: 'claims', label: 'Claims' },
   { key: 'reports', label: 'Reports' },
   { key: 'chart', label: 'Accounts and funds' },
 ] as const;
@@ -69,6 +72,7 @@ export default function Bookkeeping() {
               {tab === 'overview' && <OverviewTab />}
               {tab === 'journals' && <JournalsTab />}
               {tab === 'bank' && <BankTab />}
+              {tab === 'claims' && <ClaimsTab />}
               {tab === 'reports' && <ReportsTab />}
               {tab === 'chart' && <ChartTab />}
             </>
