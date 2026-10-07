@@ -3,7 +3,7 @@
 // A preview first (each journal with what stops it), then the journals come in as DRAFTS — the treasurer reviews and
 // posts them, as every journal. The template has the same columns as the journal export, so an export (e.g. from
 // another Canon) imports back.
-import { all } from '../db.ts';
+import { all, tx } from '../db.ts';
 import { decodeCsv, headerKey, parseCsv } from '../lib/csv.ts';
 import { isXlsx, readXlsx, tableRows } from '../lib/xlsx-read.ts';
 import { parseBankAmount, parseBankDate, DATE_FORMATS } from './bk-bank.ts';
@@ -163,10 +163,8 @@ export function readJournalFile(data: Uint8Array): { journals: ImportedJournal[]
 export function importJournals(data: Uint8Array) {
   const r = readJournalFile(data);
   if (r.fatal) return { ...r, imported: [] as number[] };
-  const imported: number[] = [];
-  for (const j of r.journals) {
-    if (j.errors.length) continue;
-    imported.push(saveDraft(null, { date: j.date!, memo: j.memo, kind: j.kind, lines: j.lines }, `Imported from a file (journal ${j.ref})`).id);
-  }
+  // all the journals without errors, or (if something fails on the way) none: a second try doesn't double them
+  const imported = tx(() => r.journals.filter((j) => !j.errors.length)
+    .map((j) => saveDraft(null, { date: j.date!, memo: j.memo, kind: j.kind, lines: j.lines }, `Imported from a file (journal ${j.ref})`).id));
   return { ...r, imported };
 }

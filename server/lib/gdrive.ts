@@ -4,6 +4,7 @@
 // google.com/device in any browser — no return address, so it works the same on an office PC and in Docker.
 // The scope is drive.file: Canon sees and deletes only the files it put there, never the rest of the Drive.
 // Only encrypted backups (.db.enc, with the church's backup password) are ever sent.
+import { config } from '../config.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { deleteMeta, getMeta, setMeta } from '../repo/settings.ts';
@@ -96,6 +97,7 @@ let pending: { device_code: string; expires: number; interval: number } | null =
 
 /** Ask Google for a code to enter at google.com/device. */
 export async function startDriveConnect() {
+  leaveDriveAlone();
   const c = driveConfig();
   if (!c?.client_id) throw new DriveError('Add the Google client first.');
   const r = await form(`${OAUTH}/device/code`, { client_id: c.client_id, scope: DRIVE_SCOPE });
@@ -173,7 +175,13 @@ async function accessToken(): Promise<string> {
   return access.token;
 }
 
+/** A test copy of the church's data (CANON_TEST_COPY=1) leaves the church's Drive folder alone: nothing read, sent or removed. */
+function leaveDriveAlone() {
+  if (config.testCopy) throw new DriveError('This is a test copy of Canon: Google Drive is left alone.');
+}
+
 async function api(url: string, init: RequestInit = {}): Promise<Response> {
+  leaveDriveAlone();
   const token = await accessToken();
   const r = await http(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), Authorization: `Bearer ${token}` } });
   if (r.status === 401) access = null;
@@ -211,6 +219,7 @@ export interface DriveFile { id: string; name: string; size: number; created: st
 
 /** The backups in Canon's Drive folder, newest first. */
 export async function listDriveBackups(): Promise<DriveFile[]> {
+  leaveDriveAlone();
   const folder = await ensureFolder();
   const q = encodeURIComponent(`'${folder}' in parents and trashed = false`);
   const j = await apiJson<{ files?: { id: string; name: string; size?: string; createdTime: string }[] }>(
@@ -221,6 +230,7 @@ export async function listDriveBackups(): Promise<DriveFile[]> {
 
 /** Send one encrypted backup to Drive (a resumable upload: the folder's metadata, then the file). */
 export async function uploadToDrive(file: string): Promise<DriveFile> {
+  leaveDriveAlone();
   if (!file.endsWith('.db.enc')) throw new DriveError('Canon only sends encrypted backups to Google Drive. Set a backup password in Settings → Backups first.');
   const folder = await ensureFolder();
   const name = path.basename(file);
@@ -240,6 +250,7 @@ export async function uploadToDrive(file: string): Promise<DriveFile> {
 
 /** Keep the newest `keep` backups in Drive; delete older ones (only Canon's own files). */
 export async function pruneDrive(keep: number): Promise<number> {
+  leaveDriveAlone();
   if (keep <= 0) return 0;
   const old = (await listDriveBackups()).slice(keep);
   for (const f of old) await api(`${API}/files/${encodeURIComponent(f.id)}`, { method: 'DELETE' });
@@ -248,6 +259,7 @@ export async function pruneDrive(keep: number): Promise<number> {
 
 /** A backup's bytes from Drive (to copy into this computer's backup folder, then restore as usual). */
 export async function downloadFromDrive(id: string): Promise<{ name: string; data: Buffer }> {
+  leaveDriveAlone();
   const meta = await apiJson<{ name: string; parents?: string[] }>(`${API}/files/${encodeURIComponent(id)}?fields=name,parents`);
   if (!/^canon-.*\.db\.enc$/.test(meta.name)) throw new DriveError('That file is not a Canon backup.');
   const r = await api(`${API}/files/${encodeURIComponent(id)}?alt=media`);
@@ -262,7 +274,7 @@ export async function downloadFromDrive(id: string): Promise<{ name: string; dat
  */
 export async function syncToDrive(newest: { name: string; path: string } | null, log: (s: string) => void = console.log): Promise<void> {
   const c = driveConfig();
-  if (!c?.refresh_token || !newest || c.uploaded === newest.name) return;
+  if (config.testCopy || !c?.refresh_token || !newest || c.uploaded === newest.name) return;
   try {
     const f = await uploadToDrive(newest.path);
     const removed = await pruneDrive(c.keep);

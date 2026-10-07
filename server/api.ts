@@ -173,6 +173,8 @@ api.get('/about', (_req, res) => {
     license: PKG.license,
     schema: (get<{ user_version: number }>('PRAGMA user_version')?.user_version) ?? 0,
     node: process.versions.node,
+    // a test copy of the church's data: no e-mail, no Google Drive (the screens say so)
+    ...(config.testCopy ? { test_copy: true } : {}),
   });
 });
 

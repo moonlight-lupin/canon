@@ -3,16 +3,19 @@
 // with 0, so the launcher (start-canon.bat, the Windows task) treats it as stopped on purpose, not as a crash.
 //
 // The tray asks over HTTP: POST /control/stop on this computer only (127.0.0.1 / ::1), carrying the token that
-// Canon writes at start-up to data/run/control-<port>.json. Only the account running Canon (and administrators) can
-// read that file, so nobody on the network, and no web page, can stop Canon.
+// Canon writes at start-up to run/control-<port>.json next to the database (data/ by default). Only the account
+// running Canon (and administrators) can read that file — on Windows its permissions are set so — so nobody on the
+// network, no other Windows account and no web page can stop Canon.
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { config } from '../config.ts';
 import { db } from '../db.ts';
 
-export const controlFile = (port = config.port) => path.join(config.root, 'data', 'run', `control-${port}.json`);
+export const controlFile = (port = config.port) => path.join(path.dirname(config.dbPath), 'run', `control-${port}.json`);
 const token = crypto.randomBytes(32).toString('hex');
 let stopping = false;
 
@@ -20,6 +23,17 @@ let stopping = false;
 export function writeControlFile() {
   const file = controlFile();
   fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.rmSync(file, { force: true });
+  fs.writeFileSync(file, '', { mode: 0o600 });
+  // Windows ignores the mode: the file would take the folder's permissions (under C:\ every account could read it).
+  // Before the token goes in, only this account may read it.
+  if (process.platform === 'win32') {
+    try {
+      execFileSync('icacls', [file, '/inheritance:r', '/grant:r', `${os.userInfo().username}:F`], { stdio: 'ignore', windowsHide: true });
+    } catch (e) {
+      console.error('Could not make the stop token private:', (e as Error).message);
+    }
+  }
   fs.writeFileSync(file, JSON.stringify({ pid: process.pid, port: config.port, token, started: new Date().toISOString() }), { mode: 0o600 });
 }
 

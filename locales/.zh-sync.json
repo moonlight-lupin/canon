@@ -8616,6 +8616,10 @@
       "测试",
       "測試"
     ],
+    "Test copy: Canon sends no e-mail here and leaves Google Drive alone.": [
+      "测试副本：这里的 Canon 不会寄出电邮，也不会动用 Google Drive。",
+      "測試副本：這裡的 Canon 不會寄出電郵，也不會動用 Google Drive。"
+    ],
     "Test e-mail sent. Check the inbox (and the spam folder).": [
       "测试邮件已发出。请查看收件箱（以及垃圾邮件夹）。",
       "測試郵件已發出。請查看收件箱（以及垃圾郵件夾）。"
@@ -10974,8 +10978,8 @@
     ]
   },
   "guide": [
-    "5dc4370d77bb3616",
-    "c6e526b6868f6d86"
+    "945c524a363cf5af",
+    "e9ca1b78850fb06d"
   ],
   "outputs": {
     "Advent": [

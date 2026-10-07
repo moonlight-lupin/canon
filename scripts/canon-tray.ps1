@@ -10,13 +10,10 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
-# the port: canon.local.bat's CANON_PORT, else 3000 (as start-canon.bat)
-$local = Join-Path $Root 'canon.local.bat'
-if (-not $Port) { $Port = 3000 }
-if (-not $PSBoundParameters.ContainsKey('Port') -and (Test-Path $local)) {
-  $m = Select-String -Path $local -Pattern 'CANON_PORT=(\d+)' | Select-Object -First 1
-  if ($m) { $Port = [int]$m.Matches[0].Groups[1].Value }
-}
+# the port and the stop token, as start-canon.bat and Canon find them
+. (Join-Path $PSScriptRoot 'canon-common.ps1')
+if (-not $PSBoundParameters.ContainsKey('Port')) { $Port = Get-CanonPort $Root }
+$ControlFile = Get-ControlFile $Root $Port
 
 # with -Port (trying the icon against a test Canon) it doesn't start Canon: start-canon.bat would use canon.local.bat's port
 $CanStart = -not $PSBoundParameters.ContainsKey('Port')
@@ -50,12 +47,18 @@ function Get-Running {
 
 function Test-Task { [bool](Get-ScheduledTask -TaskName 'Canon' -ErrorAction SilentlyContinue) }
 
-function Start-Canon {
+# Start Canon: through the task when it is installed (as the office's account); without a task, in its window, as when
+# start-canon.bat is double-clicked. $quiet (when the icon starts with Windows): only through the task, saying nothing.
+function Start-Canon([bool]$quiet = $false) {
   if (Test-Task) {
-    try { Start-ScheduledTask -TaskName 'Canon'; return } catch { }
+    try { Start-ScheduledTask -TaskName 'Canon'; return $true } catch {
+      if (-not $quiet) { [System.Windows.Forms.MessageBox]::Show("Canon runs as another Windows account, which may start it; this one may not. Restart the computer, or ask whoever looks after it.", 'Canon', 'OK', 'Information') | Out-Null }
+      return $false
+    }
   }
-  # no task (or this account may not run it): Canon in its window, as when start-canon.bat is double-clicked
+  if ($quiet) { return $false }
   Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'start-canon.bat' -WorkingDirectory $Root -WindowStyle Minimized
+  return $true
 }
 
 $script:version = $null
@@ -106,16 +109,15 @@ $miAddress.add_Click({
   [System.Windows.Forms.Clipboard]::SetText("http://$($script:address):$Port")
   $tray.ShowBalloonTip(3000, 'Canon', "Copied: http://$($script:address):$Port", 'Info')
 })
-$miStart.add_Click({ $script:starting = $true; $script:startedAt = [DateTime]::Now; Start-Canon; Update-Tray })
+$miStart.add_Click({ if (Start-Canon) { $script:starting = $true; $script:startedAt = [DateTime]::Now }; Update-Tray })
 $miExit.add_Click({
   if ($script:version) {
     $answer = [System.Windows.Forms.MessageBox]::Show(
       "Stop Canon?`n`nNobody can use Canon, on this computer or the network, until it is started again: restart the computer, or open Canon from the Start menu.",
       'Canon', 'YesNo', 'Question', 'Button2')
     if ($answer -ne 'Yes') { return }
-    $file = Join-Path $Root "data\run\control-$Port.json"
     try {
-      $token = (Get-Content $file -Raw | ConvertFrom-Json).token
+      $token = (Get-Content $ControlFile -Raw | ConvertFrom-Json).token
       $req = [System.Net.WebRequest]::Create("http://127.0.0.1:$Port/control/stop")
       $req.Method = 'POST'
       $req.Headers.Add('X-Canon-Control', $token)
@@ -144,7 +146,7 @@ $timer.add_Tick({
 $script:tickCount = 0
 
 # Canon starts with Windows (the task); if it isn't running, start it now
-if ($CanStart -and -not (Get-Running) -and (Test-Task)) { $script:starting = $true; $script:startedAt = [DateTime]::Now; Start-Canon }
+if ($CanStart -and -not (Get-Running) -and (Test-Task) -and (Start-Canon $true)) { $script:starting = $true; $script:startedAt = [DateTime]::Now }
 Update-Tray
 $tray.Visible = $true
 $timer.Start()

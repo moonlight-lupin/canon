@@ -156,10 +156,16 @@ function writeLines(claimId: number, lines: ClaimLine[]) {
 }
 
 /** A new claim (a draft) for a member: by themselves, the office, or an AI assistant for its person. */
+const MAX_DRAFTS = 20;
+
 export function createClaim(personId: number | null, input: ClaimInput, by: Party): Claim {
   const person = personId ? get<{ first_name: string; last_name: string | null; preferred_name: string | null; congregation_id: number | null }>('SELECT first_name, last_name, preferred_name, congregation_id FROM people WHERE id = ? AND erased_at IS NULL', personId) : null;
   if (personId && !person) throw new BadRequest('That member is not on the register.');
   if (!personId && by.as !== 'office') throw new BadRequest('A claim is made by a member.');
+  // claims being prepared, per member: enough for anyone, not a way to fill the church's disk with receipts
+  if (personId && by.as !== 'office' && get<{ n: number }>("SELECT COUNT(*) n FROM bk_claims WHERE person_id = ? AND status = 'draft'", personId)!.n >= MAX_DRAFTS) {
+    throw new BadRequest(`You have ${MAX_DRAFTS} claims being prepared: submit or delete some first.`);
+  }
   const claimant = person ? [person.preferred_name || person.first_name, person.last_name].filter(Boolean).join(' ') : by.name;
   const lines = cleanLines(input.lines ?? []);
   return tx(() => {

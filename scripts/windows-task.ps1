@@ -1,9 +1,11 @@
 # Canon in the background on Windows (0.18.0): a Task Scheduler task that starts Canon when the computer starts —
 # before anyone signs in, with no window — and starts it again if it stops by itself. It runs start-canon.bat (so
-# updates, canon.local.bat and the restarts work as before) as the account that installs it. Canon's icon in the
+# updates, canon.local.bat and the restarts work as before) as the office's account. Canon's icon in the
 # notification area (scripts\canon-tray.ps1) shows that it is running and its address, and its Exit stops Canon.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 install     (as administrator, once)
+#   powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 install -User OFFICE-PC\Office
+#                                         (an administrator's own account installing it for the office's account)
 #   powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 status
 #   powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 restart     (after an update)
 #   powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 stop | start
@@ -11,49 +13,52 @@
 #
 # Windows asks for the account's password once, when the task is installed, so it can run while nobody is signed
 # in. The password goes to Windows only; this script does not keep it. What Canon does is in data\logs.
-param([Parameter(Position = 0)][ValidateSet('install', 'uninstall', 'start', 'stop', 'restart', 'status')][string]$Command = 'status')
+param(
+  [Parameter(Position = 0)][ValidateSet('install', 'uninstall', 'start', 'stop', 'restart', 'status')][string]$Command = 'status',
+  # the account Canon runs as (default: the one running this)
+  [string]$User = ''
+)
 
 $ErrorActionPreference = 'Stop'
 $TaskName = 'Canon'
 $Root = Split-Path -Parent $PSScriptRoot
 $Tray = Join-Path $PSScriptRoot 'canon-tray.ps1'
-# the Start-menu shortcut, and the same in Startup so the icon appears when someone signs in
-$Shortcuts = @((Join-Path ([Environment]::GetFolderPath('Programs')) 'Canon.lnk'), (Join-Path ([Environment]::GetFolderPath('Startup')) 'Canon.lnk'))
+. (Join-Path $PSScriptRoot 'canon-common.ps1')
+$Port = Get-CanonPort $Root
+# the Start-menu shortcut, and the same in Startup so the icon appears when someone signs in (for every account:
+# whoever is at the office PC sees whether Canon is running)
+$Shortcuts = @((Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Canon.lnk'), (Join-Path ([Environment]::GetFolderPath('CommonStartup')) 'Canon.lnk'))
 
 function Test-Admin {
   $id = [Security.Principal.WindowsIdentity]::GetCurrent()
   return (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# the port Canon listens on: canon.local.bat's CANON_PORT, else 3000
-function Get-Port {
-  $local = Join-Path $Root 'canon.local.bat'
-  if (Test-Path $local) {
-    $m = Select-String -Path $local -Pattern 'CANON_PORT=(\d+)' | Select-Object -First 1
-    if ($m) { return [int]$m.Matches[0].Groups[1].Value }
-  }
-  return 3000
-}
-
-function Test-Listening { [bool](Get-NetTCPConnection -LocalPort (Get-Port) -State Listen -ErrorAction SilentlyContinue) }
+function Test-Listening { [bool](Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) }
 
 # Stop Canon properly (as the tray's Exit: running requests finish, the database is closed); if it doesn't answer
-# (an older Canon, or it hangs), end its processes — whatever listens on the port and the launcher above it.
+# (an older Canon, or it hangs), end its processes: whatever listens on the port, and the launcher above it — only
+# processes that are Canon's (their command line names Canon's folder, start-canon.bat, server/index.ts or npm start),
+# never the window or tool someone started it from.
 function Stop-Canon {
   if (-not (Test-Listening)) { return }
-  $file = Join-Path $Root "data\run\control-$(Get-Port).json"
   try {
-    $token = (Get-Content $file -Raw | ConvertFrom-Json).token
-    Invoke-WebRequest -UseBasicParsing -Method Post -Uri "http://127.0.0.1:$(Get-Port)/control/stop" -Headers @{ 'X-Canon-Control' = $token } -TimeoutSec 5 | Out-Null
+    $token = (Get-Content (Get-ControlFile $Root $Port) -Raw | ConvertFrom-Json).token
+    Invoke-WebRequest -UseBasicParsing -Method Post -Uri "http://127.0.0.1:$Port/control/stop" -Headers @{ 'X-Canon-Control' = $token } -TimeoutSec 5 | Out-Null
     for ($i = 0; $i -lt 30 -and (Test-Listening); $i++) { Start-Sleep -Milliseconds 500 }
   } catch { }
-  $conn = Get-NetTCPConnection -LocalPort (Get-Port) -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+  $conn = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $conn) { return }
   $procs = Get-CimInstance Win32_Process
   $p = $procs | Where-Object ProcessId -eq $conn.OwningProcess
   $chain = @()
   while ($p -and $p.Name -in @('node.exe', 'cmd.exe')) {
+    $cl = "$($p.CommandLine)"
+    $canons = $cl.Contains($Root) -or $cl -match 'start-canon\.bat|server[\\/]index\.ts|npm(-cli\.js"?|\.cmd"?)?\s+start'
+    if (-not $canons) { break }
     $chain += $p
+    # start-canon.bat is the top of Canon's own processes
+    if ($cl -match 'start-canon\.bat') { break }
     $p = $procs | Where-Object ProcessId -eq $p.ParentProcessId
   }
   # the launcher first, so it doesn't start Canon again
@@ -66,19 +71,19 @@ function Get-TrayProcess { Get-CimInstance Win32_Process -Filter "Name='powershe
 
 switch ($Command) {
   'install' {
-    if (-not (Test-Admin)) { throw 'Run this as administrator (right-click PowerShell > Run as administrator).' }
+    if (-not (Test-Admin)) { throw 'Run this as administrator (right-click Start > Terminal (Admin)).' }
     if (-not (Test-Path (Join-Path $Root 'start-canon.bat'))) { throw "start-canon.bat was not found in $Root." }
-    $user = "$env:USERDOMAIN\$env:USERNAME"
-    $cred = Get-Credential -UserName $user -Message "Canon will run as $user, also when nobody is signed in. Windows needs this account's password once."
+    $who = if ($User) { $User } else { "$env:USERDOMAIN\$env:USERNAME" }
+    $cred = Get-Credential -UserName $who -Message "Canon will run as $who, also when nobody is signed in. Windows needs this account's password once."
     if (-not $cred) { throw 'Cancelled.' }
-    # start-canon.bat with CANON_BACKGROUND=1: no window, no "press a key" pauses
+    # start-canon.bat with CANON_BACKGROUND=1: no window, no "press a key" pauses, and it never gives up restarting
     $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c "set CANON_BACKGROUND=1&& call start-canon.bat"' -WorkingDirectory $Root
     $trigger = New-ScheduledTaskTrigger -AtStartup
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
       -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew
     Register-ScheduledTask -TaskName $TaskName -Description 'Canon church management (starts with Windows; see data\logs)' `
       -Action $action -Trigger $trigger -Settings $settings -User $cred.UserName -Password $cred.GetNetworkCredential().Password -RunLevel Limited -Force | Out-Null
-    # the account may start and stop its own task without administrator rights (the tray icon, restart after an update)
+    # that account may start and stop its own task without administrator rights (the tray icon, restart after an update)
     try {
       $sid = (New-Object Security.Principal.NTAccount($cred.UserName)).Translate([Security.Principal.SecurityIdentifier]).Value
       $svc = New-Object -ComObject Schedule.Service
@@ -107,7 +112,7 @@ switch ($Command) {
     Start-ScheduledTask -TaskName $TaskName
     # the icon, as the signed-in user (not as administrator)
     if (-not (Get-TrayProcess)) { Start-Process explorer.exe -ArgumentList "`"$($Shortcuts[0])`"" }
-    Write-Host "Installed. Canon now starts with Windows, as $($cred.UserName), on port $(Get-Port)."
+    Write-Host "Installed. Canon now starts with Windows, as $($cred.UserName), on port $Port."
     Write-Host 'Its icon is in the notification area (by the clock; under ^ until you choose to show it).'
     Write-Host 'Close any Canon window that is still open; the task runs Canon from now on.'
   }
@@ -139,14 +144,13 @@ switch ($Command) {
   }
   'status' {
     $t = Get-CanonTask
-    $port = Get-Port
     if ($t) {
       $info = Get-ScheduledTaskInfo -TaskName $TaskName
       Write-Host "Task: installed ($($t.State)), runs as $($t.Principal.UserId); last run $($info.LastRunTime), result $($info.LastTaskResult)."
     } else {
       Write-Host 'Task: not installed (Canon runs from start-canon.bat).'
     }
-    Write-Host ("Canon on port ${port}: " + $(if (Test-Listening) { 'running' } else { 'not running' }))
+    Write-Host ("Canon on port ${Port}: " + $(if (Test-Listening) { 'running' } else { 'not running' }))
     Write-Host ('Tray icon: ' + $(if (Get-TrayProcess) { 'shown' } else { 'not running' }))
   }
 }

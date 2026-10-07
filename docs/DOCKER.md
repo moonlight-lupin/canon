@@ -19,7 +19,7 @@ Open <http://localhost:3000> (or `http://<server-name>:3000` from the office net
 | Restore | see [Restoring a backup](#restoring-a-backup) |
 | Use another port | `CANON_HTTP_PORT=8080 docker compose up -d` |
 
-The container runs as an unprivileged user. On Linux, if backups fail with "permission denied", run `sudo chown 1000:1000 backups` once on the host.
+Canon runs as an unprivileged user (uid 1000) inside the container. When it starts, it makes the `backups` folder its own, so backups work on a Synology or QNAP NAS without a command line. (If you set `user:` in `docker-compose.yml`, that user must be able to write to `backups`.)
 
 Backups can also go to the church's Google Drive (Settings → Backups → Google Drive). The sign-in uses a code at google.com/device, so it works from the container with no public address or port. The container only needs outbound HTTPS. See the user guide, "Backups to Google Drive".
 
@@ -35,7 +35,27 @@ docker run --rm -v canon_canon-data:/data -v "$PWD/backups:/b" alpine sh -c "rm 
 docker compose up -d
 ```
 
-Replace the file name with your backup. The volume is called `<folder>_canon-data`; `docker volume ls` shows the exact name.
+Replace the file name with your backup. The volume is called `<folder>_canon-data`; `docker volume ls` shows the exact name. An encrypted backup (`.db.enc`) must be decrypted first: `docker compose run --rm canon npm run decrypt-backup -- /app/backups/canon-YYYY-MM-DD-HHMM.db.enc` writes the `.db` next to it.
+
+## Going back to the previous version
+
+An older Canon refuses a database that a newer one has upgraded. Before each upgrade, Canon keeps a copy of the database in `pre-upgrade/` inside the data volume (the newest three). To go back:
+
+```bash
+git checkout v0.17.4          # the version you had
+docker compose down
+docker run --rm -v canon_canon-data:/data alpine sh -c "ls /data/pre-upgrade"
+docker run --rm -v canon_canon-data:/data alpine sh -c "rm -f /data/canon.db-wal /data/canon.db-shm && cp /data/pre-upgrade/<the copy> /data/canon.db && chown 1000:1000 /data/canon.db"
+docker compose up -d --build
+```
+
+Anything entered since the upgrade is not in that copy.
+
+## A test copy of the church's data
+
+To try a new version on the church's real data (for example on a NAS, away from the office PC), restore a backup in the test Canon with **Settings → Backups → Restore from a file…** rather than copying the database by hand: the restore keeps the test Canon's own Google Drive connection, so it can't upload into, or tidy up, the church's Drive folder.
+
+Then start the test copy with `CANON_TEST_COPY=1` (in `.env` next to `docker-compose.yml`, or `environment:` in the compose file). A test copy sends no e-mail (no loan reminders, codes, rotas or notices to real members) and doesn't touch Google Drive; a banner says it is a test copy.
 
 ## Connecting claude.ai (optional)
 

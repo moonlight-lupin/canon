@@ -39,6 +39,13 @@ if exist data\logs echo %date% %time% Canon stopped unexpectedly and was started
 timeout /t 10 /nobreak >nul
 goto run
 :gaveup
+REM in the background nobody would see that it gave up: wait five minutes and begin again
+if defined CANON_BACKGROUND (
+  if exist data\logs echo %date% %time% Canon stopped unexpectedly 10 times; trying again in 5 minutes>> data\logs\launcher.log
+  timeout /t 300 /nobreak >nul
+  set CANON_RESTARTS=0
+  goto run
+)
 echo.
 echo Canon stopped unexpectedly 10 times, so it was not started again. See data\logs for why.
 if not defined CANON_BACKGROUND pause

@@ -506,6 +506,10 @@ test('a bank receipt is added to a service’s offerings once, however often it 
   const rec = R.recordFor(s.id);
   web(() => R.saveRecord(s.id, { offerings: rec.offerings }, ed));
   assert.equal(bankLinesOf(s.id, g20.id), 1);
+  // deleted and imported again, the statement's lines would be new to Canon: so it stays (0.18.0 review)
+  const del = await call(as.treasurer, 'DELETE', `/bookkeeping/bank/statements/${imp.statement_id}`);
+  assert.equal(del.status, 409);
+  assert.match(del.body.error, new RegExp(`#${s.id}`));
 });
 
 test('group matching: several bank receipts against one offering line, one deposit against several entries (review F5)', async () => {

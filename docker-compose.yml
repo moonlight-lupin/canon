@@ -15,6 +15,8 @@ services:
       - "${CANON_HTTP_PORT:-3000}:3000"
     environment:
       TZ: ${TZ:-Asia/Kuala_Lumpur}
+      # 1 = a test copy of the church's data: no e-mail is sent and Google Drive is left alone (docs/DOCKER.md)
+      CANON_TEST_COPY: ${CANON_TEST_COPY:-}
     volumes:
       - canon-data:/app/data
       - ./backups:/app/backups

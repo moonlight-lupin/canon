@@ -212,7 +212,18 @@ Until 1 and 2 ship, run Canon's books alongside the church's existing books, not
 **Done so far in 0.18.0:**
 - the reference church's whole financial cycle as a test, against figures worked out by hand;
 - an encrypted backup of the books restoring exactly;
-- the chart of accounts and the funds importable from Excel or CSV.
+- the chart of accounts and the funds importable from Excel or CSV;
+- Canon in the background on Windows (a Task Scheduler task) with an icon by the clock, and a proper stop (the icon's Exit, Ctrl+C, `docker stop`);
+- signing on a phone: one finger draws, the claimant's own name on the signature;
+- three independent reviews (security, the books' integrity, upgrades / backups / Docker), each finding fixed with a test: see the changelog;
+- a test copy switch (`CANON_TEST_COPY=1`) for trying new versions on the church's data, e.g. on a NAS.
+
+**Found by the reviews, left for later:**
+- Archived years (records and change log moved out of the database) are copied with local backups but not sent to Google Drive, and a restore doesn't bring them back.
+- Claims are church-wide: an account limited to one congregation still sees other congregations' claimants in Book-keeping → Claims. Decide whether the books follow congregation walls.
+- Where to repay a claimant is masked for approvers; when the office typed it in for a paper claim, approvers aren't told.
+- No test yet sends a real encrypted backup through "copy from Google Drive" and restores it.
+- CI doesn't build the Docker image (amd64 and arm64).
 
 Reports carry each year's surplus into its fund; there is no posted year-end closing journal (none is needed).
 

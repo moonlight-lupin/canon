@@ -171,6 +171,7 @@ export function Layout() {
           <strong className="serif">Canon</strong>
         </div>
         <main id="main">
+          <TestCopyBanner />
           <MemberLinkReminder />
           <Outlet />
         </main>
@@ -212,4 +213,12 @@ function MemberLinkReminder() {
       <button className="btn sm ghost" onClick={hide}>{t('Remind me later')}</button>
     </div>
   );
+}
+
+/** A test copy of the church's data (CANON_TEST_COPY=1): said on every page, so nobody takes it for the real Canon. */
+function TestCopyBanner() {
+  const { t } = useI18n();
+  const { data } = useApi<{ test_copy?: boolean }>('/about');
+  if (!data?.test_copy) return null;
+  return <div className="callout warn no-print" style={{ marginBottom: 12 }}>{t('Test copy: Canon sends no e-mail here and leaves Google Drive alone.')}</div>;
 }

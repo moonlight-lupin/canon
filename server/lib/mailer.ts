@@ -1,6 +1,7 @@
 // Outgoing e-mail over the church's own SMTP server (Settings → E-mail).
 // The SMTP password is write-only: it lives in the internal meta store and is never returned by the API.
 // PDPA: recipient addresses go only to the SMTP server; message bodies are never logged.
+import { config } from '../config.ts';
 import crypto from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { deleteMeta, getMeta, getSettings, setMeta, type SmtpSettings } from '../repo/settings.ts';
@@ -70,7 +71,7 @@ export function transportOptions(s: SmtpSettings = getSettings().smtp, password 
   };
 }
 
-export type MailErrorCode = 'not_configured' | 'auth' | 'connection' | 'dns' | 'timeout' | 'tls' | 'recipient' | 'other';
+export type MailErrorCode = 'test_copy' | 'not_configured' | 'auth' | 'connection' | 'dns' | 'timeout' | 'tls' | 'recipient' | 'other';
 
 export class MailError extends Error {
   code: MailErrorCode;
@@ -78,7 +79,7 @@ export class MailError extends Error {
   constructor(code: MailErrorCode, message: string) {
     super(message);
     this.code = code;
-    this.status = code === 'not_configured' ? 400 : 502;
+    this.status = code === 'not_configured' || code === 'test_copy' ? 400 : 502;
   }
 }
 
@@ -118,6 +119,8 @@ export function mapMailError(err: unknown, s: Pick<SmtpSettings, 'host' | 'port'
 
 /** Send one message using Settings → E-mail. Throws MailError. */
 export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> {
+  // a test copy of the church's data (CANON_TEST_COPY=1) never writes to real members
+  if (config.testCopy) throw new MailError('test_copy', 'This is a test copy of Canon: it sends no e-mail.');
   const s = getSettings().smtp;
   if (!smtpConfigured(s)) throw new MailError('not_configured', 'E-mail is not set up yet — an administrator can add the SMTP server under Settings → E-mail.');
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(m.to)) throw new MailError('recipient', 'Not a valid e-mail address.');

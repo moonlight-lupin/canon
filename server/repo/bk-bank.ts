@@ -507,6 +507,13 @@ export function setStatementDone(id: number, done: boolean) {
 }
 export function deleteStatement(id: number) {
   if (!get('SELECT 1 FROM bk_statements WHERE id = ?', id)) throw new NotFound('Statement not found');
+  // lines added to services' offerings are known by their id: deleted and imported again, the same gifts could be
+  // added a second time. Such a statement stays (review, 0.18.0).
+  const services = all<{ service_id: number }>(
+    `SELECT DISTINCT r.service_id FROM service_records r, json_each(r.offerings) o
+     WHERE json_extract(o.value, '$.bank_line_id') IN (SELECT id FROM bk_statement_lines WHERE statement_id = ?)`, id,
+  ).map((r) => `#${r.service_id}`);
+  if (services.length) throw new Conflict(`Lines of this statement were added to the offerings of service ${services.join(', ')}: remove them there first, or keep the statement.`);
   tx(() => {
     // its group matches come apart (lines of other statements in them are open again)
     for (const g of all<{ g: number }>('SELECT DISTINCT group_id g FROM bk_statement_lines WHERE statement_id = ? AND group_id IS NOT NULL', id)) dissolveGroup(g.g);

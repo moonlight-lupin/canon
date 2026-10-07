@@ -485,6 +485,10 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - A line with a draft already made for it (by **Enter → Save draft**, or by an AI assistant) shows **Draft waiting**. Posting that draft matches the line.
   - Every match, unmatch and ignore is recorded in the change log.
 - The **reconciliation** at the top: the balance in the books, less what isn't on a statement yet, should equal the statement's closing balance. A **Difference** of 0.00 means the books and the bank agree. **Mark reconciled** when they do.
+  - It counts what the bank had cleared by the statement's last day: a cheque matched on next month's statement still counts as not presented in this month's reconciliation, so a month already reconciled stays as it was.
+  - A matched line is unmatched before it is matched to something else.
+  - Amounts with a decimal comma (`1.234,50`, `12,50`) are read as they are meant.
+  - A statement whose lines were added to services' offerings can't be deleted (imported again, the same gifts could be added twice).
 
 **Reports**: from posted journals only. Each one can be **Print**ed (with the church's name and the period) or downloaded as Excel, with the period and filters in its title block.
 - **Income and expenditure**: for a period, by fund, optionally for one fund, project or ministry.
@@ -531,11 +535,13 @@ A claim being prepared can be changed or deleted. A submitted claim can be withd
 - Approvers are **people, not a role**: anyone on the member list, with or without a Canon account. Add them under **Book-keeping → Claims → Approvers and settings**.
   - An approver can be limited to some ministries and up to an amount.
   - **Two approvers above** an amount means larger claims need two different people. Leave it empty for one.
+  - An approval counts for the claim as it was submitted. When a claim is sent back and submitted again, or the office moves a waiting claim to another ministry or project, the approvals start again.
+  - An approver signs in with the e-mail address on their member record, so only an administrator or someone who may change the books can change that address.
 - An approver opens the claim from the e-mail or **My claims**, checks each receipt against its line, and then:
   - **Approves** by signing;
   - **Sends it back** with a reason: the claimant changes it and signs again;
   - or **Rejects** it with a reason.
-- **Nobody approves their own claim.** When the person who pays a claim also approved it, Canon allows it but marks the claim **Approver paid**.
+- **Nobody approves or pays their own claim.** When the person who pays a claim also approved it, Canon allows it but marks the claim **Approver paid**.
 
 **The office (Book-keeping → Claims)**
 - **Waiting for approval or payment** lists every claim. Click one to see its receipts, signature and approvals.
@@ -544,6 +550,9 @@ A claim being prepared can be changed or deleted. A submitted claim can be withd
 - **Into the books:**
   - **When a claim is approved**, Canon drafts its expense: Dr each line's expense account / Cr **2100 Claims to repay**. The balance sheet then shows what is owed to claimants.
   - **Paying it:** repay the claimant (e.g. by PayNow), then **Pay…** with the date, the account it was paid from and the reference. Canon drafts (or, with **Record and post**, posts) Dr Claims to repay / Cr the bank. The bank line on the statement is then suggested for it.
+    - The expense comes first: **Record and post** works once the claim's expense is posted. If the expense draft is missing (the claim was approved before the books started, or the draft was deleted), paying drafts it again.
+    - Deleting a claim's payment draft makes it **Approved** again, to pay later.
+  - A member can have up to 20 claims being prepared at once.
   - As for every journal, the treasurer posts both in **Journals**.
 
 **AI assistants and claims**: send Claude photos of your receipts and ask it to make a claim.

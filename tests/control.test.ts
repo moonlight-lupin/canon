@@ -3,7 +3,7 @@
 // launcher and the Windows task don't take it for a crash. (`docker stop` / SIGTERM ends the same way on Linux.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -35,7 +35,7 @@ async function startCanon() {
     if (child.exitCode !== null || Date.now() > deadline) throw new Error(`Canon did not start:\n${out}`);
     await new Promise((r) => setTimeout(r, 100));
   }
-  const file = path.join(root, 'data', 'run', `control-${port}.json`);
+  const file = path.join(tmp, 'run', `control-${port}.json`);
   return { child, port, file, tmp, output: () => out };
 }
 
@@ -50,6 +50,12 @@ test('the tray stops Canon with its token, and nobody else can', async () => {
     const { token, port, pid } = JSON.parse(fs.readFileSync(c.file, 'utf8'));
     assert.equal(port, c.port);
     assert.equal(pid, c.child.pid);
+    if (process.platform === 'win32') {
+      // only Canon's own account may read the token: not "Users", "Everyone" or "Authenticated Users"
+      const acl = execFileSync('icacls', [c.file], { encoding: 'utf8' });
+      assert.doesNotMatch(acl, /BUILTIN\\Users|Everyone|Authenticated Users/i, acl);
+      assert.match(acl, new RegExp(os.userInfo().username, 'i'), acl);
+    }
     const url = `http://127.0.0.1:${c.port}/control/stop`;
     // a wrong token, a GET, a request through a proxy: refused, and Canon keeps running
     assert.equal((await fetch(url, { method: 'POST', headers: { 'X-Canon-Control': 'x'.repeat(64) } })).status, 404);

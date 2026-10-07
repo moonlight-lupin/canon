@@ -12,7 +12,8 @@ Environment variables are optional overrides:
 | `CANON_HOST` | `0.0.0.0` | Interface to listen on. The default lets the office network reach Canon. |
 | `CANON_DB` | `data/canon.db` | The SQLite database file. Archives (`archives/`) and pre-upgrade copies (`pre-upgrade/`) sit next to it. |
 | `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
-| `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*`. Automatic once a public address is set. |
+| `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*` from a proxy on this computer or the local network (Cloudflare Tunnel, Caddy, Docker). Automatic once a public address is set. |
+| `CANON_TEST_COPY` | — | `1` for a test copy of the church's data: no e-mail is sent and Google Drive is left alone; a banner says so. See [DOCKER.md](DOCKER.md#a-test-copy-of-the-churchs-data). |
 
 ### In the background on Windows
 
@@ -23,12 +24,13 @@ Canon can run without a window, starting when the computer starts (before anyone
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 install
    ```
+   If the office account isn't an administrator and an administrator's account approves the prompt, name the office account: `… install -User OFFICE-PC\Office`.
 3. Windows asks for that account's password once, so Canon can run while nobody is signed in. The password goes to Windows only; Canon does not keep it. (An account without a password can't be used; give it one first.)
 4. Close the old "Canon server" window if it is still open. Running both doesn't work: they would want the same port.
 
 What it sets up:
 - a Task Scheduler task **Canon**: at start-up, runs `start-canon.bat` without a window or pauses, as that account; if it fails, it is started again every minute;
-- **Canon** in the Start menu and in the account's Startup folder: the icon by the clock. Windows 11 first puts new icons under **^**; to keep it in view, drag it onto the taskbar, or turn it on in Settings → Personalisation → Taskbar → Other system tray icons.
+- **Canon** in the Start menu and in Startup, for every account on the PC: the icon by the clock. Only the account Canon runs as (and administrators) can start or stop it from the icon; for others it just shows whether Canon is running. Windows 11 first puts new icons under **^**; to keep it in view, drag it onto the taskbar, or turn it on in Settings → Personalisation → Taskbar → Other system tray icons.
 
 The icon: green dot = running, grey = not running. Click it to open Canon. Right-click it for:
 - the address for other computers (click to copy);
@@ -46,7 +48,7 @@ powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 stop       # o
 powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 uninstall  # as administrator: back to start-canon.bat
 ```
 
-What Canon does is written to `data\logs\` as before (`launcher.log` for restarts). Ctrl+C in the window, and `docker stop`, also stop Canon properly now.
+What Canon does is written to `data\logs\` as before (`launcher.log` for restarts). In the background Canon never gives up: after 10 quick restarts it waits five minutes and tries again. Ctrl+C in the window, and `docker stop`, also stop Canon properly now.
 
 ### On a Mac
 

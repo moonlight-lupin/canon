@@ -15,18 +15,21 @@ if (process.env.CANON_LOG !== 'off') {
   startLogFile(path.join(path.dirname(config.dbPath), 'logs'), version);
 }
 
+// Ctrl+C in the window, closing it (SIGBREAK / SIGHUP on Windows), `docker stop` (SIGTERM): stop properly — also
+// while the first start is still setting up (node as Docker's first process ignores signals nobody listens for)
+let server: http.Server | null = null;
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP'] as const) process.on(sig, () => (server ? stop(server, sig) : process.exit(0)));
+
 await seed();
 startBackupScheduler();
 
 const app = createApp();
 // the tray icon's Exit (POST /control/stop from this computer, with the token) is answered before the app sees it
-const server = http.createServer((req, res) => {
-  if (!handleControl(server, req, res)) app(req, res);
+server = http.createServer((req, res) => {
+  if (!handleControl(server!, req, res)) app(req, res);
 });
 server.listen(config.port, config.host, () => {
   writeControlFile();
   console.log(`Canon running on http://localhost:${config.port}`);
   if (publicUrl()) console.log(`Public URL (OAuth / MCP): ${publicUrl()}/mcp`);
 });
-// Ctrl+C in the window, closing it (SIGBREAK / SIGHUP on Windows), `docker stop` (SIGTERM): stop properly
-for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP'] as const) process.on(sig, () => stop(server, sig));
