@@ -20,6 +20,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
 | lending (optional) | `canon_lending` (catalogue; a title's copies; `loans` open / overdue / returned; `isbn` lookup) | `canon_save_book` (titles and copies; not lending / returning) |
 | equipment (optional) | `canon_equipment` (register; `due` maintenance; one item by id or `number`) | `canon_save_equipment` (items; `maintenance` done) |
+| bookkeeping (optional) | `canon_books` (accounts, funds, tags, balances), `canon_books_report` (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger), `canon_books_journals` | `canon_draft_journal` (drafts only — a person posts) |
 | library → sheet music (only when shared) | `canon_sheet_music` (`service_id` or `song_id`; `pictures: true` returns image pages) | — |
 | library (write) | — | `canon_sheet_music_upload_link` (`song_id` or `number` "HP 178"; the user adds pages from a phone) |
 | admin (administrators only, when on) | `canon_admin_overview`, `canon_admin_accounts`, `canon_admin_change_log`, `canon_admin_record_views`, `canon_admin_settings` | `canon_admin_backup_now`, `canon_admin_run_checks` |
@@ -39,6 +40,10 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - References (`ref`, e.g. `EN-001`, `CN-10pmService`): pass one wherever an id goes — `canon_get_service {"id":"EN-2026-12-25"}`, `canon_create_service {"template":"CN-10pmService"}`, `canon_update_service` with `slide_template` / `bulletin_template`; `canon_find_services` `q` matches them. A service template's slide / bulletin templates come with its new services.
 - `canon_get_templates` (`kind`: service | slide | bulletin) lists active templates (archived ones are left out); `church_default: true` marks the template the church normally starts from. A service template's items can carry `stanzas`: the stanzas or catechism questions (e.g. `["1","2","3","4"]`) a service made from it starts with.
 - `canon_bible`: `ref` → passage; `q` → search; neither → installed versions (codes usable in a service's or reading's `bibles`).
+- Book-keeping:
+  - Amounts are in cents. Every line needs an account code and a fund code; read `canon_books` for the codes.
+  - `canon_draft_journal` makes a DRAFT only. Confirm accounts and funds with the user first; the reply lists `problems` that stop posting (debits ≠ credits, a closed period, before the books start).
+  - Never post, reverse or change a posted journal: the treasurer does that in Canon. Verified offerings already arrive as drafts by themselves.
 - Lending library (books, DVDs, curricula lent to members — not the song Library) and asset register: optional modules, off by default. `canon_lending` `q` matches title, author, ISBN or copy number (`B0012`); `loans: "overdue"` for follow-up; `isbn` looks a book up before adding. `canon_save_book`: search first, then add copies to an existing title rather than a duplicate; lending and returns happen in Canon. `canon_equipment` `due: true` = maintenance due within 14 days or overdue; `canon_save_equipment` `maintenance: {what, done_on?, cost?, done_by?}` moves the next date on by `maintenance_every_months`. Photos and receipts are added in Canon.
 
 ## Precedent: past services first

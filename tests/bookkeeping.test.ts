@@ -255,3 +255,21 @@ test('bank statements: the layout found under the bank’s own header lines, mat
   assert.equal(st.reconciliation.uncleared.length, 0, JSON.stringify(st.reconciliation.uncleared));
   assert.equal(st.reconciliation.expected_bank_balance, st.reconciliation.book_balance);
 });
+
+test('AI assistants: read the books by code, draft a journal, never post it', async () => {
+  const { BOOKKEEPING_TOOLS } = await import('../server/mcp-tools/bookkeeping.ts');
+  const tool = (n: string) => BOOKKEEPING_TOOLS.find((t) => t.name === n)!;
+  const mcp = <T,>(fn: () => T) => asActor({ user_id: 1, user_name: 'Claude', via: 'mcp' }, fn);
+  const books = (await mcp(() => tool('canon_books').handler({ as_of: '2030-12-31' }, {} as never))) as Json;
+  assert.equal(books.amounts_in, 'cents');
+  assert.ok(books.accounts.some((a: Json) => a.code === '5500'));
+  const d = (await mcp(() => tool('canon_draft_journal').handler({ date: '2030-11-01', memo: 'Hall rent (fictional)', lines: [{ account: '5500', fund: 'GEN', debit_cents: 12000 }, { account: '1100', fund: 'GEN', credit_cents: 12000 }] }, {} as never))) as Json;
+  assert.equal(d.status, 'draft');
+  assert.deepEqual(d.problems, []);
+  assert.equal(get<{ created_via: string }>('SELECT created_via FROM bk_journals WHERE id = ?', d.id)!.created_via, 'mcp');
+  assert.throws(() => mcp(() => tool('canon_draft_journal').handler({ date: '2030-11-01', lines: [{ account: '9999', fund: 'GEN', debit_cents: 1 }] }, {} as never)), /No account with the code "9999"/);
+  assert.throws(() => mcp(() => B.postJournal(d.id)), /a person posts/);
+  const listed = (await mcp(() => tool('canon_books_journals').handler({ status: 'draft', limit: 50 }, {} as never))) as Json;
+  assert.ok(listed.journals.some((j: Json) => j.id === d.id && j.lines[0].account === '5500'));
+  web(() => B.deleteDraft(d.id));
+});

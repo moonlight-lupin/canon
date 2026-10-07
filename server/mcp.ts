@@ -34,6 +34,7 @@ import { PEOPLE_TOOLS } from './mcp-tools/people.ts';
 import { GROUP_TOOLS } from './mcp-tools/groups.ts';
 import { RECORD_TOOLS } from './mcp-tools/records.ts';
 import { RESOURCE_TOOLS } from './mcp-tools/resources.ts';
+import { BOOKKEEPING_TOOLS } from './mcp-tools/bookkeeping.ts';
 import { SCORE_TOOLS } from './mcp-tools/scores.ts';
 import { ADMIN_TOOLS } from './mcp-tools/admin.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
@@ -118,7 +119,7 @@ const WHOAMI: ToolDef = {
   },
 };
 
-export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...SCORE_TOOLS, ...ADMIN_TOOLS];
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...BOOKKEEPING_TOOLS, ...SCORE_TOOLS, ...ADMIN_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
