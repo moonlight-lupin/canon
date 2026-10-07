@@ -21,6 +21,8 @@ Open <http://localhost:3000> (or `http://<server-name>:3000` from the office net
 
 The container runs as an unprivileged user. On Linux, if backups fail with "permission denied", run `sudo chown 1000:1000 backups` once on the host.
 
+Backups can also go to the church's Google Drive (Settings → Backups → Google Drive). The sign-in uses a code at google.com/device, so it works from the container with no public address or port. The container only needs outbound HTTPS. See the user guide, "Backups to Google Drive".
+
 ## Restoring a backup
 
 The easy way: **Settings → Backups → Restore** (or **Restore from a file…**) while Canon is running. Canon saves a copy of the current data first.

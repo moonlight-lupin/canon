@@ -1,6 +1,7 @@
 // Settings → Backups: back up now, automatic schedule, backup folder, list / download / restore / delete.
 import { dateLocale } from '../../../shared/languages.ts';
 import { StorageCard } from './SecurityTab.tsx';
+import { DriveCard } from './DriveCard.tsx';
 import '../reports.css';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, api, useApi } from '../../api.ts';
@@ -177,6 +178,8 @@ export default function BackupsTab() {
         {check && <div className={`callout small ${check.ok ? 'lapis' : 'warn'}`}>{check.ok ? '✓ ' : ''}{check.message}</div>}
         <div className="row end"><button className="btn primary" onClick={save} disabled={busy || !dirty}>{t('Save')}</button></div>
       </section>
+
+      <DriveCard encrypted={s.encrypted} onCopied={() => st.reload()} />
 
       <section className="card flush">
         <div className="card-head" style={{ padding: '14px 18px 0' }}>

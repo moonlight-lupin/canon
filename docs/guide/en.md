@@ -467,12 +467,78 @@ Claude looks at your past services first: the same Sunday last year, the same se
 
 ## Backups and moving to Docker
 
-- **Back up**: [Settings → Backups](/settings?tab=backups). Press **Back up now**, or turn on **Automatic backups** (daily or weekly; older ones are removed). Set the **Backup folder** to a USB drive or a synced folder (OneDrive, Google Drive) on an account the church controls, and press **Check**. Backups are full copies with personal data — keep them where only the office can open them.
+- **Back up**: [Settings → Backups](/settings?tab=backups). Press **Back up now**, or turn on **Automatic backups** (daily or weekly; older ones are removed). Set the **Backup folder** to a USB drive or a synced folder (OneDrive, Dropbox) on an account the church controls, and press **Check** — or let Canon send each backup to the church's Google Drive itself: see [Backups to Google Drive](#google-drive). Backups are full copies with personal data — keep them where only the office can open them.
 - **Encryption**: on the Backups tab, set a **backup password** (at least 10 characters) and press **Encrypt backups**. From then on every backup, and the archive copies made with it, is encrypted (`.db.enc`), so a lost USB drive or a shared cloud folder doesn't expose members' data. This computer remembers the key: automatic backups need no one, and its own backups restore without the password. On another computer, or for a backup made before you changed the password, Canon asks for the password when you restore. Keep the password with the church's records: without it, an encrypted backup can't be opened by anyone. **Stop encrypting** makes new backups plain copies again. If this computer's key file goes missing or is damaged while encryption is on, backups stop and the tab says so — they are never made unencrypted instead: set the backup password again, or press **Stop encrypting**.
 - **Storage** (top of the Backups tab): how big the database is, what uses the space (Bible texts, pictures, records, logs…), the backups folder, the free space on the drive and how fast Canon grows (measured from one reading a day), with a warning well before space runs out.
 - **Restore**: press **Restore** next to a saved backup, or **Restore from a file…** to use a backup file from this computer (a USB drive, another Canon). Canon first saves a copy of the current data, so a restore can be undone by restoring that copy; changes made since the backup are lost, and you may need to sign in again. If Canon will not start at all, the page also lists the steps to restore by hand.
 - **Updating Canon**: make a backup, close the Canon window, put the new version's files over the old ones (or `git pull`), then start `start-canon.bat` again. It installs and rebuilds what changed. The database is upgraded on the first start, and a copy of it from before the upgrade is kept in `data/pre-upgrade/` (the newest three). If the new version has a problem, that copy lets you go back: see `docs/UPGRADING.md`. An older Canon refuses to open a database that a newer Canon has upgraded, so it cannot damage it. What changed in each version: `CHANGELOG.md`.
 - **Moving to Docker** (a server or NAS): make a backup on the office PC, start Canon on the new machine with `docker compose up -d`, then restore the backup there with **Restore from a file…** (or as described under "Restoring a backup" in `docs/DOCKER.md`). Your IT helper can do this in a few minutes.
+
+### Backups to Google Drive {#google-drive}
+
+Canon can send every backup to a **Canon backups** folder in the church's Google Drive as well, and keep the newest ones there. It works the same on the office PC and in Docker.
+- Canon only sends **encrypted** backups, so set a backup password first (see **Encryption** above). Google never sees the password, so it can't read the backups.
+- Canon can see and delete only the files it puts in that folder, never the rest of the Drive.
+- Canon signs in to Google with your church's **own Google sign-in client**, made once in Google Cloud. That takes about 10 minutes and costs nothing.
+
+Use the church's Google account, not someone's personal one, so the backups stay with the church when people change.
+
+**1. Make a Google Cloud project** (on any computer, once)
+
+1. Open [console.cloud.google.com](https://console.cloud.google.com) and sign in with the church's Google account. If asked, agree to the terms; no payment details are needed.
+2. In the bar at the top, open the project list and press **New project**. Name it, e.g. `Canon backups`, press **Create**, then choose that project in the same list.
+
+**2. Switch on the Google Drive API**
+
+3. In the menu (☰), open **APIs & Services → Library**. Search for **Google Drive API**, open it and press **Enable**.
+
+**3. Describe the sign-in screen**
+
+4. In the menu, open **Google Auth Platform** (in some accounts: **APIs & Services → OAuth consent screen**) and press **Get started**.
+5. **App information**: an app name your people will recognise, e.g. `Canon – Grace Church`, and a support e-mail (the church account). Press **Next**.
+6. **Audience**:
+   - **External** for an ordinary Google account.
+   - **Internal** if the church uses Google Workspace and only its own accounts will connect.
+
+   Press **Next**, give a contact e-mail, tick the agreement, and press **Create**.
+7. **Data Access** (or **Scopes**): press **Add or remove scopes**, type `drive.file` in the filter, tick **…/auth/drive.file** ("See, edit, create and delete only the specific Google Drive files you use with this app"), press **Update**, then **Save**. Add nothing else.
+8. **Audience → Publishing status**: press **Publish app** and confirm, so it is **In production**.
+   - In "Testing", Google ends Canon's sign-in after 7 days, and backups stop until someone connects again.
+   - With only the `drive.file` permission, Google doesn't need to review the app.
+   - With **Internal**, there is no publishing step.
+
+**4. Make the sign-in client**
+
+9. Open **Google Auth Platform → Clients** (or **APIs & Services → Credentials → Create credentials → OAuth client ID**) and press **Create client**.
+10. **Application type: TV and Limited Input devices**. This type lets Canon sign in with a code instead of a web address, which is what makes it work on an office PC or in Docker. Name it `Canon`, then press **Create**.
+11. Copy the **Client ID** (it ends with `.apps.googleusercontent.com`) and the **Client secret** (it usually starts with `GOCSPX-`). Keep them like a password.
+
+**5. Connect Canon**
+
+12. In Canon: [Settings → Backups](/settings?tab=backups). Under **Encryption**, set the backup password if you haven't.
+13. In **Google Drive**, paste the **Client ID** and **Client secret** and press **Save**.
+14. Press **Connect Google Drive**. Canon shows a code such as `ABCD-EFGH` and a link, **google.com/device**.
+15. On any computer or phone, open google.com/device, enter the code, choose the church's Google account and press **Allow**.
+    - Google may say it "hasn't verified this app". That's your church's own app: press **Advanced**, then **Go to…**.
+16. Back in Canon, the card shows **Connected** with the account's e-mail within a few seconds.
+
+**Afterwards**
+
+- **What gets sent:** after every backup (**Back up now** and the automatic ones), Canon sends it to **Canon backups** in that Drive. **Keep the newest in Drive** says how many stay there; older ones are deleted. A backup made with `npm run backup` is sent at the next half-hourly check. The card shows the last upload, or what went wrong.
+- **Send the newest backup now** sends it straight away, e.g. to try the connection.
+- **Backups in Drive** lists them. **Copy to this computer** puts one in **Saved backups**, so you can restore it from there. On another computer, Canon asks for the backup password.
+- **Disconnect** stops the uploads and makes Google forget Canon's access. The backups already in Drive stay. You can also remove access at [myaccount.google.com/connections](https://myaccount.google.com/connections).
+- **Restoring an older backup** keeps the Drive connection, as it keeps the backup folder.
+- **What Canon stores:** the client secret and Google's sign-in token are kept in Canon's database. Keep the office PC and Canon's backups as safe as the Drive itself.
+
+**If something goes wrong**
+
+- *"The Google Drive API is not switched on"*: do step 3, wait a minute, and try again.
+- *"Google does not recognise the Client ID and secret"*: copy them again (step 11). The client type must be **TV and Limited Input devices**; a "Web application" or "Desktop" client doesn't work here.
+- *Backups stop after about a week with "Google ended Canon's access"*: the app is still in Testing. Do step 8, then **Connect Google Drive** again.
+- *The code expired*: you have about 30 minutes to enter it. Press **Connect Google Drive** for a new one.
+- *The Drive is full*: free some space there, or lower **Keep the newest in Drive**.
+- *Someone deleted the "Canon backups" folder*: Canon makes a new one at the next upload.
 
 ## FAQ and troubleshooting
 

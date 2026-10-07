@@ -11,6 +11,7 @@ import { copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archiv
 import { createAllMeetingsAhead } from './services.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 import { decryptFile, encryptFile, isEncrypted, keyForBackup } from '../lib/backup-crypto.ts';
+import { driveMeta, putDriveMeta, syncToDrive } from '../lib/gdrive.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
 // .db.enc: encrypted with the church's backup password (lib/backup-crypto.ts)
@@ -161,6 +162,8 @@ async function restorePlain(file: string, name: string): Promise<{ safety: strin
   // settings that belong to this computer, not to the data: kept as they are
   const here = getSettings();
   const keep = { backup: here.backup, public_url: here.public_url, trust_proxy: here.trust_proxy };
+  // the Google Drive connection belongs to this computer too
+  const drive = driveMeta();
   const safety = createBackup();
   const src = new DatabaseSync(file, { readOnly: true });
   let restored = 0;
@@ -174,6 +177,7 @@ async function restorePlain(file: string, name: string): Promise<{ safety: strin
   migrate();
   clearSettingsCache();
   updateSettings(keep);
+  putDriveMeta(drive);
   // an older backup may still hold visitors' details since erased, or records since archived
   syncArchiveIndex();
   eraseVisitorContacts(getSettings().retention.visitor_contact_months);
@@ -181,6 +185,12 @@ async function restorePlain(file: string, name: string): Promise<{ safety: strin
   setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: name, safety: safety.name }));
   logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${name} (the data before it was saved as ${safety.name})` });
   return { safety: safety.name, restored_schema: restored };
+}
+
+/** The newest backup in the folder when it is encrypted (the only kind sent to Google Drive). */
+export function newestEncrypted(dir = backupDir()): { name: string; path: string } | null {
+  const b = listBackups(dir)[0];
+  return b && b.name.endsWith('.db.enc') ? { name: b.name, path: path.join(dir, b.name) } : null;
 }
 
 /** Save an uploaded backup file into the backup folder (under a backup-style name) and return its path. */
@@ -225,12 +235,19 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
   const tick = () => {
     try {
       const due = nextDue();
-      if (!due || Date.parse(due) > Date.now()) return;
-      const b = createBackup();
-      const removed = prune(getSettings().backup.keep);
-      log(`backup: automatic backup ${b.name}${removed ? `, removed ${removed} old` : ''}`);
+      if (due && Date.parse(due) <= Date.now()) {
+        const b = createBackup();
+        const removed = prune(getSettings().backup.keep);
+        log(`backup: automatic backup ${b.name}${removed ? `, removed ${removed} old` : ''}`);
+      }
     } catch (e) {
       log(`backup: automatic backup failed — ${(e as Error).message}`);
+    }
+    // the newest backup to Google Drive when connected (also one made by `npm run backup` since the last check)
+    try {
+      void syncToDrive(newestEncrypted(), log);
+    } catch {
+      /* the folder can't be read: reported in Settings → Backups */
     }
   };
   // the change log and AI activity log keep only as many months as Settings says

@@ -4,6 +4,15 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.16.1 — Backups to Google Drive
+
+- **Settings → Backups → Google Drive:** Canon can send every backup to a "Canon backups" folder in the church's Google Drive, and keep the newest N there.
+  - **Connecting:** with the church's own Google sign-in client (made once in Google Cloud, about 10 minutes; the user guide walks through every step). You connect by entering a code at google.com/device, so it works the same on an office PC and in Docker, with no public address.
+  - **Safety:** Canon only sends encrypted backups (a backup password is required) and can see only the files it put there.
+  - **Restoring:** **Backups in Drive** lists them, and **Copy to this computer** brings one back to restore as usual.
+  - The connection is kept when an older backup is restored.
+- Database: no change.
+
 ## 0.16.0 — Languages anyone can add, and Chinese converted everywhere
 
 - **Adding a language is a folder, not code.** Each language's words are in `locales/<code>/`:

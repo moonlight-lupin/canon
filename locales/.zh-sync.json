@@ -256,6 +256,10 @@
       "权限",
       "權限"
     ],
+    "Access was not allowed in Google. Press Connect to try again.": [
+      "Google 中未允许访问。请按“连接”再试一次。",
+      "Google 中未允許訪問。請按“連接”再試一次。"
+    ],
     "Accounts": [
       "帐户",
       "帳戶"
@@ -648,6 +652,10 @@
       "也把他们排进事奉表：下一堂聚会，以及一周后其副本（只填空缺）",
       "也把他們排進事奉表：下一堂聚會，以及一週後其副本（只填空缺）"
     ],
+    "Also send every backup to a “Canon backups” folder in the church’s Google Drive, keeping the newest ones. Canon sees only the files it puts there. It uses your church’s own Google sign-in client — the guide shows how to make one (about 10 minutes, once).": [
+      "也把每份备份传到教会 Google 云端硬盘的“Canon backups”文件夹，并保留最新的几份。Canon 只能看到它放进去的文件。它使用教会自己的 Google 登录客户端——指南说明如何建立（只需一次，约 10 分钟）。",
+      "也把每份備份傳到教會 Google 雲端硬盤的“Canon backups”文件夾，並保留最新的幾份。Canon 只能看到它放進去的文件。它使用教會自己的 Google 登錄客戶端——指南說明如何建立（只需一次，約 10 分鐘）。"
+    ],
     "Always printed on the last page. A folded booklet adds its blank pages before it.": [
       "总是印在最后一页。对折小册子的空白页会加在它前面。",
       "總是印在最後一頁。對摺小冊子的空白頁會加在它前面。"
@@ -1011,6 +1019,10 @@
     "Backups contain members’ personal data. Store downloaded copies securely (PDPA).": [
       "备份内含会友的个人资料。下载的副本请安全保存（个人资料保护法）。",
       "備份內含會友的個人資料。下載的副本請安全保存（個人資料保護法）。"
+    ],
+    "Backups in Drive": [
+      "云端硬盘中的备份",
+      "雲端硬盤中的備份"
     ],
     "Bank transfer": [
       "银行转账",
@@ -1628,6 +1640,14 @@
       "客户端",
       "客戶端"
     ],
+    "Client ID": [
+      "客户端 ID",
+      "客戶端 ID"
+    ],
+    "Client secret": [
+      "客户端密钥",
+      "客戶端密鑰"
+    ],
     "Close": [
       "关闭",
       "關閉"
@@ -1752,6 +1772,10 @@
       "各堂",
       "各堂"
     ],
+    "Connect Google Drive": [
+      "连接 Google 云端硬盘",
+      "連接 Google 雲端硬盤"
+    ],
     "Connected": [
       "连接时间",
       "連接時間"
@@ -1759,6 +1783,10 @@
     "Connected agents": [
       "已连接的 AI",
       "已連接的 AI"
+    ],
+    "Connected to": [
+      "已连接到",
+      "已連接到"
     ],
     "Connector URL": [
       "连接器网址",
@@ -1808,6 +1836,10 @@
       "继续",
       "繼續"
     ],
+    "Copied to this computer: it is in Saved backups, to restore from there.": [
+      "已复制到这台电脑：它在“已保存的备份”中，可从那里还原。",
+      "已複製到這臺電腦：它在“已保存的備份”中，可從那裡還原。"
+    ],
     "Copied.": [
       "已复制。",
       "已複製。"
@@ -1820,6 +1852,10 @@
       "复制",
       "複製"
     ],
+    "Copy it into Saved backups on this computer; restore it from there.": [
+      "复制到这台电脑的“已保存的备份”，再从那里还原。",
+      "複製到這臺電腦的“已保存的備份”，再從那裡還原。"
+    ],
     "Copy made — you can edit it now.": [
       "已复制，现在可以修改副本。",
       "已複製，現在可以修改副本。"
@@ -1831,6 +1867,10 @@
     "Copy the backup file into “data” and rename it to canon.db (replace the old one).": [
       "把备份文件复制到「data」，改名为 canon.db（取代旧文件）。",
       "把備份文件複製到「data」，改名為 canon.db（取代舊文件）。"
+    ],
+    "Copy to this computer": [
+      "复制到这台电脑",
+      "複製到這臺電腦"
     ],
     "Copyright": [
       "版权",
@@ -2248,6 +2288,14 @@
       "已舍弃。",
       "已捨棄。"
     ],
+    "Disconnect": [
+      "中断连接",
+      "中斷連接"
+    ],
+    "Disconnect Google Drive? Canon stops sending backups there; the backups already in Drive stay.": [
+      "要中断与 Google 云端硬盘的连接吗？Canon 将不再传送备份；已在云端硬盘的备份会保留。",
+      "要中斷與 Google 雲端硬盤的連接嗎？Canon 將不再傳送備份；已在雲端硬盤的備份會保留。"
+    ],
     "Disk encryption": [
       "磁盘加密",
       "磁盤加密"
@@ -2547,6 +2595,10 @@
     "End time": [
       "结束时间",
       "結束時間"
+    ],
+    "Ends with .apps.googleusercontent.com": [
+      "以 .apps.googleusercontent.com 结尾",
+      "以 .apps.googleusercontent.com 結尾"
     ],
     "English": [
       "英文",
@@ -2967,6 +3019,22 @@
     "Good morning": [
       "早上好",
       "早上好"
+    ],
+    "Google Drive": [
+      "Google 云端硬盘",
+      "Google 雲端硬盤"
+    ],
+    "Google Drive disconnected.": [
+      "已中断与 Google 云端硬盘的连接。",
+      "已中斷與 Google 雲端硬盤的連接。"
+    ],
+    "Google client": [
+      "Google 客户端",
+      "Google 客戶端"
+    ],
+    "Google client saved.": [
+      "Google 客户端已保存。",
+      "Google 客戶端已保存。"
     ],
     "Grace and peace": [
       "恩惠平安",
@@ -3408,10 +3476,6 @@
       "Instagram",
       "Instagram"
     ],
-    "Interface available in this language": [
-      "此语言有界面翻译",
-      "此語言有界面翻譯"
-    ],
     "Introduction (optional)": [
       "引言（可选）",
       "引言（可選）"
@@ -3467,6 +3531,10 @@
     "Keep the newest": [
       "保留最新的",
       "保留最新的"
+    ],
+    "Keep the newest in Drive": [
+      "在云端硬盘保留最新的",
+      "在雲端硬盤保留最新的"
     ],
     "Keep the old cover": [
       "保留原来的封面",
@@ -3559,6 +3627,10 @@
     "Last sent": [
       "上次发送",
       "上次發送"
+    ],
+    "Last sent: {file}, {when}.": [
+      "最近传送：{file}，{when}。",
+      "最近傳送：{file}，{when}。"
     ],
     "Last served": [
       "上次事奉",
@@ -4308,6 +4380,10 @@
       "没有封底：最后一个部分就是次序单的结尾。",
       "沒有封底：最後一個部分就是次序單的結尾。"
     ],
+    "No backups in Drive yet.": [
+      "云端硬盘中还没有备份。",
+      "雲端硬盤中還沒有備份。"
+    ],
     "No backups yet. Press Back up now.": [
       "还没有备份。请按「立即备份」。",
       "還沒有備份。請按「立即備份」。"
@@ -4591,6 +4667,10 @@
     "Not checked yet.": [
       "尚未检查。",
       "尚未檢查。"
+    ],
+    "Not connected": [
+      "未连接",
+      "未連接"
     ],
     "Not encrypted": [
       "未加密",
@@ -4876,6 +4956,10 @@
       "较旧的备份会自动删除。",
       "較舊的備份會自動刪除。"
     ],
+    "Older backups in Canon’s Drive folder are deleted after each upload.": [
+      "每次上传后，Canon 云端硬盘文件夹中较旧的备份会被删除。",
+      "每次上傳後，Canon 雲端硬盤文件夾中較舊的備份會被刪除。"
+    ],
     "Older entries are deleted once a day.": [
       "较旧的记录每天删除一次。",
       "較舊的記錄每天刪除一次。"
@@ -4887,6 +4971,10 @@
     "On a part-used sheet": [
       "用于部分用过的贴纸",
       "用於部分用過的貼紙"
+    ],
+    "On any computer or phone, open": [
+      "在任何电脑或手机上打开",
+      "在任何電腦或手機上打開"
     ],
     "On loan": [
       "借出中",
@@ -6364,6 +6452,10 @@
       "发送测试",
       "發送測試"
     ],
+    "Send the newest backup now": [
+      "立即传送最新备份",
+      "立即傳送最新備份"
+    ],
     "Send to": [
       "发送给",
       "發送給"
@@ -6391,6 +6483,10 @@
     "Sent by": [
       "发送者",
       "發送者"
+    ],
+    "Sent to Google Drive.": [
+      "已传送到 Google 云端硬盘。",
+      "已傳送到 Google 雲端硬盤。"
     ],
     "Serial number": [
       "序号",
@@ -6519,6 +6615,10 @@
     "Set Canon up: link to your own member record": [
       "设置 Canon 的人：请连结到自己的会友资料",
       "設置 Canon 的人：請連結到自己的會友資料"
+    ],
+    "Set a backup password first (Encryption, above): Canon only sends encrypted backups to Google Drive.": [
+      "请先设定备份密码（见上方“加密”）：Canon 只会把加密的备份传到 Google 云端硬盘。",
+      "請先設定備份密碼（見上方“加密”）：Canon 只會把加密的備份傳到 Google 雲端硬盤。"
     ],
     "Set as church default": [
       "设为教会默认",
@@ -6731,6 +6831,10 @@
     "Sign in to Canon when asked and approve the access.": [
       "按提示登入 Canon 并批准授权。",
       "按提示登入 Canon 並批准授權。"
+    ],
+    "Sign in with the church’s Google account and allow access. This page notices by itself.": [
+      "用教会的 Google 帐户登录并允许访问。这个页面会自动更新。",
+      "用教會的 Google 帳戶登錄並允許訪問。這個頁面會自動更新。"
     ],
     "Sign or clear the pad before finishing.": [
       "完成前请先签名或清除签名板。",
@@ -7244,6 +7348,10 @@
       "教会的礼堂、房间和其他地方。可在聚会、聚会活动或日历活动中选择场地：同一场地在同一时间被预订时，两边都会显示提醒；报表 → 场地会列出重复预订和未来几周的预订。",
       "教會的禮堂、房間和其他地方。可在聚會、聚會活動或日曆活動中選擇場地：同一場地在同一時間被預訂時，兩邊都會顯示提醒；報表 → 場地會列出重複預訂和未來幾週的預訂。"
     ],
+    "The code expired. Press Connect for a new one.": [
+      "验证码已过期。请按“连接”取得新的验证码。",
+      "驗證碼已過期。請按“連接”取得新的驗證碼。"
+    ],
     "The coming meetings already exist.": [
       "接下来的聚会已经建立了。",
       "接下來的聚會已經建立了。"
@@ -7303,6 +7411,10 @@
     "The largest size words may have. Long texts still shrink to fit.": [
       "文字的最大字号；较长的内容仍会缩小以放得下。",
       "文字的最大字號；較長的內容仍會縮小以放得下。"
+    ],
+    "The last upload failed ({when}): {error}": [
+      "最近一次上传失败（{when}）：{error}",
+      "最近一次上傳失敗（{when}）：{error}"
     ],
     "The lending library is on and its rules are saved": [
       "图书馆已开启并已保存借阅规则",
@@ -8364,6 +8476,10 @@
       "你的恢复码",
       "你的恢復碼"
     ],
+    "a Google account": [
+      "一个 Google 帐户",
+      "一個 Google 帳戶"
+    ],
     "active groups": [
       "个活跃群组",
       "個活躍群組"
@@ -8379,6 +8495,10 @@
     "all day": [
       "全天",
       "全天"
+    ],
+    "and enter this code:": [
+      "并输入这个验证码：",
+      "並輸入這個驗證碼："
     ],
     "automatic when a public address is set": [
       "设定公开网址后自动启用",
@@ -9086,8 +9206,8 @@
     ]
   },
   "guide": [
-    "ce9a487bbc2befcd",
-    "9b25ff6b57afe962"
+    "5ef2612ddc83cdcd",
+    "f795dfe80b7b5e98"
   ],
   "outputs": {
     "Advent": [

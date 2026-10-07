@@ -44,6 +44,20 @@ Add the password after the file for a backup from another computer or made befor
 
 Archive files are copied with every backup. To restore by hand, or to update Canon and go back, see [UPGRADING.md](UPGRADING.md). For Docker, see [DOCKER.md](DOCKER.md).
 
+### Google Drive
+
+Canon can also send each encrypted backup to the church's Google Drive. Setup is in the user guide, under "Backups to Google Drive" (Help → Guide in Canon, or `docs/guide/en.md#google-drive`). In short:
+- **Google's side:** the church makes its own Google Cloud project with the Google Drive API on, and an OAuth client of type **TV and Limited Input devices**. The app should be published **In production**, because a Testing app's sign-in expires after 7 days.
+- **Canon's side:** the client goes into Settings → Backups → Google Drive, and someone connects with a code at google.com/device. There's no redirect URI, so this works behind NAT and in Docker.
+
+How it works:
+- **Permission:** the scope is `drive.file`. Canon can see and delete only the files it created, in a "Canon backups" folder.
+- **What is sent:** only `.db.enc` backups. The newest N are kept there.
+- **When:** uploads happen in the server after **Back up now** and automatic backups. A backup made with `npm run backup` (which does not load Canon) is sent at the next half-hourly check.
+- **Restores:** the connection is kept across restores, like the backup folder.
+- **What is stored:** the client secret and Google's refresh token are in the database (settings key `_gdrive`).
+- **Network:** Canon needs outbound HTTPS to `oauth2.googleapis.com` and `www.googleapis.com`.
+
 ## Connecting Claude (MCP)
 
 1. **Settings → AI / MCP:** enable the server and choose each module's access. By default, members are hidden and contact details are redacted.

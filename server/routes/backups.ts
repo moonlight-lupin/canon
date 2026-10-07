@@ -5,11 +5,15 @@ import { z } from 'zod';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import {
   DEFAULT_BACKUP_DIR, backupDir, backupPath, checkBackupFile, checkFolder, createBackup, deleteBackup, lastBackupAt, lastRestore, listBackups, nextDue, prune,
-  restoreBackup, saveUpload, withPlainBackup,
+  newestEncrypted, restoreBackup, saveUpload, withPlainBackup,
 } from '../repo/backups.ts';
+import path from 'node:path';
 import { isAdmin } from '../lib/permissions.ts';
 import { backupKeyState, clearBackupPassword, setBackupPassword } from '../lib/backup-crypto.ts';
 import { logChange } from '../repo/changelog.ts';
+import {
+  DriveError, disconnectDrive, downloadFromDrive, driveStatus, listDriveBackups, pollDriveConnect, setDriveClient, setDriveKeep, startDriveConnect, syncToDrive,
+} from '../lib/gdrive.ts';
 
 export const backupRoutes = express.Router();
 
@@ -42,6 +46,8 @@ backupRoutes.post('/backups', adminOnly, (_req, res, next) => {
     if (problem) return res.status(400).json({ error: problem });
     const b = createBackup();
     const removed = prune(getSettings().backup.keep);
+    // to Google Drive in the background when connected (the result shows in Settings → Backups)
+    if (b.name.endsWith('.db.enc')) void syncToDrive({ name: b.name, path: b.path });
     res.json({ created: b.name, size: b.size, removed, ...status() });
   } catch (e) {
     next(e);
@@ -139,3 +145,58 @@ backupRoutes.delete('/backups/:name', adminOnly, (req, res) => {
   if (!deleteBackup(String(req.params.name))) return res.status(404).json({ error: 'Backup not found' });
   res.json(status());
 });
+
+// ---------------------------------------------------------------- Google Drive (0.16.1)
+
+const drive = (fn: (req: Request) => unknown) => async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await fn(req));
+  } catch (e) {
+    if (e instanceof DriveError) return res.status(e.status).json({ error: e.message });
+    if (e instanceof TypeError && /fetch/i.test(e.message)) return res.status(502).json({ error: 'Canon could not reach Google. Check this computer’s internet connection.' });
+    next(e);
+  }
+};
+
+backupRoutes.get('/backups/drive', adminOnly, drive(() => driveStatus()));
+backupRoutes.put('/backups/drive/client', adminOnly, drive((req) => {
+  const b = z.object({ client_id: z.string().max(200), client_secret: z.string().max(200) }).parse(req.body);
+  setDriveClient(b.client_id, b.client_secret);
+  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: 'Google Drive: the church’s Google client was set' });
+  return driveStatus();
+}));
+backupRoutes.put('/backups/drive/settings', adminOnly, drive((req) => {
+  setDriveKeep(z.object({ keep: z.number().int().min(1).max(365) }).parse(req.body).keep);
+  return driveStatus();
+}));
+backupRoutes.post('/backups/drive/connect', adminOnly, drive(() => startDriveConnect()));
+backupRoutes.post('/backups/drive/connect/poll', adminOnly, drive(async () => {
+  const r = await pollDriveConnect();
+  if (r.state === 'connected') logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Google Drive connected${r.email ? ` (${r.email})` : ''}` });
+  return { ...r, status: driveStatus() };
+}));
+// (not DELETE /backups/drive: DELETE /backups/:name above deletes a backup file)
+backupRoutes.post('/backups/drive/disconnect', adminOnly, drive(async () => {
+  await disconnectDrive();
+  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: 'Google Drive disconnected' });
+  return driveStatus();
+}));
+/** Send the newest backup now (even if it was sent before), and keep the newest N there. */
+backupRoutes.post('/backups/drive/upload', adminOnly, drive(async () => {
+  const b = newestEncrypted();
+  if (!b) throw new DriveError('There is no encrypted backup to send yet. Set a backup password, then press Back up now.');
+  const before = driveStatus();
+  if (!before.connected) throw new DriveError('Google Drive is not connected.');
+  await syncToDrive({ ...b, name: b.name }, () => undefined);
+  const after = driveStatus();
+  if (after.last && !after.last.ok) throw new DriveError(after.last.error ?? 'The upload did not finish.');
+  return after;
+}));
+backupRoutes.get('/backups/drive/files', adminOnly, drive(async () => ({ files: await listDriveBackups() })));
+/** Copy a backup from Drive into this computer's backup folder; restore it from the list as usual. */
+backupRoutes.post('/backups/drive/files/:id/copy', adminOnly, drive(async (req) => {
+  const f = await downloadFromDrive(String(req.params.id));
+  const file = saveUpload(f.data);
+  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Copied ${f.name} from Google Drive to this computer` });
+  return { copied: path.basename(file), from: f.name, ...status() };
+}));
