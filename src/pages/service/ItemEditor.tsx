@@ -20,9 +20,11 @@ import { BibleSelect, useBibles, useChurchBible } from '../../components/BibleTo
 import { KIND_LABEL, KINDS } from './common.ts';
 
 export function ItemEditor({
-  item, langs, songs, texts, teams, canEdit, onPatch, onDelete, onMove, isFirst, isLast, svcBibles,
+  item, langs, songs, texts, teams, canEdit, onPatch, onDelete, onMove, isFirst, isLast, svcBibles, rostered = '',
 }: {
   svcBibles?: Record<Lang, string>;
+  /** who is on the rota for the item's role (they are printed, not the name typed in Leader) */
+  rostered?: string;
   item: ServiceItem; langs: Lang[]; songs: Map<number, Song>; texts: Map<number, LiturgyText>; teams: TeamWithRoles[];
   canEdit: boolean; onPatch: (p: Partial<ServiceItem>, immediate?: boolean) => void; onDelete: () => void;
   onMove: (delta: number) => void; isFirst: boolean; isLast: boolean;
@@ -52,8 +54,13 @@ export function ItemEditor({
                   onChange={(v) => onPatch({ role_id: v ? Number(v) : null }, true)}
                 />
               </Field>
-              <Field label={t('Leader')}>
-                <input value={item.leader ?? ''} placeholder={item.role_id ? '(from roster)' : ''} onChange={(e) => onPatch({ leader: e.target.value || null })} />
+              <Field
+                label={t('Leader')}
+                hint={rostered && item.leader?.trim() && item.leader.trim() !== rostered
+                  ? <span className="warn-text">{t('The rota has {names} for this role, so they are printed, not the name typed here. To print this name, clear Role.').replace('{names}', rostered)}</span>
+                  : undefined}
+              >
+                <input value={item.leader ?? ''} placeholder={rostered || (item.role_id ? t('(from the rota)') : '')} onChange={(e) => onPatch({ leader: e.target.value || null })} />
               </Field>
               <PostureField value={item.posture ?? null} langs={langs} onChange={(p) => onPatch({ posture: p }, true)} />
             </>

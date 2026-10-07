@@ -222,14 +222,17 @@ export default function ServiceEditor() {
     if (it.kind === 'sermon') return svc.sermon_title.en || svc.sermon_title.zh ? svc.sermon_title : { en: svc.sermon_ref ?? '' };
     return {};
   };
+  // the same rule as the bulletin, slides and run sheet: who is on the rota for the item's role, else the name typed
+  // in Leader, else (a sermon) the preacher; with nobody at all, the role's name as a reminder
+  const rostered = (it: ServiceItem) =>
+    it.role_id ? svc.assignments.filter((a) => a.role_id === it.role_id && a.status !== 'declined').map((a) => a.person_name).join(', ') : '';
   const leaderOf = (it: ServiceItem) => {
-    if (it.role_id) {
-      const names = svc.assignments.filter((a) => a.role_id === it.role_id && a.status !== 'declined').map((a) => a.person_name);
-      if (names.length) return names.join(', ');
-      const r = roleMap.get(it.role_id);
-      return r ? lt(r.name) : null;
-    }
-    return it.leader || (it.kind === 'sermon' ? svc.preacher : null);
+    const names = rostered(it);
+    if (names) return names;
+    const typed = it.leader || (it.kind === 'sermon' ? svc.preacher : null);
+    if (typed) return typed;
+    const r = it.role_id ? roleMap.get(it.role_id) : undefined;
+    return r ? lt(r.name) : null;
   };
 
   const emailTeam = () => {
@@ -362,6 +365,7 @@ export default function ServiceEditor() {
                                 item={it}
                                 langs={langs}
                                 svcBibles={svc.bibles}
+                                rostered={rostered(it)}
                                 songs={songMap}
                                 texts={textMap}
                                 teams={teams ?? []}

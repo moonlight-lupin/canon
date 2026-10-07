@@ -24,6 +24,9 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
   const churchLangs = [...new Set([...useContentLangs(), ...svc.languages])];
   const churchBible = useChurchBible();
   const [d, setD] = useState(svc);
+  // who the rota has for the sermon item's role (the order of service prints them rather than the Preacher typed here)
+  const sermonRoles = new Set(svc.items.filter((it) => it.kind === 'sermon' && it.role_id).map((it) => it.role_id));
+  const sermonRota = [...new Set(svc.assignments.filter((a) => sermonRoles.has(a.role_id) && a.status !== 'declined').map((a) => a.person_name))].join(', ');
   const set = <K extends keyof ServiceFull>(k: K, v: ServiceFull[K]) => setD((x) => ({ ...x, [k]: v }));
   const toggleLang = (l: Lang) => {
     const has = d.languages.includes(l);
@@ -37,7 +40,11 @@ export function DetailsCard({ svc, onSave, canEdit }: { svc: ServiceFull; onSave
         <div className="form-grid">
           <Field label={t('Date')}><input type="date" value={d.date} onChange={(e) => set('date', e.target.value)} /></Field>
           <Field label={t('Start time')}><input type="time" value={d.start_time} onChange={(e) => set('start_time', e.target.value)} /></Field>
-          <Field label={t('Preacher')}><input value={d.preacher ?? ''} onChange={(e) => set('preacher', e.target.value)} /></Field>
+          <Field label={t('Preacher')} hint={sermonRota && d.preacher?.trim() && d.preacher.trim() !== sermonRota
+            ? <span className="warn-text">{t('The rota has {names} for the sermon, so the order of service shows them, not this name.').replace('{names}', sermonRota)}</span>
+            : undefined}>
+            <input value={d.preacher ?? ''} placeholder={sermonRota} onChange={(e) => set('preacher', e.target.value)} />
+          </Field>
           <Field label={t('Sermon text')}><input value={d.sermon_ref ?? ''} placeholder="Isaiah 6:1-8" onChange={(e) => set('sermon_ref', e.target.value)} /></Field>
           <Field label={<>{t('Reference')} <InfoTip text={t('Your own short code for this service, e.g. EN-2026-12-25: letters, digits and - _ . without spaces. People and AI assistants can then name it.')} /></>}>
             <input value={d.ref ?? ''} maxLength={40} onChange={(e) => set('ref', e.target.value.replace(/\s+/g, '') || null)} />

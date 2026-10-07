@@ -123,7 +123,7 @@ The [Calendar](/calendar) shows services, meetings and the church's other events
 - **Liturgy**: choose the text. For a catechism, type the **Questions**, e.g. `1-3` or `Q4-6`; **Next block** moves on to the next questions.
 - **Posture**: stand (众立) or sit (众坐) prints on the bulletin.
 - **In bulletin**: **Template default**, **Full text**, **Title only** or **Hidden**. **On slides** includes or leaves out the item.
-- **Role** fills the leader from the roster; **Leader** is free text.
+- **Role** fills the leader from the rota; **Leader** is free text. When the rota has someone for the item's role, they are the ones printed (bulletin, slides, run sheet, share pages) and shown in the order — a name typed in **Leader** is used only when nobody is on the rota for that role (or the item has no role), and a note under **Leader** says so. Likewise the service's **Preacher** gives way to whoever the rota has for the sermon's role.
 - **QR codes & notes on slides** adds a QR code or a short note to the item's slides.
 - **Slide background** puts a picture behind this item's slides only (for example bread and cup for the Lord's Supper), instead of the slide template's background. Choose from **Library → Slide backgrounds** (type to search). The picture is faded with the template's background colour so the words stay readable, and it is used in the PowerPoint download too.
 
