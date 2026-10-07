@@ -1,10 +1,11 @@
 // Volunteer reminder e-mails (sent manually by an editor for one service), test e-mails and the e-mail log.
 // PDPA: addresses go only to the SMTP server; the log keeps who/when/subject/result, never the message body.
 import type { L10n, Lang } from '../../shared/types.ts';
-import { isChinese, langInfo } from '../../shared/languages.ts';
+import { isCJK, isChinese, langInfo } from '../../shared/languages.ts';
 import { all, get, run } from '../db.ts';
 import { NotFound } from '../lib/table.ts';
-import { pick, toTraditional } from '../lib/chinese.ts';
+import { pick } from '../lib/chinese.ts';
+import { st } from '../lib/server-text.ts';
 import { MailError, isFatal, mapMailError, sendMail, smtpConfigured, smtpFingerprint } from '../lib/mailer.ts';
 import { getSettings, setMeta } from './settings.ts';
 import { services, items as serviceItems, itemTimes } from './services.ts';
@@ -31,60 +32,29 @@ interface Words {
   at: string;
 }
 
-const WORDS: Record<string, Words> = {
-  en: {
-    subject: 'Serving reminder: {title}, {date}',
-    greeting: 'Dear {name},',
-    intro: 'Thank you for serving. This is a reminder that you are on the rota for:',
-    role: 'Your role',
-    roles: 'Your roles',
-    items: 'Items you lead',
-    note: 'Please arrive 30 minutes early.',
-    share: 'Order of service',
-    closing: 'If you are no longer able to serve, please let us know as soon as possible.',
-    signoff: 'Grace and peace,',
-    test_subject: 'Canon test e-mail',
-    test_body: 'This is a test message from Canon. If you can read it, e-mail is set up correctly.',
-    colon: ': ',
-    at: ', ',
-  },
-  zh: {
-    subject: '服事提醒：{title}（{date}）',
-    greeting: '{name} 平安！',
-    intro: '感谢您的摆上。提醒您已被安排在以下聚会中服事：',
-    role: '您的岗位',
-    roles: '您的岗位',
-    items: '您负责的程序',
-    note: '请提早 30 分钟到达。',
-    share: '聚会程序',
-    closing: '如果您无法服事，请尽早通知我们。',
-    signoff: '主内平安，',
-    test_subject: 'Canon 测试邮件',
-    test_body: '这是 Canon 发出的测试邮件。若您能读到这封邮件，表示电邮设定正确。',
-    colon: '：',
-    at: ' ',
-  },
-  ms: {
-    subject: 'Peringatan pelayanan: {title}, {date}',
-    greeting: '{name} yang dikasihi,',
-    intro: 'Terima kasih kerana melayani. Ini peringatan bahawa anda dijadualkan untuk:',
-    role: 'Peranan anda',
-    roles: 'Peranan anda',
-    items: 'Bahagian yang anda pimpin',
-    note: 'Sila tiba 30 minit lebih awal.',
-    share: 'Aturan kebaktian',
-    closing: 'Jika anda tidak dapat melayani lagi, sila maklumkan kepada kami secepat mungkin.',
-    signoff: 'Kasih karunia dan damai sejahtera,',
-    test_subject: 'E-mel ujian Canon',
-    test_body: 'Ini ialah mesej ujian daripada Canon. Jika anda dapat membacanya, e-mel telah disediakan dengan betul.',
-    colon: ': ',
-    at: ', ',
-  },
+// the English wording; other languages are in locales/<code>/server.json (server/lib/server-text.ts)
+const WORDS_EN: Words = {
+  subject: 'Serving reminder: {title}, {date}',
+  greeting: 'Dear {name},',
+  intro: 'Thank you for serving. This is a reminder that you are on the rota for:',
+  role: 'Your role',
+  roles: 'Your roles',
+  items: 'Items you lead',
+  note: 'Please arrive 30 minutes early.',
+  share: 'Order of service',
+  closing: 'If you are no longer able to serve, please let us know as soon as possible.',
+  signoff: 'Grace and peace,',
+  test_subject: 'Canon test e-mail',
+  test_body: 'This is a test message from Canon. If you can read it, e-mail is set up correctly.',
+  colon: ': ',
+  at: ', ',
 };
 
 function words(lang: Lang): Words {
-  if (lang === 'zh-Hant') return Object.fromEntries(Object.entries(WORDS.zh).map(([k, v]) => [k, toTraditional(v)])) as unknown as Words;
-  return WORDS[lang] ?? WORDS.en;
+  const w = Object.fromEntries(Object.entries(WORDS_EN).map(([k, v]) => [k, st(v, lang)])) as unknown as Words;
+  // punctuation follows the script: "：" after a label in Chinese, Japanese, Korean
+  const cjk = isCJK(lang);
+  return { ...w, colon: cjk ? '：' : ': ', at: cjk ? ' ' : ', ' };
 }
 
 /** Default arrival note per church language (shown in the dialog as the placeholder). */
@@ -92,7 +62,7 @@ export function defaultNotes(): L10n {
   return Object.fromEntries(getSettings().languages.map((l) => [l, words(l).note]));
 }
 
-const GENERIC_TITLE: L10n = { en: 'Worship service', zh: '聚会', ms: 'Kebaktian' };
+const GENERIC_TITLE = 'Worship service';
 
 /** A value in `lang`, else English, else anything. */
 function pickAny(v: L10n | null | undefined, lang: Lang): string {
@@ -221,14 +191,14 @@ interface Content {
 
 /** Plain-text and HTML reminder in one or more languages. */
 export function renderReminder(c: Content): { subject: string; text: string; html: string } {
-  const st = getSettings();
+  const settings = getSettings();
   const subjects: string[] = [];
   const texts: string[] = [];
   const htmls: string[] = [];
   for (const lang of c.langs) {
     const w = words(lang);
-    const title = pickAny(c.svc.title, lang) || pickAny(GENERIC_TITLE, lang);
-    const church = pickAny(st.church_name, lang);
+    const title = pickAny(c.svc.title, lang) || st(GENERIC_TITLE, lang);
+    const church = pickAny(settings.church_name, lang);
     const when = `${fmtDate(c.svc.date, lang)}${w.at}${c.svc.start_time}`;
     const roleLines = c.roles.map((r) => {
       const team = pickAny(r.team, lang);
@@ -248,7 +218,7 @@ export function renderReminder(c: Content): { subject: string; text: string; htm
     if (note) t.push('', note);
     if (c.svc.share_url) t.push('', `${w.share}${w.colon}${c.svc.share_url}`);
     t.push('', w.closing, '', w.signoff, church);
-    if (st.church_contact.trim()) t.push(st.church_contact.trim());
+    if (settings.church_contact.trim()) t.push(settings.church_contact.trim());
     texts.push(t.join('\n'));
 
     const font = langInfo(lang).cjk ? `Georgia,'Songti SC','SimSun',serif` : `Georgia,'Times New Roman',serif`;
@@ -274,7 +244,7 @@ export function renderReminder(c: Content): { subject: string; text: string; htm
     }
     h.push(`<p style="margin:0 0 12px">${esc(w.closing)}</p>`);
     h.push(`<p style="margin:0">${esc(w.signoff)}<br><strong>${esc(church)}</strong>`
-      + (st.church_contact.trim() ? `<br><span style="color:#4A5262;font-size:14px">${esc(st.church_contact.trim())}</span>` : '') + '</p>');
+      + (settings.church_contact.trim() ? `<br><span style="color:#4A5262;font-size:14px">${esc(settings.church_contact.trim())}</span>` : '') + '</p>');
     h.push('</div>');
     htmls.push(h.join(''));
   }

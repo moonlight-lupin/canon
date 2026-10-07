@@ -206,3 +206,14 @@ test('"Which describes you best?": one of the church\'s answers, sensitive, coun
   await call(as.admin, 'PUT', '/visitor-form-settings', { abouts: [] });
   assert.ok(!(await (await fetch(`${base}/v/${token}`)).text()).includes('about_choice'));
 });
+
+test('0.16.0: a Traditional Chinese service gets the form in Traditional, the church\'s Simplified wording converted', async () => {
+  const s2 = svc.createService({ date: new Date().toISOString().slice(0, 10), languages: ['zh-Hant', 'en'] }).service.id;
+  const t2 = (await call(as.editor, 'PUT', `/services/${s2}/visitor-form`, { enabled: true })).body.token as string;
+  await call(as.admin, 'PUT', '/visitor-form-settings', { sources: [{ en: 'A friend or family member invited me', zh: '亲友邀请' }] });
+  const html = await (await fetch(`${base}/v/${t2}`)).text();
+  assert.match(html, /<html lang="zh-Hant">/);
+  assert.ok(html.includes('您的姓名') && html.includes('Your name'), 'the label in Traditional (same characters here), English below');
+  assert.ok(html.includes('親友邀請'), 'the church’s answer, kept in Simplified, shows converted: 亲友邀请 → 親友邀請');
+  assert.ok(!html.includes('亲友邀请'), 'not the Simplified');
+});

@@ -2,6 +2,7 @@
 //   ui.json       the interface: English phrase → translation (only what is translated; the rest stays English)
 //   outputs.json  what is printed in this language in bulletins, slides and exports (section headings, "Leader" /
 //                 "People", "Refrain", seasons …): English wording (locales/en/outputs.json) → translation
+//   server.json   what the server writes in this language: e-mails, the visitor form, the sign-in page for AI apps
 //   meta.json     optional: { "fallback": "id" } — a language to use for phrases this one lacks, before English
 // The user guide is docs/guide/<code>.md. `npm run i18n` (this file, via scripts/i18n.ts):
 //   - keeps Simplified and Traditional Chinese in step both ways: edit either; the other follows (what was written
@@ -40,12 +41,13 @@ export function localeCodes(): string[] {
 }
 export const readUi = (code: string): Dict => readJson<Dict>(path.join(LOCALES, code, 'ui.json'), {});
 export const readOutputs = (code: string): Dict => readJson<Dict>(path.join(LOCALES, code, 'outputs.json'), {});
+export const readServer = (code: string): Dict => readJson<Dict>(path.join(LOCALES, code, 'server.json'), {});
 /** Languages with an interface translation (locales/<code>/ui.json). */
 export const uiCodes = () => localeCodes().filter((c) => fs.existsSync(path.join(LOCALES, c, 'ui.json')));
 
 // ---------------------------------------------------------------- Simplified ⇄ Traditional
 
-export interface ZhSyncState { ui: Record<string, [string, string]>; outputs?: Record<string, [string, string]>; guide?: [string, string] }
+export interface ZhSyncState { ui: Record<string, [string, string]>; outputs?: Record<string, [string, string]>; server?: Record<string, [string, string]>; guide?: [string, string] }
 
 /**
  * One phrase kept in step: `prev` is the pair as last synced. Whichever side changed since then is converted into
@@ -126,6 +128,23 @@ export function literalPhrases(dirs = ['src', 'shared']): Set<string> {
   return found;
 }
 
+/** English phrases the server asks for as st('…'), plus the English wording tables it passes to st (any string in
+ *  server/ that some translation has). */
+export function serverPhrases(used = codeStrings(['server'])): string[] {
+  const found = new Set<string>();
+  const walk = (d: string) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      // only files that use the lookup (server/lib/server-text.ts); others may have an st() of their own
+      else if (/\.ts$/.test(e.name) && /server-text\.ts'/.test(fs.readFileSync(p, 'utf8'))) for (const m of fs.readFileSync(p, 'utf8').matchAll(/\bst\(\s*'((?:\\.|[^'\\])*)'/g)) found.add(m[1].replace(/\\'/g, "'"));
+    }
+  };
+  walk(path.join(ROOT, 'server'));
+  for (const c of localeCodes()) for (const k of Object.keys(readServer(c))) if (used.has(k)) found.add(k);
+  return [...found].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
 /** Every phrase anywhere in the code as a string (to tell a translation that is no longer used). */
 export function codeStrings(dirs = ['src', 'shared', 'server']): Set<string> {
   const found = new Set<string>();
@@ -185,6 +204,11 @@ export function plan(): Plan {
     files.set(path.join(LOCALES, 'zh/outputs.json'), json(o.zh));
     files.set(path.join(LOCALES, 'zh-Hant/outputs.json'), json(o.hant));
     state.outputs = o.state;
+    // and the server's wording
+    const sv = syncChineseDicts(readServer('zh'), readServer('zh-Hant'), state.server ?? {});
+    files.set(path.join(LOCALES, 'zh/server.json'), json(sv.zh));
+    files.set(path.join(LOCALES, 'zh-Hant/server.json'), json(sv.hant));
+    state.server = sv.state;
     files.set(SYNC_STATE, json(state));
   }
 
@@ -250,5 +274,14 @@ export function check(code: string, catalogue: string[], used = codeStrings()) {
   // a translation may only use the placeholders its English wording has; a date may also use {d} {m} {mon} in any order
   const allowed = (k: string) => new Set([...placeholders(k).split(' '), ...(k.includes('{d}') ? ['{d}', '{m}', '{mon}'] : [])].filter(Boolean));
   const badOutputPlaceholders = Object.entries(o).filter(([k, v]) => k in en && placeholders(v).split(' ').some((x) => x && !allowed(k).has(x))).map(([k]) => k);
-  return { missing, unused, badPlaceholders: [...badPlaceholders, ...badOutputPlaceholders.map((k) => `outputs: ${k}`)], missingOutputs, unknownOutputs };
+  // the server's wording
+  const sp = serverPhrases();
+  const sv = readServer(code);
+  const missingServer = sp.filter((k) => !sv[k]?.trim());
+  const unknownServer = Object.keys(sv).filter((k) => !sp.includes(k));
+  const badServerPlaceholders = Object.entries(sv).filter(([k, v]) => v.trim() && placeholders(k) !== placeholders(v)).map(([k]) => `server: ${k}`);
+  return {
+    missing, unused, missingOutputs, unknownOutputs, missingServer, unknownServer,
+    badPlaceholders: [...badPlaceholders, ...badOutputPlaceholders.map((k) => `outputs: ${k}`), ...badServerPlaceholders],
+  };
 }

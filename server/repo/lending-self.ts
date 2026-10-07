@@ -5,6 +5,7 @@
 // Gates: self-service only runs while every gate passes — e-mail works (a test e-mail succeeded with the current
 // settings and nothing has failed since), the public https address reaches this very Canon, the library is on and its
 // rules were saved. A gate that breaks pauses it (phones are told to see the librarian); fixing it resumes it.
+import { st } from '../lib/server-text.ts';
 import crypto from 'node:crypto';
 import type { Lang } from '../../shared/types.ts';
 import { all, get, run } from '../db.ts';
@@ -12,7 +13,6 @@ import { BadRequest, NotFound } from '../lib/table.ts';
 import { publicUrl } from '../lib/public-url.ts';
 import { pingAnswer, signToken, verifyToken, hmac } from '../lib/instance.ts';
 import { sendMail, smtpHealth } from '../lib/mailer.ts';
-import { toTraditional } from '../lib/chinese.ts';
 import { getSettings } from './settings.ts';
 import { esc, logEmail, messageLangs, wrapHtml } from './email.ts';
 import * as L from './lending.ts';
@@ -103,12 +103,9 @@ function personByEmail(email: string): Who | null {
   return rows.length === 1 ? rows[0] : null;
 }
 
-const CODE_WORDS: Record<string, { subject: string; body: string; ignore: string }> = {
-  en: { subject: 'Your code for the church library: {code}', body: 'Your code for the church library is {code}. It works for 10 minutes.', ignore: 'If you didn\'t ask for it, you can ignore this e-mail.' },
-  zh: { subject: '教会图书馆验证码：{code}', body: '您的教会图书馆验证码是 {code}，10 分钟内有效。', ignore: '如果您没有申请，请忽略这封电邮。' },
-  ms: { subject: 'Kod anda untuk perpustakaan gereja: {code}', body: 'Kod anda untuk perpustakaan gereja ialah {code}. Sah selama 10 minit.', ignore: 'Jika anda tidak memintanya, abaikan e-mel ini.' },
-};
-const codeWords = (l: Lang) => (l === 'zh-Hant' ? Object.fromEntries(Object.entries(CODE_WORDS.zh).map(([k, v]) => [k, toTraditional(v)])) as typeof CODE_WORDS.en : CODE_WORDS[l] ?? CODE_WORDS.en);
+// the English wording; other languages are in locales/<code>/server.json (server/lib/server-text.ts)
+const CODE_WORDS_EN = { subject: 'Your code for the church library: {code}', body: 'Your code for the church library is {code}. It works for 10 minutes.', ignore: 'If you didn\'t ask for it, you can ignore this e-mail.' };
+const codeWords = (l: Lang) => Object.fromEntries(Object.entries(CODE_WORDS_EN).map(([k, v]) => [k, st(v, l)])) as typeof CODE_WORDS_EN;
 
 /** E-mail a code to the member with this address. Says nothing about whether the address is on the register. */
 export async function requestCode(email: string): Promise<void> {

@@ -254,7 +254,16 @@ test('consent page, CSRF, deny and allow', async () => {
   assert.match(html, /claude\.ai/);
   assert.match(html, /not been verified/);
   assert.match(html, /Members register/);
-  assert.match(html, /会友名册/);
+  // 0.16.0: in the signed-in person's language (this administrator reads English) …
+  assert.doesNotMatch(html, /会友名册/);
+  // … and for someone who reads Traditional Chinese, converted from the Simplified wording, English underneath
+  const { run: sql } = await import('../server/db.ts');
+  sql("UPDATE users SET lang = 'zh-Hant' WHERE username = 'admin'");
+  const zh = await (await fetch(`${base}/oauth/authorize?${authzParams(client.client_id, challenge)}`, { redirect: 'manual', headers: { Cookie: admin.cookie } })).text();
+  sql("UPDATE users SET lang = 'en' WHERE username = 'admin'");
+  assert.match(zh, /會友名冊/);
+  assert.match(zh, /Members register/);
+  assert.match(zh, /<html lang="zh-Hant">/);
   assert.match(html, /Pastor Admin/);
   assert.match(html, /Settings → AI \/ MCP/);
   assert.ok(html.includes(admin.csrf), 'csrf embedded');

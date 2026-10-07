@@ -23,6 +23,8 @@ COPY --from=build /app/dist ./dist
 COPY server ./server
 COPY shared ./shared
 COPY scripts ./scripts
+# translations: e-mails, the visitor form and the AI sign-in page read locales/<code>/server.json at run time
+COPY locales ./locales
 # The agent handbook and user guide are served to MCP clients as resources (canon://guide/*).
 COPY docs ./docs
 # Run as the unprivileged "node" user; data and backups are writable volumes.

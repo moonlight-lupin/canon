@@ -2,10 +2,11 @@
 // is overdue (then once a week). Sent each day with Canon's daily housekeeping when the library is switched on, its
 // rules say so and e-mail is set up; the librarian can also send them now. One message per borrower and kind, in
 // their language; logged in the e-mail log.
+import { st } from '../lib/server-text.ts';
 import { renewUrl } from './lending-self.ts';
 import type { L10n, Lang } from '../../shared/types.ts';
 import { all, run } from '../db.ts';
-import { pick, toTraditional } from '../lib/chinese.ts';
+import { pick } from '../lib/chinese.ts';
 import { isFatal, mapMailError, sendMail, smtpConfigured } from '../lib/mailer.ts';
 import { getSettings } from './settings.ts';
 import { esc, logEmail, messageLangs, wrapHtml } from './email.ts';
@@ -14,44 +15,19 @@ import { addDays, localToday } from './lending.ts';
 type Kind = 'loan_due' | 'loan_overdue';
 
 interface Words { due_subject: string; overdue_subject: string; greeting: string; due_intro: string; overdue_intro: string; due: string; renew: string; renew_link: string; signoff: string }
-const WORDS: Record<string, Words> = {
-  en: {
-    due_subject: 'Library reminder: due back on {date}',
-    overdue_subject: 'Library reminder: overdue since {date}',
-    greeting: 'Dear {name},',
-    due_intro: 'This is a reminder that what you borrowed from the church library is due back soon:',
-    overdue_intro: 'What you borrowed from the church library is now overdue. Please bring it back as soon as you can:',
-    due: 'due {date}',
-    renew: 'If you need it for longer, ask the librarian to renew it.',
-    renew_link: 'Renew online',
-    signoff: 'Thank you,',
-  },
-  zh: {
-    due_subject: '图书馆提醒：请于 {date} 前归还',
-    overdue_subject: '图书馆提醒：已于 {date} 逾期',
-    greeting: '{name} 平安！',
-    due_intro: '提醒您，您向教会图书馆借阅的物品即将到期：',
-    overdue_intro: '您向教会图书馆借阅的物品已经逾期，请尽快归还：',
-    due: '{date} 到期',
-    renew: '如需延长借期，请联络图书管理员续借。',
-    renew_link: '在线续借',
-    signoff: '谢谢！',
-  },
-  ms: {
-    due_subject: 'Peringatan perpustakaan: perlu dipulangkan pada {date}',
-    overdue_subject: 'Peringatan perpustakaan: lewat sejak {date}',
-    greeting: '{name} yang dikasihi,',
-    due_intro: 'Ini peringatan bahawa barang yang anda pinjam dari perpustakaan gereja perlu dipulangkan tidak lama lagi:',
-    overdue_intro: 'Barang yang anda pinjam dari perpustakaan gereja sudah lewat. Sila pulangkan secepat mungkin:',
-    due: 'perlu dipulangkan {date}',
-    renew: 'Jika anda perlukannya lebih lama, minta pustakawan untuk melanjutkannya.',
-    renew_link: 'Lanjutkan dalam talian',
-    signoff: 'Terima kasih,',
-  },
+// the English wording; other languages are in locales/<code>/server.json (server/lib/server-text.ts)
+const WORDS_EN: Words = {
+  due_subject: 'Library reminder: due back on {date}',
+  overdue_subject: 'Library reminder: overdue since {date}',
+  greeting: 'Dear {name},',
+  due_intro: 'This is a reminder that what you borrowed from the church library is due back soon:',
+  overdue_intro: 'What you borrowed from the church library is now overdue. Please bring it back as soon as you can:',
+  due: 'due {date}',
+  renew: 'If you need it for longer, ask the librarian to renew it.',
+  renew_link: 'Renew online',
+  signoff: 'Thank you,',
 };
-const words = (lang: Lang): Words => (lang === 'zh-Hant'
-  ? Object.fromEntries(Object.entries(WORDS.zh).map(([k, v]) => [k, toTraditional(v)])) as unknown as Words
-  : WORDS[lang] ?? WORDS.en);
+const words = (lang: Lang): Words => Object.fromEntries(Object.entries(WORDS_EN).map(([k, v]) => [k, st(v, lang)])) as unknown as Words;
 
 interface Due {
   loan_id: number;

@@ -8978,5 +8978,347 @@
       "在手机上看这份次序单",
       "在手機上看這份次序單"
     ]
+  },
+  "server": {
+    "AI access is turned off": [
+      "AI 访问已关闭",
+      "AI 訪問已關閉"
+    ],
+    "Access will be sent to": [
+      "授权将发送至",
+      "授權將發送至"
+    ],
+    "Administration (checklist, backups, accounts, logs)": [
+      "管理（检查表、备份、帐户、记录）",
+      "管理（檢查表、備份、帳戶、記錄）"
+    ],
+    "Allow": [
+      "允许",
+      "允許"
+    ],
+    "An administrator controls these levels in Settings → AI / MCP; changes apply immediately, and access can be revoked there at any time.": [
+      "管理员可在“设置 → AI / MCP”中调整以上权限（即时生效），并可随时撤销此授权。",
+      "管理員可在“設置 → AI / MCP”中調整以上權限（即時生效），並可隨時撤銷此授權。"
+    ],
+    "Asset register": [
+      "资产登记",
+      "資產登記"
+    ],
+    "Authorization error": [
+      "授权错误",
+      "授權錯誤"
+    ],
+    "Canon test e-mail": [
+      "Canon 测试邮件",
+      "Canon 測試郵件"
+    ],
+    "Co-workers register": [
+      "同工名册",
+      "同工名冊"
+    ],
+    "Connect an AI app to Canon": [
+      "授权 AI 应用连接 Canon",
+      "授權 AI 應用連接 Canon"
+    ],
+    "Connecting AI apps (MCP) is currently disabled for this Canon installation. An administrator can enable it in Settings → AI / MCP.": [
+      "此 Canon 系统目前未开放 AI 应用（MCP）连接。管理员可在“设置 → AI / MCP”中开启。",
+      "此 Canon 系統目前未開放 AI 應用（MCP）連接。管理員可在“設置 → AI / MCP”中開啟。"
+    ],
+    "Create and change data in modules set to “Read & edit”": [
+      "在设为“读写”的模块中新增和修改资料",
+      "在設為“讀寫”的模塊中新增和修改資料"
+    ],
+    "Dear {name},": [
+      "{name} 平安！",
+      "{name} 平安！"
+    ],
+    "Deny": [
+      "拒绝",
+      "拒絕"
+    ],
+    "Grace and peace,": [
+      "主内平安，",
+      "主內平安，"
+    ],
+    "Groups & committees": [
+      "小组与委员会",
+      "小組與委員會"
+    ],
+    "Hidden": [
+      "隐藏",
+      "隱藏"
+    ],
+    "How did you hear about us? (optional)": [
+      "您怎样知道这个聚会？（可不填）",
+      "您怎樣知道這個聚會？（可不填）"
+    ],
+    "I would like someone from the church to contact me": [
+      "我希望教会有人与我联络",
+      "我希望教會有人與我聯絡"
+    ],
+    "If you are no longer able to serve, please let us know as soon as possible.": [
+      "如果您无法服事，请尽早通知我们。",
+      "如果您無法服事，請儘早通知我們。"
+    ],
+    "If you didn't ask for it, you can ignore this e-mail.": [
+      "如果您没有申请，请忽略这封电邮。",
+      "如果您沒有申請，請忽略這封電郵。"
+    ],
+    "If you need it for longer, ask the librarian to renew it.": [
+      "如需延长借期，请联络图书管理员续借。",
+      "如需延長借期，請聯絡圖書管理員續借。"
+    ],
+    "It will be able to": [
+      "它将能够",
+      "它將能夠"
+    ],
+    "Items you lead": [
+      "您负责的程序",
+      "您負責的程序"
+    ],
+    "Lending library": [
+      "图书馆",
+      "圖書館"
+    ],
+    "Library reminder: due back on {date}": [
+      "图书馆提醒：请于 {date} 前归还",
+      "圖書館提醒：請於 {date} 前歸還"
+    ],
+    "Library reminder: overdue since {date}": [
+      "图书馆提醒：已于 {date} 逾期",
+      "圖書館提醒：已於 {date} 逾期"
+    ],
+    "Limited to read only for this connection.": [
+      "此连接仅限只读。",
+      "此連接僅限只讀。"
+    ],
+    "Member contact details, addresses & birthdays": [
+      "会友联系资料、地址与生日",
+      "會友聯繫資料、地址與生日"
+    ],
+    "Members register": [
+      "会友名册",
+      "會友名冊"
+    ],
+    "Modules currently exposed": [
+      "当前开放的模块",
+      "當前開放的模塊"
+    ],
+    "Names & follow-up": [
+      "姓名与跟进",
+      "姓名與跟進"
+    ],
+    "New visitors": [
+      "新朋友",
+      "新朋友"
+    ],
+    "Offerings and cash counts": [
+      "奉献与现金点算",
+      "奉獻與現金點算"
+    ],
+    "Order of service": [
+      "聚会程序",
+      "聚會程序"
+    ],
+    "Other": [
+      "其他",
+      "其他"
+    ],
+    "Phone or e-mail (optional)": [
+      "电话或电邮（可不填）",
+      "電話或電郵（可不填）"
+    ],
+    "Please arrive 30 minutes early.": [
+      "请提早 30 分钟到达。",
+      "請提早 30 分鐘到達。"
+    ],
+    "Please check the form and send it again.": [
+      "请检查表格后再提交一次。",
+      "請檢查表格後再提交一次。"
+    ],
+    "Please tell us": [
+      "请说明",
+      "請說明"
+    ],
+    "Please tick the box to agree, or leave your contact details and prayer request empty.": [
+      "请勾选同意，或不要填写联络资料和代祷事项。",
+      "請勾選同意，或不要填寫聯絡資料和代禱事項。"
+    ],
+    "Please write your name.": [
+      "请填写您的姓名。",
+      "請填寫您的姓名。"
+    ],
+    "Prayer request (optional)": [
+      "代祷事项（可不填）",
+      "代禱事項（可不填）"
+    ],
+    "Read & edit": [
+      "读写",
+      "讀寫"
+    ],
+    "Read only": [
+      "只读",
+      "只讀"
+    ],
+    "Renew online": [
+      "在线续借",
+      "在線續借"
+    ],
+    "Send": [
+      "提交",
+      "提交"
+    ],
+    "Service planner": [
+      "聚会程序",
+      "聚會程序"
+    ],
+    "Service records (attendance, visitors, notes)": [
+      "聚会记录（出席、新朋友、备注）",
+      "聚會記錄（出席、新朋友、備註）"
+    ],
+    "Service templates": [
+      "聚会模板",
+      "聚會模板"
+    ],
+    "Serving reminder: {title}, {date}": [
+      "服事提醒：{title}（{date}）",
+      "服事提醒：{title}（{date}）"
+    ],
+    "Shared": [
+      "提供",
+      "提供"
+    ],
+    "Signed in as": [
+      "当前登录",
+      "當前登錄"
+    ],
+    "Someone from the church will read this soon.": [
+      "教会同工会尽快查看。",
+      "教會同工會盡快查看。"
+    ],
+    "Song & liturgy library": [
+      "诗歌与礼文库",
+      "詩歌與禮文庫"
+    ],
+    "Thank you for serving. This is a reminder that you are on the rota for:": [
+      "感谢您的摆上。提醒您已被安排在以下聚会中服事：",
+      "感謝您的擺上。提醒您已被安排在以下聚會中服事："
+    ],
+    "Thank you! We are glad you came.": [
+      "谢谢您！很高兴您来参加聚会。",
+      "謝謝您！很高興您來參加聚會。"
+    ],
+    "Thank you,": [
+      "谢谢！",
+      "謝謝！"
+    ],
+    "The application below is asking to access Canon on your behalf.": [
+      "以下应用请求代表您访问 Canon。",
+      "以下應用請求代表您訪問 Canon。"
+    ],
+    "The form has expired or was not submitted from Canon. Please start again.": [
+      "表单已过期或并非由 Canon 提交，请重新开始。",
+      "表單已過期或並非由 Canon 提交，請重新開始。"
+    ],
+    "The redirect address does not match the one registered for this application.": [
+      "回传地址与该应用注册的地址不符。",
+      "回傳地址與該應用註冊的地址不符。"
+    ],
+    "The request could not be read.": [
+      "无法读取请求。",
+      "無法讀取請求。"
+    ],
+    "This form is closed. Please speak to someone at the welcome desk.": [
+      "这份表格已经关闭，请向招待处的同工查询。",
+      "這份表格已經關閉，請向招待處的同工查詢。"
+    ],
+    "This form is not available.": [
+      "这份表格无法使用。",
+      "這份表格無法使用。"
+    ],
+    "This is a reminder that what you borrowed from the church library is due back soon:": [
+      "提醒您，您向教会图书馆借阅的物品即将到期：",
+      "提醒您，您向教會圖書館借閱的物品即將到期："
+    ],
+    "This is a test message from Canon. If you can read it, e-mail is set up correctly.": [
+      "这是 Canon 发出的测试邮件。若您能读到这封邮件，表示电邮设定正确。",
+      "這是 Canon 發出的測試郵件。若您能讀到這封郵件，表示電郵設定正確。"
+    ],
+    "This name was supplied by the application itself and has not been verified. Check where access will be sent below.": [
+      "此名称由应用自行提供，未经验证。请核对下方的回传地址。",
+      "此名稱由應用自行提供，未經驗證。請核對下方的回傳地址。"
+    ],
+    "Too many entries from here just now. Please try again in a few minutes.": [
+      "刚才从这里提交的次数太多，请几分钟后再试。",
+      "剛才從這裡提交的次數太多，請幾分鐘後再試。"
+    ],
+    "Unknown application (client_id).": [
+      "未知的应用（client_id）。",
+      "未知的應用（client_id）。"
+    ],
+    "View Canon data in the modules listed below": [
+      "查看以下所列模块中的资料",
+      "查看以下所列模塊中的資料"
+    ],
+    "Volunteer rota": [
+      "义工轮值",
+      "義工輪值"
+    ],
+    "What you borrowed from the church library is now overdue. Please bring it back as soon as you can:": [
+      "您向教会图书馆借阅的物品已经逾期，请尽快归还：",
+      "您向教會圖書館借閱的物品已經逾期，請儘快歸還："
+    ],
+    "Which describes you best? (optional)": [
+      "哪一项最适合形容您？（可不填）",
+      "哪一項最適合形容您？（可不填）"
+    ],
+    "With contact details": [
+      "含联络资料",
+      "含聯絡資料"
+    ],
+    "Worship service": [
+      "聚会",
+      "聚會"
+    ],
+    "You can close this window.": [
+      "您可以关闭此窗口。",
+      "您可以關閉此窗口。"
+    ],
+    "Your code for the church library is {code}. It works for 10 minutes.": [
+      "您的教会图书馆验证码是 {code}，10 分钟内有效。",
+      "您的教會圖書館驗證碼是 {code}，10 分鐘內有效。"
+    ],
+    "Your code for the church library: {code}": [
+      "教会图书馆验证码：{code}",
+      "教會圖書館驗證碼：{code}"
+    ],
+    "Your name": [
+      "您的姓名",
+      "您的姓名"
+    ],
+    "Your role": [
+      "您的岗位",
+      "您的崗位"
+    ],
+    "Your roles": [
+      "您的岗位",
+      "您的崗位"
+    ],
+    "administrator": [
+      "管理员",
+      "管理員"
+    ],
+    "due {date}": [
+      "{date} 到期",
+      "{date} 到期"
+    ],
+    "editor": [
+      "编辑",
+      "編輯"
+    ],
+    "viewer": [
+      "只读用户",
+      "只讀用戶"
+    ]
   }
 }

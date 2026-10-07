@@ -68,7 +68,10 @@ for (const code of arg ? [arg] : localeCodes()) {
   const r = check(code, p.catalogue, used);
   const hasUi = code in p.coverage;
   const ui = hasUi ? `interface ${Math.round(p.coverage[code] * 100)} % (${r.missing.length} to translate, ${r.unused.length} no longer used)` : 'no interface translation';
-  console.log(`\n${code}: ${ui}; printed labels ${r.missingOutputs.length ? `${r.missingOutputs.length} to translate` : 'complete'}; ${r.badPlaceholders.length} with placeholders that don't match`);
+  const part = (n: number) => (n ? `${n} to translate` : 'complete');
+  console.log(`\n${code}: ${ui}; printed labels ${part(r.missingOutputs.length)}; e-mails and public pages ${part(r.missingServer.length)}; ${r.badPlaceholders.length} with placeholders that don't match`);
+  if (arg) for (const k of r.missingServer) console.log(`  server wording to translate: ${JSON.stringify(k)}`);
+  for (const k of r.unknownServer) console.log(`  server wording no longer used: ${JSON.stringify(k)}`);
   if (arg && hasUi) for (const k of r.missing.slice(0, 40)) console.log(`  to translate: ${JSON.stringify(k)}`);
   if (arg && hasUi && r.missing.length > 40) console.log(`  … and ${r.missing.length - 40} more`);
   if (arg) for (const k of r.missingOutputs) console.log(`  printed label to translate: ${JSON.stringify(k)}`);

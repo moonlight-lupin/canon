@@ -3,6 +3,8 @@
 // goes to the review queue (visitor cards). Protection: a link that cannot be guessed, a short open window around
 // the service, a hidden trap field, a signed time stamp (too fast or too old is refused), per-address limits, small
 // field limits, and a strict Content-Security-Policy.
+import { langInfo } from '../../shared/languages.ts';
+import { st, contentIn } from '../lib/server-text.ts';
 import crypto from 'node:crypto';
 import express, { type Request, type Response } from 'express';
 import { CARD_LIMITS } from '../../shared/visitor-form.ts';
@@ -38,38 +40,46 @@ export const resetVisitorFormLimits = () => hits.clear();
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-type Words = Record<string, { en: string; zh: string }>;
-const W: Words = {
-  name: { en: 'Your name', zh: '您的姓名' },
-  contact: { en: 'Phone or e-mail (optional)', zh: '电话或电邮（可不填）' },
-  source: { en: 'How did you hear about us? (optional)', zh: '您怎样知道这个聚会？（可不填）' },
-  other: { en: 'Other', zh: '其他' },
-  about: { en: 'Which describes you best? (optional)', zh: '哪一项最适合形容您？（可不填）' },
-  otherBox: { en: 'Please tell us', zh: '请说明' },
-  wants: { en: 'I would like someone from the church to contact me', zh: '我希望教会有人与我联络' },
-  prayer: { en: 'Prayer request (optional)', zh: '代祷事项（可不填）' },
-  send: { en: 'Send', zh: '提交' },
-  thanks: { en: 'Thank you! We are glad you came.', zh: '谢谢您！很高兴您来参加聚会。' },
-  thanks2: { en: 'Someone from the church will read this soon.', zh: '教会同工会尽快查看。' },
-  closed: { en: 'This form is closed. Please speak to someone at the welcome desk.', zh: '这份表格已经关闭，请向招待处的同工查询。' },
-  gone: { en: 'This form is not available.', zh: '这份表格无法使用。' },
-  slow: { en: 'Too many entries from here just now. Please try again in a few minutes.', zh: '刚才从这里提交的次数太多，请几分钟后再试。' },
-  again: { en: 'Please check the form and send it again.', zh: '请检查表格后再提交一次。' },
-  needName: { en: 'Please write your name.', zh: '请填写您的姓名。' },
-  needConsent: { en: 'Please tick the box to agree, or leave your contact details and prayer request empty.', zh: '请勾选同意，或不要填写联络资料和代祷事项。' },
+// the English wording; other languages are in locales/<code>/server.json (server/lib/server-text.ts)
+const W = {
+  name: 'Your name',
+  contact: 'Phone or e-mail (optional)',
+  source: 'How did you hear about us? (optional)',
+  other: 'Other',
+  about: 'Which describes you best? (optional)',
+  otherBox: 'Please tell us',
+  wants: 'I would like someone from the church to contact me',
+  prayer: 'Prayer request (optional)',
+  send: 'Send',
+  thanks: 'Thank you! We are glad you came.',
+  thanks2: 'Someone from the church will read this soon.',
+  closed: 'This form is closed. Please speak to someone at the welcome desk.',
+  gone: 'This form is not available.',
+  slow: 'Too many entries from here just now. Please try again in a few minutes.',
+  again: 'Please check the form and send it again.',
+  needName: 'Please write your name.',
+  needConsent: 'Please tick the box to agree, or leave your contact details and prayer request empty.',
+} as const;
+
+// the service's languages for a page: every language but English first (the visitors' own), English last, so
+// a Chinese, Malay … service reads in its language with English underneath
+const order = (langs: string[]) => {
+  const L = [...new Set(langs.length ? langs : ['en'])];
+  return [...L.filter((l) => l !== 'en'), ...L.filter((l) => l === 'en')];
+};
+const stack = (lines: string[]) => {
+  const u = [...new Set(lines.filter(Boolean))];
+  return u.map((x, i) => (i ? `<span class="en">${esc(x)}</span>` : esc(x))).join('<br>');
 };
 
-/** Labels in the service's languages: Chinese first when the service has it, with English below. */
+/** A label in the service's languages: the first plainly, the others smaller below. */
 function say(k: keyof typeof W, langs: string[]): string {
-  const w = W[k];
-  const zh = langs.some((l) => l === 'zh' || l.startsWith('zh-'));
-  const en = langs.includes('en') || !zh;
-  return [zh ? w.zh : '', en ? w.en : ''].filter(Boolean).map(esc).join('<br><span class="en">') + (zh && en ? '</span>' : '');
+  return stack(order(langs).map((l) => st(W[k], l)));
 }
+/** The church's own text (welcome, options, church name) in the service's languages, Chinese converted as needed. */
 const pickL10n = (v: L10n, langs: string[]) => {
-  const zh = langs.some((l) => l.startsWith('zh')) ? v.zh ?? v['zh-Hant'] : '';
-  const en = langs.includes('en') || !zh ? v.en : '';
-  return [zh, en].filter(Boolean).map(esc).join('<br>');
+  const lines = order(langs).map((l) => contentIn(v, l));
+  return stack(lines.some(Boolean) ? lines : [contentIn(v, 'en') || Object.values(v).find((x) => x?.trim()) || '']);
 };
 
 const CSS = `*{box-sizing:border-box}body{margin:0;font:17px/1.5 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f3eee2;color:#1e2430}
@@ -97,8 +107,8 @@ function page(res: Response, status: number, langs: string[], body: string) {
   res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.send(
-    `<!doctype html><html lang="${langs.some((l) => l.startsWith('zh')) ? 'zh' : 'en'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<meta name="robots" content="noindex,nofollow"><title>${esc(s.church_name.en || s.church_name.zh || 'Church')}</title><style>${CSS}</style></head><body><main>` +
+    `<!doctype html><html lang="${langInfo(order(langs)[0]).htmlLang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<meta name="robots" content="noindex,nofollow"><title>${esc(contentIn(s.church_name, order(langs)[0]) || s.church_name.en || 'Church')}</title><style>${CSS}</style></head><body><main>` +
     `<div class="church">${get('SELECT 1 FROM assets WHERE key = ?', 'logo') ? '<img src="/api/assets/logo" alt="">' : ''}<h1>${name}</h1></div><div class="card">${body}</div></main></body></html>`,
   );
 }
@@ -153,25 +163,25 @@ function formHtml(token: string, svc: ReturnType<typeof serviceByFormToken>, err
 const ipOf = (req: Request) => req.ip ?? req.socket.remoteAddress ?? '?';
 
 visitorFormRouter.get('/v/:token', (req, res) => {
-  if (getSettings().modules.visitor_form === false) return page(res, 404, ['en', 'zh'], `<p class="done">${say('gone', ['en', 'zh'])}</p>`);
+  if (getSettings().modules.visitor_form === false) return page(res, 404, getSettings().languages, `<p class="done">${say('gone', getSettings().languages)}</p>`);
   let svc: ReturnType<typeof serviceByFormToken>;
   try {
     svc = serviceByFormToken(req.params.token);
   } catch {
-    return page(res, 404, ['en', 'zh'], `<p class="done">${say('gone', ['en', 'zh'])}</p>`);
+    return page(res, 404, getSettings().languages, `<p class="done">${say('gone', getSettings().languages)}</p>`);
   }
   if (!formOpen(svc.date)) return page(res, 410, svc.languages, `<p class="done">${say('closed', svc.languages)}</p>`);
   page(res, 200, svc.languages, formHtml(req.params.token, svc));
 });
 
 visitorFormRouter.post('/v/:token', express.urlencoded({ extended: false, limit: '8kb', parameterLimit: 20 }), (req, res) => {
-  if (getSettings().modules.visitor_form === false) return page(res, 404, ['en', 'zh'], `<p class="done">${say('gone', ['en', 'zh'])}</p>`);
+  if (getSettings().modules.visitor_form === false) return page(res, 404, getSettings().languages, `<p class="done">${say('gone', getSettings().languages)}</p>`);
   const token = req.params.token;
   let svc: ReturnType<typeof serviceByFormToken>;
   try {
     svc = serviceByFormToken(token);
   } catch {
-    return page(res, 404, ['en', 'zh'], `<p class="done">${say('gone', ['en', 'zh'])}</p>`);
+    return page(res, 404, getSettings().languages, `<p class="done">${say('gone', getSettings().languages)}</p>`);
   }
   const L = svc.languages;
   const b = (req.body ?? {}) as Record<string, string>;

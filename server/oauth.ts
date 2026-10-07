@@ -199,14 +199,14 @@ function redirectWith(res: Response, redirectUri: string, params: Record<string,
 function validateAuthz(req: Request, res: Response, p: Params, role: Role | null): ValidAuthz | null {
   const client = getClient(p.client_id);
   if (!client) {
-    errorPage(res, 400, 'Unknown application (client_id).', '未知的应用（client_id）。');
+    errorPage(res, 400, 'Unknown application (client_id).');
     return null;
   }
   const registered = clientRedirects(client);
   let redirect_uri = str(p.redirect_uri);
   if (!redirect_uri && registered.length === 1) redirect_uri = registered[0];
   if (!redirect_uri || !registered.includes(redirect_uri)) {
-    errorPage(res, 400, 'The redirect address does not match the one registered for this application.', '回传地址与该应用注册的地址不符。');
+    errorPage(res, 400, 'The redirect address does not match the one registered for this application.');
     return null;
   }
   const state = str(p.state) ?? null;
@@ -377,7 +377,7 @@ oauthRouter.post('/oauth/authorize', express.urlencoded({ extended: false, limit
     return res.redirect(303, `/login?next=${encodeURIComponent(`/oauth/authorize?${q}`)}`);
   }
   if (typeof p.csrf !== 'string' || !safeEqual(p.csrf, user.csrf)) {
-    return errorPage(res, 403, 'The form has expired or was not submitted from Canon. Please start again.', '表单已过期或并非由 Canon 提交，请重新开始。');
+    return errorPage(res, 403, 'The form has expired or was not submitted from Canon. Please start again.');
   }
   if (!getSettings().mcp.enabled) return disabledPage(res);
   const iss = externalBase(req);
@@ -556,7 +556,7 @@ oauthRouter.use((err: unknown, req: Request, res: Response, next: NextFunction) 
   if (!req.path.startsWith('/oauth/') && !req.path.startsWith('/.well-known/')) return next(err);
   const e = err as { status?: number; type?: string; message?: string };
   if (req.path === '/oauth/authorize' && req.method === 'POST') {
-    return errorPage(res, e.status ?? 400, 'The request could not be read.', '无法读取请求。');
+    return errorPage(res, e.status ?? 400, 'The request could not be read.');
   }
   res.status(e.status && e.status < 500 ? e.status : 400).json({ error: 'invalid_request', error_description: e.message ?? 'Bad request' });
 });
