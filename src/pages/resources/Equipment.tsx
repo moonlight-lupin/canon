@@ -23,7 +23,7 @@ interface Item {
   custodian_id: number | null; bought_on: string | null; price: number | null; supplier: string | null; warranty_until: string | null;
   condition: Condition; status: Status; maintenance_every_months: number | null; next_maintenance_on: string | null; notes: string | null;
 }
-interface Row extends Item { custodian: string | null; photo_id: number | null; maintenance_due: boolean }
+interface Row extends Item { custodian: string | null; photo_id: number | null; maintenance_due: boolean; elsewhere?: boolean }
 interface Maint { id: number; done_on: string; what: string; cost: number | null; done_by: string | null; notes: string | null }
 interface FileRow { id: number; kind: FileKind; name: string; mime: string; size: number; created_at: string }
 interface Full extends Item { custodian: string | null; maintenance: Maint[]; files: FileRow[] }
@@ -93,7 +93,7 @@ export default function Equipment() {
                       </div>
                     </td>
                     <td>{r.location}</td>
-                    <td>{r.custodian}</td>
+                    <td>{r.elsewhere ? <span className="muted">{t('another congregation')}</span> : r.custodian}</td>
                     <td className="nowrap">{t(CONDITION_LABEL[r.condition])}{r.status !== 'in_use' && <div className="small muted">{t(STATUS_LABEL[r.status])}</div>}</td>
                     <td className="nowrap">{r.next_maintenance_on ? fmtDate(r.next_maintenance_on, lang) : ''}{r.maintenance_due && <> <span className="badge warn">{t('Due')}</span></>}</td>
                   </tr>

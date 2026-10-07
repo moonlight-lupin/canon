@@ -2,6 +2,7 @@
 // copies with QR labels, and loans to members with due dates, renewals, returns and e-mail reminders. Separate from
 // the Library of songs, liturgy and Bibles. Borrowers are people on the member register.
 import { all, get, run, tx, type SqlValue } from '../db.ts';
+import { visiblePeopleIds } from '../lib/walls.ts';
 import { BadRequest, Conflict, NotFound, table } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
 
@@ -157,7 +158,18 @@ export interface CopyDetail extends Copy {
   loan: { id: number; person_id: number | null; borrower: string | null; lent_on: string; due_on: string; renewals: number } | null;
 }
 
+/**
+ * Congregation walls (v0.17.2 review, F6): the catalogue is shared, but a person outside this account's congregation
+ * is not shown — a loan or a custodian keeps its place (the copy is out, the item is looked after) with no name,
+ * number or e-mail flag, marked `elsewhere`. Returns a test for a person id.
+ */
+export function walledPerson(): (personId: unknown) => boolean {
+  const vis = visiblePeopleIds();
+  return (pid) => vis !== null && pid !== null && pid !== undefined && !vis.has(Number(pid));
+}
+
 export function getBook(id: number) {
+  const hidden = walledPerson();
   const book = books.get(id);
   const cs = all<Record<string, unknown>>(
     `SELECT c.*, l.id AS loan_id, l.person_id, l.lent_on, l.due_on, l.renewals, ${PERSON_NAME} AS borrower
@@ -168,14 +180,16 @@ export function getBook(id: number) {
     id,
   ).map((r) => ({
     id: r.id, book_id: r.book_id, number: r.number, status: r.status, condition: r.condition, acquired_on: r.acquired_on, notes: r.notes, created_at: r.created_at,
-    loan: r.loan_id ? { id: r.loan_id, person_id: r.person_id, borrower: r.borrower ?? null, lent_on: r.lent_on, due_on: r.due_on, renewals: r.renewals } : null,
+    loan: r.loan_id ? (hidden(r.person_id)
+      ? { id: r.loan_id, person_id: null, borrower: null, elsewhere: true, lent_on: r.lent_on, due_on: r.due_on, renewals: r.renewals }
+      : { id: r.loan_id, person_id: r.person_id, borrower: r.borrower ?? null, lent_on: r.lent_on, due_on: r.due_on, renewals: r.renewals }) : null,
   })) as CopyDetail[];
-  const history = all<{ id: number; number: string; borrower: string | null; lent_on: string; due_on: string; returned_on: string | null }>(
-    `SELECT l.id, c.number, ${PERSON_NAME} AS borrower, l.lent_on, l.due_on, l.returned_on
+  const history = all<{ id: number; number: string; borrower: string | null; person_id?: number | null; elsewhere?: boolean; lent_on: string; due_on: string; returned_on: string | null }>(
+    `SELECT l.id, c.number, ${PERSON_NAME} AS borrower, l.person_id, l.lent_on, l.due_on, l.returned_on
      FROM lending_loans l JOIN lending_copies c ON c.id = l.copy_id LEFT JOIN people p ON p.id = l.person_id
      WHERE c.book_id = ? ORDER BY l.lent_on DESC, l.id DESC LIMIT 30`,
     id,
-  );
+  ).map(({ person_id, ...h }) => (hidden(person_id) ? { ...h, borrower: null, elsewhere: true } : h));
   return { ...book, copies: cs, history };
 }
 
@@ -260,6 +274,7 @@ export function findCopy(scanned: string) {
   if (!c) throw new NotFound(`No copy is numbered ${number}.`);
   const book = books.get(c.book_id);
   const loan = openLoanOf(c.id);
+  if (loan && walledPerson()(loan.person_id)) return { copy: c, book, loan: { ...loan, person_id: null, borrower: null, elsewhere: true } };
   const borrower = loan?.person_id ? personLabel(loan.person_id) : null;
   return { copy: c, book, loan: loan ? { ...loan, borrower } : null };
 }
@@ -278,7 +293,7 @@ export function borrowers(q: string, limit = 20) {
        OR (IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) LIKE ? ESCAPE '\\')
      ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE LIMIT ?`,
     localToday(), like, like, like, like, like, limit,
-  );
+  ).filter((p) => !walledPerson()(p.id));
 }
 
 export function lend(input: { copy_id: number; person_id: number; due_on?: string | null; notes?: string | null }, userId: number | null, via: 'desk' | 'self' = 'desk'): Loan {
@@ -313,6 +328,8 @@ export function renewLoan(loanId: number, dueOn?: string | null): Loan {
 }
 
 export interface LoanRow {
+  /** the borrower is in another congregation than this account's: not named */
+  elsewhere?: boolean;
   id: number;
   copy_id: number;
   number: string;
@@ -365,10 +382,12 @@ export function listLoans(q: { status?: 'open' | 'overdue' | 'returned' | 'pendi
      ORDER BY ${status === 'open' || status === 'overdue' || status === 'pending' ? 'l.return_pending_on IS NULL, l.due_on, l.id' : 'l.lent_on DESC, l.id DESC'} LIMIT ?`,
     ...params, Math.min(q.limit ?? 500, 2000),
   );
+  const hidden = walledPerson();
   return rows.map((r) => {
     const due = String(r.due_on);
     const open = r.returned_on == null;
     const overdue = open && !r.return_pending_on && due < today ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${due}T00:00:00Z`)) / 86400_000) : 0;
+    if (hidden(r.person_id)) return { ...r, person_id: null, has_email: false, borrower: null, elsewhere: true, overdue_days: overdue } as unknown as LoanRow;
     return { ...r, has_email: !!r.has_email, borrower: (r.borrower as string | null) ?? null, overdue_days: overdue } as LoanRow;
   });
 }

@@ -20,10 +20,10 @@ interface Book {
   kind: Kind; category: string | null; language: string | null; shelf: string | null; description: string | null; notes: string | null; has_cover: boolean; updated_at: string;
 }
 interface BookRow extends Book { copies: number; available: number; on_loan: number; numbers: string[] }
-interface CopyLoan { id: number; person_id: number | null; borrower: string | null; lent_on: string; due_on: string; renewals: number }
+interface CopyLoan { id: number; person_id: number | null; borrower: string | null; elsewhere?: boolean; lent_on: string; due_on: string; renewals: number }
 interface Copy { id: number; book_id: number; number: string; status: 'in' | 'lost' | 'withdrawn'; condition: string | null; acquired_on: string | null; notes: string | null; loan: CopyLoan | null }
-interface BookFull extends Book { copies: Copy[]; history: { id: number; number: string; borrower: string | null; lent_on: string; due_on: string; returned_on: string | null }[] }
-interface Loan { id: number; copy_id: number; number: string; book_id: number; title: string; authors: string | null; person_id: number | null; borrower: string | null; has_email: boolean; lent_on: string; due_on: string; returned_on: string | null; renewals: number; overdue_days: number; via: 'desk' | 'self'; return_pending_on: string | null }
+interface BookFull extends Book { copies: Copy[]; history: { id: number; number: string; borrower: string | null; elsewhere?: boolean; lent_on: string; due_on: string; returned_on: string | null }[] }
+interface Loan { id: number; copy_id: number; elsewhere?: boolean; number: string; book_id: number; title: string; authors: string | null; person_id: number | null; borrower: string | null; has_email: boolean; lent_on: string; due_on: string; returned_on: string | null; renewals: number; overdue_days: number; via: 'desk' | 'self'; return_pending_on: string | null }
 interface Scan { copy: { id: number; number: string; status: Copy['status']; book_id: number }; book: Book; loan: (CopyLoan & { borrower: string | null }) | null }
 interface Rules { loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean; self_service: boolean; rules_saved: boolean }
 
@@ -141,7 +141,7 @@ function ScanCard({ scan, onDone, onChanged }: { scan: Scan; onDone: () => void;
             <div className="callout warn small">{copy.status === 'lost' ? t('This copy is marked lost.') : t('This copy is withdrawn.')}</div>
           ) : loan ? (
             <div className="stack tight">
-              <div>{t('On loan to')} <strong>{loan.borrower ?? t('(erased)')}</strong> · {t('due')} {fmtDate(loan.due_on, lang)}{' '}
+              <div>{t('On loan to')} <strong>{(loan.elsewhere ? t('another congregation') : loan.borrower) ?? t('(erased)')}</strong> · {t('due')} {fmtDate(loan.due_on, lang)}{' '}
                 {overdue ? <span className="badge warn">{t('Overdue')}</span> : null}{loan.renewals ? <span className="small muted"> · {t('renewed {n}×').replace('{n}', String(loan.renewals))}</span> : null}</div>
               {canEdit && (
                 <div className="row" style={{ gap: 8 }}>
@@ -177,7 +177,7 @@ function OverdueShort() {
       <h3 style={{ margin: 0 }}>{t('Overdue')} <span className="badge warn">{data.length}</span></h3>
       {data.slice(0, 8).map((l) => (
         <div key={l.id} className="small">
-          <span className="code">{l.number}</span> {l.title} — {l.borrower ?? t('(erased)')} · {t('due')} {fmtDate(l.due_on, lang)} ({t('{n} days').replace('{n}', String(l.overdue_days))})
+          <span className="code">{l.number}</span> {l.title} — {(l.elsewhere ? t('another congregation') : l.borrower) ?? t('(erased)')} · {t('due')} {fmtDate(l.due_on, lang)} ({t('{n} days').replace('{n}', String(l.overdue_days))})
         </div>
       ))}
       {data.length > 8 && <Link className="small" to="/lending?tab=loans">{t('All overdue')} →</Link>}
@@ -232,7 +232,7 @@ function LoansTab() {
                   <td className="nowrap">{fmtDate(l.returned_on ?? l.due_on, lang)}{l.overdue_days > 0 && <div className="small" style={{ color: 'var(--warn)' }}>{t('{n} days overdue').replace('{n}', String(l.overdue_days))}</div>}</td>
                   <td className="nowrap"><span className="code">{l.number}</span></td>
                   <td>{l.title}{l.return_pending_on && !l.returned_on && <div><span className="badge lapis">{t('Returned by the borrower: check it in')}</span></div>}{l.via === 'self' && <div className="small muted">{t('Borrowed on a phone')}</div>}</td>
-                  <td>{l.borrower ?? <span className="muted">{t('(erased)')}</span>}{!l.has_email && !l.returned_on && l.borrower && <div className="small muted">{t('no e-mail address')}</div>}</td>
+                  <td>{(l.elsewhere ? t('another congregation') : l.borrower) ?? <span className="muted">{t('(erased)')}</span>}{!l.has_email && !l.returned_on && l.borrower && <div className="small muted">{t('no e-mail address')}</div>}</td>
                   <td className="nowrap small muted">{fmtDate(l.lent_on, lang)}{l.renewals ? ` · ${t('renewed {n}×').replace('{n}', String(l.renewals))}` : ''}</td>
                   <td className="right nowrap">
                     {canEdit && !l.returned_on && <>
@@ -463,7 +463,7 @@ function BookDialog({ id, categories, onClose, onChanged }: { id: number | null;
               {full.data.copies.map((c) => (
                 <div key={c.id} className="copy-row">
                   <span className="code">{c.number}</span>
-                  {c.loan ? <span className="small">{t('On loan to')} {c.loan.borrower ?? t('(erased)')} · {t('due')} {fmtDate(c.loan.due_on, lang)}</span>
+                  {c.loan ? <span className="small">{t('On loan to')} {(c.loan.elsewhere ? t('another congregation') : c.loan.borrower) ?? t('(erased)')} · {t('due')} {fmtDate(c.loan.due_on, lang)}</span>
                     : c.status === 'in' ? <span className="badge ok">{t('Available')}</span> : null}
                   <div className="grow" />
                   {canEdit && (
@@ -489,7 +489,7 @@ function BookDialog({ id, categories, onClose, onChanged }: { id: number | null;
                 <thead><tr><th>{t('Copy number')}</th><th>{t('Borrower')}</th><th>{t('Lent')}</th><th>{t('Due')}</th><th>{t('Returned')}</th></tr></thead>
                 <tbody>
                   {full.data.history.map((h) => (
-                    <tr key={h.id}><td><span className="code">{h.number}</span></td><td>{h.borrower ?? <span className="muted">{t('(erased)')}</span>}</td><td className="nowrap">{fmtDate(h.lent_on, lang)}</td><td className="nowrap">{fmtDate(h.due_on, lang)}</td><td className="nowrap">{h.returned_on ? fmtDate(h.returned_on, lang) : <span className="badge lapis">{t('On loan')}</span>}</td></tr>
+                    <tr key={h.id}><td><span className="code">{h.number}</span></td><td>{(h.elsewhere ? t('another congregation') : h.borrower) ?? <span className="muted">{t('(erased)')}</span>}</td><td className="nowrap">{fmtDate(h.lent_on, lang)}</td><td className="nowrap">{fmtDate(h.due_on, lang)}</td><td className="nowrap">{h.returned_on ? fmtDate(h.returned_on, lang) : <span className="badge lapis">{t('On loan')}</span>}</td></tr>
                   ))}
                 </tbody>
               </table>

@@ -3,7 +3,7 @@
 // its maintenance (a log, and the next service due). Items are numbered E0001 … with QR labels.
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { BadRequest, Conflict, NotFound, table } from '../lib/table.ts';
-import { addDays, localToday, nextNumber } from './lending.ts';
+import { addDays, localToday, nextNumber, walledPerson } from './lending.ts';
 
 export type Condition = 'good' | 'fair' | 'poor' | 'broken';
 export type ItemStatus = 'in_use' | 'stored' | 'out_of_service';
@@ -95,16 +95,22 @@ export function listItems(q: { q?: string; category?: string; location?: string;
     where.push("e.next_maintenance_on IS NOT NULL AND e.next_maintenance_on <= ? AND e.status <> 'out_of_service'");
     params.push(soon);
   }
+  const hidden = walledPerson();
   return all<Record<string, unknown>>(
     `SELECT e.*, ${PERSON_NAME} AS custodian,
        (SELECT f.id FROM equipment_files f WHERE f.equipment_id = e.id AND f.kind = 'photo' ORDER BY f.id LIMIT 1) AS photo_id
      FROM equipment e LEFT JOIN people p ON p.id = e.custodian_id
      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY ${q.due ? 'e.next_maintenance_on, ' : ''}e.number COLLATE NOCASE`,
     ...params,
-  ).map((r) => ({
-    ...(items.decode(r) as Item), custodian: (r.custodian as string | null) ?? null, photo_id: (r.photo_id as number | null) ?? null,
-    maintenance_due: !!r.next_maintenance_on && String(r.next_maintenance_on) <= soon && r.status !== 'out_of_service',
-  }));
+  ).map((r) => {
+    // someone in another congregation looks after it: not named (review F6)
+    const away = hidden(r.custodian_id);
+    return {
+      ...(items.decode(r) as Item), custodian: away ? null : (r.custodian as string | null) ?? null, ...(away ? { custodian_id: null, elsewhere: true } : {}),
+      photo_id: (r.photo_id as number | null) ?? null,
+      maintenance_due: !!r.next_maintenance_on && String(r.next_maintenance_on) <= soon && r.status !== 'out_of_service',
+    };
+  });
 }
 
 /** Categories and locations in use (filters and the form's suggestions). */
@@ -243,7 +249,7 @@ export function custodians(q: string, limit = 20) {
        OR (IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) LIKE ? ESCAPE '\\')
      ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE LIMIT ?`,
     like, like, like, like, like, limit,
-  );
+  ).filter((p) => !walledPerson()(p.id));
 }
 
 /** The dashboard's numbers. */

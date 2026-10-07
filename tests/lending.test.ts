@@ -251,3 +251,43 @@ test('AI assistants: the tools come with the module and the church’s agent set
   assert.ok(!names().includes('canon_lending'), 'switched off: no tools');
   updateSettings({ modules: { ...getSettings().modules, lending: true } });
 });
+
+test('congregation walls: another congregation’s borrower or custodian is not named in lists, details, history or searches (review F6)', async () => {
+  const L = await import('../server/repo/lending.ts');
+  const E = await import('../server/repo/equipment.ts');
+  const en = (await call(as.admin, 'POST', '/congregations', { name: { en: 'Wall English' }, code: 'WE', languages: ['en'] })).body.id;
+  const zh = (await call(as.admin, 'POST', '/congregations', { name: { en: 'Wall Chinese' }, code: 'WZ', languages: ['zh'] })).body.id;
+  const far = reg.people.insert({ first_name: 'Faraway', last_name: 'Reader', status: 'member', email: 'faraway@example.org', congregation_id: zh } as never).id;
+  const near = reg.people.insert({ first_name: 'Nearby', last_name: 'Reader', status: 'member', congregation_id: en } as never).id;
+  const book = L.saveBook(null, { title: 'Walls test book (fictional)' }, 2);
+  const copies = L.getBook(book.id).copies;
+  L.lend({ copy_id: copies[0].id, person_id: far }, null);
+  L.lend({ copy_id: copies[1].id, person_id: near }, null);
+  E.saveItem(null, { name: 'Walls test projector (fictional)', custodian_id: far } as never);
+  createUser({ username: 'walledlib', display_name: 'Test walled librarian', password: 'correct-horse-6', role: 'librarian' });
+  const uid = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'walledlib').id;
+  assert.equal((await call(as.admin, 'PATCH', `/users/${uid}`, { congregation_id: en })).status, 200);
+  const w = await login('walledlib');
+  const txt = (r: { body: unknown }) => JSON.stringify(r.body);
+
+  const loans = await call(w, 'GET', `/lending/loans?status=open`);
+  const theirs = loans.body.find((l: Json) => l.copy_id === copies[0].id);
+  assert.deepEqual([theirs.person_id, theirs.borrower, theirs.has_email, theirs.elsewhere], [null, null, false, true], 'the loan shows, not who');
+  assert.equal(loans.body.find((l: Json) => l.copy_id === copies[1].id).borrower, 'Nearby Reader', 'their own congregation as before');
+  const detail = await call(w, 'GET', `/lending/books/${book.id}`);
+  assert.ok(!txt(detail).includes('Faraway'), 'nor in the book’s copies or history');
+  assert.equal(detail.body.copies.find((c: Json) => c.id === copies[0].id).loan.elsewhere, true);
+  assert.ok(!txt(await call(w, 'GET', `/lending/scan?q=${encodeURIComponent(copies[0].number)}`)).includes('Faraway'), 'nor when the copy is scanned');
+  assert.ok(!txt(await call(w, 'GET', '/lending/borrowers?q=Reader')).includes('Faraway'), 'nor in the borrower search');
+
+  createUser({ username: 'walledkeeper', display_name: 'Test walled keeper', password: 'correct-horse-6', role: 'keeper' });
+  const kid = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'walledkeeper').id;
+  await call(as.admin, 'PATCH', `/users/${kid}`, { congregation_id: en });
+  const k = await login('walledkeeper');
+  const items = await call(k, 'GET', '/equipment/items');
+  const proj = items.body.find((i: Json) => i.name === 'Walls test projector (fictional)');
+  assert.deepEqual([proj.custodian, proj.custodian_id, proj.elsewhere], [null, null, true]);
+  assert.ok(!txt(await call(k, 'GET', '/equipment/people?q=Reader')).includes('Faraway'));
+  // the whole church still sees everyone
+  assert.ok(txt(await call(as.admin, 'GET', '/lending/loans?status=open')).includes('Faraway'));
+});
