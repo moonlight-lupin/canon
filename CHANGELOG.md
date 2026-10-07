@@ -12,6 +12,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
   - the **Preacher** is whoever leads the Sermon item; the Preacher box and the New service dialog no longer take a typed name.
 
   Names typed before still print while nobody from the rota is chosen; the planner flags them as **Typed earlier** with **Remove**. A copied service, or one made from a template, starts without typed names. AI assistants tick people with `leader_people`; they cannot type a leader or preacher.
+- **Slide templates, a size for each language:** the Fonts step starts with the template's languages; each then has its font and its size against the others (60–160 %) — at the same point size Chinese looks smaller than English, so e.g. 115 % evens them out. Canon's slides and the PowerPoint file use it, and text still shrinks to fit.
 - Database: version 31 — the people ticked for an item. Canon upgrades by itself on start.
 
 ## 0.15.9 — Cover slides, a closing slide, and who leads an item

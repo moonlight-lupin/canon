@@ -49,6 +49,10 @@ export interface SlideThemeVars {
   /** the bulletin link's QR code on the title slide: which corner, and how big */
   qr_corner?: QrCorner;
   qr_size?: QrSize;
+  /** the languages this template is for (its Fonts step lists them); empty = the church's languages */
+  langs?: string[];
+  /** each language's text size against the others, e.g. { zh: 1.15 } — at the same point size Chinese looks smaller than English */
+  lang_scale?: Record<string, number>;
   /** a closing slide after the last item, with this message (in each language) */
   closing?: boolean;
   closing_text?: L10n;
@@ -161,6 +165,19 @@ export function fontStackProblem(s: string): string | null {
   return null;
 }
 
+const LANG_CODE = /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
+/** A language's size against the others: 60–160 %, in steps of 5 %; 100 % is left out. */
+const langScale = (x: unknown): Record<string, number> | undefined => {
+  if (!x || typeof x !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(x as Record<string, unknown>)) {
+    if (!LANG_CODE.test(k) || typeof n !== 'number' || !Number.isFinite(n)) continue;
+    const r = Math.round(Math.min(1.6, Math.max(0.6, n)) * 20) / 20;
+    if (r !== 1) out[k] = r;
+  }
+  return out;
+};
+
 /** The closing slide's message when a template has not set its own. */
 export const DEFAULT_CLOSING_TEXT: L10n = { en: 'Thank you for worshipping with us', zh: '感谢您与我们一同敬拜', 'zh-Hant': '感謝您與我們一同敬拜' };
 const closingText = (x: unknown): L10n | undefined => {
@@ -204,6 +221,8 @@ export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAUL
     show_posture: typeof v.show_posture === 'boolean' ? v.show_posture : (base.show_posture ?? false),
     qr_corner: QR_CORNERS.includes(v.qr_corner as QrCorner) ? (v.qr_corner as QrCorner) : (base.qr_corner ?? 'bottom-right'),
     qr_size: v.qr_size === 'small' || v.qr_size === 'medium' || v.qr_size === 'large' ? v.qr_size : (base.qr_size ?? 'medium'),
+    langs: Array.isArray(v.langs) ? (v.langs as unknown[]).filter((l): l is string => typeof l === 'string' && LANG_CODE.test(l)).slice(0, 8) : (base.langs ?? []),
+    lang_scale: langScale(v.lang_scale) ?? base.lang_scale ?? {},
     closing: typeof v.closing === 'boolean' ? v.closing : (base.closing ?? true),
     closing_text: closingText(v.closing_text) ?? base.closing_text ?? { ...DEFAULT_CLOSING_TEXT },
     // themes saved before these settings existed get the defaults
@@ -513,6 +532,7 @@ export function compileThemeCss(scope: string, vars: SlideThemeVars, css: string
     if (f) decl.push([`--slide-font-${k}`, f]);
   }
   let out = `${S} {\n${decl.map(([k, val]) => `  ${k}: ${val};`).join('\n')}\n}\n`;
+  for (const [l, k] of Object.entries(v.lang_scale ?? {})) out += `${S} .lang-${l} { --slide-lang-scale: ${k}; }\n`;
   if (v.accent_from_season) out += `${S} .slide.seasonal { --slide-accent: var(--s-season); }\n`;
   if (css.trim()) out += `/* custom CSS */\n${scopeCss(css, scope)}\n`;
   return out;

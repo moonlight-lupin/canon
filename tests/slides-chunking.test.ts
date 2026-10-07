@@ -392,3 +392,14 @@ test('the slide template’s closing slide (0.15.9) comes after the last item, w
   assert.equal(last.sub?.en, 'Example Church');
   assert.notEqual(buildSlides(r, ['en'], { closing: false, closing_text: { en: 'Go in peace' } }).at(-1)!.key, 'closing');
 });
+
+test('slide templates: a size for each language (0.15.10) is kept within 60–160 % and becomes CSS on that language', async () => {
+  const { compileThemeCss } = await import('../shared/slide-theme.ts');
+  const v = normaliseThemeVars({ langs: ['en', 'zh', 'not a code'], lang_scale: { zh: 1.17, en: 1, ko: 9, 'x y': 1.2 } });
+  assert.deepEqual(v.langs, ['en', 'zh']);
+  assert.deepEqual(v.lang_scale, { zh: 1.15, ko: 1.6 }, '100 % is left out; others round to 5 % and are clamped');
+  const css = compileThemeCss('t1', v, '', null);
+  assert.match(css, /\.lang-zh \{ --slide-lang-scale: 1\.15; \}/);
+  assert.doesNotMatch(css, /\.lang-en \{/);
+  assert.deepEqual(normaliseThemeVars({}, DEFAULT_THEME_VARS).lang_scale, {});
+});

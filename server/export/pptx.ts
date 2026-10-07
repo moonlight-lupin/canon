@@ -153,19 +153,22 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
   const body = { x: padX, y: 1.0, w: W - 2 * padX, h: H - 1.0 - 0.75 };
   const lh = v.line_height;
 
+  // a language's own size against the others (slide template → Fonts)
+  const k = (l: Lang) => v.lang_scale?.[l] ?? 1;
+  const sized = (pt: number, l: Lang) => (k(l) === 1 ? {} : { fontSize: Math.round(pt * k(l)) });
   const bodyParas = (s: SlideDef): Para[] => {
     const out: Para[] = [];
     const present = langs.filter((l) => (s.lines?.[l]?.length ?? 0) + (s.verses?.[l]?.length ?? 0) > 0);
     present.forEach((l, i) => {
       if (i > 0) out.push({ text: '', rel: 0.45 });
-      if (s.lines?.[l]) for (const ln of s.lines[l]!) out.push({ text: (s.speakers && ln.who ? speakerLabel(ln.who, l) + ' ' : '') + ln.text, rel: 1 });
-      if (s.verses?.[l]) out.push({ text: s.verses[l]!.map((x) => `${x.n} ${x.text}`).join(' '), rel: 1 });
+      if (s.lines?.[l]) for (const ln of s.lines[l]!) out.push({ text: (s.speakers && ln.who ? speakerLabel(ln.who, l) + ' ' : '') + ln.text, rel: k(l) });
+      if (s.verses?.[l]) out.push({ text: s.verses[l]!.map((x) => `${x.n} ${x.text}`).join(' '), rel: k(l) });
     });
     return out;
   };
   const titleParas = (s: SlideDef): Para[] => [
-    ...biParts(s.big, langs).map((p) => ({ text: p.text, rel: 1 })),
-    ...(s.sub ? biParts(s.sub, langs).map((p) => ({ text: p.text, rel: 0.55 })) : []),
+    ...biParts(s.big, langs).map((p) => ({ text: p.text, rel: k(p.lang) })),
+    ...(s.sub ? biParts(s.sub, langs).map((p) => ({ text: p.text, rel: 0.55 * k(p.lang) })) : []),
     ...(s.meta ?? []).map((m) => ({ text: m, rel: 0.4 })),
     ...(s.type === 'title' ? langs.map(() => ({ text: 'date', rel: 0.4 })) : []),
   ];
@@ -240,13 +243,13 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
           for (const ln of s.lines[l]!) {
             if (s.speakers && ln.who && ln.who !== prev) runs.push(run(speakerLabel(ln.who, l) + ' ', l, { color: accent, bold: true, fontFace: UI_FONT, fontSize: Math.round(pt * 0.7) }));
             prev = ln.who;
-            runs.push(run(ln.text, l, { breakLine: true, bold: ln.who === 'C' || ln.who === 'A', italic: !!s.refrain && scriptOf(l) === 'latin' }));
+            runs.push(run(ln.text, l, { breakLine: true, bold: ln.who === 'C' || ln.who === 'A', italic: !!s.refrain && scriptOf(l) === 'latin', ...sized(pt, l) }));
           }
         }
         if (s.verses?.[l]) {
           s.verses[l]!.forEach((x, xi) => {
             if (x.n) runs.push(run(`${x.n} `, l, { superscript: true, color: accent, fontFace: UI_FONT }));
-            runs.push(run(x.text + ' ', l, xi === s.verses![l]!.length - 1 ? { breakLine: true } : {}));
+            runs.push(run(x.text + ' ', l, { ...(xi === s.verses![l]!.length - 1 ? { breakLine: true } : {}), ...sized(pt, l) }));
           });
         }
       });
@@ -256,12 +259,12 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
     } else {
       const pt = fitted[i];
       const runs: TextProps[] = [];
-      for (const p of biParts(s.big, langs)) runs.push(run(v.uppercase_titles ? p.text.toUpperCase() : p.text, p.lang, { breakLine: true, color: hex(v.heading), bold: s.type !== 'item' }));
+      for (const p of biParts(s.big, langs)) runs.push(run(v.uppercase_titles ? p.text.toUpperCase() : p.text, p.lang, { breakLine: true, color: hex(v.heading), bold: s.type !== 'item', ...sized(pt, p.lang) }));
       if (s.type === 'title') {
         for (const l of langs) runs.push(run(dateIn(r.date, l), l, { breakLine: true, fontSize: Math.round(pt * 0.4), color: hex(v.fg) }));
         runs.push({ text: `${r.start_time}${r.end_time ? `–${r.end_time}` : ''}`, options: { breakLine: true, fontSize: Math.round(pt * 0.4), color: hex(v.fg), fontFace: UI_FONT } });
       }
-      if (s.sub) for (const p of biParts(s.sub, langs)) runs.push(run(p.text, p.lang, { breakLine: true, fontSize: Math.round(pt * 0.55), color: accent }));
+      if (s.sub) for (const p of biParts(s.sub, langs)) runs.push(run(p.text, p.lang, { breakLine: true, fontSize: Math.round(pt * 0.55 * k(p.lang)), color: accent }));
       for (const m of s.meta ?? []) runs.push({ text: m, options: { breakLine: true, fontSize: Math.round(pt * 0.4), color: hex(v.fg), fontFace: UI_FONT } });
       let y = body.y;
       let h = body.h;

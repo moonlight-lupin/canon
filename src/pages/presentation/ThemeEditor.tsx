@@ -28,19 +28,10 @@ export const PREVIEW_CAPTION: Record<string, string> = {
   text: 'Responsive liturgy',
 };
 
-/** Font scripts the church's languages need (Latin always; Chinese / other scripts only when used). */
-export function scriptsFor(langs: Lang[]): FontScript[] {
-  const need = new Set<FontScript>(['latin']);
-  for (const l of langs) {
-    const f = langInfo(l).font;
-    need.add(f === 'latin' ? 'latin' : f === 'sc' ? 'sc' : f === 'tc' ? 'tc' : 'other');
-  }
-  // Simplified and Traditional convert into each other, so a church with one may show the other
-  if (need.has('sc') || need.has('tc')) {
-    need.add('sc');
-    need.add('tc');
-  }
-  return (['latin', 'sc', 'tc', 'other'] as FontScript[]).filter((s) => need.has(s));
+/** The font setting a language uses (languages of one script share it). */
+export function scriptOfLang(l: Lang): FontScript {
+  const f = langInfo(l).font;
+  return f === 'latin' ? 'latin' : f === 'sc' ? 'sc' : f === 'tc' ? 'tc' : 'other';
 }
 
 export const FONT_LABEL: Record<FontScript, string> = {
@@ -138,12 +129,19 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
     const m = /[(（](.*)[)）]$/.exec(label);
     return m && !v[`font_${s}`] ? m[1] : label.replace(/\s*[(（].*[)）]$/, '');
   };
-  const scripts = scriptsFor(church);
+  // the template's languages (declared first; the fonts and sizes below follow them); none chosen = the church's
+  const tplLangs = (v.langs?.length ? v.langs.filter((l) => church.includes(l)) : church) as Lang[];
+  const shownLangs = tplLangs.length ? tplLangs : church;
+  const toggleLang = (l: Lang) => {
+    const next = church.filter((x) => (x === l ? !tplLangs.includes(l) : tplLangs.includes(x)));
+    if (next.length) setV({ langs: next.length === church.length ? [] : next });
+  };
+  const sizeOf = (l: Lang) => v.lang_scale?.[l] ?? 1;
 
   // one-line summaries for folded steps
   const sum = {
     look: `${draft.base === 'light' ? t('Light background') : t('Dark background')}${bg ? ` · ${t('with picture')}` : ''}`,
-    text: `${fontName('latin')} · ${Math.round(v.scale * 100)}% · ${v.align === 'left' ? t('Left') : t('Centred')}`,
+    text: [fontName('latin'), `${Math.round(v.scale * 100)}%`, ...Object.entries(v.lang_scale ?? {}).map(([l, n]) => `${langInfo(l).short} ${Math.round(n * 100)}%`), v.align === 'left' ? t('Left') : t('Centred')].join(' · '),
     lines: `${t('{n} lines (two or more languages)').replace('{n}', String(v.max_lines_multi))} · ${t('{n} lines (one language)').replace('{n}', String(v.max_lines_single))}${v.uniform_size ? ` · ${t('same size')}` : ''}`,
     screen: [v.aspect === '4:3' ? '4:3' : '16:9', v.footer_reference && t('reference'), v.footer_church && t('church name'), v.footer_number && t('slide number'), (v.closing ?? true) && t('closing slide')].filter(Boolean).join(' · '),
     css: draft.css.trim() ? t('Custom CSS in use') : t('None'),
@@ -250,9 +248,25 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
           </Step>
 
           <Step n={2} title={t('Fonts and text size')} summary={sum.text} open={steps.isOpen(2)} onToggle={() => steps.toggle(2)}>
-            <div className="pr-grid">
-              {scripts.map((s) => <FontField key={s} script={s} label={FONT_LABEL[s]} value={v[`font_${s}`]} onChange={(f) => setV({ [`font_${s}`]: f } as Partial<SlideThemeVars>)} />)}
-            </div>
+            <Field label={<TipLabel label={t('Languages on this template')} tip={t('The languages this template is for. The font and size of each one follow below.')} />}>
+              <div className="row">
+                {church.map((l) => (
+                  <label key={l} className="check"><input type="checkbox" checked={tplLangs.includes(l)} onChange={() => toggleLang(l)} />{langInfo(l).native}</label>
+                ))}
+              </div>
+            </Field>
+            {shownLangs.map((l) => {
+              const s = scriptOfLang(l);
+              const shares = shownLangs.filter((x) => x !== l && scriptOfLang(x) === s);
+              return (
+                <div key={l} className="pr-grid pr-lang-row">
+                  <FontField script={s} label={`${langInfo(l).native} — ${t('font')}`} value={v[`font_${s}`]} onChange={(f) => setV({ [`font_${s}`]: f } as Partial<SlideThemeVars>)}
+                    hint={shares.length ? t('Shared with {langs} (the same script).').replace('{langs}', shares.map((x) => langInfo(x).native).join(', ')) : undefined} />
+                  {range(`${langInfo(l).native} — ${t('size')}`, sizeOf(l), 0.6, 1.6, 0.05, (n) => `${Math.round(n * 100)}%`, (n) => setV({ lang_scale: { ...(v.lang_scale ?? {}), [l]: n } }),
+                    'Against the other languages. At the same point size Chinese looks smaller than English, so e.g. 115% evens them out. Long texts still shrink to fit.')}
+                </div>
+              );
+            })}
             <span className="field-hint">{t('Only fonts installed on the projector computer can be used.')}</span>
             <div className="pr-grid">
               {range('Text size', v.scale, 0.6, 1.5, 0.05, (n) => `${Math.round(n * 100)}%`, (n) => setV({ scale: n }), 'The largest size words may have. Long texts still shrink to fit.')}
@@ -332,12 +346,12 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
   );
 }
 
-export function FontField({ script, label, value, onChange }: { script: FontScript; label: string; value: string; onChange: (v: string) => void }) {
+export function FontField({ script, label, value, onChange, hint }: { script: FontScript; label: string; value: string; onChange: (v: string) => void; hint?: string }) {
   const { t, lt } = useI18n();
   const presets = FONT_PRESETS[script];
   const [custom, setCustom] = useState(() => !presets.some((p) => p.stack === value));
   return (
-    <Field label={t(label)}>
+    <Field label={t(label)} hint={hint}>
       <select
         value={custom ? '__custom' : value}
         onChange={(e) => {
