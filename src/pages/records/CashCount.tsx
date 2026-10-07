@@ -21,6 +21,8 @@ export function SignaturePad({ onChange }: { onChange: (png: string | null) => v
   const { t } = useI18n();
   const ref = useRef<HTMLCanvasElement>(null);
   const last = useRef<[number, number] | null>(null);
+  // the finger (or pen, or mouse) that is drawing: a second finger on a phone doesn't draw a line between the two
+  const pointer = useRef<number | null>(null);
   const [blank, setBlank] = useState(true);
   const at = (e: React.PointerEvent<HTMLCanvasElement>): [number, number] => {
     const c = e.currentTarget;
@@ -40,20 +42,23 @@ export function SignaturePad({ onChange }: { onChange: (png: string | null) => v
     g.stroke();
   };
   const down = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pointer.current !== null) return;
+    pointer.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = at(e);
     last.current = p;
     stroke(p, [p[0] + 0.1, p[1] + 0.1]);
   };
   const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!last.current) return;
+    if (!last.current || e.pointerId !== pointer.current) return;
     const p = at(e);
     stroke(last.current, p);
     last.current = p;
   };
-  const up = () => {
-    if (!last.current) return;
+  const up = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!last.current || e.pointerId !== pointer.current) return;
     last.current = null;
+    pointer.current = null;
     setBlank(false);
     onChange(ref.current?.toDataURL('image/png') ?? null);
   };

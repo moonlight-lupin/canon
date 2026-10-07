@@ -310,7 +310,8 @@ export function submitClaim(id: number, s: { name?: string; image?: string; pape
   const problems = submitProblems(c);
   if (problems.length) throw new BadRequest(problems.join(' '));
   const sig: ClaimSignature = {
-    name: s.paper ? c.claimant : (s.name?.trim() || by.name).slice(0, 120), image: s.paper ? '' : s.image!, signed_at: new Date().toISOString(),
+    // signed on a phone: the claimant's own name from their member record, never a name the page sends
+    name: s.paper ? c.claimant : (by.as === 'claimant' ? by.name : s.name?.trim() || by.name).slice(0, 120), image: s.paper ? '' : s.image!, signed_at: new Date().toISOString(),
     hash: claimHash(c), via: s.paper ? 'paper' : 'device', by: by.name,
   };
   const out = tx(() => {

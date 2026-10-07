@@ -518,7 +518,7 @@ Anyone can claim back what they spent for the church, with **several receipts in
 1. **New claim**: what it is for and, if it belongs to one, the ministry.
 2. One line for each receipt: what it was for, the date on the receipt, the amount and the shop. **Add a photo of the receipt** opens the phone's camera; PDFs work too. **Another receipt** adds a line.
 3. **Where to repay you**, e.g. a PayNow number or a bank account. Only the claimant and the treasurer see it.
-4. Canon lists what is still missing. When nothing is, **sign** in the box and **Sign and submit**. The claim gets its number (e.g. C2026-0001), and the approvers who may decide it get an e-mail.
+4. Canon lists what is still missing. When nothing is, **sign** in the box with one finger (a second finger doesn't draw) and **Sign and submit**. The signature carries your name from your member record. The claim gets its number (e.g. C2026-0001), and the approvers who may decide it get an e-mail.
 
 A claim being prepared can be changed or deleted. A submitted claim can be withdrawn until it is approved.
 

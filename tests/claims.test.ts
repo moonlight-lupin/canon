@@ -113,8 +113,9 @@ test('a member claims on their phone: lines, receipts, where to repay, signed; a
   assert.equal(c.files[0].line_id, c.lines[0].id, 'the receipt stays with its line when the lines are saved again');
   assert.deepEqual(c.problems, []);
   assert.equal((await call(null, 'POST', `/self/claims/${c.id}/submit`, { image: 'nope' }, t)).status, 400, 'sign first');
-  c = (await call(null, 'POST', `/self/claims/${c.id}/submit`, { image: INK }, t)).body;
+  c = (await call(null, 'POST', `/self/claims/${c.id}/submit`, { image: INK, name: 'Someone Else' }, t)).body;
   assert.equal(c.status, 'submitted');
+  assert.equal(c.signature.name, c.claimant, 'signed in her own name, whatever name the page sends');
   assert.match(c.number, /^C\d{4}-0001$/);
   assert.equal(c.may_approve, false, 'not her own');
   assert.equal((await call(null, 'PUT', `/self/claims/${c.id}`, { lines: [] }, t)).status, 409, 'a submitted claim is not changed');
