@@ -440,6 +440,7 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
 **Offerings into the books**
 - When a cash count is **verified** (Service records), Canon drafts its journal. Each payment method goes to its account: cash and cheques to **Offerings not yet banked**, PayNow and transfers to the bank. Each fund's offerings go to its income account.
 - Reopening the count withdraws the draft. A corrected count drafts only the difference from what was already posted.
+- PayNow or transfer lines added to a record after its count is verified are drafted too (just the new amount).
 - On the service record, under the cash count, **In the books** says whether its journal is a draft waiting to be posted or posted (with its number). Click it to open the journal.
 - **Offerings into the books → Change** sets which account each payment method uses, and which fund and income account each offering fund uses.
 - **Post the offering drafts** posts the week's offering drafts together. **Draft what's missing** drafts offerings verified before the books started.
@@ -454,6 +455,10 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - **Match the obvious ones** matches lines with exactly one entry for the same amount on the same day;
   - a suggestion (the same amount within a week) matches with one click;
   - **Enter** books what the books don't have yet (a bank charge, interest, a direct debit) against the account and fund you choose, and matches it;
+  - **Offering…** (money in): a PayNow or transfer gift you first see on the statement. Choose the service (Canon lists those in the two weeks before, nearest first), the offering fund and the method.
+    - Canon adds it to that service's offerings, so the service record and Reports → Offerings have it too. This works after the cash count is verified: only the cash is locked.
+    - **Add, post and match** posts the entry and matches the line in one step. If the service's cash count isn't verified yet, the entry is drafted when it is.
+    - Gifts that belong to no service (a monthly standing order, a donation) use **Enter** instead.
   - **Ignore** sets a line aside.
   - A line with a draft already made for it (by **Enter → Save draft**, or by an AI assistant) shows **Draft waiting**. Posting that draft matches the line.
   - Every match, unmatch and ignore is recorded in the change log.

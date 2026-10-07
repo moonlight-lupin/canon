@@ -4,7 +4,9 @@
 import { useState } from 'react';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Empty, ErrorBox, Field, Loading, Modal, confirmAction, fmtDate, useAction } from '../../components/ui.tsx';
+import { Empty, ErrorBox, Field, Loading, Modal, confirmAction, fmtDate, useAction, useSession } from '../../components/ui.tsx';
+import { METHOD_LABEL, type OfferingMethod } from '../../../shared/records.ts';
+import type { L10n } from '../../../shared/types.ts';
 import { Icon } from '../../components/icons.tsx';
 import type { BankCsvLayout } from '../../../shared/bookkeeping.ts';
 import { AccountSelect, FundSelect, MoneyInput, TagSelect, fmtMoney, fmtSigned, useBooks } from './common.tsx';
@@ -185,6 +187,9 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
   const { data, error, reload } = useApi<Statement>(`/bookkeeping/bank/statements/${id}`);
   const { run, busy } = useAction();
   const [entry, setEntry] = useState<SLine | null>(null);
+  const [offering, setOffering] = useState<SLine | null>(null);
+  const { can } = useSession();
+  const mayOffer = can('contributions', 'edit');
   const [show, setShow] = useState<'open' | 'all'>('open');
   if (error) return <ErrorBox error={error} />;
   if (!data) return <Loading />;
@@ -270,6 +275,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
                         {l.draft_id
                           ? <button className="btn small" onClick={() => b.go('journals', { open: String(l.draft_id) })}><Icon name="edit" />{t('Draft waiting')}</button>
                           : <button className="btn small" onClick={() => setEntry(l)}><Icon name="plus" />{t('Enter')}</button>}
+                        {!l.draft_id && l.amount > 0 && mayOffer && <button className="btn small" onClick={() => setOffering(l)}><Icon name="gift" />{t('Offering…')}</button>}
                         <button className="btn ghost small" disabled={busy} onClick={() => act(() => api.post(`/bookkeeping/bank/lines/${l.id}/ignore`, { ignored: true }))}>{t('Ignore')}</button>
                       </div>
                     )}
@@ -292,6 +298,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
           </table>
         </details>
       )}
+      {offering && <OfferingDialog line={offering} onClose={() => setOffering(null)} onDone={() => { setOffering(null); reload(); b.reload(); }} />}
       {entry && <EntryDialog line={entry} bankId={s.account_id} onClose={() => setEntry(null)} onDone={() => { setEntry(null); reload(); b.reload(); }} />}
     </div>
   );
@@ -333,6 +340,64 @@ function EntryDialog({ line, bankId, onClose, onDone }: { line: SLine; bankId: n
           </div>
         )}
         <Field label={t('Narration')}><input value={memo} onChange={(e) => setMemo(e.target.value)} /></Field>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * A PayNow or transfer gift first seen on the statement: added to a service's offerings, so the service record and
+ * the offering reports have it; the entry is drafted from the record and matched to this line when posted.
+ */
+function OfferingDialog({ line, onClose, onDone }: { line: SLine; onClose: () => void; onDone: () => void }) {
+  const { t, lt, lang } = useI18n();
+  const b = useBooks();
+  const { run, busy } = useAction();
+  const near = useApi<{ id: number; date: string; title: L10n; kind: string; verified: boolean }[]>(`/bookkeeping/bank/lines/${line.id}/services`);
+  const [service, setService] = useState<number | null>(null);
+  const [fund, setFund] = useState(b.overview.offering_funds[0] ?? '');
+  const [method, setMethod] = useState<OfferingMethod>('paynow');
+  const chosen = service ?? near.data?.[0]?.id ?? null;
+  const save = async (post: boolean) => {
+    if (!chosen || !fund) return;
+    const r = await run(() => api.post<{ journal: { number: string | null } | null; matched: boolean }>(`/bookkeeping/bank/lines/${line.id}/offering`, { service_id: chosen, fund, method, post }));
+    if (!r) return;
+    window.alert(!r.journal
+      ? t('Added to the service record. Its cash count isn’t verified yet: the entry is drafted when it is, and this line can be matched then.')
+      : r.matched ? t('Added to the service record, posted as {n} and matched.').replace('{n}', r.journal.number ?? '')
+        : post ? t('Added to the service record and posted as {n}.').replace('{n}', r.journal.number ?? '') : t('Added to the service record; its draft is waiting to be posted.'));
+    onDone();
+  };
+  return (
+    <Modal title={t('Add to a service’s offerings')} onClose={onClose} footer={
+      <>
+        <button className="btn" onClick={onClose}>{t('Cancel')}</button>
+        <button className="btn" disabled={busy || !chosen || !fund} onClick={() => save(false)}>{t('Add')}</button>
+        <button className="btn primary" disabled={busy || !chosen || !fund} onClick={() => save(true)}>{t('Add, post and match')}</button>
+      </>
+    }>
+      <div className="stack">
+        <div className="callout small">{fmtDate(line.date, lang)} · {line.description} · <strong>{t('Money in')} {fmtMoney(line.amount)}</strong></div>
+        <p className="small muted">{t('A gift by PayNow or transfer seen first on the bank statement: it is added to the service’s offerings, so the record and the offering reports have it too.')}</p>
+        <Field label={t('Service')}>
+          {near.error ? <ErrorBox error={near.error} /> : !near.data ? <Loading /> : !near.data.length ? <p className="small muted">{t('No service in the two weeks before this date.')}</p> : (
+            <select value={chosen ?? ''} onChange={(e) => setService(Number(e.target.value) || null)}>
+              {near.data.map((x) => <option key={x.id} value={x.id}>{fmtDate(x.date, lang)} · {lt(x.title)}{x.verified ? '' : ` (${t('not verified yet')})`}</option>)}
+            </select>
+          )}
+        </Field>
+        <div className="grid cols-2">
+          <Field label={t('Offering fund')}>
+            <select value={fund} onChange={(e) => setFund(e.target.value)}>
+              {b.overview.offering_funds.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </Field>
+          <Field label={t('Method')}>
+            <select value={method} onChange={(e) => setMethod(e.target.value as OfferingMethod)}>
+              {(['paynow', 'transfer', 'card', 'cheque', 'other'] as OfferingMethod[]).map((m) => <option key={m} value={m}>{t(METHOD_LABEL[m])}</option>)}
+            </select>
+          </Field>
+        </div>
       </div>
     </Modal>
   );

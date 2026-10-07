@@ -9,7 +9,7 @@ import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
 import { journalsCsv } from '../repo/bk-export.ts';
 import * as Bank from '../repo/bk-bank.ts';
 import { getSettings } from '../repo/settings.ts';
-import { isAdmin } from '../lib/permissions.ts';
+import { can, isAdmin, mayReopenCounts } from '../lib/permissions.ts';
 import { L10nSchema } from '../../shared/schemas.ts';
 import { JOURNAL_KIND_LABEL, type JournalKind } from '../../shared/bookkeeping.ts';
 import { h, id, sendCsv, str } from './helpers.ts';
@@ -257,6 +257,14 @@ bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/unmatch', h((req) => {
 bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/ignore', h((req) => {
   Bank.ignoreLine(id(req), z.object({ ignored: z.boolean() }).parse(req.body).ignored);
   return { ok: true };
+}));
+/** Services money in could be the offering of (a PayNow or transfer seen first on the statement). */
+bookkeepingRoutes.get('/bookkeeping/bank/lines/:id/services', h((req) => Bank.servicesNear(id(req))));
+/** Add a bank line to a service's offerings (needs the Offerings permission too): drafted, and matched when posted. */
+bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/offering', h((req) => {
+  const b = z.object({ service_id: z.number().int(), fund: z.string().min(1).max(100), method: z.enum(['paynow', 'transfer', 'card', 'cheque', 'other']), post: z.boolean() }).parse(req.body);
+  if (!can(req.user, 'contributions', 'edit')) throw Object.assign(new Error('Adding to a service’s offerings needs the Offerings permission.'), { status: 403 });
+  return Bank.offeringFromLine(id(req), b, { name: req.user?.display_name ?? '', admin: mayReopenCounts(req.user), money: true });
 }));
 bookkeepingRoutes.post('/bookkeeping/bank/lines/:id/entry', h((req) => Bank.entryFromLine(id(req), z.object({
   account_id: z.number().int(), fund_id: z.number().int(), memo: z.string().max(500).nullable().optional(),

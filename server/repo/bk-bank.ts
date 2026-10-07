@@ -8,7 +8,10 @@ import { BadRequest, Conflict, NotFound } from '../lib/table.ts';
 import { currentActor } from '../lib/actor.ts';
 import { decodeCsv, parseCsv } from '../lib/csv.ts';
 import { logChange } from './changelog.ts';
-import { accounts, activeAccount, activeFund, postJournal, postingProblems, saveDraft } from './bookkeeping.ts';
+import { accounts, activeAccount, activeFund, getJournal, postJournal, postingProblems, saveDraft } from './bookkeeping.ts';
+import { recordFor, saveRecord, type Who } from './records.ts';
+import { getSettings } from './settings.ts';
+import type { OfferingMethod } from '../../shared/records.ts';
 import type { BankCsvLayout } from '../../shared/bookkeeping.ts';
 
 export interface StatementLine { id: number; statement_id: number; position: number; date: string; description: string | null; reference: string | null; amount: number; status: 'open' | 'matched' | 'ignored'; line_id: number | null; journal_id: number | null }
@@ -236,6 +239,47 @@ export function linkDraftToLine(lineId: number, journalId: number) {
   return l;
 }
 export const statementLine = (id: number) => lineOf(id);
+
+// ---------------------------------------------------------------- PayNow and transfers found at the reconciliation
+
+/** Services that money in on a date could be the offering of: from two weeks before to two days after, nearest first. */
+export function servicesNear(lineId: number) {
+  const l = lineOf(lineId);
+  const day = (n: number) => new Date(Date.parse(`${l.date}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10);
+  return all<{ id: number; date: string; title: string; kind: string; verified: number; offering: number }>(
+    `SELECT s.id, s.date, s.title, s.kind, (r.verified_at IS NOT NULL) AS verified, s.offering FROM services s LEFT JOIN service_records r ON r.service_id = s.id
+     WHERE s.date >= ? AND s.date <= ? AND IFNULL(s.offering, 1) <> 0 ORDER BY ABS(julianday(s.date) - julianday(?)), s.date DESC LIMIT 12`,
+    day(-14), day(2), l.date,
+  ).map((x) => ({ id: x.id, date: x.date, title: JSON.parse(x.title || '{}') as Record<string, string>, kind: x.kind, verified: !!x.verified }));
+}
+
+/**
+ * A gift by PayNow or transfer that the treasurer first sees on the bank statement: added to the service's offerings
+ * (allowed after the cash count is verified — only the cash is locked), so the record and the offering reports have
+ * it. A verified count then drafts the entry, tied to this line: posting it matches the line (`post` does that now).
+ */
+export function offeringFromLine(id: number, input: { service_id: number; fund: string; method: OfferingMethod; post: boolean }, who: Who) {
+  const l = lineOf(id);
+  if (l.status !== 'open') throw new Conflict('This line is already matched or ignored.');
+  if (l.amount <= 0) throw new BadRequest('Only money in can be an offering.');
+  if (input.method === 'cash') throw new BadRequest('Cash is counted at the service: choose PayNow, transfer, card or cheque.');
+  if (!getSettings().offering.funds.includes(input.fund)) throw new BadRequest(`“${input.fund}” is not an offering fund (Settings → Offerings).`);
+  return tx(() => {
+    const r = recordFor(input.service_id);
+    saveRecord(input.service_id, { offerings: [...(r.offerings ?? []), { fund: input.fund, method: input.method, amount: l.amount }] }, who);
+    logChange({ entity: 'bk_statements', entity_id: l.statement_id, action: 'update', summary: `Line ${l.date} ${l.description ?? ''} ${(l.amount / 100).toFixed(2)} added to the offerings of service ${input.service_id} (${input.fund}, ${input.method})` });
+    const draft = get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND kind = 'offering' AND status = 'draft' ORDER BY id LIMIT 1", input.service_id);
+    // not verified yet: the count drafts it later, and the line is matched then (it will be suggested)
+    if (!r.verified_at || !draft) return { added: true, journal: null, matched: false };
+    linkDraftToLine(id, draft.id);
+    if (!input.post) return { added: true, journal: getJournal(draft.id), matched: false };
+    const j = getJournal(draft.id);
+    const problems = postingProblems(j);
+    if (problems.length) throw new BadRequest(problems.join(' '));
+    const posted = postJournal(j.id);
+    return { added: true, journal: posted, matched: lineOf(id).status === 'matched' };
+  });
+}
 
 /** Match every line that has exactly one suggestion on the same day. */
 export function autoMatch(statementId: number) {

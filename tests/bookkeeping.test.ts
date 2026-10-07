@@ -369,3 +369,26 @@ test('a PayNow line added after the count is verified is drafted into the books 
   const add = B.getJournal(get<{ id: number }>("SELECT id FROM bk_journals WHERE service_id = ? AND status = 'draft'", s.id)!.id);
   assert.deepEqual(add.lines.map((l) => [l.account_id, l.fund_id, l.debit, l.credit]).sort(), [[acc('1100'), fund('MIS'), 2000, 0], [acc('4000'), fund('MIS'), 0, 2000]].sort());
 });
+
+test('a PayNow gift first seen on the bank statement: added to the service’s offerings, drafted, posted and matched', async () => {
+  const s = svc.createService({ date: '2031-08-03' }).service;
+  const ed = { name: 'Ed Itor', admin: false, money: true };
+  web(() => R.saveRecord(s.id, { offerings: [{ fund: 'General', method: 'cash', amount: 0 }], cash: {}, counters: ['Ann', 'Ben'] }, ed));
+  web(() => R.setVerified(s.id, true, ed));
+  const csv = ['Date,Description,Amount', '04/08/2031,PAYNOW FROM A MEMBER (fictional),88.00', '05/08/2031,HALL RENTAL (fictional),300.00'].join('\n');
+  const imp = await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: acc('1100'), file: Buffer.from(csv).toString('base64'), layout: { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', date_format: 'DD/MM/YYYY' } });
+  assert.equal(imp.status, 200, imp.text);
+  const st = (await call(as.treasurer, 'GET', `/bookkeeping/bank/statements/${imp.body.statement_id}`)).body;
+  const gift = st.lines.find((l: Json) => l.amount === 8800);
+  const near = (await call(as.treasurer, 'GET', `/bookkeeping/bank/lines/${gift.id}/services`)).body as Json[];
+  assert.equal(near[0].id, s.id, 'the service the day before comes first');
+  assert.equal((await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${gift.id}/offering`, { service_id: s.id, fund: 'Missions', method: 'cash', post: true })).status, 400, 'not cash');
+  const r = await call(as.treasurer, 'POST', `/bookkeeping/bank/lines/${gift.id}/offering`, { service_id: s.id, fund: 'Missions', method: 'paynow', post: true });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.body.matched, true);
+  assert.ok(r.body.journal.number);
+  assert.ok(R.recordFor(s.id).offerings.some((o) => o.fund === 'Missions' && o.method === 'paynow' && o.amount === 8800), 'the service record has it');
+  // a role without the Offerings permission can't add to a service's offerings
+  const rental = st.lines.find((l: Json) => l.amount === 30000);
+  assert.equal((await call(as.viewer, 'POST', `/bookkeeping/bank/lines/${rental.id}/offering`, { service_id: s.id, fund: 'General', method: 'transfer', post: false })).status, 403);
+});

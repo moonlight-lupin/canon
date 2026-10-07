@@ -88,6 +88,10 @@
       "一间虚构的教会，方便试用 Canon：约 40 人分属各家庭，有英文名、中文名和生日；按地区分的小组、委员会、团契和主日学；每个事奉团队也有人。他们的备注会注明是示例数据。",
       "一間虛構的教會，方便試用 Canon：約 40 人分屬各家庭，有英文名、中文名和生日；按地區分的小組、委員會、團契和主日學；每個事奉團隊也有人。他們的備註會註明是示例數據。"
     ],
+    "A gift by PayNow or transfer seen first on the bank statement: it is added to the service’s offerings, so the record and the offering reports have it too.": [
+      "在银行对账单上才看到的 PayNow 或转账奉献：把它加入聚会的奉献，聚会记录和奉献报表也就会有这笔。",
+      "在銀行對賬單上才看到的 PayNow 或轉賬奉獻：把它加入聚會的奉獻，聚會記錄和奉獻報表也就會有這筆。"
+    ],
     "A line is a hymn line, or one sentence of a reading or the liturgy. The rest continues on the next slide, with every language kept together.": [
       "一行即一句歌词，或经文、礼文中的一个句子。其余内容接续在下一张投影片，各语言保持对齐。",
       "一行即一句歌詞，或經文、禮文中的一個句子。其餘內容接續在下一張投影片，各語言保持對齊。"
@@ -488,6 +492,10 @@
       "请在 设置 → 场地 加入",
       "請在 設置 → 場地 加入"
     ],
+    "Add to a service’s offerings": [
+      "加入聚会的奉献",
+      "加入聚會的奉獻"
+    ],
     "Add to committee…": [
       "加入委员会…",
       "加入委員會…"
@@ -524,6 +532,10 @@
       "请先在「资料库 → 诗本」添加诗本，才能记录诗歌编号。",
       "請先在「資料庫 → 詩本」添加詩本，才能記錄詩歌編號。"
     ],
+    "Add, post and match": [
+      "加入、过账并配对",
+      "加入、過賬並配對"
+    ],
     "Added": [
       "新增",
       "新增"
@@ -547,6 +559,22 @@
     "Added to the register": [
       "新增到名册",
       "新增到名冊"
+    ],
+    "Added to the service record and posted as {n}.": [
+      "已加入聚会记录，并过账为 {n}。",
+      "已加入聚會記錄，並過賬為 {n}。"
+    ],
+    "Added to the service record, posted as {n} and matched.": [
+      "已加入聚会记录，过账为 {n} 并已配对。",
+      "已加入聚會記錄，過賬為 {n} 並已配對。"
+    ],
+    "Added to the service record. Its cash count isn’t verified yet: the entry is drafted when it is, and this line can be matched then.": [
+      "已加入聚会记录。它的现金点算还没有核实：核实后会起草分录，届时就可以配对这一行。",
+      "已加入聚會記錄。它的現金點算還沒有核實：核實後會起草分錄，屆時就可以配對這一行。"
+    ],
+    "Added to the service record; its draft is waiting to be posted.": [
+      "已加入聚会记录；它的草稿正等待过账。",
+      "已加入聚會記錄；它的草稿正等待過賬。"
     ],
     "Added, changed, deleted": [
       "新增、修改、删除",
@@ -5092,6 +5120,10 @@
       "没有找到与“{q}”相关的段落。",
       "沒有找到與“{q}”相關的段落。"
     ],
+    "No service in the two weeks before this date.": [
+      "这个日期之前两周内没有聚会。",
+      "這個日期之前兩週內沒有聚會。"
+    ],
     "No services in this period": [
       "此期间没有聚会",
       "此期間沒有聚會"
@@ -5488,6 +5520,10 @@
       "奉献点算声明",
       "奉獻點算聲明"
     ],
+    "Offering fund": [
+      "奉献项目",
+      "奉獻項目"
+    ],
     "Offering funds are set in Settings → Offerings.": [
       "奉献项目在“设置 → 奉献”中设定。",
       "奉獻項目在“設置 → 奉獻”中設定。"
@@ -5519,6 +5555,10 @@
     "Offerings: {n}": [
       "奉献：{n}",
       "奉獻：{n}"
+    ],
+    "Offering…": [
+      "奉献…",
+      "奉獻…"
     ],
     "Old Testament": [
       "旧约",
@@ -9680,6 +9720,10 @@
       "无法识别",
       "無法識別"
     ],
+    "not verified yet": [
+      "尚未核实",
+      "尚未核實"
+    ],
     "nothing closed yet": [
       "尚未关账",
       "尚未關賬"
@@ -10178,8 +10222,8 @@
     ]
   },
   "guide": [
-    "19ec7110da0221db",
-    "6c76aa55ce49673a"
+    "4c560c0ff4c47e8d",
+    "da2066c3ef66b603"
   ],
   "outputs": {
     "Advent": [
