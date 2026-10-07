@@ -280,6 +280,8 @@ export const McpConfigSchema = z.object({
     contributions: z.enum(['off', 'read', 'write']).default('off').transform((v) => (v === 'write' ? 'read' : v)),
     lending: z.enum(['off', 'read', 'write']).default('off'),
     equipment: z.enum(['off', 'read', 'write']).default('off'),
+    // write = draft journals only (a person posts them)
+    bookkeeping: z.enum(['off', 'read', 'write']).default('off'),
     // administrators' connections only: read the checklist, accounts and logs; write = back up now, run the checks
     admin: z.enum(['off', 'read', 'write']).default('off'),
   }),

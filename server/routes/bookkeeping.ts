@@ -1,0 +1,215 @@
+// REST routes for book-keeping (0.17.0, optional module "bookkeeping"; switched off = 404, shared/modules.ts).
+// Reading needs the role's Book-keeping access, changes need edit; reopening a closed period is for administrators.
+import express from 'express';
+import { z } from 'zod';
+import { all, get } from '../db.ts';
+import * as B from '../repo/bookkeeping.ts';
+import * as R from '../repo/bk-reports.ts';
+import { syncOfferingsBetween } from '../repo/bk-offerings.ts';
+import { getSettings } from '../repo/settings.ts';
+import { isAdmin } from '../lib/permissions.ts';
+import { L10nSchema } from '../../shared/schemas.ts';
+import { JOURNAL_KIND_LABEL, type JournalKind } from '../../shared/bookkeeping.ts';
+import { h, id, sendCsv, str } from './helpers.ts';
+
+export const bookkeepingRoutes = express.Router();
+
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const today = () => new Date().toISOString().slice(0, 10);
+const num = (v: unknown) => (typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : undefined);
+const filterOf = (q: Record<string, unknown>): R.Filter => ({ fund_id: num(q.fund_id), project_id: num(q.project_id), ministry_id: num(q.ministry_id), congregation_id: num(q.congregation_id) });
+
+const Line = z.object({
+  account_id: z.number().int(),
+  fund_id: z.number().int(),
+  project_id: z.number().int().nullable().optional(),
+  ministry_id: z.number().int().nullable().optional(),
+  congregation_id: z.number().int().nullable().optional(),
+  debit: z.number().int().min(0).default(0),
+  credit: z.number().int().min(0).default(0),
+  memo: z.string().max(500).nullable().optional(),
+  orig_currency: z.string().max(3).nullable().optional(),
+  orig_amount: z.number().int().nullable().optional(),
+  rate: z.number().positive().nullable().optional(),
+});
+const JournalInput = z.object({
+  date,
+  memo: z.string().max(1000).nullable().optional(),
+  kind: z.enum(['manual', 'opening', 'transfer']).optional(),
+  lines: z.array(Line).max(500),
+});
+
+// ---------------------------------------------------------------- overview and setup
+
+bookkeepingRoutes.get('/bookkeeping', h(() => {
+  const s = B.bkSettings();
+  const drafts = get<{ n: number }>("SELECT COUNT(*) n FROM bk_journals WHERE status = 'draft'")!.n;
+  const offeringDrafts = get<{ n: number }>("SELECT COUNT(*) n FROM bk_journals WHERE status = 'draft' AND kind = 'offering'")!.n;
+  // cash and bank balances today, for the overview
+  const money = s.start_date ? R.balanceSheet(today()).assets.rows.filter((r) => {
+    const a = get<{ kind: string }>('SELECT kind FROM bk_accounts WHERE id = ?', r.account_id);
+    return a && ['bank', 'cash', 'undeposited', 'foreign_cash'].includes(a.kind);
+  }) : [];
+  return {
+    settings: s, currency: getSettings().offering.currency, offering_funds: getSettings().offering.funds, started: !!s.start_date,
+    drafts, offering_drafts: offeringDrafts, money,
+    opening: B.openingJournal(), kinds: JOURNAL_KIND_LABEL,
+  };
+}));
+
+bookkeepingRoutes.put('/bookkeeping/setup', h((req) => B.setupBooks(z.object({ start_date: date, year_end_month: z.number().int().min(1).max(12), template: z.boolean() }).parse(req.body))));
+bookkeepingRoutes.put('/bookkeeping/offering-mapping', h((req) => B.saveOfferingMapping(z.object({
+  offering_drafts: z.boolean(),
+  method_accounts: z.record(z.string().max(20), z.number().int().nullable()).transform((m) => Object.fromEntries(Object.entries(m).filter(([, v]) => v != null)) as Record<string, number>),
+  fund_map: z.record(z.string().max(100), z.object({ fund_id: z.number().int(), income_account_id: z.number().int() })),
+}).parse(req.body))));
+
+// ---------------------------------------------------------------- accounts, funds, projects, ministries
+
+const AccountInput = z.object({
+  code: z.string().min(1).max(20), name: L10nSchema, type: z.enum(['asset', 'liability', 'equity', 'income', 'expense']),
+  kind: z.enum(['bank', 'cash', 'undeposited', 'foreign_cash', 'fund_balance', 'fund_transfer', 'other']).optional(),
+  active: z.boolean().optional(), description: z.string().max(1000).nullable().optional(),
+});
+bookkeepingRoutes.get('/bookkeeping/accounts', h(() => B.listAccounts()));
+bookkeepingRoutes.post('/bookkeeping/accounts', h((req) => B.saveAccount(null, AccountInput.parse(req.body))));
+bookkeepingRoutes.patch('/bookkeeping/accounts/:id', h((req) => B.saveAccount(id(req), AccountInput.parse(req.body))));
+bookkeepingRoutes.delete('/bookkeeping/accounts/:id', h((req) => {
+  B.deleteAccount(id(req));
+  return { deleted: true };
+}));
+
+const FundInput = z.object({
+  code: z.string().min(1).max(20), name: L10nSchema, restriction: z.enum(['unrestricted', 'designated', 'restricted', 'endowment']),
+  active: z.boolean().optional(), description: z.string().max(1000).nullable().optional(),
+});
+bookkeepingRoutes.get('/bookkeeping/funds', h(() => B.listFunds()));
+bookkeepingRoutes.post('/bookkeeping/funds', h((req) => B.saveFund(null, FundInput.parse(req.body))));
+bookkeepingRoutes.patch('/bookkeeping/funds/:id', h((req) => B.saveFund(id(req), FundInput.parse(req.body))));
+bookkeepingRoutes.delete('/bookkeeping/funds/:id', h((req) => {
+  B.deleteFund(id(req));
+  return { deleted: true };
+}));
+
+const TagInput = z.object({ code: z.string().min(1).max(20), name: L10nSchema, active: z.boolean().optional() });
+const tagKind = (v: unknown): B.TagKind => {
+  if (v === 'projects' || v === 'ministries') return v;
+  throw Object.assign(new Error('Not found'), { status: 404 });
+};
+bookkeepingRoutes.get('/bookkeeping/tags/:kind', h((req) => B.listTags(tagKind(req.params.kind))));
+bookkeepingRoutes.post('/bookkeeping/tags/:kind', h((req) => B.saveTag(tagKind(req.params.kind), null, TagInput.parse(req.body))));
+bookkeepingRoutes.patch('/bookkeeping/tags/:kind/:id', h((req) => B.saveTag(tagKind(req.params.kind), id(req), TagInput.parse(req.body))));
+bookkeepingRoutes.delete('/bookkeeping/tags/:kind/:id', h((req) => {
+  B.deleteTag(tagKind(req.params.kind), id(req));
+  return { deleted: true };
+}));
+
+// ---------------------------------------------------------------- journals
+
+bookkeepingRoutes.get('/bookkeeping/journals', h((req) => {
+  const q = req.query as Record<string, string | undefined>;
+  return B.listJournals({
+    from: str(q.from), to: str(q.to), status: q.status === 'draft' || q.status === 'posted' ? q.status : undefined,
+    kind: (str(q.kind) as JournalKind | undefined), account_id: num(q.account_id), fund_id: num(q.fund_id), q: str(q.q),
+    limit: num(q.limit), offset: num(q.offset),
+  });
+}));
+bookkeepingRoutes.get('/bookkeeping/journals/:id', h((req) => {
+  const j = B.getJournal(id(req));
+  return { ...j, problems: j.status === 'draft' ? B.postingProblems(j) : [] };
+}));
+bookkeepingRoutes.post('/bookkeeping/journals', h((req) => B.saveDraft(null, JournalInput.parse(req.body))));
+bookkeepingRoutes.put('/bookkeeping/journals/:id', h((req) => B.saveDraft(id(req), JournalInput.parse(req.body))));
+bookkeepingRoutes.delete('/bookkeeping/journals/:id', h((req) => {
+  B.deleteDraft(id(req));
+  return { deleted: true };
+}));
+bookkeepingRoutes.post('/bookkeeping/journals/:id/post', h((req) => B.postJournal(id(req))));
+/** Post several drafts (e.g. a week's offering drafts): each is checked; the ones with problems stay drafts. */
+bookkeepingRoutes.post('/bookkeeping/journals/post', h((req) => {
+  const ids = z.object({ ids: z.array(z.number().int()).min(1).max(500) }).parse(req.body).ids;
+  const posted: string[] = [];
+  const failed: { id: number; error: string }[] = [];
+  for (const j of ids) {
+    try {
+      posted.push(B.postJournal(j).number!);
+    } catch (e) {
+      failed.push({ id: j, error: (e as Error).message });
+    }
+  }
+  return { posted, failed };
+}));
+bookkeepingRoutes.post('/bookkeeping/journals/:id/reverse', h((req) => {
+  const b = z.object({ date: date.optional(), memo: z.string().max(1000).optional() }).parse(req.body ?? {});
+  return B.reverseJournal(id(req), b.date, b.memo);
+}));
+
+// ---------------------------------------------------------------- offerings, closing
+
+bookkeepingRoutes.post('/bookkeeping/offerings/sync', h((req) => {
+  const b = z.object({ from: date, to: date }).parse(req.body);
+  return syncOfferingsBetween(b.from, b.to);
+}));
+bookkeepingRoutes.post('/bookkeeping/close', h((req) => B.closeThrough(z.object({ date }).parse(req.body).date)));
+bookkeepingRoutes.post('/bookkeeping/reopen', h((req) => B.reopenThrough(z.object({ date: date.nullable() }).parse(req.body).date, isAdmin(req.user!))));
+
+// ---------------------------------------------------------------- reports
+
+const asOf = (q: Record<string, unknown>) => str(q.as_of) ?? today();
+const period = (q: Record<string, unknown>) => {
+  const to = str(q.to) ?? today();
+  const from = str(q.from) ?? `${to.slice(0, 4)}-01-01`;
+  return { from, to };
+};
+bookkeepingRoutes.get('/bookkeeping/reports/trial-balance', h((req) => R.trialBalance(asOf(req.query))));
+bookkeepingRoutes.get('/bookkeeping/reports/income-expenditure', h((req) => {
+  const p = period(req.query);
+  return R.incomeExpenditure(p.from, p.to, filterOf(req.query));
+}));
+bookkeepingRoutes.get('/bookkeeping/reports/balance-sheet', h((req) => R.balanceSheet(asOf(req.query))));
+bookkeepingRoutes.get('/bookkeeping/reports/fund-movements', h((req) => {
+  const p = period(req.query);
+  return R.fundMovements(p.from, p.to);
+}));
+bookkeepingRoutes.get('/bookkeeping/reports/by/:dim', h((req) => {
+  const dim = req.params.dim;
+  if (dim !== 'project' && dim !== 'ministry' && dim !== 'congregation') throw Object.assign(new Error('Not found'), { status: 404 });
+  const p = period(req.query);
+  return R.byDimension(dim, p.from, p.to);
+}));
+bookkeepingRoutes.get('/bookkeeping/reports/ledger/:id', h((req) => {
+  const p = period(req.query);
+  const l = R.ledger(id(req), p.from, p.to, filterOf(req.query));
+  if (!l) throw Object.assign(new Error('Account not found'), { status: 404 });
+  return l;
+}));
+
+// ---------------------------------------------------------------- exports
+
+/**
+ * Every posted line in a period, one row each, for the church's accountant or other accounting software (most
+ * import a "manual journal" CSV with these columns: number, date, narration, account code, debit, credit).
+ */
+bookkeepingRoutes.get('/bookkeeping/export/journals.csv', h((req, res) => {
+  const p = period(req.query);
+  const rows = all<Record<string, string | number | null>>(
+    `SELECT j.number, j.date, j.memo AS journal_memo, j.kind, a.code AS account_code, a.name AS account_name, f.code AS fund, pr.code AS project, mi.code AS ministry,
+       c.code AS congregation, l.debit, l.credit, l.memo, l.orig_currency, l.orig_amount
+     FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id JOIN bk_accounts a ON a.id = l.account_id JOIN bk_funds f ON f.id = l.fund_id
+     LEFT JOIN bk_projects pr ON pr.id = l.project_id LEFT JOIN bk_ministries mi ON mi.id = l.ministry_id LEFT JOIN congregations c ON c.id = l.congregation_id
+     WHERE j.status = 'posted' AND j.date >= ? AND j.date <= ? ORDER BY j.date, j.number, l.position`, p.from, p.to,
+  );
+  const money = (n: number | null) => (n ? (Number(n) / 100).toFixed(2) : '');
+  const name = (v: unknown) => {
+    try {
+      const o = JSON.parse(String(v)) as Record<string, string>;
+      return o.en ?? Object.values(o)[0] ?? '';
+    } catch {
+      return String(v ?? '');
+    }
+  };
+  sendCsv(res, `journals-${p.from}-to-${p.to}.csv`, [
+    ['Journal', 'Date', 'Narration', 'Kind', 'Account code', 'Account', 'Fund', 'Project', 'Ministry', 'Congregation', 'Debit', 'Credit', 'Line note', 'Original currency', 'Original amount'],
+    ...rows.map((r) => [r.number, r.date, r.journal_memo, r.kind, r.account_code, name(r.account_name), r.fund, r.project, r.ministry, r.congregation, money(r.debit as number), money(r.credit as number), r.memo, r.orig_currency, r.orig_amount != null ? (Number(r.orig_amount) / 100).toFixed(2) : '']),
+  ]);
+}));

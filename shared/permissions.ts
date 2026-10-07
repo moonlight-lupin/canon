@@ -10,13 +10,13 @@
 import type { L10n } from './types.ts';
 
 export type Access = 'none' | 'read' | 'edit';
-export const PERM_MODULES = ['services', 'templates', 'library', 'volunteers', 'members', 'coworkers', 'groups', 'meetings', 'records', 'contributions', 'lending', 'equipment'] as const;
+export const PERM_MODULES = ['services', 'templates', 'library', 'volunteers', 'members', 'coworkers', 'groups', 'meetings', 'records', 'contributions', 'lending', 'equipment', 'bookkeeping'] as const;
 export type PermModule = (typeof PERM_MODULES)[number];
 
 export const MODULE_LABEL: Record<PermModule, string> = {
   services: 'Services', templates: 'Templates', library: 'Library', volunteers: 'Volunteers and rota', members: 'Members',
   coworkers: 'Co-workers', groups: 'Groups', meetings: 'Meetings and calendar', records: 'Service records and reports', contributions: 'Offerings',
-  lending: 'Lending library', equipment: 'Asset register',
+  lending: 'Lending library', equipment: 'Asset register', bookkeeping: 'Book-keeping',
 };
 
 export interface RoleDef {
@@ -50,31 +50,31 @@ export const BUILTIN_ROLES: Omit<RoleDef, 'builtin'>[] = [
   },
   {
     key: 'pastor', name: { en: 'Pastor / Elder', zh: '牧者 / 长老' }, description: { en: 'Pastoral care and worship: members with their details and notes, groups, meetings and services; sees the records and offerings.', zh: '牧养与崇拜：会友及其资料和备注、群组、聚会活动和主日聚会；可查看记录和奉献。' },
-    admin: false, access: with_('edit', { templates: 'read', volunteers: 'read', records: 'read', contributions: 'read', equipment: 'read' }), member_details: true, sensitive_fields: true, reopen_counts: false, sort: 10,
+    admin: false, access: with_('edit', { templates: 'read', volunteers: 'read', records: 'read', contributions: 'read', equipment: 'read', bookkeeping: 'read' }), member_details: true, sensitive_fields: true, reopen_counts: false, sort: 10,
   },
   {
     key: 'editor', name: { en: 'Editor', zh: '编辑' }, description: { en: 'Plans services and edits the registers, library, rota and records (but not settings or accounts).', zh: '策划聚会，编辑名册、资料库、事奉表和记录（但不包括设置或帐户）。' },
-    admin: false, access: all('edit'), member_details: true, sensitive_fields: true, reopen_counts: false, sort: 20,
+    admin: false, access: with_('edit', { bookkeeping: 'none' }), member_details: true, sensitive_fields: true, reopen_counts: false, sort: 20,
   },
   {
     key: 'planner', name: { en: 'Service planner', zh: '聚会策划' }, description: { en: 'Services, templates, the library and the rota; members by name.', zh: '主日聚会、模板、资料库和事奉表；会友只看姓名。' },
-    admin: false, access: with_('read', { services: 'edit', templates: 'edit', library: 'edit', volunteers: 'edit', contributions: 'none' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 30,
+    admin: false, access: with_('read', { services: 'edit', templates: 'edit', library: 'edit', volunteers: 'edit', contributions: 'none', bookkeeping: 'none' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 30,
   },
   {
-    key: 'treasurer', name: { en: 'Treasurer', zh: '财务' }, description: { en: 'Service records and offerings: enters, verifies and reopens cash counts; reads the rest.', zh: '聚会记录和奉献：输入、核实和重开现金点算；其余只能查看。' },
-    admin: false, access: with_('read', { records: 'edit', contributions: 'edit', equipment: 'edit' }), member_details: false, sensitive_fields: false, reopen_counts: true, sort: 40,
+    key: 'treasurer', name: { en: 'Treasurer', zh: '财务' }, description: { en: 'Service records, offerings and the books: enters, verifies and reopens cash counts, keeps the accounts; reads the rest.', zh: '聚会记录、奉献和账目：输入、核实和重开现金点算，管理账目；其余只能查看。' },
+    admin: false, access: with_('read', { records: 'edit', contributions: 'edit', equipment: 'edit', bookkeeping: 'edit' }), member_details: false, sensitive_fields: false, reopen_counts: true, sort: 40,
   },
   {
     key: 'secretary', name: { en: 'Secretary', zh: '文书' }, description: { en: 'The registers: members, co-workers, groups, meetings and service records (not offerings).', zh: '名册：会友、同工、群组、聚会活动和聚会记录（不包括奉献）。' },
-    admin: false, access: with_('read', { members: 'edit', coworkers: 'edit', groups: 'edit', meetings: 'edit', records: 'edit', contributions: 'none', lending: 'edit' }), member_details: true, sensitive_fields: false, reopen_counts: false, sort: 50,
+    admin: false, access: with_('read', { members: 'edit', coworkers: 'edit', groups: 'edit', meetings: 'edit', records: 'edit', contributions: 'none', lending: 'edit', bookkeeping: 'none' }), member_details: true, sensitive_fields: false, reopen_counts: false, sort: 50,
   },
   {
     key: 'viewer', name: { en: 'Read-only', zh: '只读' }, description: { en: 'Can view and print; no money, no members’ contact details or notes. Linked to a member who leads a group or a meeting, can record those meetings.', zh: '可查看和打印；不看奉献、会友联络资料或备注。若连结到带领某个群组或聚会活动的会友，可记录那些聚会活动。' },
-    admin: false, access: with_('read', { contributions: 'none' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 90,
+    admin: false, access: with_('read', { contributions: 'none', bookkeeping: 'none' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 90,
   },
   {
     key: 'guest', name: { en: 'External guest (read-only)', zh: '外部访客（只读）' }, description: { en: 'For someone outside the church, such as an auditor: reads what this role allows, never members’ contact details or notes, and changes nothing. The only account that isn’t linked to a member.', zh: '供教会以外的人使用，例如审计员：只能查看此角色允许的内容，绝不看会友联络资料或备注，也不能更改任何内容。唯一不必连结到会友的帐户。' },
-    admin: false, access: with_('none', { services: 'read', library: 'read', records: 'read', contributions: 'read', equipment: 'read' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 95,
+    admin: false, access: with_('none', { services: 'read', library: 'read', records: 'read', contributions: 'read', equipment: 'read', bookkeeping: 'read' }), member_details: false, sensitive_fields: false, reopen_counts: false, sort: 95,
   },
   {
     key: 'librarian', name: { en: 'Librarian', zh: '图书管理员' }, description: { en: 'The lending library: the catalogue, copies and labels, lending and returns, reminders. Borrowers by name only.', zh: '图书馆：目录、副本与标签、借出与归还、提醒。借阅者只看姓名。' },
@@ -127,6 +127,7 @@ const RULES: Rule[] = [
   [/^\/(rota|roles|teams|unavailability|assignments|email\/log)(\/|$)/, 'volunteers'],
   [/^\/lending(\/|$)/, 'lending'],
   [/^\/equipment(\/|$)/, 'equipment'],
+  [/^\/bookkeeping(\/|$)/, 'bookkeeping'],
   [/^\/(people|households|member-fields)(\/|\.|$)/, 'members'],
   [/^\/coworkers(\/|$)/, 'coworkers'],
   [/^\/(groups|group-members)(\/|$)/, 'groups'],
@@ -172,6 +173,7 @@ export function pageModule(pathname: string): PermModule | 'admin' | null {
   if (p.startsWith('/volunteers')) return 'volunteers';
   if (p.startsWith('/lending')) return 'lending';
   if (p.startsWith('/equipment')) return 'equipment';
+  if (p.startsWith('/bookkeeping')) return 'bookkeeping';
   if (p.startsWith('/library')) return 'library';
   if (/^\/(templates|presentation|bulletin-templates|slide-templates)/.test(p)) return 'templates';
   if (p.startsWith('/settings')) return 'admin';

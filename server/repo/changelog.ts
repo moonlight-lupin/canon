@@ -46,6 +46,12 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   equipment: { en: 'Asset', zh: '资产' },
   equipment_maintenance: { en: 'Maintenance', zh: '维修保养' },
   equipment_files: { en: 'Asset photo or receipt', zh: '资产照片或收据' },
+  bk_accounts: { en: 'Account', zh: '会计科目' },
+  bk_funds: { en: 'Fund', zh: '基金' },
+  bk_projects: { en: 'Project', zh: '项目' },
+  bk_ministries: { en: 'Ministry', zh: '事工' },
+  bk_journals: { en: 'Journal', zh: '分录' },
+  bk_statements: { en: 'Bank statement', zh: '银行对账单' },
 };
 
 /** Columns never written to the log. */

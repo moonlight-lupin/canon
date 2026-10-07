@@ -6,6 +6,7 @@
   "An administrator controls these levels in Settings → AI / MCP; changes apply immediately, and access can be revoked there at any time.": "管理员可在“设置 → AI / MCP”中调整以上权限（即时生效），并可随时撤销此授权。",
   "Asset register": "资产登记",
   "Authorization error": "授权错误",
+  "Book-keeping (drafts only)": "账目（只限草稿）",
   "Canon test e-mail": "Canon 测试邮件",
   "Co-workers register": "同工名册",
   "Connect an AI app to Canon": "授权 AI 应用连接 Canon",

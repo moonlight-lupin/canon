@@ -100,7 +100,7 @@ before(async () => {
   ids.pastA = svc.createService({ date: '2037-02-22', congregation_id: ids.A, preacher: 'Rev. Northward Example' }).service.id;
   const cur = S.getSettings().mcp;
   S.updateSettings({
-    mcp: { ...cur, enabled: true, expose_member_pii: true, modules: { members: 'write', coworkers: 'write', groups: 'write', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'write', contributions: 'read', lending: 'write', equipment: 'write', admin: 'write' } },
+    mcp: { ...cur, enabled: true, expose_member_pii: true, modules: { members: 'write', coworkers: 'write', groups: 'write', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'write', contributions: 'read', lending: 'write', equipment: 'write', bookkeeping: 'write', admin: 'write' } },
     backup: { ...S.getSettings().backup, dir: path.join(tmp, 'backups') },
   });
   server = createApp().listen(0, '127.0.0.1');

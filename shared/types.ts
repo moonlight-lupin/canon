@@ -435,16 +435,18 @@ export interface Template {
 
 // ---------------------------------------------------------------- MCP control
 
-export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions' | 'lending' | 'equipment' | 'admin';
+export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'services' | 'library' | 'templates' | 'records' | 'contributions' | 'lending' | 'equipment' | 'bookkeeping' | 'admin';
 export type ModuleAccess = 'off' | 'read' | 'write';
 export type VisitorAccess = 'off' | 'names' | 'contact';
-export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment', 'admin'];
+export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment', 'bookkeeping', 'admin'];
 /** Modules only administrators' connections ever get (0.15.3: Administration). */
 export const ADMIN_MODULES: ModuleKey[] = ['admin'];
 /** Modules that live inside another: they are off whenever their parent is off. */
 export const MODULE_PARENT: Partial<Record<ModuleKey, ModuleKey>> = { contributions: 'records' };
 /** Modules agents may only ever read (offerings: agents never change money). */
 export const READ_ONLY_MODULES: ModuleKey[] = ['contributions'];
+/** Modules where an agent's "write" is drafts only: it prepares, a person posts (book-keeping journals). */
+export const DRAFT_ONLY_MODULES: ModuleKey[] = ['bookkeeping'];
 
 /** The level an administrator's settings give a module, after nesting and read-only caps. */
 export function configuredAccess(module: ModuleKey, modules: Partial<Record<ModuleKey, ModuleAccess>>): ModuleAccess {

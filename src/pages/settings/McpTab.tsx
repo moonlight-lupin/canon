@@ -39,6 +39,7 @@ export const MOD_LABEL: Record<ModuleKey, string> = {
   contributions: 'Offerings (contributions)',
   lending: 'Lending library',
   equipment: 'Asset register',
+  bookkeeping: 'Book-keeping',
   admin: 'Administration',
 };
 
@@ -46,6 +47,7 @@ export const MOD_TIP: Partial<Record<ModuleKey, string>> = {
   records: 'Attendance and notes for the team, and the attendance report; new visitors as the Visitors switch below says. With Read & write, agents may record attendance, notes and (when Visitors is on) visitors — never money.',
   lending: 'The catalogue and its copies, who has what on loan and what is overdue. With Read & write, agents may add books and copies (e.g. from a list of ISBNs) — not lend or return.',
   equipment: 'The asset register and its maintenance log. With Read & write, agents may add or update items and record maintenance.',
+  bookkeeping: 'The chart of accounts, funds, journals, balances and the reports. With Read & write, agents may prepare DRAFT journals (e.g. from a bank statement or receipts) — a treasurer reviews and posts them. Agents never post, and never change a posted journal.',
   admin: 'For connections approved by an administrator only. Read only: the security checklist, backups, accounts (never passwords), the change log, who viewed member records and a settings overview. Read & write adds two safe actions: back up now, and run the checks (public address, backup folder, e-mail). Accounts, roles and settings are only ever changed in Canon.',
   contributions: 'Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.',
 };

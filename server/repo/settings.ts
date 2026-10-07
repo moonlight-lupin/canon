@@ -1,4 +1,5 @@
 import { DEFAULT_VISITOR_FORM, type VisitorFormSettings } from '../../shared/visitor-form.ts';
+import { DEFAULT_BOOKKEEPING, type BookkeepingSettings } from '../../shared/bookkeeping.ts';
 import type { MemberField } from '../../shared/member-fields.ts';
 import type { L10n, Lang, McpConfig } from '../../shared/types.ts';
 import { langInfo } from '../../shared/languages.ts';
@@ -59,6 +60,8 @@ export interface Settings {
   visitor_form: VisitorFormSettings;
   /** optional parts of Canon switched on or off (shared/modules.ts) */
   modules: ModuleSwitches;
+  /** book-keeping (0.17): the start of the books, the financial year, the closed periods and where offerings go */
+  bookkeeping: BookkeepingSettings;
   /** the lending library's rules (0.15) */
   lending: {
     loan_days: number; max_renewals: number; remind_days_before: number; send_reminders: boolean;
@@ -109,13 +112,14 @@ export const DEFAULT_SETTINGS: Settings = {
   visitor_form: DEFAULT_VISITOR_FORM,
   modules: DEFAULT_MODULES,
   lending: { loan_days: 21, max_renewals: 2, remind_days_before: 3, send_reminders: false, self_service: false, rules_saved: false },
+  bookkeeping: DEFAULT_BOOKKEEPING,
   member_fields: [],
   security: { disk_encryption: false, require_admin_2fa: false, require_all_2fa: false },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {
     enabled: false,
-    modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off', lending: 'off', equipment: 'off', admin: 'off' },
+    modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off', lending: 'off', equipment: 'off', bookkeeping: 'off', admin: 'off' },
     expose_member_pii: false,
     visitors: 'names',
     sheet_music: false,
@@ -152,6 +156,7 @@ export function getSettings(): Settings {
   out.visitor_form = { ...DEFAULT_SETTINGS.visitor_form, ...out.visitor_form };
   out.modules = { ...DEFAULT_MODULES, ...out.modules };
   out.lending = { ...DEFAULT_SETTINGS.lending, ...out.lending };
+  out.bookkeeping = { ...DEFAULT_BOOKKEEPING, ...out.bookkeeping };
   out.default_languages = out.default_languages.filter((l) => out.languages.includes(l));
   if (!out.default_languages.length) out.default_languages = out.languages.slice(0, 2);
   cache = out;

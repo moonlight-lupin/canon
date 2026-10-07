@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../shared/types.ts';
+import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess, DRAFT_ONLY_MODULES } from '../shared/types.ts';
 import type { McpConfig, ModuleAccess, ModuleKey, Role, VisitorAccess } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
 import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
@@ -52,6 +52,7 @@ const MODULE_TEXT: Record<ModuleKey, string> = {
   records: 'service records: attendance, new visitors (names and follow-up) and notes for the team, and their reports',
   contributions: 'offerings and cash counts on service records, and the offerings report (read only; part of records)',
   lending: 'the lending library: catalogue, copies and loans', equipment: 'the asset register: equipment and its maintenance',
+  bookkeeping: 'the church’s books: chart of accounts, funds, journals, balances and reports; with write, DRAFT journals only (a person reviews and posts them)',
   admin: 'administration (administrators only): the security checklist, backups, accounts, the change log and record views, a settings overview; with write, back up now and run the checks',
 };
 
@@ -63,6 +64,7 @@ function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, ro
   if (setting === 'off') return 'the administrator has not shared this module with AI agents';
   if (roleAccess(module, role) === 'none') return `your role (${roleDef(role).name.en}) does not include this module`;
   if (READ_ONLY_MODULES.includes(module)) return 'read only: AI agents never change offerings or cash counts';
+  if (DRAFT_ONLY_MODULES.includes(module) && effectiveAccess(module, cfg, scopes, role) === 'write') return 'read, and draft journals for a person to review and post (agents never post)';
   const lvl = effectiveAccess(module, cfg, scopes, role);
   if (lvl === 'write') return 'the administrator allows read & write, this connection may write, and your role may write';
   if (setting === 'read') return 'the administrator shares it read-only';
@@ -105,7 +107,9 @@ const WHOAMI: ToolDef = {
         levels.admin === 'off' ? 'see user accounts, passwords, settings or connection data' : 'see passwords, sign-in secrets or connection tokens, or change accounts, roles or settings',
         ...(levels.records === 'off' ? ['see service records (attendance, visitors, notes)'] : []),
         ...(levels.contributions === 'off' ? ['see offerings or cash counts'] : []),
-        'change offerings, cash counts or signatures, or verify a count', 'type hymn words that are under copyright unless the church holds a licence',
+        'change offerings, cash counts or signatures, or verify a count',
+        'post a journal, or change or delete a posted one (book-keeping: drafts only)',
+        'type hymn words that are under copyright unless the church holds a licence',
         'remove or overwrite anything without asking the user first',
       ],
       instructions: instructions(levels, piiFor(cfg, auth.user.role), settings.languages),
@@ -184,7 +188,7 @@ export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): T
     // switched-off parts of Canon (Settings → Modules) have no tools
     if (on.volunteers === false && (t.module === 'volunteers' || t.name === 'canon_serving_report')) return false;
     if (on.meetings === false && t.name === 'canon_get_calendar') return false;
-    if ((t.module === 'lending' && on.lending === false) || (t.module === 'equipment' && on.equipment === false)) return false;
+    if ((t.module === 'lending' && on.lending === false) || (t.module === 'equipment' && on.equipment === false) || (t.module === 'bookkeeping' && on.bookkeeping === false)) return false;
     const lvl = effectiveAccess(t.module, cfg, scopes, role);
     if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
     if (t.requiresScores && !scoresFor(cfg)) return false;

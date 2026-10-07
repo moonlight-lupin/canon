@@ -5,6 +5,7 @@
 // Every change goes to the change log (table() logs it with the person who made it).
 // A record moved to an archive file (repo/archive.ts) is read-only: archived_records remembers which services have
 // one, so a new record can't be started for them and the service can't be deleted or moved to another date.
+import { offeringDraftsOn, syncOfferingDraft } from './bk-offerings.ts';
 import type { ServiceRecord } from '../../shared/records.ts';
 import { DENOMINATIONS, OFFERING_METHODS, cashKey, cashTotal, countProblems, foreignCurrencies, methodTotal, money } from '../../shared/records.ts';
 import type { Signature } from '../../shared/records.ts';
@@ -102,6 +103,19 @@ export function saveRecord(serviceId: number, patch: Partial<ServiceRecord>, who
   return cur.saved ? records.update(cur.id, rest) : records.insert({ ...blank(serviceId), ...rest });
 }
 
+/**
+ * Book-keeping (0.17): a verified count drafts the service's offering journal; a reopened one withdraws the draft.
+ * The books never stop a cash count: a problem there is logged, and the treasurer can bring offerings in later.
+ */
+function afterCount(serviceId: number, r: ServiceRecord): ServiceRecord {
+  try {
+    if (offeringDraftsOn()) syncOfferingDraft(serviceId);
+  } catch (e) {
+    console.error(`book-keeping: the offering draft for service ${serviceId} was not made — ${(e as Error).message}`);
+  }
+  return r;
+}
+
 /** Mark the cash count as counted and verified (or undo that, administrators only). */
 export function setVerified(serviceId: number, verified: boolean, who: Who): ServiceRecord {
   assertMoney(who);
@@ -111,13 +125,13 @@ export function setVerified(serviceId: number, verified: boolean, who: Who): Ser
   if (!verified) {
     if (!who.admin) throw new Forbidden('Only an administrator can reopen a verified cash count.');
     // signatures confirmed the count being reopened: the counters sign again
-    return records.update(cur.id, { verified_at: null, verified_by: null, ...(cur.signatures?.length ? { signatures: [] } : {}) });
+    return afterCount(serviceId, records.update(cur.id, { verified_at: null, verified_by: null, ...(cur.signatures?.length ? { signatures: [] } : {}) }));
   }
   if (signingMode() === 'screen') throw new BadRequest('This church signs on screen: the count is verified with Finish signing once the counters have signed.');
   const min = minCounters();
   if (cur.counters.filter((c) => c.trim()).length < min) throw new BadRequest(`Enter the names of at least ${min} counters.`);
   checkCount(cur);
-  return records.update(cur.id, { verified_at: new Date().toISOString(), verified_by: who.name });
+  return afterCount(serviceId, records.update(cur.id, { verified_at: new Date().toISOString(), verified_by: who.name }));
 }
 
 function checkCount(r: ServiceRecord) {
@@ -189,7 +203,7 @@ export function finishSigning(serviceId: number, who: Who): ServiceRecord {
     if (accounts.size < min) throw new BadRequest(`At least ${min} counters must approve from their own accounts before the count can be finished (${accounts.size} so far).`);
   } else if (sigs.length < min) throw new BadRequest(`At least ${min} counters must sign before the count can be finished (${sigs.length} so far).`);
   void who;
-  return records.update(cur.id, { signatures: sigs, counters: sigs.map((s) => s.name), verified_at: new Date().toISOString(), verified_by: sigs.map((s) => s.name).join(', ') });
+  return afterCount(serviceId, records.update(cur.id, { signatures: sigs, counters: sigs.map((s) => s.name), verified_at: new Date().toISOString(), verified_by: sigs.map((s) => s.name).join(', ') }));
 }
 
 /** Remove a signature (before the count is verified, or by an administrator — which reopens the count). */
@@ -200,7 +214,8 @@ export function unsign(serviceId: number, name: string, who: Who): ServiceRecord
   if (cur.verified_at && !who.admin) throw new Forbidden('The cash count has been verified. Only an administrator can remove a signature.');
   const next = (cur.signatures ?? []).filter((s) => s.name !== name);
   // removing a signature from a verified count (administrators) reopens it
-  return records.update(cur.id, { signatures: next, counters: next.map((s) => s.name), ...(cur.verified_at ? { verified_at: null, verified_by: null } : {}) });
+  const out = records.update(cur.id, { signatures: next, counters: next.map((s) => s.name), ...(cur.verified_at ? { verified_at: null, verified_by: null } : {}) });
+  return cur.verified_at ? afterCount(serviceId, out) : out;
 }
 
 /** Refuse to delete a service that has a record: deleting the service would take its attendance and money with it. */

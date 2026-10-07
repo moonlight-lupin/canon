@@ -79,6 +79,7 @@ export const MODULE_LABEL: Record<ModuleKey, string> = {
   contributions: 'Offerings and cash counts',
   lending: 'Lending library',
   equipment: 'Asset register',
+  bookkeeping: 'Book-keeping (drafts only)',
   admin: 'Administration (checklist, backups, accounts, logs)',
 };
 

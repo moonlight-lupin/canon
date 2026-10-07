@@ -963,4 +963,149 @@ export const MIGRATIONS: (string | Migration)[] = [
   {
     sql: `ALTER TABLE service_items ADD COLUMN leader_people TEXT;`,
   },
+  // 32 (0.17.0): book-keeping — the chart of accounts, funds, projects and ministries, journals and their lines
+  // (every line with a fund), and bank statements. A posted journal is never changed or deleted (the triggers
+  // refuse it whatever writes): a mistake is corrected by a reversing journal.
+  {
+    sql: `
+    CREATE TABLE bk_accounts (
+      id INTEGER PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL DEFAULT '{}',
+      type TEXT NOT NULL CHECK (type IN ('asset','liability','equity','income','expense')),
+      kind TEXT NOT NULL DEFAULT 'other',
+      active INTEGER NOT NULL DEFAULT 1,
+      description TEXT,
+      sort INTEGER NOT NULL DEFAULT 0,
+      bank_csv TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revision INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE bk_funds (
+      id INTEGER PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL DEFAULT '{}',
+      restriction TEXT NOT NULL DEFAULT 'unrestricted' CHECK (restriction IN ('unrestricted','designated','restricted','endowment')),
+      active INTEGER NOT NULL DEFAULT 1,
+      description TEXT,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revision INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE bk_projects (
+      id INTEGER PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL DEFAULT '{}',
+      active INTEGER NOT NULL DEFAULT 1,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE bk_ministries (
+      id INTEGER PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL DEFAULT '{}',
+      active INTEGER NOT NULL DEFAULT 1,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE bk_journals (
+      id INTEGER PRIMARY KEY,
+      number TEXT UNIQUE,
+      date TEXT NOT NULL,
+      memo TEXT,
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','posted')),
+      kind TEXT NOT NULL DEFAULT 'manual',
+      service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+      reverses_id INTEGER REFERENCES bk_journals(id),
+      reversed_by_id INTEGER REFERENCES bk_journals(id),
+      created_via TEXT NOT NULL DEFAULT 'web',
+      created_by TEXT,
+      posted_by TEXT,
+      posted_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revision INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX bk_journals_date ON bk_journals(date);
+    CREATE INDEX bk_journals_service ON bk_journals(service_id);
+    CREATE TABLE bk_lines (
+      id INTEGER PRIMARY KEY,
+      journal_id INTEGER NOT NULL REFERENCES bk_journals(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      account_id INTEGER NOT NULL REFERENCES bk_accounts(id),
+      fund_id INTEGER NOT NULL REFERENCES bk_funds(id),
+      project_id INTEGER REFERENCES bk_projects(id) ON DELETE SET NULL,
+      ministry_id INTEGER REFERENCES bk_ministries(id) ON DELETE SET NULL,
+      congregation_id INTEGER REFERENCES congregations(id) ON DELETE SET NULL,
+      debit INTEGER NOT NULL DEFAULT 0 CHECK (debit >= 0),
+      credit INTEGER NOT NULL DEFAULT 0 CHECK (credit >= 0),
+      memo TEXT,
+      orig_currency TEXT,
+      orig_amount INTEGER,
+      rate REAL,
+      CHECK (NOT (debit > 0 AND credit > 0))
+    );
+    CREATE INDEX bk_lines_journal ON bk_lines(journal_id);
+    CREATE INDEX bk_lines_account ON bk_lines(account_id);
+    CREATE INDEX bk_lines_fund ON bk_lines(fund_id);
+    CREATE TABLE bk_statements (
+      id INTEGER PRIMARY KEY,
+      account_id INTEGER NOT NULL REFERENCES bk_accounts(id),
+      starts_on TEXT,
+      ends_on TEXT,
+      opening_balance INTEGER,
+      closing_balance INTEGER,
+      file_name TEXT,
+      imported_by TEXT,
+      imported_at TEXT NOT NULL DEFAULT (datetime('now')),
+      done_by TEXT,
+      done_at TEXT
+    );
+    CREATE TABLE bk_statement_lines (
+      id INTEGER PRIMARY KEY,
+      statement_id INTEGER NOT NULL REFERENCES bk_statements(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      date TEXT NOT NULL,
+      description TEXT,
+      reference TEXT,
+      amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','matched','ignored')),
+      line_id INTEGER REFERENCES bk_lines(id) ON DELETE SET NULL,
+      journal_id INTEGER REFERENCES bk_journals(id) ON DELETE SET NULL
+    );
+    CREATE INDEX bk_statement_lines_statement ON bk_statement_lines(statement_id);
+    CREATE UNIQUE INDEX bk_statement_lines_matched ON bk_statement_lines(line_id) WHERE line_id IS NOT NULL;
+
+    CREATE TRIGGER bk_journals_posted_update BEFORE UPDATE ON bk_journals
+      WHEN OLD.status = 'posted' AND (NEW.status IS NOT OLD.status OR NEW.date IS NOT OLD.date OR NEW.number IS NOT OLD.number
+        OR NEW.memo IS NOT OLD.memo OR NEW.kind IS NOT OLD.kind OR NEW.reverses_id IS NOT OLD.reverses_id)
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    CREATE TRIGGER bk_journals_posted_delete BEFORE DELETE ON bk_journals WHEN OLD.status = 'posted'
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be deleted: reverse it instead.'); END;
+    CREATE TRIGGER bk_lines_posted_update BEFORE UPDATE ON bk_lines
+      WHEN (SELECT status FROM bk_journals WHERE id = OLD.journal_id) = 'posted'
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    CREATE TRIGGER bk_lines_posted_delete BEFORE DELETE ON bk_lines
+      WHEN (SELECT status FROM bk_journals WHERE id = OLD.journal_id) = 'posted'
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    CREATE TRIGGER bk_lines_posted_insert BEFORE INSERT ON bk_lines
+      WHEN (SELECT status FROM bk_journals WHERE id = NEW.journal_id) = 'posted'
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    `,
+    run: (d) => {
+      // existing roles: Canon's own get the access they ship with; a church's own roles start without
+      const roles = d.prepare('SELECT key, builtin, access FROM access_roles').all() as { key: string; builtin: number; access: string }[];
+      const set = d.prepare('UPDATE access_roles SET access = ? WHERE key = ?');
+      for (const r of roles) {
+        const shipped = BUILTIN_ROLES.find((x) => x.key === r.key);
+        const access = JSON.parse(r.access || '{}') as Record<string, string>;
+        access.bookkeeping = r.builtin && shipped ? shipped.access.bookkeeping : 'none';
+        set.run(JSON.stringify(access), r.key);
+      }
+    },
+  },
 ];
