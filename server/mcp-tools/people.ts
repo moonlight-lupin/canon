@@ -1,6 +1,7 @@
 // MCP tools for the people registers: members (people, households) and co-workers.
 // Contact details, addresses, birth dates and notes only when the administrator exposes member PII.
 // (server/mcp.ts audits these modules with argument keys only.)
+import { APPROVER_EMAIL_LOCKED, approverEmailLocked } from '../repo/bk-claims.ts';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import type { Person } from '../../shared/types.ts';
@@ -111,6 +112,7 @@ export const PEOPLE_TOOLS: ToolDef[] = [
     input: { id: Id.optional(), fields: S.PersonInput.partial().default({}) },
     handler: (a, ctx) => {
       const cur = a.id ? reg.people.get(a.id) : undefined;
+      if (cur && approverEmailLocked(cur.id, a.fields.email)) throw new InputError(APPROVER_EMAIL_LOCKED);
       if (a.fields.custom && !(ctx.sensitive ?? ctx.pii)) {
         const hide = sensitiveKeys(getSettings().member_fields ?? []);
         if (Object.keys(a.fields.custom).some((k) => hide.has(k))) {

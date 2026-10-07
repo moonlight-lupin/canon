@@ -1213,4 +1213,23 @@ export const MIGRATIONS: (string | Migration)[] = [
     ALTER TABLE bk_statement_lines ADD COLUMN group_id INTEGER REFERENCES bk_match_groups(id) ON DELETE SET NULL;
     `,
   },
+  // 35 (0.18.0, review): an approval counts for the submission it was given for (round = the claim's revision then),
+  // so approvals from before a claim was sent back or moved to another ministry don't carry over; existing approvals
+  // of the claim as signed now belong to its current submission. A posted journal also keeps who posted it and
+  // when, its claim, and the journal that reversed it (set once).
+  {
+    sql: `
+    ALTER TABLE bk_claim_approvals ADD COLUMN round INTEGER;
+    UPDATE bk_claim_approvals SET round = (SELECT c.revision FROM bk_claims c WHERE c.id = bk_claim_approvals.claim_id)
+      WHERE decision = 'approved' AND hash IS NOT NULL
+        AND hash = (SELECT json_extract(c.signature, '$.hash') FROM bk_claims c WHERE c.id = bk_claim_approvals.claim_id);
+    DROP TRIGGER bk_journals_posted_update;
+    CREATE TRIGGER bk_journals_posted_update BEFORE UPDATE ON bk_journals
+      WHEN OLD.status = 'posted' AND (NEW.status IS NOT OLD.status OR NEW.date IS NOT OLD.date OR NEW.number IS NOT OLD.number
+        OR NEW.memo IS NOT OLD.memo OR NEW.kind IS NOT OLD.kind OR NEW.reverses_id IS NOT OLD.reverses_id
+        OR NEW.posted_by IS NOT OLD.posted_by OR NEW.posted_at IS NOT OLD.posted_at OR NEW.claim_id IS NOT OLD.claim_id
+        OR (OLD.reversed_by_id IS NOT NULL AND NEW.reversed_by_id IS NOT OLD.reversed_by_id))
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    `,
+  },
 ];

@@ -6,7 +6,7 @@
 import { all } from '../db.ts';
 import { decodeCsv, headerKey, parseCsv } from '../lib/csv.ts';
 import { isXlsx, readXlsx, tableRows } from '../lib/xlsx-read.ts';
-import { parseBankDate, DATE_FORMATS } from './bk-bank.ts';
+import { parseBankAmount, parseBankDate, DATE_FORMATS } from './bk-bank.ts';
 import { postingProblems, saveDraft } from './bookkeeping.ts';
 import type { BkLine, JournalKind } from '../../shared/bookkeeping.ts';
 
@@ -52,12 +52,8 @@ export interface ImportedJournal {
   problems: string[];
 }
 
-const cents = (s: string): number | null => {
-  const t = s.replace(/[,\s]/g, '').replace(/^\((.*)\)$/, '-$1');
-  if (!t) return 0;
-  if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
-  return Math.round(Number(t) * 100);
-};
+// read as bank statements are: "1,234.50", "1.234,50", "(12.00)"
+const cents = (s: string): number | null => (s.trim() ? parseBankAmount(s) : 0);
 function readDate(s: string): string | null {
   const t = s.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;

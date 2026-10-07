@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, Conflict, Forbidden, NotFound } from '../lib/table.ts';
 import { currentActor } from '../lib/actor.ts';
+import { roleDef } from '../lib/permissions.ts';
 import { logChange } from './changelog.ts';
 import { getSettings, updateSettings } from './settings.ts';
 import { bkSettings, getJournal, postJournal, postingProblems, saveDraft } from './bookkeeping.ts';
@@ -39,7 +40,7 @@ const linesOf = (id: number) => all<ClaimLine & { id: number }>(
   'SELECT id, date, description, payee, amount, account_id, fund_id, ministry_id, project_id FROM bk_claim_lines WHERE claim_id = ? ORDER BY position, id', id,
 );
 const filesOf = (id: number) => all<ClaimFile>('SELECT id, line_id, name, mime, size, created_at FROM bk_claim_files WHERE claim_id = ? ORDER BY id', id);
-const approvalsOf = (id: number) => all<ClaimApproval>('SELECT id, person_id, name, decision, note, image, hash, via, at FROM bk_claim_approvals WHERE claim_id = ? ORDER BY id', id);
+const approvalsOf = (id: number) => all<ClaimApproval>('SELECT id, person_id, name, decision, note, image, hash, via, round, at FROM bk_claim_approvals WHERE claim_id = ? ORDER BY id', id);
 
 export function getClaim(id: number): Claim {
   const r = get<Row>('SELECT * FROM bk_claims WHERE id = ?', id);
@@ -197,13 +198,15 @@ export function updateClaim(id: number, input: ClaimInput, by: Party): Claim {
 export function classifyClaim(id: number, input: { ministry_id?: number | null; project_id?: number | null; fund_id?: number | null; lines: { id: number; account_id?: number | null; fund_id?: number | null; ministry_id?: number | null; project_id?: number | null }[] }) {
   const before = getClaim(id);
   if (before.approval_journal_id && getJournal(before.approval_journal_id).status === 'posted') throw new Conflict('The claim’s expense is posted: correct it with a journal instead.');
+  // a waiting claim moved to another ministry or project goes to its approvers: approvals given so far no longer count
+  const rerouted = before.status === 'submitted' && ((input.ministry_id ?? null) !== before.ministry_id || (input.project_id ?? null) !== before.project_id);
   return tx(() => {
-    run('UPDATE bk_claims SET ministry_id = ?, project_id = ?, fund_id = ?, updated_at = datetime(\'now\') WHERE id = ?', input.ministry_id ?? null, input.project_id ?? null, input.fund_id ?? null, id);
+    run(`UPDATE bk_claims SET ministry_id = ?, project_id = ?, fund_id = ?, updated_at = datetime('now')${rerouted ? ', revision = revision + 1' : ''} WHERE id = ?`, input.ministry_id ?? null, input.project_id ?? null, input.fund_id ?? null, id);
     for (const l of input.lines) {
       run('UPDATE bk_claim_lines SET account_id = ?, fund_id = ?, ministry_id = ?, project_id = ? WHERE id = ? AND claim_id = ?', l.account_id ?? null, l.fund_id ?? null, l.ministry_id ?? null, l.project_id ?? null, l.id, id);
     }
     const after = getClaim(id);
-    logClaim('update', before, after, 'How the claim is booked');
+    logClaim('update', before, after, rerouted ? 'How the claim is booked (another ministry or project: its approvals start again)' : 'How the claim is booked');
     // the draft expense follows
     if (after.approval_journal_id) draftExpense(after, after.approval_journal_id);
     return getClaim(id);
@@ -344,6 +347,26 @@ export function withdrawClaim(id: number, by: Party): Claim {
 
 // ---------------------------------------------------------------- approvers and approving
 
+/**
+ * An approver signs in to approve claims with a code sent to the e-mail address on their member record, so changing
+ * that address is for an administrator or someone who may change the books: otherwise whoever edits members could
+ * point an approver's sign-in at themselves (0.18.0 review). True when this change must be refused.
+ */
+export function approverEmailLocked(personId: number, email: string | null | undefined): boolean {
+  if (email === undefined) return false;
+  const cur = get<{ email: string | null }>('SELECT email FROM people WHERE id = ?', personId);
+  if (!cur || (cur.email ?? '').trim().toLowerCase() === (email ?? '').trim().toLowerCase()) return false;
+  if (!get('SELECT 1 FROM bk_claim_approvers WHERE person_id = ? AND active = 1', personId)) return false;
+  const a = currentActor();
+  // Canon's own tasks, and a member changing their own details on their phone
+  if (!a?.user_id) return false;
+  const u = get<{ role: string }>('SELECT role FROM users WHERE id = ?', a.user_id);
+  const r = u ? roleDef(u.role) : null;
+  return !(r && (r.admin || r.access.bookkeeping === 'edit'));
+}
+export const APPROVER_EMAIL_LOCKED = 'This member approves expense claims and signs in with this e-mail address: an administrator or the treasurer changes it.';
+
+
 export function listApprovers(): ClaimApprover[] {
   return all<{ id: number; person_id: number; first_name: string; last_name: string | null; preferred_name: string | null; email: string | null; ministry_ids: string | null; max_amount: number | null; active: number }>(
     `SELECT a.id, a.person_id, p.first_name, p.last_name, p.preferred_name, p.email, a.ministry_ids, a.max_amount, a.active
@@ -389,10 +412,18 @@ export function mayApprove(c: Claim, personId: number): boolean {
 /** The approvers who may decide this claim. */
 export const approversOf = (c: Claim) => listApprovers().filter((a) => a.active && mayApprove(c, a.person_id));
 
+/**
+ * The approvals that count: given for this submission (a claim sent back and submitted again, or moved to another
+ * ministry while waiting, starts again) by people who may still approve it.
+ */
+export const currentApprovals = (c: Claim) => c.approvals.filter((a) => a.decision === 'approved' && a.round === c.revision && a.person_id != null && mayApprove(c, a.person_id));
+/** This person has approved the claim as it is now. */
+export const hasApproved = (c: Claim, personId: number) => c.approvals.some((a) => a.person_id === personId && a.decision === 'approved' && a.round === c.revision);
+
 /** Claims waiting for this person's decision. */
 export function toApprove(personId: number) {
   return listClaims({ status: 'submitted' }).map((r) => getClaim(r.id))
-    .filter((c) => mayApprove(c, personId) && !c.approvals.some((a) => a.person_id === personId && a.decision === 'approved' && a.hash === c.signature?.hash));
+    .filter((c) => mayApprove(c, personId) && !hasApproved(c, personId));
 }
 
 /**
@@ -408,15 +439,15 @@ export function decideClaim(id: number, d: { decision: 'approved' | 'returned' |
   if (d.decision !== 'approved' && !d.note?.trim()) throw new BadRequest('Say why, for the claimant.');
   const hash = c.signature?.hash ?? claimHash(c);
   const out = tx(() => {
-    if (d.decision === 'approved' && c.approvals.some((a) => a.person_id === approver.person_id && a.decision === 'approved' && a.hash === hash)) throw new Conflict('You have approved it already.');
-    run('INSERT INTO bk_claim_approvals (claim_id, person_id, name, decision, note, image, hash, via, account_id) VALUES (?,?,?,?,?,?,?,?,?)',
-      id, approver.person_id, approver.name, d.decision, d.note?.trim() || null, d.decision === 'approved' ? d.image! : null, hash, d.via ?? 'device', d.account_id ?? null);
+    if (d.decision === 'approved' && hasApproved(c, approver.person_id)) throw new Conflict('You have approved it already.');
+    run('INSERT INTO bk_claim_approvals (claim_id, person_id, name, decision, note, image, hash, via, account_id, round) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      id, approver.person_id, approver.name, d.decision, d.note?.trim() || null, d.decision === 'approved' ? d.image! : null, hash, d.via ?? 'device', d.account_id ?? null, c.revision);
     if (d.decision === 'returned') {
       run(`UPDATE bk_claims SET status = 'draft', signature = NULL, note = ?, updated_at = datetime('now'), revision = revision + 1 WHERE id = ?`, d.note!.trim(), id);
     } else if (d.decision === 'rejected') {
       run(`UPDATE bk_claims SET status = 'rejected', note = ?, updated_at = datetime('now'), revision = revision + 1 WHERE id = ?`, d.note!.trim(), id);
     } else {
-      const ok = new Set(all<{ person_id: number }>("SELECT DISTINCT person_id FROM bk_claim_approvals WHERE claim_id = ? AND decision = 'approved' AND hash = ?", id, hash).map((r) => r.person_id)).size;
+      const ok = new Set(currentApprovals(getClaim(id)).map((a) => a.person_id)).size;
       if (ok >= approvalsNeeded(c)) {
         run(`UPDATE bk_claims SET status = 'approved', approved_at = datetime('now'), updated_at = datetime('now'), revision = revision + 1 WHERE id = ?`, id);
         const approved = getClaim(id);
@@ -475,9 +506,19 @@ function draftExpense(c: Claim, journalId: number | null) {
  * The bank line on the statement is then suggested for it. If one of its approvers pays it, that is marked.
  */
 export function payClaim(id: number, input: { date?: string; bank_account_id: number; reference?: string | null; post: boolean }, payer: { name: string; person_id: number | null }): Claim {
-  const c = getClaim(id);
+  let c = getClaim(id);
   if (c.status !== 'approved') throw new Conflict('Only an approved claim is paid.');
   if (!bkSettings().start_date) throw new BadRequest('Start the books first.');
+  if (payer.person_id && payer.person_id === c.person_id) throw new Forbidden('Someone else pays your own claim.');
+  // the expense comes first (Dr expense / Cr Claims to repay): drafted now if it is missing (the claim was approved
+  // before the books started, or its draft was deleted), and posted before the payment can be
+  if (!c.approval_journal_id) {
+    const j = draftExpense(c, null);
+    run('UPDATE bk_claims SET approval_journal_id = ? WHERE id = ?', j.id, id);
+    c = getClaim(id);
+  }
+  const expense = getJournal(c.approval_journal_id!);
+  if (input.post && expense.status !== 'posted') throw new BadRequest(`Post the claim’s expense first (the draft dated ${expense.date}), then its payment.`);
   const bank = get<{ id: number; kind: string; type: string }>('SELECT id, kind, type FROM bk_accounts WHERE id = ? AND active = 1', input.bank_account_id);
   if (!bank || bank.type !== 'asset') throw new BadRequest('Choose the bank or cash account it was paid from.');
   const date = input.date && DATE.test(input.date) ? input.date : today();

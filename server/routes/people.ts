@@ -1,4 +1,5 @@
 // REST routes for members and households (and what a member page needs). Mounted inside /api after authentication.
+import { APPROVER_EMAIL_LOCKED, approverEmailLocked } from '../repo/bk-claims.ts';
 import { openLoanCount } from '../repo/lending.ts';
 import express from 'express';
 import { z } from 'zod';
@@ -55,6 +56,7 @@ peopleRoutes.patch('/people/:id', h((req) => {
   if (reg.people.get(pid).erased_at) throw Object.assign(new Error('This member’s personal data was erased: the record can’t be edited.'), { status: 400 });
   assertFresh(req, reg.people.get(pid), 'people', pid);
   const b = S.PersonInput.partial().parse(req.body);
+  if (approverEmailLocked(pid, b.email)) throw Object.assign(new Error(APPROVER_EMAIL_LOCKED), { status: 403 });
   const custom = reg.customFor(reg.people.get(pid).custom, b.custom, seesSensitiveFields(req.user));
   return reg.people.update(pid, { ...b, ...(custom ? { custom } : {}) });
 }));

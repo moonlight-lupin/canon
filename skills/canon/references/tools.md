@@ -51,6 +51,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - Expense claims:
   - Anyone may claim (the role doesn't matter, only the connection's Book-keeping setting).
   - Read receipt photos the user shows you, confirm, then `canon_draft_claim` (one line per receipt, amounts in cents).
+  - A claim for another member (`claimant_person_id`) needs an administrator or someone who may change the books; read-only access to the books is not enough.
   - Give the user the returned `link`: they attach the photos and sign on their phone. You never attach, submit, approve or pay.
 - Lending library (books, DVDs, curricula lent to members — not the song Library) and asset register: optional modules, off by default. `canon_lending` `q` matches title, author, ISBN or copy number (`B0012`); `loans: "overdue"` for follow-up; `isbn` looks a book up before adding. `canon_save_book`: search first, then add copies to an existing title rather than a duplicate; lending and returns happen in Canon. `canon_equipment` `due: true` = maintenance due within 14 days or overdue; `canon_save_equipment` `maintenance: {what, done_on?, cost?, done_by?}` moves the next date on by `maintenance_every_months`. Photos and receipts are added in Canon.
 

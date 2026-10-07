@@ -175,7 +175,9 @@ export interface ClaimSignature { name: string; image: string; signed_at: string
 
 export interface ClaimApproval {
   id: number; person_id: number | null; name: string; decision: 'approved' | 'rejected' | 'returned'; note: string | null;
-  image: string | null; hash: string | null; via: string; at: string;
+  image: string | null; hash: string | null; via: string;
+  /** the claim's revision when given: an approval counts for that submission only */
+  round: number | null; at: string;
 }
 
 export interface Claim {

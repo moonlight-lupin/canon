@@ -9,12 +9,17 @@ import { oauthRouter } from './oauth.ts';
 import { mcpRouter } from './mcp.ts';
 import { visitorFormRouter } from './routes/visitor-form.ts';
 
+/** Loopback, private and link-local addresses (IPv4 and IPv6): where a church's own proxy would be. */
+const PROXY_NET = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1$|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:)/i;
+
 /** Build the Express app (no listen) so tests can mount it on an ephemeral port. */
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  // Evaluated per request so the Settings → AI / MCP choice applies without a restart.
-  app.set('trust proxy', () => trustProxy());
+  // Evaluated per request so the Settings → AI / MCP choice applies without a restart. Only a proxy on this computer
+  // or the local network (Cloudflare Tunnel, Caddy, Docker's network) is believed about the visitor's address: an
+  // address someone writes into X-Forwarded-For themselves can't dodge the sign-in limits (0.18.0 review).
+  app.set('trust proxy', (addr: string) => trustProxy() && PROXY_NET.test(addr.replace(/^::ffff:/, '')));
 
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');

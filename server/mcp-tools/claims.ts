@@ -14,6 +14,8 @@ class InputError extends Error {
   status = 400;
 }
 const keeper = (ctx: Ctx) => { const r = roleDef(ctx.auth.user.role); return r.admin || (r.access.bookkeeping ?? 'none') !== 'none'; };
+/** May write claims for other members: an administrator, or someone who may change the books (not only read them). */
+const keeperEdits = (ctx: Ctx) => { const r = roleDef(ctx.auth.user.role); return r.admin || r.access.bookkeeping === 'edit'; };
 const codeOf = (table: string, code: string | undefined | null, what: string): number | null => {
   if (!code) return null;
   const r = get<{ id: number }>(`SELECT id FROM ${table} WHERE code = ? COLLATE NOCASE`, code.trim());
@@ -58,7 +60,7 @@ export const CLAIMS_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_draft_claim', module: 'bookkeeping', access: 'write', own: true, title: 'Draft an expense claim (the claimant attaches receipts and signs)', annotations: { ...WRITE, idempotentHint: false },
-    description: 'Prepare an expense claim from receipts the user showed you (read the shop, date, items and total from each photo). One line per receipt (or per item if they differ in purpose): date, description (what it was for), payee (the shop), amount_cents; optionally a ministry code, and an expense account code as a suggestion (the treasurer decides). The claim is for the user themselves (their linked member record); someone who keeps the books may name another member with claimant_person_id. With id: replace a claim still being prepared. You cannot attach the photos, submit, approve or pay: reply with the link from the result — the claimant opens it on their phone to attach the receipt photos, check the lines, say where to repay them and sign. Confirm the lines with the user first. Example: {"purpose":"Youth camp supplies","lines":[{"date":"2026-10-03","description":"Snacks for the youth camp","payee":"FairPrice","amount_cents":4560}]}.',
+    description: 'Prepare an expense claim from receipts the user showed you (read the shop, date, items and total from each photo). One line per receipt (or per item if they differ in purpose): date, description (what it was for), payee (the shop), amount_cents; optionally a ministry code, and an expense account code as a suggestion (the treasurer decides). The claim is for the user themselves (their linked member record); an administrator or someone who may change the books (not only read them) may name another member with claimant_person_id. With id: replace a claim still being prepared. You cannot attach the photos, submit, approve or pay: reply with the link from the result — the claimant opens it on their phone to attach the receipt photos, check the lines, say where to repay them and sign. Confirm the lines with the user first. Example: {"purpose":"Youth camp supplies","lines":[{"date":"2026-10-03","description":"Snacks for the youth camp","payee":"FairPrice","amount_cents":4560}]}.',
     input: {
       id: Id.optional(), claimant_person_id: Id.optional(), purpose: z.string().max(300).optional(), ministry: z.string().max(20).optional(), project: z.string().max(20).optional(),
       lines: z.array(z.object({
@@ -69,7 +71,7 @@ export const CLAIMS_TOOLS: ToolDef[] = [
     handler: (a, ctx) => {
       const me = ctx.auth.user.person_id ?? null;
       const forOther = a.claimant_person_id && a.claimant_person_id !== me;
-      if (forOther && !keeper(ctx)) throw new InputError('You can draft claims for yourself only.');
+      if (forOther && !keeperEdits(ctx)) throw new InputError('You can draft claims for yourself only.');
       const person = (a.claimant_person_id as number | undefined) ?? me;
       if (!person) throw new InputError('Your Canon account is not linked to your member record: ask an administrator to link it (Settings → User accounts).');
       const lines = (a.lines as { date: string; description: string; payee?: string; amount_cents: number; ministry?: string; account?: string }[]).map((l) => ({
@@ -81,7 +83,7 @@ export const CLAIMS_TOOLS: ToolDef[] = [
       let c;
       if (a.id) {
         const cur = C.getClaim(a.id);
-        if (cur.person_id !== person && !keeper(ctx)) throw new InputError('That is someone else’s claim.');
+        if (cur.person_id !== me && !keeperEdits(ctx)) throw new InputError('That is someone else’s claim.');
         c = C.updateClaim(a.id, { ...input, fund_id: cur.fund_id, pay_to: cur.pay_to }, party);
       } else c = C.createClaim(person, input, party);
       return {

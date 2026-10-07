@@ -145,7 +145,7 @@ Patterns:
     - When the treasurer posts the draft, the statement line is matched. Lines with a suggestion (one entry, or a `group_suggestions` combination adding up to the same total) are already in the books: leave them for the treasurer to match.
   - **History:** every change to a journal (its lines too) is in the change log; Canon shows it on the journal.
 - **Expense claims** follow the connection's Book-keeping setting but **not the person's role**: anyone may claim.
-  - **Drafting:** a person drafts their own claims with `canon_draft_claim`; someone who keeps the books may name `claimant_person_id`.
+  - **Drafting:** a person drafts their own claims with `canon_draft_claim`; an administrator or someone who may change the books (read-only access is not enough) may name `claimant_person_id`.
   - **From receipt photos:** when the user shows you receipts, read the shop, date, items and total. Confirm the lines with the user, then draft one line per receipt with `amount_cents`.
   - **The link:** you cannot attach the photos, submit, approve or pay. Give the user the `link` from the result; on their phone they attach the receipt photos, check the lines, say where to repay them and sign.
   - **Status:** `canon_claims` shows the status and what is `still_needed`. Where a claimant is repaid is never shown.

@@ -244,6 +244,9 @@ function writeLines(journalId: number, lines: BkLine[]) {
   lines.forEach((l, i) => run(ins, journalId, i, l.account_id, l.fund_id, l.project_id ?? null, l.ministry_id ?? null, l.congregation_id ?? null, l.debit, l.credit, l.memo ?? null, l.orig_currency ?? null, l.orig_amount ?? null, l.rate ?? null));
 }
 
+/** Kinds Canon makes itself, linked to what they came from (the journal reversed, the service, the claim). */
+const LINKED_KINDS: JournalKind[] = ['reversal', 'offering', 'claim'];
+
 /** Save a draft (new, or an existing draft). Drafts may be incomplete; posting checks everything. `note` explains it in the log. */
 export function saveDraft(id: number | null, input: JournalInput, note?: string): BkJournal {
   if (!DATE.test(input.date ?? '')) throw new BadRequest('Choose the journal’s date.');
@@ -258,7 +261,10 @@ export function saveDraft(id: number | null, input: JournalInput, note?: string)
     if (jid) {
       const cur = journals.get(jid);
       if (cur.status === 'posted') throw new Conflict('A posted journal can’t be changed: reverse it instead.');
-      journals.update(jid, { date: input.date, memo: input.memo?.trim() || null, ...(input.kind ? { kind: input.kind } : {}) });
+      // a reversal, an offering's or a claim's entry keeps its kind (its links depend on it); a person's own draft
+      // may change between manual, opening, transfer and bank, never into one of those
+      const kind = LINKED_KINDS.includes(cur.kind) ? cur.kind : input.kind && !LINKED_KINDS.includes(input.kind) ? input.kind : cur.kind;
+      journals.update(jid, { date: input.date, memo: input.memo?.trim() || null, kind });
     } else {
       jid = journals.insert({
         date: input.date, memo: input.memo?.trim() || null, status: 'draft', kind: input.kind ?? 'manual', service_id: input.service_id ?? null, claim_id: input.claim_id ?? null,
@@ -276,6 +282,12 @@ export function deleteDraft(id: number, note?: string) {
   const j = getJournal(id);
   if (j.status === 'posted') throw new Conflict('A posted journal can’t be deleted: reverse it instead.');
   tx(() => {
+    // a claim's payment, deleted as a draft: the claim is not paid after all (approved again, to pay later)
+    const paid = get<{ id: number; number: string | null }>("SELECT id, number FROM bk_claims WHERE payment_journal_id = ? AND status = 'paid'", id);
+    if (paid) {
+      run(`UPDATE bk_claims SET status = 'approved', paid_on = NULL, paid_by = NULL, payment_ref = NULL, payment_journal_id = NULL, approver_paid = 0, updated_at = datetime('now'), revision = revision + 1 WHERE id = ?`, paid.id);
+      logChange({ entity: 'bk_claims', entity_id: paid.id, action: 'update', summary: `Claim ${paid.number ?? paid.id}: its payment draft was deleted, so it is approved and not paid` });
+    }
     journals.remove(id);
     logJournal('delete', j, null, note);
   });
@@ -307,8 +319,9 @@ export function postingProblems(j: Pick<BkJournal, 'date' | 'kind'> & { lines: B
 /** The next number in a financial year: 2026-0001, 2026-0002 … */
 function nextNumber(date: string): string {
   const fy = financialYear(date, bkSettings().year_end_month);
-  const last = get<{ n: string }>("SELECT number AS n FROM bk_journals WHERE number LIKE ? ORDER BY number DESC LIMIT 1", `${fy}-%`)?.n;
-  const seq = last ? Number(last.split('-')[1]) + 1 : 1;
+  // the highest number as a number ("2026-10000" comes after "2026-9999", which a text sort gets wrong)
+  const last = get<{ n: number | null }>('SELECT MAX(CAST(substr(number, ?) AS INTEGER)) AS n FROM bk_journals WHERE number LIKE ?', String(fy).length + 2, `${fy}-%`)?.n;
+  const seq = (last ?? 0) + 1;
   return `${fy}-${String(seq).padStart(4, '0')}`;
 }
 
@@ -320,7 +333,7 @@ export function postJournal(id: number): BkJournal {
     if (j.status === 'posted') throw new Conflict(`Journal ${j.number} is already posted.`);
     const problems = postingProblems(j);
     // a reversal: the journal it reverses must still be posted and not reversed already
-    const original = j.kind === 'reversal' && j.reverses_id ? getJournal(j.reverses_id) : null;
+    const original = j.reverses_id ? getJournal(j.reverses_id) : null;
     if (original && original.reversed_by_id) problems.push(`Journal ${original.number} is already reversed.`);
     if (problems.length) throw new BadRequest(problems.join(' '));
     journals.update(id, { status: 'posted', number: nextNumber(j.date), posted_by: who(), posted_at: new Date().toISOString() });

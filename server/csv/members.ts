@@ -1,4 +1,5 @@
 // CSV: the member register (people) with their household. Match by id, else by exact name + birth date.
+import { approverEmailLocked } from '../repo/bk-claims.ts';
 import type { Person } from '../../shared/types.ts';
 import { PersonInput } from '../../shared/schemas.ts';
 import { LANG_CODE_RE } from '../../shared/languages.ts';
@@ -205,6 +206,9 @@ export const members: Entity = {
       if (!errors.length) {
         const check = (cur ? PersonInput.partial() : PersonInput).safeParse(patch);
         if (!check.success) errors.push(...check.error.issues.map((i) => M(`${i.path.join('.')}: ${i.message}`, `${i.path.join('.')}：${i.message}`)));
+      }
+      if (cur && !errors.length && approverEmailLocked(cur.id, patch.email as string | null | undefined)) {
+        errors.push(M('This member approves expense claims and signs in with this e-mail address: an administrator or the treasurer changes it.', '这位会友负责审批报销，并用这个电邮地址登入：须由管理员或司库更改。'));
       }
       if (errors.length) return { row: r.row, label: name, action: 'error', errors };
       const hh = present.has('household') ? (f.values.household as string | null) : undefined;

@@ -92,7 +92,7 @@ function view(c: ReturnType<typeof C.getClaim>, p: C.Party) {
     lines: c.lines.map((l) => ({ id: l.id, date: l.date, description: l.description, payee: l.payee, amount: l.amount, ministry_id: l.ministry_id, project_id: l.project_id })),
     may_edit: own && c.status === 'draft',
     may_withdraw: own && (c.status === 'draft' || c.status === 'submitted'),
-    may_approve: c.status === 'submitted' && !!p.person_id && C.mayApprove(c, p.person_id) && !c.approvals.some((a) => a.person_id === p.person_id && a.decision === 'approved' && a.hash === c.signature?.hash),
+    may_approve: c.status === 'submitted' && !!p.person_id && C.mayApprove(c, p.person_id) && !C.hasApproved(c, p.person_id),
     needed: C.approvalsNeeded(c),
     problems: own && c.status === 'draft' ? C.submitProblems(c) : [],
   };

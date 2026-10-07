@@ -214,3 +214,87 @@ test('AI assistants: draft a claim for yourself from receipts, hand back the lin
   assert.ok(list.claims.every((c: Json) => c.claimant.startsWith('Ann')), 'her own claims only');
   assert.ok(!JSON.stringify(list).includes('PayNow'), 'never where she is repaid');
 });
+
+// ---------------------------------------------------------------- the 0.18.0 review of claims
+
+const web = <T,>(fn: () => T) => asActor({ user_id: null, user_name: 'Test treasurer', via: 'web' }, fn);
+async function submitted(pid: number, amount: number, ministry: number | null) {
+  const t = tok(pid);
+  let c = (await call(null, 'POST', '/self/claims', { pay_to: 'PayNow 8000 0000 (fictional)', ministry_id: ministry, lines: [{ date: '2030-07-01', description: 'Review test', payee: 'A shop', amount }] }, t)).body;
+  c = (await call(null, 'POST', `/self/claims/${c.id}/files?name=r.png`, PNG, t)).body;
+  return (await call(null, 'POST', `/self/claims/${c.id}/submit`, { image: INK }, t)).body;
+}
+const decide = async (id: number, pid: number, decision = 'approved', note?: string) => (await call(null, 'POST', `/self/claims/${id}/decide`, { decision, image: INK, note }, tok(pid))).body;
+
+test('review: approvals count for the submission they were given for, and from people who may still approve it', async () => {
+  await call(as.treasurer, 'PUT', '/bookkeeping/claim-settings', { claims_self_service: false, claims_two_above: 4000, claims_payable_account_id: null, claims_default_account_id: null });
+  const youth = get<{ id: number }>("SELECT id FROM bk_ministries WHERE code = 'YTH'")!.id;
+  // sent back and submitted again, in another ministry: the youth approver's earlier approval doesn't carry over
+  const a = await submitted(ann, 5000, youth);
+  assert.equal(a.needed, 2);
+  assert.equal((await decide(a.id, cid)).status, 'submitted');
+  assert.equal((await decide(a.id, ben, 'returned', 'Wrong ministry')).status, 'draft');
+  const t = tok(ann);
+  const cur = (await call(null, 'GET', `/self/claims/${a.id}`, undefined, t)).body;
+  await call(null, 'PUT', `/self/claims/${a.id}`, { purpose: cur.purpose, pay_to: 'PayNow 8000 0000 (fictional)', ministry_id: null, lines: cur.lines }, t);
+  assert.equal((await call(null, 'POST', `/self/claims/${a.id}/submit`, { image: INK }, t)).body.status, 'submitted');
+  assert.equal((await decide(a.id, ben)).status, 'submitted', 'one approval of this submission, not two');
+  assert.equal((await decide(a.id, dee)).status, 'approved');
+  // moved by the office to another ministry while waiting: its approvals start again
+  const b = await submitted(ann, 5000, youth);
+  assert.equal((await decide(b.id, cid)).status, 'submitted');
+  assert.equal((await call(as.treasurer, 'PUT', `/bookkeeping/claims/${b.id}/booking`, { ministry_id: null, lines: [] })).status, 200);
+  assert.equal((await decide(b.id, ben)).status, 'submitted', 'the youth approval no longer counts');
+  assert.equal((await decide(b.id, dee)).status, 'approved');
+});
+
+test('review: the expense is booked before the payment; nobody pays their own claim; a deleted payment draft un-pays it', async () => {
+  await call(as.treasurer, 'PUT', '/bookkeeping/claim-settings', { claims_self_service: false, claims_two_above: null, claims_payable_account_id: null, claims_default_account_id: null });
+  const c = await submitted(ann, 1500, null);
+  assert.equal((await decide(c.id, dee)).status, 'approved');
+  const pay = (post: boolean) => call(as.treasurer, 'POST', `/bookkeeping/claims/${c.id}/pay`, { date: '2030-07-10', bank_account_id: acc('1100'), post });
+  // the expense draft deleted: paying drafts it again, and won't post the payment before it
+  web(() => B.deleteDraft(C.getClaim(c.id).approval_journal_id!));
+  assert.equal(C.getClaim(c.id).approval_journal_id, null);
+  const refused = await pay(true);
+  assert.equal(refused.status, 400);
+  assert.match(refused.body.error, /expense first/);
+  const expense = C.getClaim(c.id).approval_journal_id!;
+  assert.ok(expense, 'drafted again');
+  // paid as a draft, then the draft deleted: approved again, and paid properly
+  const paid = (await pay(false)).body;
+  assert.equal(paid.status, 'paid');
+  web(() => B.deleteDraft(paid.payment_journal_id));
+  assert.deepEqual([C.getClaim(c.id).status, C.getClaim(c.id).payment_journal_id], ['approved', null]);
+  // (approval dates it today; these fictional books start in 2030)
+  web(() => { const j = B.getJournal(expense); B.saveDraft(expense, { date: '2030-07-05', memo: j.memo, lines: j.lines }); return B.postJournal(expense); });
+  assert.equal((await pay(true)).body.status, 'paid');
+  assert.equal(B.getJournal(C.getClaim(c.id).payment_journal_id!).status, 'posted');
+  // Ben's own claim: the treasurer's account is Ben's, so someone else pays it
+  const own = await submitted(ben, 1000, null);
+  assert.equal((await decide(own.id, dee)).status, 'approved');
+  const r = await call(as.treasurer, 'POST', `/bookkeeping/claims/${own.id}/pay`, { date: '2030-07-10', bank_account_id: acc('1100'), post: false });
+  assert.equal(r.status, 403);
+});
+
+test('review: an approver’s sign-in e-mail is changed by an administrator or the treasurer, not by whoever edits members', async () => {
+  const patch = (who: Session, pid: number, email: string) => call(who, 'PATCH', `/people/${pid}`, { email });
+  assert.equal((await patch(as.editor, ben, 'someone@example.org')).status, 403, 'an editor can’t move an approver’s sign-in');
+  assert.equal(get<{ email: string }>('SELECT email FROM people WHERE id = ?', ben)!.email, 'ben@example.org');
+  const other = await patch(as.editor, ann, 'ann2@example.org');
+  assert.equal(other.status, 200, `other members as before: ${other.text}`);
+  assert.equal((await patch(as.admin, ben, 'ben2@example.org')).status, 200, 'an administrator can');
+  assert.equal((await patch(as.admin, ben, 'ben@example.org')).status, 200);
+  await patch(as.admin, ann, 'ann@example.org');
+});
+
+test('review: AI assistants with read-only access to the books write claims for themselves only', async () => {
+  const { CLAIMS_TOOLS } = await import('../server/mcp-tools/claims.ts');
+  const tool = CLAIMS_TOOLS.find((x) => x.name === 'canon_draft_claim')!;
+  const guest = get<Json>("SELECT * FROM users WHERE username = 'guest'")!;
+  const ctx = { auth: { user: guest, clientId: 'test', scopes: new Set(['canon:write']), grantId: 'g' }, pii: false } as never;
+  const mcp = <T,>(fn: () => T) => asActor({ user_id: guest.id, user_name: 'Test guest', via: 'mcp' }, fn);
+  assert.throws(() => mcp(() => tool.handler({ claimant_person_id: dee, lines: [{ date: '2030-08-01', description: 'X', amount_cents: 100 }] }, ctx)), /yourself only/);
+  const deesDraft = C.createClaim(dee, { purpose: 'Dee’s own (fictional)', lines: [] }, { as: 'claimant', person_id: dee, name: 'Dee' });
+  assert.throws(() => mcp(() => tool.handler({ id: deesDraft.id, claimant_person_id: dee, lines: [{ date: '2030-08-01', description: 'Changed', amount_cents: 100 }] }, ctx)), /yourself only|someone else/);
+});

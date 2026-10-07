@@ -61,11 +61,13 @@ export function parseBankAmount(s: string | undefined): number | null {
   if (/\bDR\b|\bD$/i.test(t)) sign = -1;
   t = t.replace(/\b(CR|DR)\b/gi, '').replace(/[^\d.,-]/g, '');
   if (t.startsWith('-')) { sign = -sign; t = t.slice(1); }
-  // "1.234,50" (comma decimals) when the last separator is a comma followed by two digits
-  if (/,\d{2}$/.test(t) && t.includes('.')) t = t.replace(/\./g, '').replace(',', '.');
+  // a comma before the last one or two digits is the decimal comma ("1.234,50", "12,50"); dots between groups of three are
+  // thousands ("1.234.567" = 1234567); otherwise commas separate thousands ("1,234.50")
+  if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(/,(?=\d{1,2}$)/, '.').replace(/,/g, '');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
   else t = t.replace(/,/g, '');
   if (!/^\d+(\.\d+)?$/.test(t)) return null;
-  return sign * Math.round(Number(t) * 100);
+  return sign * Math.round(Number(t) * 100) + 0;
 }
 
 const norm = (h: string) => h.toLowerCase().replace(/[^a-z一-鿿]/g, '');
@@ -199,12 +201,19 @@ export function importStatement(input: { account_id: number; data: Buffer; layou
 interface BookLine { id: number; journal_id: number; number: string; date: string; memo: string | null; jmemo: string | null; amount: number; kind: string }
 
 /** Posted lines on the bank account not yet matched to any statement line (money in = positive). */
-function openBookLines(accountId: number, upTo?: string): BookLine[] {
+/**
+ * Posted book lines on an account not matched to the bank. With `clearedBy` (a reconciliation's end date), a line
+ * matched to a statement line dated after it counts as not cleared then: matching February's statement doesn't
+ * change January's reconciliation.
+ */
+function openBookLines(accountId: number, upTo?: string, clearedBy?: string): BookLine[] {
+  const by = clearedBy ? 'AND sl.date <= ?' : '';
+  const groupBy = clearedBy ? 'AND (SELECT MAX(g.date) FROM bk_statement_lines g WHERE g.group_id = mb.group_id) <= ?' : '';
   return all<BookLine>(
     `SELECT l.id, l.journal_id, j.number, j.date, l.memo, j.memo AS jmemo, (l.debit - l.credit) AS amount, j.kind FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id
-     WHERE l.account_id = ? AND j.status = 'posted' ${upTo ? 'AND j.date <= ?' : ''} AND NOT EXISTS (SELECT 1 FROM bk_statement_lines sl WHERE sl.line_id = l.id)
-       AND NOT EXISTS (SELECT 1 FROM bk_match_book_lines mb WHERE mb.line_id = l.id)
-     ORDER BY j.date, l.id`, accountId, ...(upTo ? [upTo] : []),
+     WHERE l.account_id = ? AND j.status = 'posted' ${upTo ? 'AND j.date <= ?' : ''} AND NOT EXISTS (SELECT 1 FROM bk_statement_lines sl WHERE sl.line_id = l.id ${by})
+       AND NOT EXISTS (SELECT 1 FROM bk_match_book_lines mb WHERE mb.line_id = l.id ${groupBy})
+     ORDER BY j.date, l.id`, accountId, ...(upTo ? [upTo] : []), ...(clearedBy ? [clearedBy, clearedBy] : []),
   );
 }
 const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400_000;
@@ -303,6 +312,8 @@ const lineOf = (id: number) => {
 
 export function matchLine(id: number, bookLineId: number) {
   const l = lineOf(id);
+  // an open line only: one already matched (alone or in a group) is unmatched first, so it never counts twice
+  if (l.status !== 'open' || l.group_id) throw new Conflict(l.status === 'ignored' ? 'This statement line is ignored: undo that first.' : 'This statement line is already matched: unmatch it first.');
   const b = get<{ account_id: number; amount: number; status: string }>('SELECT l.account_id, (l.debit - l.credit) AS amount, j.status FROM bk_lines l JOIN bk_journals j ON j.id = l.journal_id WHERE l.id = ?', bookLineId);
   if (!b || b.status !== 'posted') throw new BadRequest('Match a posted line.');
   if (b.account_id !== l.account_id) throw new BadRequest('That line is on another account.');
@@ -360,7 +371,7 @@ export function matchGroup(statementLineIds: number[], bookLineIds: number[]) {
 export function dissolveGroup(groupId: number) {
   tx(() => {
     for (const l of all<StatementLine>('SELECT * FROM bk_statement_lines WHERE group_id = ?', groupId)) logLine(l, 'unmatched (its group too)');
-    run("UPDATE bk_statement_lines SET status = 'open', group_id = NULL WHERE group_id = ?", groupId);
+    run("UPDATE bk_statement_lines SET status = 'open', group_id = NULL, line_id = NULL WHERE group_id = ?", groupId);
     run('DELETE FROM bk_match_groups WHERE id = ?', groupId);
   });
 }
@@ -385,6 +396,7 @@ export function linkDraftToLine(lineId: number, journalId: number) {
     throw new Conflict(`This statement line already has a draft (journal ${l.journal_id}): change that draft instead.`);
   }
   run('UPDATE bk_statement_lines SET journal_id = ? WHERE id = ?', journalId, lineId);
+  logLine(l, `drafted as journal ${journalId}`);
   return l;
 }
 export const statementLine = (id: number) => lineOf(id);
@@ -489,14 +501,18 @@ export function entryFromLine(id: number, input: { account_id: number; fund_id: 
 }
 
 export function setStatementDone(id: number, done: boolean) {
+  if (!get('SELECT 1 FROM bk_statements WHERE id = ?', id)) throw new NotFound('Statement not found');
   run('UPDATE bk_statements SET done_at = ?, done_by = ? WHERE id = ?', done ? new Date().toISOString() : null, done ? currentActor()?.user_name ?? null : null, id);
+  logChange({ entity: 'bk_statements', entity_id: id, action: 'update', summary: done ? 'Marked reconciled' : 'No longer marked reconciled' });
 }
 export function deleteStatement(id: number) {
   if (!get('SELECT 1 FROM bk_statements WHERE id = ?', id)) throw new NotFound('Statement not found');
-  // its group matches come apart (lines of other statements in them are open again)
-  for (const g of all<{ g: number }>('SELECT DISTINCT group_id g FROM bk_statement_lines WHERE statement_id = ? AND group_id IS NOT NULL', id)) dissolveGroup(g.g);
-  run('DELETE FROM bk_statements WHERE id = ?', id);
-  logChange({ entity: 'bk_statements', entity_id: id, action: 'delete', summary: 'Bank statement removed (journals made from it stay)' });
+  tx(() => {
+    // its group matches come apart (lines of other statements in them are open again)
+    for (const g of all<{ g: number }>('SELECT DISTINCT group_id g FROM bk_statement_lines WHERE statement_id = ? AND group_id IS NOT NULL', id)) dissolveGroup(g.g);
+    run('DELETE FROM bk_statements WHERE id = ?', id);
+    logChange({ entity: 'bk_statements', entity_id: id, action: 'delete', summary: 'Bank statement removed (journals made from it stay)' });
+  });
 }
 
 /**
@@ -510,7 +526,7 @@ export function reconciliation(accountId: number, endsOn: string, closing: numbe
   )!.b;
   // the opening balance, and entries before the first imported statement, were cleared before Canon kept the books
   const since = get<{ d: string | null }>('SELECT MIN(starts_on) d FROM bk_statements WHERE account_id = ?', accountId)!.d ?? endsOn;
-  const uncleared = openBookLines(accountId, endsOn).filter((b) => b.kind !== 'opening' && b.date >= since);
+  const uncleared = openBookLines(accountId, endsOn, endsOn).filter((b) => b.kind !== 'opening' && b.date >= since);
   const unclearedTotal = uncleared.reduce((n, b) => n + b.amount, 0);
   const expected = book - unclearedTotal;
   return { ends_on: endsOn, book_balance: book, uncleared, uncleared_total: unclearedTotal, expected_bank_balance: expected, statement_balance: closing, difference: closing == null ? null : closing - expected };

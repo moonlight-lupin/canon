@@ -102,3 +102,17 @@ test('storage: database size, what uses it, backups and free space', async () =>
   assert.equal(typeof r.json!.backups.count, 'number');
   assert.equal((await call(as.editor, 'GET', '/storage')).status, 403);
 });
+
+test('behind a proxy, only the church’s own proxy is believed about the visitor’s address (0.18.0 review)', async () => {
+  const { updateSettings } = await import('../server/repo/settings.ts');
+  const trusts = createApp().get('trust proxy fn') as (addr: string, i: number) => boolean;
+  assert.equal(trusts('127.0.0.1', 0), false, 'no proxy set up: nobody');
+  updateSettings({ trust_proxy: true } as never);
+  try {
+    for (const a of ['127.0.0.1', '::1', '::ffff:127.0.0.1', '172.18.0.3', '192.168.1.20', '10.0.0.5', 'fd12:3456::1']) assert.equal(trusts(a, 0), true, a);
+    // an address the visitor wrote into X-Forwarded-For themselves is where the trust stops
+    for (const a of ['203.0.113.7', '8.8.8.8', '2001:db8::1', '172.32.0.1']) assert.equal(trusts(a, 1), false, a);
+  } finally {
+    updateSettings({ trust_proxy: false } as never);
+  }
+});

@@ -583,3 +583,80 @@ test('importing the chart of accounts and the funds: matched by code, previewed,
   assert.equal(f.counts.create, 1);
   assert.equal(get<{ restriction: string }>('SELECT restriction FROM bk_funds WHERE code = ?', 'YTH')!.restriction, 'designated');
 });
+
+// ---------------------------------------------------------------- the 0.18.0 review of the books
+
+const Bank = await import('../server/repo/bk-bank.ts');
+const post = (date: string, amt: number, other = '1010') => web(() => B.postJournal(B.saveDraft(null, { date, memo: 'Review test (fictional)', lines: [
+  { account_id: acc('1100'), fund_id: fund('GEN'), debit: amt > 0 ? amt : 0, credit: amt < 0 ? -amt : 0 },
+  { account_id: acc(other), fund_id: fund('GEN'), debit: amt < 0 ? -amt : 0, credit: amt > 0 ? amt : 0 },
+] }).id));
+const bankOf = (j: { lines: { id?: number; account_id: number }[] }) => j.lines.find((l) => l.account_id === acc('1100'))!.id!;
+const statement = (lines: [string, string, number][]) => web(() => Bank.importStatement({
+  account_id: acc('1100'), layout: { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', date_format: 'YYYY-MM-DD' } as never,
+  data: Buffer.from(['Date,Description,Amount', ...lines.map(([d, t, a]) => `${d},${t},${(a / 100).toFixed(2)}`)].join('\n')),
+})).statement_id!;
+const lineIn = (statementId: number, amount: number) => get<{ id: number; status: string; line_id: number | null }>('SELECT id, status, line_id FROM bk_statement_lines WHERE statement_id = ? AND amount = ?', statementId, amount)!;
+
+test('review: a statement line matched in a group can’t also be matched alone; unmatching leaves nothing behind', () => {
+  const a = post('2033-01-20', 4000);
+  const b = post('2033-01-20', 6000);
+  const c = post('2033-01-20', 10000);
+  const st = statement([['2033-01-21', 'DEPOSIT (fictional)', 10000]]);
+  const line = lineIn(st, 10000);
+  web(() => Bank.matchGroup([line.id], [bankOf(a), bankOf(b)]));
+  assert.throws(() => web(() => Bank.matchLine(line.id, bankOf(c))), /already matched/);
+  web(() => Bank.unmatchLine(line.id));
+  assert.deepEqual({ ...lineIn(st, 10000) }, { id: line.id, status: 'open', line_id: null });
+  web(() => Bank.matchLine(line.id, bankOf(c)));
+  assert.equal(lineIn(st, 10000).line_id, bankOf(c));
+  web(() => Bank.deleteStatement(st));
+});
+
+test('review: matching a later statement doesn’t change an earlier statement’s reconciliation', () => {
+  const cheque = post('2033-03-30', -2500, '5400');
+  const before = web(() => Bank.reconciliation(acc('1100'), '2033-03-31', null));
+  assert.ok(before.uncleared.some((u) => u.id === bankOf(cheque)), 'not presented by the end of March');
+  const feb = statement([['2033-04-03', 'CHEQUE 000123 (fictional)', -2500]]);
+  web(() => Bank.matchLine(lineIn(feb, -2500).id, bankOf(cheque)));
+  const after = web(() => Bank.reconciliation(acc('1100'), '2033-03-31', null));
+  assert.deepEqual(after.uncleared.map((u) => u.id), before.uncleared.map((u) => u.id), 'March is as it was');
+  assert.equal(after.expected_bank_balance, before.expected_bank_balance);
+  assert.ok(!web(() => Bank.reconciliation(acc('1100'), '2033-04-30', null)).uncleared.some((u) => u.id === bankOf(cheque)), 'cleared in April');
+  web(() => Bank.deleteStatement(feb));
+});
+
+test('review: a reversal draft stays a reversal when saved again; its posting links the original once', () => {
+  const x = post('2033-05-02', 1000);
+  const rev = web(() => B.reverseJournal(x.id, '2033-05-03'));
+  const saved = web(() => B.saveDraft(rev.id, { date: '2033-05-04', memo: 'Reversal (fictional)', kind: 'manual', lines: rev.lines }));
+  assert.equal(saved.kind, 'reversal', 'its kind is kept');
+  web(() => B.postJournal(rev.id));
+  assert.equal(B.getJournal(x.id).reversed_by_id, rev.id);
+  assert.throws(() => web(() => B.reverseJournal(x.id, '2033-05-05')), /reversed/);
+  // a person's own draft can't be turned into one of Canon's linked kinds either
+  const own = web(() => B.saveDraft(null, { date: '2033-05-06', memo: 'Own (fictional)', lines: rev.lines }));
+  assert.equal(web(() => B.saveDraft(own.id, { date: '2033-05-06', kind: 'offering', lines: rev.lines })).kind, 'manual');
+  web(() => B.deleteDraft(own.id));
+});
+
+test('review: a posted journal keeps who posted it, when, and what reversed it — the database refuses changes', () => {
+  const x = post('2033-05-10', 1200);
+  for (const sql of ["UPDATE bk_journals SET posted_by = 'Someone else' WHERE id = ?", "UPDATE bk_journals SET posted_at = '2020-01-01' WHERE id = ?"]) {
+    assert.throws(() => run(sql, x.id), /cannot be changed/);
+  }
+  const rev = web(() => B.postJournal(B.reverseJournal(x.id, '2033-05-11').id));
+  assert.equal(B.getJournal(x.id).reversed_by_id, rev.id, 'set once, when the reversal is posted');
+  assert.throws(() => run('UPDATE bk_journals SET reversed_by_id = NULL WHERE id = ?', x.id), /cannot be changed/);
+});
+
+test('review: amounts written with a decimal comma read right, in bank statements and journal imports', () => {
+  const cases: [string, number | null][] = [['12,50', 1250], ['1.234,50', 123450], ['1,234.50', 123450], ['1,234', 123400], ['12.345,6', 1234560], ['1.234.567', 123456700], ['(12.00)', -1200], ['-0', 0], ['abc', null]];
+  for (const [s, cents] of cases) assert.equal(Bank.parseBankAmount(s), cents, s);
+});
+
+test('review: journal numbers go on past 9999 in a year', () => {
+  run("INSERT INTO bk_journals (date, memo, status, kind, number, posted_by, posted_at) VALUES ('2034-06-01', 'Numbering (fictional)', 'posted', 'manual', '2034-9999', 'Test', '2034-06-01')");
+  assert.equal(post('2034-06-02', 100).number, '2034-10000');
+  assert.equal(post('2034-06-02', 100).number, '2034-10001');
+});
