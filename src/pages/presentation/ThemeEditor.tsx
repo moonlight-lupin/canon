@@ -1,5 +1,5 @@
 // Slide templates: the step-by-step editor beside a live preview.
-import { QR_CORNERS, type QrCorner, type QrSize } from '../../../shared/slide-theme.ts';
+import { DEFAULT_CLOSING_TEXT, QR_CORNERS, type QrCorner, type QrSize } from '../../../shared/slide-theme.ts';
 const QR_CORNER_LABEL: Record<QrCorner, string> = { 'bottom-left': 'Lower left', 'bottom-right': 'Lower right', 'top-left': 'Upper left', 'top-right': 'Upper right' };
 import { useMemo, useRef, useState } from 'react';
 import { api } from '../../api.ts';
@@ -145,7 +145,7 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
     look: `${draft.base === 'light' ? t('Light background') : t('Dark background')}${bg ? ` · ${t('with picture')}` : ''}`,
     text: `${fontName('latin')} · ${Math.round(v.scale * 100)}% · ${v.align === 'left' ? t('Left') : t('Centred')}`,
     lines: `${t('{n} lines (two or more languages)').replace('{n}', String(v.max_lines_multi))} · ${t('{n} lines (one language)').replace('{n}', String(v.max_lines_single))}${v.uniform_size ? ` · ${t('same size')}` : ''}`,
-    screen: [v.aspect === '4:3' ? '4:3' : '16:9', v.footer_reference && t('reference'), v.footer_church && t('church name'), v.footer_number && t('slide number')].filter(Boolean).join(' · '),
+    screen: [v.aspect === '4:3' ? '4:3' : '16:9', v.footer_reference && t('reference'), v.footer_church && t('church name'), v.footer_number && t('slide number'), (v.closing ?? true) && t('closing slide')].filter(Boolean).join(' · '),
     css: draft.css.trim() ? t('Custom CSS in use') : t('None'),
   };
 
@@ -305,6 +305,12 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
                 <Seg<QrSize> value={v.qr_size ?? 'medium'} onChange={(z) => setV({ qr_size: z })} options={[{ value: 'small', label: t('Small') }, { value: 'medium', label: t('Medium') }, { value: 'large', label: t('Large') }]} />
               </div>
             </Field>
+            <label className="check"><input type="checkbox" checked={v.closing ?? true} onChange={(e) => setV({ closing: e.target.checked })} />{t('A closing slide after the last item')}</label>
+            {(v.closing ?? true) && (
+              <Field label={t('Closing message')} hint={t('Shown with the church name. For a different message one week, add an item at the end of that service instead.')}>
+                <L10nInput value={v.closing_text ?? DEFAULT_CLOSING_TEXT} onChange={(x) => setV({ closing_text: x })} />
+              </Field>
+            )}
           </Step>
 
           <Step n={5} title={t('Custom CSS (advanced)')} summary={sum.css} open={steps.isOpen(5)} onToggle={() => steps.toggle(5)}>

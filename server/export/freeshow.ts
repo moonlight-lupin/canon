@@ -435,6 +435,10 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
       refs.push({ id: id.section(it.id), type: 'section', name: title, notes: '' });
       built = newBuilt();
       addSlide(built, 'title', titleSlide(it, langs));
+    } else if (it.slide_cover === 'cover' && it.kind !== 'sermon') {
+      // the cover only: the item's title and who leads it, e.g. "Threefold Amen" instead of the three amens
+      built = newBuilt();
+      addSlide(built, 'cover', titleSlide(it, langs, it.leader ? [it.leader] : []));
     } else if (it.song?.stanzas.length) {
       built = songSlides(it, langs, limits);
       const s = it.song;
@@ -459,12 +463,30 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
       built = newBuilt();
       addSlide(built, 'title', titleSlide(it, langs));
     }
+    // the cover first, then the content
+    if (it.on_slides && it.slide_cover === 'both' && it.kind !== 'section' && it.kind !== 'sermon' && built.order[0] !== 'title') {
+      built.slides.unshift({ key: 'cover', slide: titleSlide(it, langs, it.leader ? [it.leader] : []) });
+      built.order.unshift('cover');
+    }
     if (qr) addSlide(built, 'qr', qr);
     if (!built.order.length) continue;
 
     const sub = bi(it.subtitle, langs);
     const name = `${r.date} ${title}${sub && sub !== title ? ` — ${sub}` : ''}`;
     shows[showId] = makeShow(name, built, showId, created, now, meta);
+    refs.push({ id: showId });
+  }
+
+  // the slide template's closing message: a show of its own after the last item
+  const closing = (limits as { closing?: boolean; closing_text?: L10n } | null)?.closing === false
+    ? null
+    : (limits as { closing_text?: L10n } | null)?.closing_text;
+  if (limits && closing && langs.some((l) => closing[l]?.trim())) {
+    const end = { id: -1, kind: 'other', title: closing, subtitle: r.church.name } as unknown as RenderedItem;
+    const built = newBuilt();
+    addSlide(built, 'closing', titleSlide(end, langs));
+    const showId = id.show(-1);
+    shows[showId] = makeShow(`${r.date} ${bi(r.title, langs) || 'Service'} — closing`, built, showId, created, now);
     refs.push({ id: showId });
   }
 

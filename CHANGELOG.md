@@ -6,8 +6,11 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 ## 0.15.9 — not released yet
 
+- **An item's cover slide:** next to **On slides**, **Slides** chooses **Content only** (as before), **Cover only** — one slide with the item's title and who leads it, e.g. "Threefold Amen" instead of three amens — or **Cover, then content** (e.g. the reading's title and reader, then the passage). Service templates and their CSV (`slide_cover`), the PowerPoint and FreeShow files and AI assistants (`slide_cover` on `canon_edit_order`) follow it.
+- **A closing slide:** each slide template can end the deck with a closing message in every language and the church name (on unless turned off; "Thank you for worshipping with us" until you change it), in Canon, the PowerPoint file and FreeShow.
+- **Hymn slides:** the stanza number (or "Refrain") is on every slide of a stanza, not only the first; the run sheet still gives where each stanza starts.
 - **Who leads an item:** when the rota has someone for an item's role, they are printed and shown, not a name typed in **Leader** — the planner now says so under **Leader**, and the empty box shows who the rota has. The service's **Preacher** box warns the same way when the rota has someone else for the sermon. The heading of an item in the order now follows the same rule as the outputs (before, with nobody on the rota, it showed the role's name instead of the typed leader).
-- Database: no change.
+- Database: version 30 — an item's cover slide choice. Canon upgrades by itself on start.
 
 ## 0.15.8 — Sample data, and tidier service details
 

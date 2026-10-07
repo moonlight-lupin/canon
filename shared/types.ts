@@ -303,7 +303,11 @@ export interface ServiceItem {
   notes: string | null;
   in_bulletin: boolean;
   on_slides: boolean;
+  /** a cover slide (title and who leads): null = content only, 'cover' = the cover only, 'both' = cover then content */
+  slide_cover?: SlideCover | null;
 }
+
+export type SlideCover = 'cover' | 'both';
 
 export type ServiceStatus = 'draft' | 'final';
 
@@ -404,6 +408,7 @@ export interface TemplateItem {
   slide_blocks?: string[];
   /** slide background picture, by its name in Library → Slide backgrounds */
   slide_bg?: string;
+  slide_cover?: SlideCover;
 }
 
 export interface Template {

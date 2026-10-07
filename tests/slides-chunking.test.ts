@@ -11,7 +11,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-chunks-'));
 process.env.CANON_DB = path.join(tmp, 'test.db');
 
 const { splitSentences, balancedSizes, alignChunks, groupUnits, chunkParagraph, lineLimit } = await import('../shared/slide-chunks.ts');
-const { buildSlides, mapSlideIndex } = await import('../src/outputs/slideModel.ts');
+const { buildSlides, mapSlideIndex, slideNumbers } = await import('../src/outputs/slideModel.ts');
 const { deckFit, largestFitting, scaledCap } = await import('../src/outputs/deckFit.ts');
 const { normaliseThemeVars, DEFAULT_THEME_VARS } = await import('../shared/slide-theme.ts');
 
@@ -152,10 +152,10 @@ test('hymns: a 4-line stanza is 2 slides of 2 lines per language when bilingual'
   // the second line pair is the second half of the stanza in both languages
   assert.equal(s[1].lines!.en![0].text, 'From morning light to evening fall');
   assert.equal(s[1].lines!.zh![0].text, '从早到晚常称谢');
-  // label once, then the continuation marker
+  // the stanza number on every slide of the stanza (0.15.9); the later ones are marked as continuing it
   assert.equal(s[0].label?.en, '1');
   assert.equal(s[0].cont, undefined);
-  assert.equal(s[1].label, undefined);
+  assert.equal(s[1].label?.en, '1');
   assert.equal(s[1].cont, true);
   assert.deepEqual(s.map((x) => x.key), ['2-s0.0', '2-s0.1', '2-s1.0', '2-s1.1']);
 });
@@ -339,7 +339,7 @@ test('FreeShow: hymns, readings and liturgy chunked like the slides', async () =
 });
 
 test('run sheet slide numbers: range per item, where each stanza starts, every place a repeated refrain comes', async () => {
-  const { slideNumbers } = await import('../src/outputs/slideModel.ts');
+  // slideNumbers is imported at the top
   const R = { label: 'R', text: { en: 'Sing, sing, sing to the Lord\nSing, sing, sing to the Lord' } };
   const r = service([
     item(1, 'section', { title: { en: 'Gathering' } }),
@@ -361,4 +361,34 @@ test('run sheet slide numbers: range per item, where each stanza starts, every p
   // the QR code slide is a part of its item
   const q = m.get(3)!;
   assert.deepEqual(q.parts.map((p) => [!!p.blocks, p.at]), [[true, [q.last]]]);
+});
+
+test('an item’s cover slide (0.15.9): cover only, cover then content, content only; the run sheet’s stanza places', () => {
+  const amen = { ...song(5, [{ label: '1', text: { en: 'Amen\nAmen\nAmen', zh: '阿们\n阿们\n阿们' } }]), title: { en: 'Threefold Amen', zh: '三叠阿们' }, leader: 'Choir' };
+  const reading = item(6, 'scripture', { title: { en: 'Scripture Reading', zh: '读经' }, leader: 'A reader', paras: { en: [[{ who: null, text: 'In the beginning was the Word.' }]] } } as Partial<RenderedItem>);
+  const hymn = song(7, [{ label: '1', text: { en: FOUR_EN, zh: FOUR_ZH } }, { label: '2', text: { en: FOUR_EN, zh: FOUR_ZH } }]);
+  const deck = (items: RenderedItem[]) => buildSlides(service(items), ['en', 'zh']).filter((x) => x.itemId != null);
+  // content only (as before)
+  assert.ok(deck([amen]).every((x) => x.type === 'lyrics'));
+  // cover only: the title and who leads it, no words
+  const c = deck([{ ...amen, slide_cover: 'cover' }]);
+  assert.deepEqual(c.map((x) => x.type), ['item']);
+  assert.equal(c[0].big?.en, 'Threefold Amen');
+  assert.deepEqual(c[0].meta, ['Choir']);
+  // cover, then content
+  assert.deepEqual(deck([{ ...reading, slide_cover: 'both' }]).map((x) => x.type), ['item', 'text']);
+  // a stanza starts once in the cues, though its number is on both of its slides
+  const nums = slideNumbers(buildSlides(service([hymn]), ['en', 'zh']));
+  assert.deepEqual(nums.get(7)!.parts.map((p) => [p.label.en, p.at]), [['1', [2]], ['2', [4]]]);
+});
+
+test('the slide template’s closing slide (0.15.9) comes after the last item, with the church name', () => {
+  const r = service([song(8, [{ label: '1', text: { en: FOUR_EN } }])]);
+  assert.notEqual(buildSlides(r, ['en']).at(-1)!.key, 'closing', 'no template, no closing slide');
+  const s = buildSlides(r, ['en'], { closing: true, closing_text: { en: 'Go in peace' } });
+  const last = s.at(-1)!;
+  assert.equal(last.key, 'closing');
+  assert.equal(last.big?.en, 'Go in peace');
+  assert.equal(last.sub?.en, 'Example Church');
+  assert.notEqual(buildSlides(r, ['en'], { closing: false, closing_text: { en: 'Go in peace' } }).at(-1)!.key, 'closing');
 });

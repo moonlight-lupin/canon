@@ -18,6 +18,8 @@ const POSTURE_ALIAS: Record<string, (typeof POSTURES)[number]> = {
   kneeling: 'kneel', 跪: 'kneel', 跪下: 'kneel',
 };
 const PRINT = ['full', 'title'] as const;
+// an item's cover slide: the cover only, or the cover then the content (empty = the content only)
+const COVER = ['cover', 'both'] as const;
 const PRINT_ALIAS: Record<string, (typeof PRINT)[number]> = {
   'full text': 'full', words: 'full', 全文: 'full', 'title only': 'title', reference: 'title', 'reference only': 'title', 标题: 'title', 標題: 'title', 仅标题: 'title',
 };
@@ -53,6 +55,7 @@ function itemCells(it: TemplateItem, langs: string[]): Record<string, string> {
     duration_min: String(it.duration_min ?? 0), role: it.role ?? '', leader: it.leader ?? '',
     in_bulletin: fmtBool(it.in_bulletin), on_slides: fmtBool(it.on_slides), notes: it.notes ?? '',
     posture: it.posture ?? '', bulletin_text: it.bulletin_text ?? '', slide_blocks: (it.slide_blocks ?? []).join('; '),
+    slide_cover: it.slide_cover ?? '',
   };
   for (const l of langs) out[`title_${l}`] = it.title?.[l] ?? '';
   return out;
@@ -87,6 +90,7 @@ export const templatesCsv: Entity = {
     col('posture', M('Posture', '姿势'), M('What the congregation does: stand, sit or kneel (众立 / 众坐 also work). Empty = not printed.', '会众的姿势：stand、sit 或 kneel（也可写 众立 / 众坐）。留空则不印。'), { values: [...POSTURES], aliases: ['stand_sit'] }),
     col('bulletin_text', M('Bulletin text', '次序单内容'), M('full = print the words, title = title / reference only. Empty = follow the bulletin template.', 'full = 印全文，title = 只印标题／经文出处。留空则按次序单模板。'), { values: [...PRINT], aliases: ['print', 'bulletin_print'] }),
     col('slide_blocks', M('QR codes on slides', '投影二维码'), M('Names of QR codes / notes from Library → QR codes & notes, separated by ";" — shown on a slide after this item.', '资料库「二维码与备注」中的名称，用「;」分隔 —— 在此项目之后的投影片显示。'), { example: 'PayNow giving; Instagram', aliases: ['qr', 'qr_codes', 'blocks'] }),
+    col('slide_cover', M('Cover slide', '封面投影'), M('cover = only a slide with the item\'s title and who leads it (e.g. Threefold Amen); both = that slide, then the words. Empty = the words only.', 'cover = 只显示一张有项目名称和负责人的投影（例如三叠阿们）；both = 先显示这张，再显示内容。留空则只显示内容。'), { values: [...COVER] }),
     col('notes', M('Notes', '备注'), M('Notes for the planner, e.g. Choose a hymn on the sermon theme.', '给策划者的备注，如「按讲道主题选诗」。'), {}),
   ],
   example: () => [
@@ -122,7 +126,7 @@ export const templatesCsv: Entity = {
       list.push(r);
       groups.set(k.toLowerCase(), list);
     }
-    const itemCols = ['kind', 'song_key', 'text_key', 'stanzas', 'scripture_ref', 'duration_min', 'role', 'leader', 'in_bulletin', 'on_slides', 'notes', 'posture', 'bulletin_text', 'slide_blocks'];
+    const itemCols = ['kind', 'song_key', 'text_key', 'stanzas', 'scripture_ref', 'duration_min', 'role', 'leader', 'in_bulletin', 'on_slides', 'notes', 'posture', 'bulletin_text', 'slide_blocks', 'slide_cover'];
     const blockNames = new Set(listBlocks().map((b) => b.name.trim().toLowerCase()));
 
     for (const rows of groups.values()) {
@@ -165,6 +169,7 @@ export const templatesCsv: Entity = {
         const onS = collect(rowErr, () => parseBool(r.v.on_slides ?? '', 'on_slides'));
         const posture = collect(rowErr, () => parseEnum(r.v.posture ?? '', 'posture', POSTURES, POSTURE_ALIAS));
         const printChoice = collect(rowErr, () => parseEnum(r.v.bulletin_text ?? '', 'bulletin_text', PRINT, PRINT_ALIAS));
+        const cover = collect(rowErr, () => parseEnum(r.v.slide_cover ?? '', 'slide_cover', COVER));
         const text = (c: string, max = 2000) => collect(rowErr, () => parseText(r.v[c] ?? '', c, max)) ?? undefined;
         errors.push(...rowErr.map((m) => at(r.row, m)));
         if (!kind) continue;
@@ -196,6 +201,7 @@ export const templatesCsv: Entity = {
         if (onS !== null && onS !== undefined) it.on_slides = onS;
         if (posture) it.posture = posture;
         if (printChoice) it.bulletin_text = printChoice;
+        if (cover) it.slide_cover = cover;
         const blocks = splitList(r.v.slide_blocks ?? '');
         if (blocks.length) {
           it.slide_blocks = blocks;

@@ -138,7 +138,7 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
       <div className="sl-head slide-heading">
         {s.heading && <Bi v={s.heading} langs={langs} sep="  ·  " />}
         {s.label && <span className="sl-label slide-stanza-label">{biText(s.label, langs, ' ')}</span>}
-        {s.cont && s.type === 'lyrics' && <span className="sl-cont slide-cont" aria-label="continued">…</span>}
+        {s.cont && s.type === 'lyrics' && !s.label && <span className="sl-cont slide-cont" aria-label="continued">…</span>}
         {s.posture && <span className="sl-posture slide-posture">{biText(postureL10n(s.posture, langs), langs, ' · ')}</span>}
       </div>
       <div className="sl-box" ref={boxRef}>

@@ -953,4 +953,9 @@ export const MIGRATIONS: (string | Migration)[] = [
     );
     `,
   },
+  // 30 (0.15.9): an item's cover slide (its title and who leads it): null = the content only (as before),
+  // 'cover' = the cover only (e.g. "Threefold Amen" instead of three amens), 'both' = the cover, then the content.
+  {
+    sql: `ALTER TABLE service_items ADD COLUMN slide_cover TEXT;`,
+  },
 ];

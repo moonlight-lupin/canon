@@ -101,6 +101,17 @@ export function ItemEditor({
           <div className="row">
             <BulletinChoice item={item} onPatch={onPatch} />
             <label className="check"><input type="checkbox" checked={item.on_slides} onChange={(e) => onPatch({ on_slides: e.target.checked }, true)} />{t('On slides')}</label>
+            {/* a cover slide (the item's title and who leads it) instead of the words, or before them */}
+            {item.on_slides && item.kind !== 'section' && item.kind !== 'sermon' && (
+              <label className="bulletin-choice" title={t('The cover shows the item’s title and who leads it, e.g. just “Threefold Amen” instead of the three amens.')}>
+                <span>{t('Slides')}</span>
+                <select value={item.slide_cover ?? ''} onChange={(e) => onPatch({ slide_cover: (e.target.value || null) as ServiceItem['slide_cover'] }, true)}>
+                  <option value="">{t('Content only')}</option>
+                  <option value="cover">{t('Cover only')}</option>
+                  <option value="both">{t('Cover, then content')}</option>
+                </select>
+              </label>
+            )}
           </div>
           {canEdit && (
             <div className="row" style={{ gap: 4 }}>

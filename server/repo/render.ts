@@ -174,6 +174,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
       bulletin_text: it.bulletin_text ?? null,
       bulletin_full: bulletinDecision(it.kind, it.bulletin_text, bulletin.options),
       on_slides: it.on_slides,
+      slide_cover: it.slide_cover ?? null,
       slide_blocks: [...slideBlocks(it.slide_blocks), ...(it.id === qrAfter ? visitorSlideBlock() : [])],
       slide_bg: slideBackground(it.slide_background_id),
     };

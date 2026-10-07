@@ -77,7 +77,7 @@ const splitLines = (s: string | undefined): Line[] =>
 /**
  * Hymn words: each stanza is cut by line index into slides of at most `limit` lines per language (balanced: four
  * lines at three a slide give 2 + 2). Languages with different line counts are spread proportionally so they finish
- * on the same slide. The stanza label goes on the first slide; the others carry `cont`.
+ * on the same slide. The stanza label (1, 2, Refrain …) is on every slide of the stanza; the later ones also carry `cont`.
  */
 function songSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
   const s = it.song!;
@@ -94,7 +94,7 @@ function songSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits
       });
       out.push({
         key: `${it.id}-s${i}${chunks.length > 1 ? `.${j}` : ''}`, type: 'lyrics', itemId: it.id, heading: s.number ? it.subtitle : s.title,
-        ...(j === 0 ? { label } : { cont: true }), refrain: isRefrain(st.label), lines,
+        label, ...(j > 0 ? { cont: true } : {}), refrain: isRefrain(st.label), lines,
       });
     });
   });
@@ -185,12 +185,18 @@ function titleSlide(it: RenderedItem): SlideDef {
   return { key: `${it.id}-t`, type: 'item', itemId: it.id, big: it.title, sub: hasAny(it.subtitle) ? it.subtitle : undefined, meta: it.leader ? [it.leader] : [] };
 }
 
+/** What a slide template adds after the last item (its closing message), read with the line limits. */
+export interface SlideDeckOptions extends Partial<LineLimits> {
+  closing?: boolean;
+  closing_text?: L10n;
+}
+
 /**
  * The slides of a service in the languages shown. `limits` (the slide theme's max_lines_multi / max_lines_single)
  * caps the lines (lyric lines or sentences) per language on a slide; the limit depends on how many of the shown
  * languages an item actually has.
  */
-export function buildSlides(r: RenderedService, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
+export function buildSlides(r: RenderedService, langs: Lang[], limits?: SlideDeckOptions | null): SlideDef[] {
   const slides: SlideDef[] = [];
   // the bulletin link's QR code (for people as they arrive) sits in a corner of the title slide, on screen before the service
   const corner = (r.opening_blocks ?? []).filter(showable)[0];
@@ -201,6 +207,10 @@ export function buildSlides(r: RenderedService, langs: Lang[], limits?: Partial<
     const b = it.kind === 'section' ? null : blocksSlide(it, !it.on_slides);
     if (b) own.push(b);
     slides.push(...(it.slide_bg ? own.map((s) => ({ ...s, bg: it.slide_bg! })) : own));
+  }
+  // the slide template's closing message, after the last item
+  if (limits?.closing && hasAny(limits.closing_text)) {
+    slides.push({ key: 'closing', type: 'item', itemId: null, kind: 'closing', big: limits.closing_text, sub: r.church.name });
   }
   return slides;
 }
@@ -214,10 +224,14 @@ function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[], limits?
     return [{ key: `${it.id}-sermon`, type: 'sermon', itemId: it.id, kind: it.kind, heading: it.title, big: title, sub: hasAny(r.sermon_ref) ? r.sermon_ref : undefined, meta: m, ...(it.posture ? { posture: it.posture } : {}) }];
   }
   let s: SlideDef[] = [];
-  if (it.song?.stanzas.length) s = songSlides(it, langs, limits);
-  else if (it.kind === 'scripture') s = scriptureSlides(it, langs, limits);
-  else if (it.paras) s = textSlides(it, langs, limits);
+  // the cover (title and who leads it) instead of the words, or before them
+  if (it.slide_cover !== 'cover') {
+    if (it.song?.stanzas.length) s = songSlides(it, langs, limits);
+    else if (it.kind === 'scripture') s = scriptureSlides(it, langs, limits);
+    else if (it.paras) s = textSlides(it, langs, limits);
+  }
   if (!s.length) s = [titleSlide(it)];
+  else if (it.slide_cover === 'both') s = [titleSlide(it), ...s];
   return s.map((x, i) => ({ ...x, kind: it.kind, ...(i === 0 && it.posture ? { posture: it.posture } : {}) }));
 }
 
@@ -250,8 +264,8 @@ export function slideNumbers(slides: SlideDef[]): Map<number, ItemSlideNumbers> 
     let e = out.get(s.itemId);
     if (!e) out.set(s.itemId, (e = { first: n, last: n, parts: [] }));
     e.last = n;
-    // the stanza label is on a stanza's first slide only (later slides of a long stanza carry `cont`)
-    const key = s.type === 'blocks' ? '#blocks' : s.label ? JSON.stringify(s.label) : null;
+    // a stanza starts where its label is without `cont` (its later slides repeat the label and carry `cont`)
+    const key = s.type === 'blocks' ? '#blocks' : s.label && !s.cont ? JSON.stringify(s.label) : null;
     if (!key) return;
     let p = e.parts.find((x) => x.key === key);
     if (!p) e.parts.push((p = { key, label: s.label ?? {}, ...(s.refrain ? { refrain: true } : {}), ...(s.type === 'blocks' ? { blocks: true } : {}), at: [] }));

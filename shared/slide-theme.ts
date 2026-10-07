@@ -49,6 +49,9 @@ export interface SlideThemeVars {
   /** the bulletin link's QR code on the title slide: which corner, and how big */
   qr_corner?: QrCorner;
   qr_size?: QrSize;
+  /** a closing slide after the last item, with this message (in each language) */
+  closing?: boolean;
+  closing_text?: L10n;
   /** lines per language on a slide that shows two or more languages (a "line" = a lyric line or a sentence) */
   max_lines_multi: number;
   /** lines on a slide that shows one language */
@@ -158,6 +161,15 @@ export function fontStackProblem(s: string): string | null {
   return null;
 }
 
+/** The closing slide's message when a template has not set its own. */
+export const DEFAULT_CLOSING_TEXT: L10n = { en: 'Thank you for worshipping with us', zh: '感谢您与我们一同敬拜', 'zh-Hant': '感謝您與我們一同敬拜' };
+const closingText = (x: unknown): L10n | undefined => {
+  if (!x || typeof x !== 'object') return undefined;
+  const out: L10n = {};
+  for (const [k, s] of Object.entries(x as Record<string, unknown>)) if (typeof s === 'string' && /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(k)) out[k] = s.slice(0, 300);
+  return out;
+};
+
 /** Fill in defaults and clamp numbers. Throws on an unusable font stack (shown to the user). */
 export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAULT_THEME_VARS): SlideThemeVars {
   const v = (input && typeof input === 'object' ? input : {}) as Partial<Record<keyof SlideThemeVars, unknown>>;
@@ -192,6 +204,8 @@ export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAUL
     show_posture: typeof v.show_posture === 'boolean' ? v.show_posture : (base.show_posture ?? false),
     qr_corner: QR_CORNERS.includes(v.qr_corner as QrCorner) ? (v.qr_corner as QrCorner) : (base.qr_corner ?? 'bottom-right'),
     qr_size: v.qr_size === 'small' || v.qr_size === 'medium' || v.qr_size === 'large' ? v.qr_size : (base.qr_size ?? 'medium'),
+    closing: typeof v.closing === 'boolean' ? v.closing : (base.closing ?? true),
+    closing_text: closingText(v.closing_text) ?? base.closing_text ?? { ...DEFAULT_CLOSING_TEXT },
     // themes saved before these settings existed get the defaults
     max_lines_multi: Math.round(clamp(v.max_lines_multi, 1, 6, base.max_lines_multi ?? DEFAULT_LINE_LIMITS.max_lines_multi)),
     max_lines_single: Math.round(clamp(v.max_lines_single, 1, 8, base.max_lines_single ?? DEFAULT_LINE_LIMITS.max_lines_single)),

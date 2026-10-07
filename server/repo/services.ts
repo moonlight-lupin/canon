@@ -30,7 +30,7 @@ export const items = table<ServiceItem>({
   name: 'service_items',
   cols: [
     'service_id', 'position', 'kind', 'title', 'ref_id', 'scripture_ref', 'stanzas', 'hymnal_id', 'bulletin_text', 'posture', 'bibles', 'slide_blocks', 'body', 'duration_min', 'role_id',
-    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id',
+    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id', 'slide_cover',
   ],
   json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks'],
   bool: ['in_bulletin', 'on_slides'],
@@ -232,6 +232,7 @@ export function materialise(tItems: TemplateItem[]) {
       ...(t.in_bulletin !== undefined ? { in_bulletin: t.in_bulletin } : {}),
       ...(t.on_slides !== undefined ? { on_slides: t.on_slides } : {}),
       ...(t.posture ? { posture: t.posture } : {}),
+      ...(t.slide_cover ? { slide_cover: t.slide_cover } : {}),
       ...(t.bulletin_text ? { bulletin_text: t.bulletin_text } : {}),
       ...(t.slide_blocks?.length ? { slide_blocks: [...new Set(t.slide_blocks.map((n) => blockIds.get(n.trim().toLowerCase())).filter((x): x is number => !!x))] } : {}),
       ...(t.slide_bg && backgroundByName(t.slide_bg) ? { slide_background_id: backgroundByName(t.slide_bg)! } : {}),
@@ -402,6 +403,7 @@ export function saveAsTemplate(serviceId: number, name: L10n) {
     if (it.leader) t.leader = it.leader;
     if (it.notes) t.notes = it.notes;
     if (it.posture) t.posture = it.posture;
+    if (it.slide_cover) t.slide_cover = it.slide_cover;
     if (it.bulletin_text) t.bulletin_text = it.bulletin_text;
     const blocks = (it.slide_blocks ?? []).map((id) => blockNames.get(id)).filter((n): n is string => !!n);
     if (blocks.length) t.slide_blocks = blocks;

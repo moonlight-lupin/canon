@@ -54,6 +54,8 @@ export interface RenderedItem {
   notes: string | null;
   in_bulletin: boolean;
   on_slides: boolean;
+  /** a cover slide (title and who leads): 'cover' only, or 'both' (cover, then the content); absent = content only */
+  slide_cover?: 'cover' | 'both' | null;
   /** the item's own bulletin choice: null = follow the bulletin template */
   bulletin_text: 'full' | 'title' | null;
   /** what the bulletin prints: true = the words, false = title / reference only, 'first_stanza' (hymns) */

@@ -223,7 +223,7 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
     const head: TextProps[] = [];
     if (s.heading) head.push({ text: biText(s.heading, langs, '  ·  '), options: { color: accent } });
     if (s.label) head.push({ text: `   ${biText(s.label, langs, ' ')}`, options: { color: accent, bold: true } });
-    if (s.cont && s.type === 'lyrics') head.push({ text: '   …', options: { color: accent } });
+    if (s.cont && s.type === 'lyrics' && !s.label) head.push({ text: '   …', options: { color: accent } });
     if (head.length) sl.addText(head, { x: padX, y: 0.3, w: body.w * (s.posture && v.show_posture ? 0.75 : 1), h: 0.55, fontFace: UI_FONT, fontSize: 15, align: v.align === 'left' ? 'left' : 'center', valign: 'middle' });
     if (s.posture && v.show_posture) {
       sl.addText(biText(postureL10n(s.posture, langs), langs, ' · '), { x: padX + body.w * 0.75, y: 0.3, w: body.w * 0.25, h: 0.55, fontFace: UI_FONT, fontSize: 15, bold: true, color: accent, align: 'right', valign: 'middle' });
