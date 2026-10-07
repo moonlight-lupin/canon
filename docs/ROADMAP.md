@@ -20,6 +20,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.17.0 | Book-keeping: double-entry accounts (optional module) — done |
 | 0.17.1 | Claim forms — done |
 | 0.17.2–0.17.3 | Excel exports with a title block, Excel imports, importing journals; reversals as drafts (also by AI assistants) — done |
+| 0.17.4 | The v0.17.2 review's findings: bank re-imports, one offering per receipt, group matching, safe sample-data removal, congregation walls in the library and asset register, Excel 1904 dates — done |
 | 0.18.0 | Third hardening round: financial correctness first (the v0.17.2 review), then security, recovery and the Windows service |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.

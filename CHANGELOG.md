@@ -4,7 +4,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.18.0 — Hardening (in progress): financial correctness
+## 0.17.4 — Financial correctness (review fixes)
 
 Fixes for the findings of an external review of v0.17.2.
 - **Bank re-imports keep genuine look-alike transactions.** A line is the same transaction only with the same bank reference; without references, look-alike lines are counted. A second SGD 50 gift on the same day is no longer dropped as "already imported". A file that is entirely repeated makes no empty statement.
