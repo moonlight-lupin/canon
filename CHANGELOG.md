@@ -4,6 +4,24 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.16.0 — Languages anyone can add, and Chinese converted everywhere
+
+- **Adding a language is a folder, not code.** Each language's words are in `locales/<code>/`:
+  - `ui.json` for Canon's screens;
+  - `outputs.json` for what is printed in bulletins and slides;
+  - `server.json` for e-mails and public pages.
+
+  A language with screen translations appears by itself, with a **UI** badge in Settings → Languages that shows how complete it is (e.g. "UI 82%"). Missing phrases show in English (or a chosen fallback language). `npm run i18n:new`, `npm run i18n:check` and `npm run i18n` help translators; see [CONTRIBUTING-TRANSLATIONS.md](CONTRIBUTING-TRANSLATIONS.md).
+- **Simplified ⇄ Traditional Chinese, both ways and everywhere:**
+  - Church content typed in one script now shows converted for someone reading the other: on Canon's screens (service lists, planner, calendar), in print, in e-mails, on the visitor welcome form and on the page for connecting an AI app.
+  - The visitor form follows the service's languages: Traditional for a Traditional service, Malay for a Malay one, with English underneath.
+  - For translators, Simplified and Traditional files follow each other: edit either and the other is converted, while wording written by hand in both is kept.
+- **Faster to open:** each language's words are fetched only when someone uses that language, so the app's main download is about a third of its old size.
+- The page for connecting an AI app is in the signed-in person's own language, with English underneath.
+- The printed cash-count and offering forms are in the reader's language with English after each heading (before: Chinese only).
+- Docker: the image now includes the user guide and translations (`docs/`, `locales/`).
+- Database: no change.
+
 ## 0.15.10 — Leaders from the rota, a size for each language, and warnings you can read
 
 - **Leaders come from the rota only.** An item's **Leader** is now a list of tick boxes with the people on the service's rota — no typed names:

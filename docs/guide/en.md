@@ -2,7 +2,7 @@
 
 Canon helps the church office plan the Sunday service, print the bulletin, project the slides and keep the registers. This guide follows the weekly routine. Labels in **bold** are exactly what you see on screen.
 
-> **Tip:** Everything you type in one language can be typed in each of the church's languages. Simplified and Traditional Chinese convert automatically, so type Chinese only once. Where a dialog or a section has several such fields, the language switch at its top right (**EN** / **简** …) turns all of them to one language at once, and **Side by side** shows every language together. Each field also keeps its own small language tabs: click one to switch just that field, or rest the pointer on it to read the field's whole text in that language without switching.
+> **Tip:** Everything you type in one language can be typed in each of the church's languages. Simplified and Traditional Chinese convert automatically everywhere — on screen, in print, in e-mails and on public pages such as the visitor form — so type Chinese only once. Where a dialog or a section has several such fields, the language switch at its top right (**EN** / **简** …) turns all of them to one language at once, and **Side by side** shows every language together. Each field also keeps its own small language tabs: click one to switch just that field, or rest the pointer on it to read the field's whole text in that language without switching.
 
 ## Getting started
 
@@ -25,7 +25,7 @@ Next comes **Getting started**: **Modules** (the parts of Canon your church uses
 
 Then:
 
-1. **Worship languages**: tick your languages; the first is the primary language.
+1. **Worship languages**: tick your languages; the first is the primary language. A **UI** badge means Canon's own screens are translated into that language too (with how much, e.g. "UI 82%"), so staff can use Canon in it; the others are for services only. Anyone can add or improve a language without programming: see `CONTRIBUTING-TRANSLATIONS.md` in Canon's files.
 2. **Bible**: for each language, press **Download & import** for a public-domain Bible (KJV, 和合本 and others) and choose the **Default version**.
 3. **Bulletins & slides**: choose the **Languages printed and projected by default** (up to 3) and the **Bilingual layout** (**Side by side** or **Stacked**).
 4. Press **Finish setup**.

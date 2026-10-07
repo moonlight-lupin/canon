@@ -1360,6 +1360,10 @@
       "Canon 自带资料库",
       "Canon 自帶資料庫"
     ],
+    "Canon’s own screens are translated into this language (how much of them: the percentage).": [
+      "Canon 本身的画面已译成这种语言（百分比表示翻译了多少）。",
+      "Canon 本身的畫面已譯成這種語言（百分比表示翻譯了多少）。"
+    ],
     "Capacity": [
       "容量",
       "容量"
@@ -9082,8 +9086,8 @@
     ]
   },
   "guide": [
-    "fcc8f7b359cee377",
-    "cb48a2387f51a140"
+    "ce9a487bbc2befcd",
+    "9b25ff6b57afe962"
   ],
   "outputs": {
     "Advent": [

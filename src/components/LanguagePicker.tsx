@@ -1,5 +1,6 @@
 // Choose and order the church's content languages from the catalog (first = primary).
 import { LANGUAGE_CATALOG, langInfo } from '../../shared/languages.ts';
+import { UI_COVERAGE } from '../../shared/locales.generated.ts';
 import type { Lang } from '../../shared/types.ts';
 import { useI18n } from '../i18n.tsx';
 import { Icon } from './icons.tsx';
@@ -23,7 +24,11 @@ export function LanguagePicker({ value, onChange }: { value: Lang[]; onChange: (
             <input type="checkbox" checked onChange={() => toggle(code)} disabled={value.length === 1} aria-label={l.name} />
             <strong className="grow">{l.native} <span className="muted small">{l.name}</span></strong>
             {i === 0 && <span className="badge reed">{t('Primary')}</span>}
-            {l.ui && <span className="badge" title={t('Interface available in this language')}>UI</span>}
+            {l.ui && (
+              <span className="badge" title={t('Canon’s own screens are translated into this language (how much of them: the percentage).')}>
+                UI{(UI_COVERAGE[code] ?? 1) < 0.995 ? ` ${Math.floor((UI_COVERAGE[code] ?? 0) * 100)}%` : ''}
+              </span>
+            )}
             {l.bibles.length > 0 && <span className="badge ok" title={l.bibles.map((b) => b.name).join(', ')}>{t('Bible')}</span>}
             <button type="button" className="btn sm ghost icon" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Up"><Icon name="chevronDown" style={{ transform: 'rotate(180deg)' }} /></button>
             <button type="button" className="btn sm ghost icon" disabled={i === value.length - 1} onClick={() => move(i, 1)} aria-label="Down"><Icon name="chevronDown" /></button>

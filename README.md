@@ -76,6 +76,7 @@ Keep the "Canon server" window open while Canon is in use.
 | **AI agents** | [docs/AGENT-PLAYBOOKS.md](docs/AGENT-PLAYBOOKS.md) · [Claude skill](skills/README.md) |
 | **Before first use** | [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md): wordings to check against your church's practice |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| **Translating** | [CONTRIBUTING-TRANSLATIONS.md](CONTRIBUTING-TRANSLATIONS.md): add or improve a language — no code needed |
 
 ## Privacy
 
