@@ -3,7 +3,7 @@
 Contributions are welcome. Please open an issue first to discuss larger changes. Keep `npm test` and `npm run typecheck` green; [CI](.github/workflows/ci.yml) runs both, plus the build, on Windows and Linux.
 
 ```bash
-npm install
+npm install --ignore-scripts   # the database library brings ready-built binaries: nothing to compile
 npm run import:bible   # the public-domain Bibles for the default languages
 npm run dev            # API on :3000 (watch) + Vite on :5173 (proxied)
 npm test               # node:test

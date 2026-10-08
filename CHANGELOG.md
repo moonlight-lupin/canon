@@ -4,6 +4,11 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.1 — Installing without build tools
+
+- Canon's dependencies are installed with `--ignore-scripts` (on start after an update, in Docker and in CI): the database library brings ready-built binaries, and some npm versions otherwise try to compile it from source — which fails on a computer without build tools, and failed the 0.19.0 Docker image. Installing Canon by hand: `npm install --ignore-scripts`.
+- Database: no change.
+
 ## 0.19.0 — Encryption
 
 - **The church's data is encrypted** on the computer Canon runs on (SQLCipher format, AES-256): the database, the copies kept before upgrades and the archived years, with the database key; **backups with a separate backup key**. A new Canon is encrypted from its first start.

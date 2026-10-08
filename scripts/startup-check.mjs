@@ -45,7 +45,9 @@ const depsStamp = path.join(root, 'node_modules', '.canon-installed');
 const deps = hashFiles([lock, path.join(root, 'package.json')].filter((f) => fs.existsSync(f)));
 if (read(depsStamp) !== deps) {
   console.log(fs.existsSync(path.join(root, 'node_modules')) ? 'Canon was updated: installing its new dependencies…' : 'First start: installing Canon\'s dependencies…');
-  run('npm install --no-audit --no-fund');
+  // --ignore-scripts: the database library (better-sqlite3-multiple-ciphers) brings ready-built binaries; without it
+  // some npm versions try to compile it from source, which fails on a computer without build tools (0.19.1)
+  run('npm install --ignore-scripts --no-audit --no-fund');
   fs.mkdirSync(path.dirname(depsStamp), { recursive: true });
   fs.writeFileSync(depsStamp, deps);
 }
