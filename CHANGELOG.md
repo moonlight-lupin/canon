@@ -4,6 +4,12 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.5 — Recovery through Google Drive, tested; Docker checked on every change
+
+- **Disaster recovery through Google Drive is tested end to end**: the office's Canon sends its backup package to Drive; the office computer is then lost with everything on it; a new computer with a new Canon connects to the same Drive, copies the backup back and restores it with the recovery key — in the app, and by hand with `npm run restore-backup` — and the members and the archived year read back. Without the recovery key the new computer can't open it. Google is played by a stand-in.
+- **The Docker image is built and started for every change**, not only for releases: it must start and be healthy, make an encrypted backup inside the container, stop cleanly with `docker stop` in normal use and during start-up, start again, and restore the backup by hand.
+- No change to Canon itself. Database: no change.
+
 ## 0.19.4 — Updates from inside Canon; claims and congregations
 
 - **Check for updates and update from inside Canon** (administrators, About Canon → **Updates**): Canon asks GitHub once a day whether there is a newer version (it can be switched off; nothing about the church is sent), and the sidebar says when there is. On a Windows PC or a Mac, **Update now…** makes a backup, gets the new version (a git copy: the release's tag; a download: the release's archive, written over the folder, never over the data) and restarts; Canon installs what the new version needs, rebuilds and upgrades the database as usual. If the new version can't be prepared, Canon goes back to the version you had and says so. In Docker, Canon only tells you: update with `docker compose pull`.

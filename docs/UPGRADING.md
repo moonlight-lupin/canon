@@ -12,7 +12,7 @@ What changed in each version: [CHANGELOG.md](../CHANGELOG.md).
 | Database | Any database from an earlier Canon is upgraded. A database from a *newer* Canon is refused unchanged: install that newer Canon again. |
 | Backups | A backup from any earlier Canon can be restored; it is upgraded when restored. |
 
-Tests run on Windows and Linux, on Node.js 24, for every change ([CI](../.github/workflows/ci.yml)).
+Tests run on Windows, macOS and Linux, on Node.js 24, for every change ([CI](../.github/workflows/ci.yml)); the Docker image is built and started for every change too, with a backup, `docker stop` and a restore ([Docker check](../.github/workflows/docker-check.yml)).
 
 ## Upgrading to 0.19.0: encryption
 

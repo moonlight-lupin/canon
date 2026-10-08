@@ -27,6 +27,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.19.2 | The v0.19.1 review: sample data marks its own rows, an explicit key file fails closed, restoring by hand with encryption (npm run restore-backup) — done |
 | 0.19.3 | A complete backup package: the database and the archived years in one file, sent to Google Drive whole, restored in the app and by hand — done |
 | 0.19.4 | Updates from inside Canon (Windows and Mac; Docker checks only), a new launcher; claims follow congregations and approvers are told when the office typed in where to repay — done |
+| 0.19.5 | Disaster recovery through Google Drive tested end to end; the Docker image built and started for every change — done |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
@@ -227,16 +228,16 @@ Items 1 and 2 shipped in 0.17.4. Canon's books can now be a church's main books 
 - ~~Archived years are not sent to Google Drive, and the in-app restore doesn't bring them back.~~ Done in 0.19.3: a backup of an encrypted Canon is one package with the database and every archived year, restored whole in the app and by `npm run restore-backup`.
 - ~~Claims are church-wide.~~ Done in 0.19.4: claims follow the account's congregation; the journals, reports and approvers stay the whole church's (the books are one set).
 - ~~When the office typed in where to repay, approvers aren't told.~~ Done in 0.19.4: the claim says so to approvers.
-- No test yet sends a real encrypted backup through "copy from Google Drive" and restores it.
-- Release tags build and publish the Docker image (amd64 and arm64); ordinary changes don't build or start it.
+- ~~No test yet sends a real encrypted backup through "copy from Google Drive" and restores it.~~ Done in 0.19.5.
+- ~~Ordinary changes don't build or start the Docker image.~~ Done in 0.19.5: every change builds it and starts it (amd64); release tags still build and publish amd64 and arm64.
 
 Reports carry each year's surplus into its fund; there is no posted year-end closing journal (none is needed).
 
 ## 0.20.0 — Recovery and operational acceptance (next)
 
 Before Canon is offered for unattended use or to replace a church's books outright (from the v0.19.1 review):
-1. **Complete disaster recovery**: one backup package with the database, the archived years and what recovery needs; sent to Google Drive whole; restored in the app and by hand into a fresh computer, with nothing needed from the lost one. The package itself is done (0.19.3; a test restores one backup file alone onto an empty computer with the recovery key, and current and archived records read back). *Done when* the same is shown through Google Drive: a package sent, copied back from Drive and restored.
-2. **Deployment acceptance**: the published image pulled and started on amd64 and arm64, backup and restore, `docker stop` during start-up and in normal use; on Windows a restart, the task's account, a lost Windows profile (recovery key), and the icon. *Done when* each has a written result.
+1. **Complete disaster recovery**: one backup package with the database, the archived years and what recovery needs; sent to Google Drive whole; restored in the app and by hand into a fresh computer, with nothing needed from the lost one. The package itself is done (0.19.3; a test restores one backup file alone onto an empty computer with the recovery key, and current and archived records read back). Through Google Drive too (0.19.5: a test sends the package to Drive, loses the office computer, and restores it on a new one — in the app and by hand — with the recovery key; members and the archived year read back). **Done.**
+2. **Deployment acceptance**: the published image pulled and started on amd64 and arm64, backup and restore, `docker stop` during start-up and in normal use; on Windows a restart, the task's account, a lost Windows profile (recovery key), and the icon. *Done when* each has a written result. From 0.19.5 every change builds the image and checks on amd64: it starts and is healthy, a backup is made inside it, `docker stop` in normal use and during start-up exits cleanly, and the backup restores by hand. Still to write up on real machines: arm64 (a NAS), and the Windows items.
 3. ~~**Congregation scope for claims** and approvers being told when the office typed the repayment details.~~ Done in 0.19.4.
 4. **A pilot cycle** with a church: the weekly service, a month reconciled, a claim submitted, approved and paid, and a restore drill — with the church's operational owner. *Done when* written up with what was learned.
 
