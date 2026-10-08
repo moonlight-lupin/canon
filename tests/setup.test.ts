@@ -35,6 +35,8 @@ async function call(method: string, url: string, body?: unknown) {
 before(async () => {
   await seed(); // what every start does
   server = createApp().listen(0, '127.0.0.1');
+  // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
+  server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });

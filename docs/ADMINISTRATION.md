@@ -13,6 +13,8 @@ Environment variables are optional overrides:
 | `CANON_DB` | `data/canon.db` | The SQLite database file. Archives (`archives/`) and pre-upgrade copies (`pre-upgrade/`) sit next to it. |
 | `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
 | `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*` from a proxy on this computer or the local network (Cloudflare Tunnel, Caddy, Docker). Automatic once a public address is set. |
+| `CANON_KEY_FILE` | — | A file (at least 32 bytes, e.g. a Docker secret) that locks Canon's encryption keys, kept outside the data folder. See [Encryption](#encryption). |
+| `CANON_ENCRYPT` | — | `0` keeps a **new** database plain (not recommended). An existing database is never changed by it. |
 | `CANON_TEST_COPY` | — | `1` for a test copy of the church's data: no e-mail is sent and Google Drive is left alone; a banner says so. See [DOCKER.md](DOCKER.md#a-test-copy-of-the-churchs-data). |
 
 ### In the background on Windows
@@ -59,6 +61,23 @@ What Canon does is written to `data\logs\` as before (`launcher.log` for restart
 - **Starting with the Mac:** add `start-canon.command` to System Settings → General → Login Items.
 - Node.js from nodejs.org or from Homebrew both work.
 
+## Encryption
+
+From 0.19.0 Canon encrypts the church's data on the computer it runs on (SQLCipher format, AES-256):
+- **The database** (`data/canon.db`), the copies kept before upgrades (`data/pre-upgrade/`) and the archived years (`data/archives/`), with the **database key**.
+- **Backups**, with a separate **backup key**: a backup copied to a USB drive or Google Drive and the live database never share a secret.
+- Both keys are random and kept in **`data/keys.json`**, locked to this computer:
+  - **Windows**: DPAPI, with the Windows account Canon runs as. Another account, or the file copied elsewhere, can't open them. Install the background task (above) as the same account that encrypted the data, or Canon starts locked.
+  - **macOS**: the login keychain.
+  - **Linux and Docker**: with `CANON_KEY_FILE` when it is set (a secret kept outside the data volume), else only by the file's permissions — then anyone who can read the data folder can read the keys too.
+- **The recovery key** (eight groups of five, shown once at setup with a QR code to print) locks the same two keys a second time. Canon never stores it. With it:
+  - Canon opens on a new computer, or after the Windows account changed: Canon starts **locked** and shows one page, on the computer itself only, asking for it; then it locks the keys to this computer again.
+  - Any backup restores anywhere: each backup carries its backup key locked with the recovery key current when it was made, and names that key's ID.
+  - A new recovery key (Settings → Security & privacy, password asked again) replaces the old one for the database; older backups keep needing the one they name.
+- **Keep `keys.json` with `canon.db`.** Copying or moving the data folder, take both. Without `keys.json` the database can't be opened, even with the recovery key — restore the newest backup instead (the backups carry what they need).
+- **A database from before 0.19.0** stays plain until an administrator presses **Encrypt now…** (a red banner on every page). Canon makes a backup, encrypts the database in place, shows the recovery key, then encrypts the plain copies it holds (backups in the backup folder and its `archives/`, `data/pre-upgrade/`, `data/archives/`) and removes the plain originals. Other database files in those folders are listed and left alone.
+- **Disk encryption** (BitLocker, FileVault) is still worth having: deleted plain files can stay on the disk until overwritten, and it protects everything else on the computer.
+
 ## Backups
 
 Backups are set up in **Settings → Backups**. From the command line, `npm run backup` is safe while Canon is running:
@@ -68,7 +87,7 @@ npm run backup                      # → backups/canon-YYYY-MM-DD-HHMM.db
 npm run backup -- D:\CanonBackups   # to a USB drive or synced folder
 ```
 
-With a backup password (Settings → Backups → Encryption), backups are AES-256-GCM encrypted (`.db.enc`). The key lives in `data/backup-key.json` — never inside a backup — so this computer restores its own backups without the password. To restore an encrypted backup by hand, decrypt it first:
+Backups of an encrypted Canon are always encrypted (`.db.enc`, with the backup key; see [Encryption](#encryption)). Before 0.19.0 — and while a database isn't encrypted yet — a backup password (Settings → Backups → Encryption) encrypts them instead (AES-256-GCM; the key in `data/backup-key.json`, never inside a backup). To restore an encrypted backup by hand, decrypt it first (this computer's keys; or give the recovery key, or the backup password, after the file name):
 
 ```bash
 npm run decrypt-backup -- D:\CanonBackups\canon-2026-01-04-0900.db.enc

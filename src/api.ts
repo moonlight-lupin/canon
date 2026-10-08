@@ -10,8 +10,11 @@ export class ApiError extends Error {
   status: number;
   /** the server asks for a password (an encrypted backup) */
   needsPassword: boolean;
-  constructor(status: number, message: string, needsPassword = false) {
+  /** …and it is the recovery key (a backup of an encrypted Canon, from another computer or an earlier key) */
+  needsRecovery = false;
+  constructor(status: number, message: string, needsPassword = false, needsRecovery = false) {
     super(message);
+    this.needsRecovery = needsRecovery;
     this.status = status;
     this.needsPassword = needsPassword;
   }
@@ -49,14 +52,16 @@ async function request<T>(method: string, path: string, body?: unknown, raw = fa
   if (!res.ok) {
     let msg = res.statusText;
     let needsPassword = false;
+    let needsRecovery = false;
     try {
       const j = await res.json();
       msg = j.error ?? msg;
       needsPassword = !!j.needs_password;
+      needsRecovery = !!j.needs_recovery;
     } catch {
       /* not JSON */
     }
-    throw new ApiError(res.status, msg, needsPassword);
+    throw new ApiError(res.status, msg, needsPassword, needsRecovery);
   }
   if (raw) return res as unknown as T;
   return (res.status === 204 ? undefined : await res.json()) as T;

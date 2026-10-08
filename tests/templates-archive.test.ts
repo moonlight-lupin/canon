@@ -36,6 +36,8 @@ async function call(who: Session, method: string, url: string, body?: unknown) {
 before(async () => {
   for (const role of ['admin', 'editor'] as const) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-7', role });
   server = createApp().listen(0, '127.0.0.1');
+  // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
+  server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   as.admin = await login('admin');

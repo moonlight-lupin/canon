@@ -63,8 +63,12 @@ test('keys this computer can’t unlock: Canon starts locked, and the recovery k
     // locked to this computer again: the next start needs no one
     assert.notEqual(JSON.parse(fs.readFileSync(kf, 'utf8')).machine.db, k.machine.db);
   } finally {
-    child?.kill();
-    await new Promise((r) => setTimeout(r, 300));
-    fs.rmSync(tmp, { recursive: true, force: true });
+    if (child && child.exitCode === null) {
+      const exited = new Promise((r) => child!.once('exit', r));
+      child.kill();
+      await exited;
+    }
+    // Windows lets go of the files a moment after the process ends
+    fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });

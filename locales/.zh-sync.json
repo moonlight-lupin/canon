@@ -128,6 +128,10 @@
       "生成一笔新的已过账分录，每一行借贷对调，两笔互相抵销。如有需要，再正确地重新录入。",
       "生成一筆新的已過賬分錄，每一行借貸對調，兩筆互相抵銷。如有需要，再正確地重新錄入。"
     ],
+    "A new recovery key replaces this one for opening the database. Backups made before keep needing the key that was current when they were made.": [
+      "新的恢复密钥会取代这一个，用来打开数据库。之前做的备份，仍需要当时有效的恢复密钥。",
+      "新的恢復密鑰會取代這一個，用來打開數據庫。之前做的備份，仍需要當時有效的恢復密鑰。"
+    ],
     "A page of its own": [
       "独立一页",
       "獨立一頁"
@@ -832,6 +836,18 @@
       "任何方式",
       "任何方式"
     ],
+    "Anyone holding it, with a copy of the data or a backup, can read members’ personal data. Don’t photograph it or send it by e-mail.": [
+      "任何人只要持有它，再加上资料或备份的副本，就能读取会友的个人资料。请不要拍照，也不要用电邮发送。",
+      "任何人只要持有它，再加上資料或備份的副本，就能讀取會友的個人資料。請不要拍照，也不要用電郵發送。"
+    ],
+    "Anyone who can read the data folder can read the keys too: protect the computer with disk encryption.": [
+      "能读取资料文件夹的人也能读取密钥：请用磁盘加密保护这台电脑。",
+      "能讀取資料文件夾的人也能讀取密鑰：請用磁盤加密保護這臺電腦。"
+    ],
+    "Anyone with a copy of the data folder or a plain backup can read members’ personal data.": [
+      "任何人只要有资料文件夹或未加密备份的副本，就能读取会友的个人资料。",
+      "任何人只要有資料文件夾或未加密備份的副本，就能讀取會友的個人資料。"
+    ],
     "Anything else": [
       "其他",
       "其他"
@@ -1179,6 +1195,10 @@
     "Backups": [
       "备份",
       "備份"
+    ],
+    "Backups are always encrypted, with a key of their own (not the database’s). They restore on this computer by themselves; on another computer, with the church’s recovery key (Settings → Security & privacy). Backups made with a backup password before still restore with it.": [
+      "备份一律加密，并使用自己的密钥（不是数据库的密钥）。在这台电脑上可直接还原；在其他电脑上，则需要教会的恢复密钥（设置 → 安全与隐私）。以前用备份密码做的备份，仍可用该密码还原。",
+      "備份一律加密，並使用自己的密鑰（不是數據庫的密鑰）。在這臺電腦上可直接還原；在其他電腦上，則需要教會的恢復密鑰（設置 → 安全與隱私）。以前用備份密碼做的備份，仍可用該密碼還原。"
     ],
     "Backups are no longer encrypted.": [
       "备份不再加密。",
@@ -1584,6 +1604,10 @@
       "Canon 会起草一笔每一行借贷对调的分录。在你把草稿过账之前，这笔分录保持不变；过账后两笔互相抵销。删除草稿则什么都不会改变。",
       "Canon 會起草一筆每一行借貸對調的分錄。在你把草稿過賬之前，這筆分錄保持不變；過賬後兩筆互相抵銷。刪除草稿則什麼都不會改變。"
     ],
+    "Canon encrypts the church’s data on this computer. The key opens by itself through this computer’s Windows account; the recovery key is the way back in if this computer or that account is lost, and it restores the church’s backups on any computer. Canon shows it once.": [
+      "Canon 会在这台电脑上加密教会的资料。密钥会通过这台电脑的 Windows 帐户自动打开；若这台电脑或该帐户遗失，恢复密钥就是重新打开资料的方法，也能在任何电脑上还原教会的备份。Canon 只会显示它一次。",
+      "Canon 會在這臺電腦上加密教會的資料。密鑰會通過這臺電腦的 Windows 帳戶自動打開；若這臺電腦或該帳戶遺失，恢復密鑰就是重新打開資料的方法，也能在任何電腦上還原教會的備份。Canon 只會顯示它一次。"
+    ],
     "Canon first saves a copy of the current data, so you can undo this by restoring that copy. Changes made since the backup are lost. You may need to sign in again.": [
       "Canon 会先保存一份目前资料的副本，之后可以还原那份副本来撤销。备份之后所做的修改会丢失。你可能需要重新登入。",
       "Canon 會先保存一份目前資料的副本，之後可以還原那份副本來撤銷。備份之後所做的修改會丟失。你可能需要重新登入。"
@@ -1616,9 +1640,17 @@
       "Canon 需要知道哪些科目是银行（用于对账单）、哪些存放奉献、哪些记录款项余额。",
       "Canon 需要知道哪些科目是銀行（用於對賬單）、哪些存放奉獻、哪些記錄款項餘額。"
     ],
+    "Canon recovery key": [
+      "Canon 恢复密钥",
+      "Canon 恢復密鑰"
+    ],
     "Canon sends volunteer reminder e-mails through the church’s own e-mail account. Nothing is sent automatically: an editor presses “Send reminders” on a service’s Team tab.": [
       "Canon 通过教会自己的电邮账户发送同工服事提醒。系统不会自动发送：须由编辑者在聚会的“同工”分页按“发送提醒”。",
       "Canon 通過教會自己的電郵賬戶發送同工服事提醒。系統不會自動發送：須由編輯者在聚會的“同工”分頁按“發送提醒”。"
+    ],
+    "Canon will:": [
+      "Canon 会：",
+      "Canon 會："
     ],
     "Canon’s library": [
       "Canon 自带资料库",
@@ -1999,6 +2031,10 @@
     "Close the “Canon server” window (or stop the Docker container).": [
       "关闭「Canon server」窗口（或停止 Docker 容器）。",
       "關閉「Canon server」窗口（或停止 Docker 容器）。"
+    ],
+    "Close without confirming? Canon will not show this recovery key again. If it isn’t printed or written down, make a new one in Settings → Security & privacy.": [
+      "不确认就关闭？Canon 不会再显示这个恢复密钥。若尚未打印或抄下，请在“设置 → 安全与隐私”另做新的恢复密钥。",
+      "不確認就關閉？Canon 不會再顯示這個恢復密鑰。若尚未打印或抄下，請在“設置 → 安全與隱私”另做新的恢復密鑰。"
     ],
     "Closed up to": [
       "已关账至",
@@ -2556,6 +2592,10 @@
       "删除记录",
       "刪除記錄"
     ],
+    "Delete them yourself once you no longer need them, or keep them somewhere safe: they are not encrypted.": [
+      "不再需要时请自行删除，或存放在安全的地方：它们没有加密。",
+      "不再需要時請自行刪除，或存放在安全的地方：它們沒有加密。"
+    ],
     "Delete this archived template for good? Services made from it keep their order of service.": [
       "永久删除这个已归档的模板？用它建立的聚会仍保留原有程序。",
       "永久刪除這個已歸檔的模板？用它建立的聚會仍保留原有程序。"
@@ -2675,6 +2715,10 @@
     "Deleted": [
       "删除",
       "刪除"
+    ],
+    "Deleted files can stay readable on the disk until they are overwritten: disk encryption (BitLocker) covers that too.": [
+      "已删除的文件在被覆盖前，仍可能留在磁盘上被读取：磁盘加密（BitLocker）也能防止这一点。",
+      "已刪除的文件在被覆蓋前，仍可能留在磁盤上被讀取：磁盤加密（BitLocker）也能防止這一點。"
     ],
     "Deleted.": [
       "已删除。",
@@ -3080,9 +3124,25 @@
       "加密备份",
       "加密備份"
     ],
+    "Encrypt now": [
+      "立即加密",
+      "立即加密"
+    ],
+    "Encrypt now…": [
+      "立即加密……",
+      "立即加密……"
+    ],
+    "Encrypt the church’s data": [
+      "加密教会的资料",
+      "加密教會的資料"
+    ],
     "Encrypted": [
       "已加密",
       "已加密"
+    ],
+    "Encrypting…": [
+      "正在加密……",
+      "正在加密……"
     ],
     "Encryption": [
       "加密",
@@ -4000,6 +4060,14 @@
       "我声明以上费用是为教会支出的，并且没有重复申请。",
       "我聲明以上費用是為教會支出的，並且沒有重複申請。"
     ],
+    "I have printed it or written it down, and put it somewhere safe.": [
+      "我已打印或抄下它，并存放在安全的地方。",
+      "我已打印或抄下它，並存放在安全的地方。"
+    ],
+    "ID": [
+      "编号",
+      "編號"
+    ],
     "ISBN": [
       "ISBN",
       "ISBN"
@@ -4011,6 +4079,10 @@
     "If Canon will not start: restore by hand": [
       "如果 Canon 无法启动：手动还原",
       "如果 Canon 無法啟動：手動還原"
+    ],
+    "If a new recovery key is made, this one no longer opens the database; keep it for the backups made before then.": [
+      "若之后另做新的恢复密钥，这一个就不能再打开数据库；请保留它，以还原在那之前做的备份。",
+      "若之後另做新的恢復密鑰，這一個就不能再打開數據庫；請保留它，以還原在那之前做的備份。"
     ],
     "If this address is on the church’s member list, a 6-digit code is on its way. It works for 10 minutes.": [
       "如果这个地址在教会的会友名单中，6 位数验证码正在寄出，10 分钟内有效。",
@@ -4228,6 +4300,14 @@
       "它是以下语言的默认圣经：{langs}。在您选择新的默认译本之前，读经会使用其他已安装的译本。",
       "它是以下語言的默認聖經：{langs}。在您選擇新的默認譯本之前，讀經會使用其他已安裝的譯本。"
     ],
+    "It opens Canon’s encrypted data if that computer, or its Windows account, is lost or replaced, and it restores the church’s backups on any computer.": [
+      "若那台电脑或其 Windows 帐户遗失或更换，它能打开 Canon 已加密的资料，也能在任何电脑上还原教会的备份。",
+      "若那臺電腦或其 Windows 帳戶遺失或更換，它能打開 Canon 已加密的資料，也能在任何電腦上還原教會的備份。"
+    ],
+    "It takes a few seconds; anyone using Canon just then may need to try again.": [
+      "需要几秒钟；当时正在使用 Canon 的人可能需要再试一次。",
+      "需要幾秒鐘；當時正在使用 Canon 的人可能需要再試一次。"
+    ],
     "Item": [
       "项目",
       "項目"
@@ -4299,6 +4379,10 @@
     "Keep the old cover": [
       "保留原来的封面",
       "保留原來的封面"
+    ],
+    "Keep this sheet away from the computer Canon runs on: with the church’s important papers, or in a safe.": [
+      "请把这张纸存放在运行 Canon 的电脑以外的地方：和教会的重要文件放在一起，或放进保险箱。",
+      "請把這張紙存放在運行 Canon 的電腦以外的地方：和教會的重要文件放在一起，或放進保險箱。"
     ],
     "Keep together": [
       "保持在同一页",
@@ -4688,6 +4772,14 @@
       "复制一份来修改",
       "複製一份來修改"
     ],
+    "Make a new recovery key": [
+      "另做新的恢复密钥",
+      "另做新的恢復密鑰"
+    ],
+    "Make a new recovery key…": [
+      "另做新的恢复密钥……",
+      "另做新的恢復密鑰……"
+    ],
     "Make and model": [
       "品牌型号",
       "品牌型號"
@@ -4695,6 +4787,14 @@
     "Make one in Library → QR codes & notes": [
       "在「资料库 → 二维码与短句」中制作",
       "在「資料庫 → 二維碼與短句」中製作"
+    ],
+    "Make the recovery key": [
+      "制作恢复密钥",
+      "製作恢復密鑰"
+    ],
+    "Make the recovery key first (above).": [
+      "请先制作恢复密钥（见上方）。",
+      "請先製作恢復密鑰（見上方）。"
     ],
     "Make them in Library → QR codes & notes.": [
       "请在「资料库 → 二维码与短句」中制作。",
@@ -6540,6 +6640,14 @@
       "简洁",
       "簡潔"
     ],
+    "Plain copies Canon holds: {n}": [
+      "Canon 保存的未加密副本：{n} 份",
+      "Canon 保存的未加密副本：{n} 份"
+    ],
+    "Plain database files Canon didn’t make, left as they are:": [
+      "不是 Canon 制作的未加密数据库文件，保持原样：",
+      "不是 Canon 製作的未加密數據庫文件，保持原樣："
+    ],
     "Plain text": [
       "纯文本",
       "純文本"
@@ -6856,6 +6964,10 @@
       "次序单链接的二维码",
       "次序單鏈接的二維碼"
     ],
+    "QR code of the recovery key": [
+      "恢复密钥的二维码",
+      "恢復密鑰的二維碼"
+    ],
     "QR code of the upload link": [
       "上传链接的二维码",
       "上傳鏈接的二維碼"
@@ -7035,6 +7147,10 @@
     "Records from {years} are in archive files and are not included here. Administrators can open them under Settings → Security & privacy.": [
       "{years} 年的记录在归档文件中，不包括在这里。管理员可以在 设置 → 安全与隐私 中打开。",
       "{years} 年的記錄在歸檔文件中，不包括在這裡。管理員可以在 設置 → 安全與隱私 中打開。"
+    ],
+    "Recovery key": [
+      "恢复密钥",
+      "恢復密鑰"
     ],
     "Reference": [
       "参考代码",
@@ -8748,6 +8864,10 @@
       "教会的账簿：分录、银行、款项和报表。",
       "教會的賬簿：分錄、銀行、款項和報表。"
     ],
+    "The church’s data is not encrypted.": [
+      "教会的资料没有加密。",
+      "教會的資料沒有加密。"
+    ],
     "The church’s equipment and property: where each item is, who looks after it, what it cost, its condition, photos and receipts, and maintenance.": [
       "教会的设备与财产：每件物品放在哪里、由谁负责、价格、状况、照片与收据，以及保养。",
       "教會的設備與財產：每件物品放在哪裡、由誰負責、價格、狀況、照片與收據，以及保養。"
@@ -8779,6 +8899,18 @@
     "The data from before it was saved as": [
       "还原前的资料已另存为",
       "還原前的資料已另存為"
+    ],
+    "The data is encrypted: the recovery key": [
+      "资料已加密：恢复密钥",
+      "資料已加密：恢復密鑰"
+    ],
+    "The database is encrypted. Plain copies encrypted or removed: {n}.": [
+      "数据库已加密。已加密或删除的未加密副本：{n} 份。",
+      "數據庫已加密。已加密或刪除的未加密副本：{n} 份。"
+    ],
+    "The database, the copies kept before upgrades and the archived years are encrypted on this computer. Backups are encrypted with a key of their own.": [
+      "数据库、升级前保留的副本以及归档的年份，都已在这台电脑上加密。备份使用自己的密钥加密。",
+      "數據庫、升級前保留的副本以及歸檔的年份，都已在這臺電腦上加密。備份使用自己的密鑰加密。"
     ],
     "The day the cash was counted. It is printed on the declaration; left empty, the service date is used.": [
       "点算现金的日期，会印在声明上；留空则使用聚会日期。",
@@ -8827,6 +8959,10 @@
     "The joy of the Lord is your strength": [
       "靠耶和华而得的喜乐是你的力量",
       "靠耶和華而得的喜樂是你的力量"
+    ],
+    "The keys open by themselves through {how}: Canon starts with the computer, with nobody there.": [
+      "密钥会通过{how}自动打开：电脑启动时 Canon 也会启动，不需要有人在场。",
+      "密鑰會通過{how}自動打開：電腦啟動時 Canon 也會啟動，不需要有人在場。"
     ],
     "The languages this template is for. The font and size of each one follow below.": [
       "此模板所用的语言。下面会列出每种语言的字体和大小。",
@@ -8911,6 +9047,14 @@
     "The pupils’ ages, e.g. 6 to 8": [
       "学生的年龄，例如 6 至 8 岁",
       "學生的年齡，例如 6 至 8 歲"
+    ],
+    "The recovery key": [
+      "恢复密钥",
+      "恢復密鑰"
+    ],
+    "The recovery key is made (ID {id}). Keep the printed sheet safe.": [
+      "恢复密钥已制作（编号 {id}）。请妥善保管打印出来的纸张。",
+      "恢復密鑰已製作（編號 {id}）。請妥善保管打印出來的紙張。"
     ],
     "The register is empty.": [
       "登记是空的。",
@@ -9004,6 +9148,18 @@
       "然后附上收据和签了名的表格，并记录已在纸本上签名。",
       "然後附上收據和簽了名的表格，並記錄已在紙本上簽名。"
     ],
+    "There is no recovery key yet.": [
+      "还没有恢复密钥。",
+      "還沒有恢復密鑰。"
+    ],
+    "There is no recovery key yet. Without one, the data can’t be recovered if this computer or its Windows account is lost.": [
+      "还没有恢复密钥。没有它，若这台电脑或其 Windows 帐户遗失，资料将无法恢复。",
+      "還沒有恢復密鑰。沒有它，若這臺電腦或其 Windows 帳戶遺失，資料將無法恢復。"
+    ],
+    "These copies could not be encrypted: delete them yourself, or try again.": [
+      "这些副本无法加密：请自行删除，或再试一次。",
+      "這些副本無法加密：請自行刪除，或再試一次。"
+    ],
     "These ministries only": [
       "只限这些事工",
       "只限這些事工"
@@ -9040,6 +9196,10 @@
       "这册已注销。",
       "這冊已註銷。"
     ],
+    "This database was made before Canon encrypted its data. Anyone with a copy of the data folder or of a plain backup (a synced folder, a USB drive, an old computer) can read members’ personal data.": [
+      "这个数据库是在 Canon 开始加密资料之前建立的。任何人只要有资料文件夹或未加密备份的副本（同步文件夹、U 盘、旧电脑），就能读取会友的个人资料。",
+      "這個數據庫是在 Canon 開始加密資料之前建立的。任何人只要有資料文件夾或未加密備份的副本（同步文件夾、U 盤、舊電腦），就能讀取會友的個人資料。"
+    ],
     "This draft reverses journal {n}. Check it, then post it: only then are the two linked, and they cancel out.": [
       "这份草稿冲销分录 {n}。请检查后再过账：过账后两笔才会连在一起，互相抵销。",
       "這份草稿沖銷分錄 {n}。請檢查後再過賬：過賬後兩筆才會連在一起，互相抵銷。"
@@ -9051,6 +9211,10 @@
     "This is now the church default.": [
       "已设为教会默认。",
       "已設為教會默認。"
+    ],
+    "This is the only time Canon shows this key. Print it or write it down, and keep it away from this computer. Without it, the church’s data can’t be recovered if this computer or its Windows account is lost.": [
+      "Canon 只会显示这个密钥这一次。请打印或抄下来，并存放在这台电脑以外的地方。没有它，若这台电脑或其 Windows 帐户遗失，教会的资料将无法恢复。",
+      "Canon 只會顯示這個密鑰這一次。請打印或抄下來，並存放在這臺電腦以外的地方。沒有它，若這臺電腦或其 Windows 帳戶遺失，教會的資料將無法恢復。"
     ],
     "This isn’t the first day of a financial year. That works, but the first year’s reports will cover part of a year.": [
       "这不是财政年度的第一天。可以这样做，但第一年的报表只涵盖部分年度。",
@@ -9239,6 +9403,10 @@
     "To check in: {n}": [
       "待登记归还：{n}",
       "待登記歸還：{n}"
+    ],
+    "To confirm, type its last five characters": [
+      "请输入它的最后五个字符以确认",
+      "請輸入它的最後五個字符以確認"
     ],
     "To connect in claude.ai": [
       "在 claude.ai 连接",
@@ -10036,6 +10204,10 @@
       "没有开启时，有 Canon 帐户的人仍可以在“我的报销”中申请和审批。",
       "沒有開啟時，有 Canon 帳戶的人仍可以在“我的報銷”中申請和審批。"
     ],
+    "Without one, the data can’t be recovered if this computer or its Windows account is lost.": [
+      "没有它，若这台电脑或其 Windows 帐户遗失，资料将无法恢复。",
+      "沒有它，若這臺電腦或其 Windows 帳戶遺失，資料將無法恢復。"
+    ],
     "Without this cover": [
       "不使用这个封面",
       "不使用這個封面"
@@ -10147,6 +10319,10 @@
     "a Google account": [
       "一个 Google 帐户",
       "一個 Google 帳戶"
+    ],
+    "a key file kept outside the data folder (CANON_KEY_FILE)": [
+      "存放在资料文件夹以外的密钥文件（CANON_KEY_FILE）",
+      "存放在資料文件夾以外的密鑰文件（CANON_KEY_FILE）"
     ],
     "active groups": [
       "个活跃群组",
@@ -10360,6 +10536,14 @@
       "空白",
       "空白"
     ],
+    "encrypt the database, with a key that opens by itself through the Windows account Canon runs as;": [
+      "加密数据库，其密钥会通过运行 Canon 的 Windows 帐户自动打开；",
+      "加密數據庫，其密鑰會通過運行 Canon 的 Windows 帳戶自動打開；"
+    ],
+    "encrypt the plain copies it holds — backups, the copies kept before upgrades, archived years — and remove the plain originals.": [
+      "加密它保存的未加密副本——备份、升级前保留的副本、归档的年份——并删除未加密的原文件。",
+      "加密它保存的未加密副本——備份、升級前保留的副本、歸檔的年份——並刪除未加密的原文件。"
+    ],
     "exchanged": [
       "兑换后",
       "兌換後"
@@ -10403,6 +10587,14 @@
     "last sung": [
       "上次",
       "上次"
+    ],
+    "made on {date}": [
+      "制作于 {date}",
+      "製作於 {date}"
+    ],
+    "make a backup first;": [
+      "先做一份备份；",
+      "先做一份備份；"
     ],
     "min": [
       "分",
@@ -10596,6 +10788,10 @@
       "张纸",
       "張紙"
     ],
+    "show you the recovery key, once: print it and keep it away from this computer;": [
+      "显示恢复密钥一次：请打印并存放在这台电脑以外的地方；",
+      "顯示恢復密鑰一次：請打印並存放在這臺電腦以外的地方；"
+    ],
     "signed": [
       "已签名",
       "已簽名"
@@ -10640,9 +10836,21 @@
       "小要理问答（107问）、大要理问答（196问）及信条（33章），公共领域，英文。聚会中可选用任何问答或条文。",
       "小要理問答（107問）、大要理問答（196問）及信條（33章），公共領域，英文。聚會中可選用任何問答或條文。"
     ],
+    "the Windows account Canon runs as": [
+      "运行 Canon 的 Windows 帐户",
+      "運行 Canon 的 Windows 帳戶"
+    ],
     "the first row of each verse is kept": [
       "每节保留第一次出现的行",
       "每節保留第一次出現的行"
+    ],
+    "the key file’s permissions": [
+      "密钥文件的访问权限",
+      "密鑰文件的訪問權限"
+    ],
+    "the macOS keychain": [
+      "macOS 钥匙串",
+      "macOS 鑰匙串"
     ],
     "the service record": [
       "聚会记录",
@@ -10978,8 +11186,8 @@
     ]
   },
   "guide": [
-    "4e3a5b5ca8f13e6d",
-    "8d396e962b689f3a"
+    "9e01deffe4635811",
+    "62c1758b06a93bed"
   ],
   "outputs": {
     "Advent": [

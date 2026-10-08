@@ -65,7 +65,7 @@ docker run --rm -v canon_canon-data:/data -v "$PWD/backups:/b" alpine sh -c "rm 
 docker compose up -d
 ```
 
-Replace the file name with your backup. The volume is called `<folder>_canon-data`; `docker volume ls` shows the exact name. An encrypted backup (`.db.enc`) must be decrypted first: `docker compose run --rm canon npm run decrypt-backup -- /app/backups/canon-YYYY-MM-DD-HHMM.db.enc` writes the `.db` next to it.
+Replace the file name with your backup. The volume is called `<folder>_canon-data`; `docker volume ls` shows the exact name. An encrypted backup (`.db.enc`) must be decrypted first: `docker compose run --rm canon npm run decrypt-backup -- /app/backups/canon-YYYY-MM-DD-HHMM.db.enc` writes the `.db` next to it (add the recovery key after the file name for a backup from another Canon). Canon opens a decrypted database as it is and asks an administrator to encrypt it again.
 
 ## Going back to the previous version
 
@@ -105,6 +105,23 @@ claude.ai needs a public **https** address. The compose file includes an optiona
 4. In Canon, go to **Settings → AI / MCP → Public address**. Enter `https://canon.your-church.org`, then press **Check** and **Save**.
 
 Other reverse proxies (Caddy, Nginx, Traefik) also work. Point them at port 3000 and enter the public address in Settings in the same way.
+
+## Encryption keys
+
+Canon encrypts its data (see [ADMINISTRATION.md](ADMINISTRATION.md#encryption)). In Docker the keys are in `keys.json` in the data volume, protected by the file's permissions — so anyone who can copy the whole volume can read it. To keep the key that locks them outside the volume, give Canon a secret:
+
+```yaml
+services:
+  canon:
+    environment:
+      CANON_KEY_FILE: /run/secrets/canon_key
+    secrets: [canon_key]
+secrets:
+  canon_key:
+    file: ./canon-key.bin   # 32 random bytes or more, e.g. `head -c 32 /dev/urandom > canon-key.bin`
+```
+
+Set it before the first start (or before **Encrypt now**). Keep a copy of that file and the printed recovery key somewhere safe: without the file Canon starts locked and asks for the recovery key.
 
 ## What's in the image
 

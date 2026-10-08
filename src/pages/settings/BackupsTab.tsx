@@ -23,6 +23,8 @@ interface Status {
   encrypted: boolean;
   /** encryption is on but this computer's key file is missing or damaged: backups stop until it is fixed */
   key_problem?: string | null;
+  /** the database is encrypted (0.19.0): backups always are, with their own key */
+  db_encrypted?: boolean;
 }
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
@@ -37,7 +39,7 @@ export default function BackupsTab() {
   const [check, setCheck] = useState<{ ok: boolean; message: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   // a backup made with another backup password: ask for it, then restore
-  const [askPw, setAskPw] = useState<{ label: string; go: (pw: string) => Promise<{ safety: string }>; error: string } | null>(null);
+  const [askPw, setAskPw] = useState<{ label: string; go: (pw: string) => Promise<{ safety: string }>; error: string; recovery: boolean; message: string } | null>(null);
   const [restorePw, setRestorePw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [newPw2, setNewPw2] = useState('');
@@ -82,7 +84,7 @@ export default function BackupsTab() {
     } catch (e) {
       if (e instanceof ApiError && e.needsPassword) {
         setRestorePw('');
-        setAskPw({ label, go, error: '' });
+        setAskPw({ label, go, error: '', recovery: e.needsRecovery, message: e.message });
         return;
       }
       throw e;
@@ -92,7 +94,7 @@ export default function BackupsTab() {
     try {
       afterRestore(await askPw.go(restorePw));
     } catch (e) {
-      if (e instanceof ApiError && e.needsPassword) return setAskPw({ ...askPw, error: e.message });
+      if (e instanceof ApiError && e.needsPassword) return setAskPw({ ...askPw, error: e.message, recovery: e.needsRecovery || askPw.recovery });
       throw e;
     }
   });
@@ -144,6 +146,9 @@ export default function BackupsTab() {
           <h3>{t('Encryption')}</h3>
           {s.encrypted ? <span className="badge ok"><Icon name="lock" />{t('Encrypted')}</span> : <span className="badge warn">{t('Not encrypted')}</span>}
         </div>
+        {s.db_encrypted ? (
+          <p className="small" style={{ margin: 0 }}>{t('Backups are always encrypted, with a key of their own (not the database’s). They restore on this computer by themselves; on another computer, with the church’s recovery key (Settings → Security & privacy). Backups made with a backup password before still restore with it.')}</p>
+        ) : (<>
         {s.key_problem && <div className="callout warn small">{t('Backups are stopped: this computer’s backup key is missing or damaged. Set the backup password again below, or stop encrypting.')}<div className="muted">{s.key_problem}</div></div>}
         <p className="small muted" style={{ margin: 0 }}>
           {t('With a backup password, every backup (and the archive copies with it) is encrypted: a lost USB drive or a shared cloud folder doesn’t expose members’ data. This computer remembers the key, so automatic backups need no one, and they restore here without the password. On another computer, the password is needed — keep it with the church’s records. Without it, an encrypted backup can’t be opened by anyone.')}
@@ -157,6 +162,7 @@ export default function BackupsTab() {
           {s.encrypted && <button className="btn sm ghost" onClick={() => setPassword(null)} disabled={busy}>{t('Stop encrypting')}</button>}
         </div>
         <div className="small muted">{newPw && newPw.length < 10 ? t('At least 10 characters.') : newPw2 && newPw !== newPw2 ? t('The two passwords differ.') : s.encrypted ? t('A new password applies to new backups; older ones keep the password they were made with.') : ''}</div>
+        </>)}
       </section>
 
       <section className="card stack">
@@ -215,9 +221,11 @@ export default function BackupsTab() {
         </p>
         {askPw && (
           <div className="callout warn stack tight">
-            <div><strong>{askPw.label}</strong> — {t('this backup is encrypted with another backup password. Enter that password to restore it.')}</div>
+            <div><strong>{askPw.label}</strong> — {askPw.recovery ? askPw.message : t('this backup is encrypted with another backup password. Enter that password to restore it.')}</div>
             <div className="row" style={{ gap: 8 }}>
-              <input type="password" value={restorePw} onChange={(e) => setRestorePw(e.target.value)} placeholder={t('Backup password')} autoComplete="off" autoFocus style={{ maxWidth: 240 }} onKeyDown={(e) => e.key === 'Enter' && restorePw && restoreWithPw()} />
+              {askPw.recovery
+                ? <input value={restorePw} onChange={(e) => setRestorePw(e.target.value)} placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" autoComplete="off" spellCheck={false} autoFocus style={{ maxWidth: 440, fontFamily: 'ui-monospace, Consolas, monospace', textTransform: 'uppercase' }} onKeyDown={(e) => e.key === 'Enter' && restorePw && restoreWithPw()} />
+                : <input type="password" value={restorePw} onChange={(e) => setRestorePw(e.target.value)} placeholder={t('Backup password')} autoComplete="off" autoFocus style={{ maxWidth: 240 }} onKeyDown={(e) => e.key === 'Enter' && restorePw && restoreWithPw()} />}
               <button className="btn primary sm" onClick={restoreWithPw} disabled={busy || !restorePw}>{t('Restore')}</button>
               <button className="btn sm ghost" onClick={() => setAskPw(null)}>{t('Cancel')}</button>
             </div>

@@ -49,6 +49,8 @@ before(async () => {
   createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-7', role: 'admin' });
   D.run('INSERT INTO people (first_name, last_name) VALUES (?, ?)', 'Philippa', 'Fictional-Elder');
   server = createApp().listen(0, '127.0.0.1');
+  // slow steps (encrypting, backups) under a full parallel test run: idle connections stay open for the next request
+  server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const r = await fetch(`${base}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: 'correct-horse-7' }) });

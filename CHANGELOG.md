@@ -4,10 +4,18 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## Unreleased
+## 0.19.0 — Encryption
 
+- **The church's data is encrypted** on the computer Canon runs on (SQLCipher format, AES-256): the database, the copies kept before upgrades and the archived years, with the database key; **backups with a separate backup key**. A new Canon is encrypted from its first start.
+- **The keys open by themselves**, locked to this computer: the Windows account Canon runs as (DPAPI), the macOS keychain, or in Docker a secret outside the data volume (`CANON_KEY_FILE`) — Canon still starts with the computer, with nobody there. `data/keys.json` holds them, locked.
+- **The recovery key**, made at setup and shown once (eight groups of five, a QR code, a sheet to print; confirmed by typing its end): it opens the data on a new computer or after the Windows account changed, and restores any backup anywhere — each backup names the recovery key that opens it. A new one can be made (Settings → Security & privacy, the password asked again).
+- **Canon locked**: when this computer can't open the keys, one page asks for the recovery key, on the computer itself only; then Canon starts as usual. The icon by the clock says so.
+- **A Canon from before 0.19.0**: a red banner for administrators until **Encrypt now…** — a backup first, then the database encrypted in place, the recovery key shown, and the plain copies Canon holds (backups, pre-upgrade copies, archived years) encrypted and the plain originals removed; database files Canon didn't make are listed and left alone.
+- Restoring: a backup of an encrypted Canon restores on this computer by itself, elsewhere with its recovery key; backups made with a backup password before still restore with it; `npm run decrypt-backup` takes the recovery key too.
+- The database driver is now better-sqlite3-multiple-ciphers (SQLite with encryption built in, ready-built for Windows, macOS and Linux on x64 and ARM).
 - **Canon's Docker image on GitHub:** every release is built for amd64 and arm64 (most NAS models included) and published as `ghcr.io/moonlight-lupin/canon` (`:latest` and `:<version>`). `docker compose pull && docker compose up -d` installs or updates Canon without building it; docs/DOCKER.md has a compose file that needs no source.
 - A **Sponsor** button: Buy Me a Coffee (`.github/FUNDING.yml`).
+- Database: version 35 (unchanged); the file itself is encrypted once an administrator encrypts it.
 
 ## 0.18.0 — Hardening: the books reviewed, Canon in the background
 

@@ -22,6 +22,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.17.2–0.17.3 | Excel exports with a title block, Excel imports, importing journals; reversals as drafts (also by AI assistants) — done |
 | 0.17.4 | The v0.17.2 review's findings: bank re-imports, one offering per receipt, group matching, safe sample-data removal, congregation walls in the library and asset register, Excel 1904 dates — done |
 | 0.18.0 | Third hardening round: three independent reviews of the books, claims, upgrades and Docker fixed with tests; Canon in the background on Windows with an icon by the clock; chart of accounts import; signing on a phone; a test-copy switch — done |
+| 0.19.0 | Encryption: the database and its copies encrypted with their own key, backups with a separate key, a recovery key shown once at setup, Canon locked until it is given; Encrypt now for older installs |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 

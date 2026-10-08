@@ -53,6 +53,8 @@ before(async () => {
     createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-7', role });
   }
   server = createApp().listen(0, '127.0.0.1');
+  // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
+  server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const u of ['admin', 'treasurer', 'viewer', 'editor']) as[u] = await login(u);

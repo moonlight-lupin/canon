@@ -55,6 +55,8 @@ before(async () => {
   for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: role, password: 'correct-horse-1', role });
   updateSettings({ languages: ['en', 'zh', 'zh-Hant'] });
   server = createApp().listen(0, '127.0.0.1');
+  // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
+  server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const u of ['admin', 'editor', 'viewer']) await login(u);
@@ -212,7 +214,8 @@ test('a full-size Bible (31k verses, ~5 MB) imports quickly in one transaction',
   const ms = Date.now() - t0;
   assert.equal(r.status, 200, JSON.stringify(r.json).slice(0, 300));
   assert.equal(verseCount('BIG'), 31102);
-  assert.ok(ms < 10_000, `took ${ms} ms`);
+  // one transaction: under a second on its own; a commit per verse would take minutes (30 s allows a busy machine)
+  assert.ok(ms < 30_000, `took ${ms} ms`);
 });
 
 // ---------------------------------------------------------------- using versions

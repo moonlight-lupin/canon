@@ -1,3 +1,4 @@
+import { EncryptionBanner } from './Encryption.tsx';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
@@ -171,6 +172,7 @@ export function Layout() {
           <strong className="serif">Canon</strong>
         </div>
         <main id="main">
+          <EncryptionBanner />
           <TestCopyBanner />
           <MemberLinkReminder />
           <Outlet />

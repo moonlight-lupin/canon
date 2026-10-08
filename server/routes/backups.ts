@@ -1,4 +1,5 @@
 // Settings → Backups (administrators only).
+import { dbEncrypted } from '../db.ts';
 import { isBackupV2Data } from '../lib/backup-file.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { seed } from '../seed/index.ts';
@@ -36,7 +37,7 @@ const status = () => ({
 });
 const encryptionStatus = () => {
   const st = backupKeyState(getSettings().backup.encrypted);
-  return { encrypted: st.encrypted, key_problem: st.problem };
+  return { encrypted: dbEncrypted() || st.encrypted, key_problem: dbEncrypted() ? null : st.problem, db_encrypted: dbEncrypted() };
 };
 
 backupRoutes.get('/backups', adminOnly, (_req, res) => res.json(status()));
@@ -181,7 +182,7 @@ backupRoutes.post('/backups/drive/disconnect', adminOnly, drive(async () => {
 /** Send the newest backup now (even if it was sent before), and keep the newest N there. */
 backupRoutes.post('/backups/drive/upload', adminOnly, drive(async () => {
   const b = newestEncrypted();
-  if (!b) throw new DriveError('There is no encrypted backup to send yet. Set a backup password, then press Back up now.');
+  if (!b) throw new DriveError(dbEncrypted() ? 'There is no encrypted backup to send yet. Press Back up now.' : 'There is no encrypted backup to send yet. Set a backup password, then press Back up now.');
   const before = driveStatus();
   if (!before.connected) throw new DriveError('Google Drive is not connected.');
   await syncToDrive({ ...b, name: b.name }, () => undefined);

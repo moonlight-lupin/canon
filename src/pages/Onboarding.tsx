@@ -1,6 +1,7 @@
 // First-run onboarding (and Settings → Languages): content languages, Bibles per language (catalog downloads
 // and church uploads),
 // default languages for bulletins/slides and the bilingual layout.
+import { RecoveryKeyStep } from '../components/Encryption.tsx';
 import { useEffect, useState } from 'react';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -20,7 +21,7 @@ const OTHER = '_other';
 
 const NOT_USE: Record<BibleUse, string> = { print: 'Not for printing', project: 'Not for projection', online: 'Not online' };
 
-export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Settings; onSaved: () => void; saveLabel?: string }) {
+export function LanguagesPanel({ settings, onSaved, saveLabel, blocked }: { settings: Settings; onSaved: () => void; saveLabel?: string; blocked?: string | null }) {
   const { t, lt } = useI18n();
   const { run, busy } = useAction();
   const [langs, setLangs] = useState<Lang[]>(settings.languages);
@@ -199,7 +200,8 @@ export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Set
       </section>
 
       <div className="row end">
-        <button className="btn primary" onClick={save} disabled={busy || !langs.length}>{saveLabel ?? t('Save')}</button>
+        {blocked && <span className="small muted">{blocked}</span>}
+        <button className="btn primary" onClick={save} disabled={busy || !langs.length || !!blocked}>{saveLabel ?? t('Save')}</button>
       </div>
     </div>
   );
@@ -207,6 +209,7 @@ export function LanguagesPanel({ settings, onSaved, saveLabel }: { settings: Set
 
 export default function Onboarding({ settings, onDone }: { settings: Settings; onDone: () => void }) {
   const { t, lt } = useI18n();
+  const [keyReady, setKeyReady] = useState(true);
   return (
     <div className="page" style={{ maxWidth: 820 }}>
       <div className="row" style={{ gap: 12, marginBottom: 8 }}>
@@ -225,7 +228,8 @@ export default function Onboarding({ settings, onDone }: { settings: Settings; o
         <h2 style={{ margin: 0 }}>{t('Canon’s library')}</h2>
         <BundledLibraryPanel />
       </section>
-      <LanguagesPanel settings={settings} onSaved={onDone} saveLabel={t('Finish setup')} />
+      <RecoveryKeyStep church={lt(settings.church_name)} onReady={setKeyReady} />
+      <LanguagesPanel settings={settings} onSaved={onDone} saveLabel={t('Finish setup')} blocked={keyReady ? null : t('Make the recovery key first (above).')} />
     </div>
   );
 }

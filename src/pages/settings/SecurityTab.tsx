@@ -1,5 +1,6 @@
 // Settings → Security & privacy (administrators): a checklist in plain words, and who looked at member records.
 // The Storage card (on the Backups tab) lives here too.
+import { EncryptionCard } from '../../components/Encryption.tsx';
 import { Link } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -35,6 +36,7 @@ export function SecurityTab() {
   }, t('Saved.'));
   return (
     <div className="stack">
+      <EncryptionCard />
       <section className="card stack">
         <h3>{t('Security checklist')} <InfoTip text={t('What protects members’ personal data, in plain words. Canon checks what it can; some things only you can confirm.')} /></h3>
         <div className="sec-list">

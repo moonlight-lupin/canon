@@ -14,6 +14,13 @@ What changed in each version: [CHANGELOG.md](../CHANGELOG.md).
 
 Tests run on Windows and Linux, on Node.js 24, for every change ([CI](../.github/workflows/ci.yml)).
 
+## Upgrading to 0.19.0: encryption
+
+0.19.0 encrypts Canon's data. Upgrading changes nothing by itself: your database stays as it is, and administrators see a red banner, **The church's data is not encrypted**, until one of them presses **Encrypt now…**. Before you do:
+- have a printer ready (or pen and paper): the recovery key is shown once;
+- on Windows, encrypt while Canon runs as the account it will keep running as (the background task's account);
+- know which plain copies you keep yourself outside Canon's folders: Canon lists the ones in its folders and leaves them alone.
+
 ## Windows PC or Mac
 
 1. **Make a backup.** Use Settings → Backups → **Back up now**, or `npm run backup` (safe while Canon is running).

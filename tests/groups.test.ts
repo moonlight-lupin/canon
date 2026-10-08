@@ -92,6 +92,8 @@ before(async () => {
   createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
   setMcp({ modules: { members: 'off', coworkers: 'off', groups: 'off', volunteers: 'write' }, expose_member_pii: false });
   server = createApp().listen(0, '127.0.0.1');
+  // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
+  server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   at = await accessToken();

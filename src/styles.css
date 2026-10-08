@@ -572,3 +572,9 @@ table.t tr.click:hover td { background: var(--sunk); }
 /* paper-sized previews zoomed to fit a phone's width (src/components/onscreen.ts); always real size on paper */
 .fit-w { zoom: var(--fit-zoom, 1); }
 @media print { .fit-w { zoom: 1 !important; } }
+
+/* Encryption (0.19.0): the recovery key shown once; the administrators' banner while the data isn't encrypted */
+.recovery-key { font: 600 21px/1.7 ui-monospace, Consolas, 'Courier New', monospace; letter-spacing: 0.06em; user-select: all; }
+.banner-danger { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; background: var(--danger); color: #fff; }
+.banner-danger .btn { background: #fff; color: var(--danger); border-color: #fff; }
+.banner-danger > svg, .callout > svg { width: 18px; height: 18px; flex: none; vertical-align: -3px; }
