@@ -192,6 +192,8 @@ export interface Claim {
   congregation_id: number | null;
   /** where to repay (e.g. a PayNow number, a bank account): never shown to AI assistants */
   pay_to: string | null;
+  /** who typed in where to repay (0.19.4): the claimant, or the office (approvers are told) — null when not known */
+  pay_to_by: 'claimant' | 'office' | null;
   status: ClaimStatus;
   note: string | null;
   signature: ClaimSignature | null;

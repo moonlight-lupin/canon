@@ -23,7 +23,7 @@ const localDay = (s: string) => {
 
 interface Session { token: string; name: string; at: number; /** signed in through a Canon account in this browser */ canon?: boolean }
 interface Status { sign_in: boolean; church_name: L10n; languages: string[]; currency: string; ministries: { id: number; name: L10n }[]; projects: { id: number; name: L10n }[] }
-type View = Claim & { may_edit: boolean; may_withdraw: boolean; may_approve: boolean; needed: number; problems: string[] };
+type View = Claim & { may_edit: boolean; may_withdraw: boolean; may_approve: boolean; needed: number; problems: string[]; office_typed_pay_to: boolean };
 interface Mine {
   name: string; approver: boolean; last_pay_to: string | null;
   mine: { id: number; number: string | null; purpose: string | null; status: ClaimStatus; total: number; files: number; created_at: string }[];
@@ -476,6 +476,9 @@ function ClaimPage({ session, status, onExpired }: { session: Session; status: S
               ))}
               {c.status === 'submitted' && c.needed > 1 && <div className="small muted">{t('This claim needs {n} approvals.').replace('{n}', String(c.needed))}</div>}
             </div>
+          )}
+          {c.office_typed_pay_to && (
+            <div className="callout warn small">{t('Where to repay this claim was typed in by the office, not by the claimant. Before approving, check with the claimant (or on the form they signed) that the money goes to them.')}</div>
           )}
           {c.may_approve && (
             <div className="card self-card stack tight">

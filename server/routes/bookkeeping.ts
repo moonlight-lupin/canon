@@ -23,6 +23,7 @@ import { sendXlsx } from '../lib/xlsx-export.ts';
 import { bodyBytes, rawBody, uiLang } from './csv.ts';
 import { importJournals, journalTemplateRows, readJournalFile } from '../repo/bk-import.ts';
 import { asActor } from '../lib/actor.ts';
+import { checkRef, wallSql } from '../lib/walls.ts';
 
 export const bookkeepingRoutes = express.Router();
 
@@ -324,12 +325,13 @@ const claimView = (c: ReturnType<typeof Claims.getClaim>, req?: express.Request)
 bookkeepingRoutes.get('/bookkeeping/claims', h((req) => {
   const q = req.query as Record<string, string | undefined>;
   const status = ['draft', 'submitted', 'approved', 'rejected', 'paid', 'withdrawn', 'open'].includes(q.status ?? '') ? (q.status as Claims.ClaimQuery['status']) : undefined;
-  return { claims: Claims.listClaims({ status, q: str(q.q), from: str(q.from), to: str(q.to) }), counts: Claims.claimCounts() };
+  return { claims: Claims.listClaims({ status, q: str(q.q), from: str(q.from), to: str(q.to), walled: true }), counts: Claims.claimCounts() };
 }));
 bookkeepingRoutes.get('/bookkeeping/claims/:id', h((req) => claimView(Claims.getClaim(id(req)), req)));
 /** The office enters a claim for a member (e.g. one handed in on paper). */
 bookkeepingRoutes.post('/bookkeeping/claims', h((req) => {
   const b = z.object({ person_id: z.number().int() }).passthrough().parse(req.body);
+  checkRef('people', b.person_id); // a member of the account's own congregation (or the whole church's)
   return claimView(Claims.createClaim(b.person_id, claimInput(req.body), office(req)));
 }));
 bookkeepingRoutes.put('/bookkeeping/claims/:id', h((req) => claimView(Claims.updateClaim(id(req), claimInput(req.body), office(req)))));
@@ -379,10 +381,11 @@ bookkeepingRoutes.delete('/bookkeeping/claim-approvers/:id', h((req) => {
 /** Members to choose an approver or a claimant from (names only). */
 bookkeepingRoutes.get('/bookkeeping/claim-people', h((req) => {
   const q = str((req.query as Record<string, unknown>).q) ?? '';
+  const w = wallSql('congregation_id');
   return all<{ id: number; name: string; email: number }>(
     `SELECT id, TRIM(IFNULL(preferred_name, first_name) || ' ' || IFNULL(last_name, '')) AS name, (email IS NOT NULL AND email <> '') AS email FROM people
-     WHERE erased_at IS NULL AND (first_name LIKE ? OR last_name LIKE ? OR preferred_name LIKE ? OR native_name LIKE ?) ORDER BY first_name, last_name LIMIT 20`,
-    `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`,
+     WHERE erased_at IS NULL AND (first_name LIKE ? OR last_name LIKE ? OR preferred_name LIKE ? OR native_name LIKE ?)${w.sql} ORDER BY first_name, last_name LIMIT 20`,
+    `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, ...w.params,
   ).map((r) => ({ ...r, email: !!r.email }));
 }));
 bookkeepingRoutes.get('/bookkeeping/claim-settings', h(async () => ({ settings: B.bkSettings(), sign_in: await claimsSignInStatus(true) })));

@@ -17,6 +17,7 @@ import * as ar from '../repo/access-roles.ts';
 import { listRoles } from '../lib/permissions.ts';
 import { PERM_MODULES } from '../../shared/permissions.ts';
 import { OPTIONAL_MODULES } from '../../shared/modules.ts';
+import * as updates from '../lib/updates.ts';
 
 export const adminRoutes = express.Router();
 
@@ -140,6 +141,24 @@ adminRoutes.post('/mcp/check-public-url', requireAdmin, h(async (req) => {
 }));
 adminRoutes.get('/mcp/grants', requireAdmin, h(() => listGrants()));
 adminRoutes.delete('/mcp/grants/:grant', requireAdmin, h((req) => revokeGrant(String(req.params.grant))));
+
+// ---------------------------------------------------------------- updates (0.19.4)
+
+/** What About Canon shows: this version, the latest release found, whether Canon can install it here. */
+adminRoutes.get('/updates', requireAdmin, h(() => updates.updateStatus()));
+adminRoutes.post('/updates/check', requireAdmin, h(async () => {
+  await updates.checkNow();
+  return updates.updateStatus();
+}));
+adminRoutes.put('/updates/auto', requireAdmin, h((req) => {
+  updates.setAutoCheck(z.object({ auto: z.boolean() }).parse(req.body).auto);
+  return updates.updateStatus();
+}));
+/** Install the latest release: a backup, the new files, then Canon restarts through its launcher. */
+adminRoutes.post('/updates/install', requireAdmin, h((req) => {
+  const b = z.object({ version: z.string().max(40).optional() }).parse(req.body ?? {});
+  return updates.installUpdate(req.user?.display_name ?? 'An administrator', b.version);
+}));
 
 // ---------------------------------------------------------------- optional parts of Canon
 

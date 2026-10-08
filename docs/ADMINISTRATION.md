@@ -52,6 +52,18 @@ powershell -ExecutionPolicy Bypass -File scripts\windows-task.ps1 uninstall  # a
 
 What Canon does is written to `data\logs\` as before (`launcher.log` for restarts). In the background Canon never gives up: after 10 quick restarts it waits five minutes and tries again. Ctrl+C in the window, and `docker stop`, also stop Canon properly now.
 
+From 0.19.4 `start-canon.bat` and `start-canon.command` hand over to **`scripts/launcher.mjs`**, which prepares Canon (Node.js check, dependencies, web app, the Bible on the first start), starts it, starts it again after an error, and installs updates (below). The batch file does that on a single line, so that an update can replace it while it runs.
+
+### Updates from inside Canon
+
+About Canon → **Updates** (administrators) checks GitHub's latest release (once a day when **Check once a day** is on; the request carries nothing about the church) and installs it with **Update now…**:
+1. Canon makes a backup (if it can't, it doesn't update);
+2. it gets the release: in a **git clone**, `git fetch` of the release's tag and a fast-forward to it (a copy with changes or commits of its own is refused, with what to do); in a **download** (the ZIP, unpacked), the release's archive from GitHub, written over the folder — never `data/`, `backups/`, `canon.local.*`, `node_modules/` or `dist/`. Replaced files are kept in `.canon-update/previous/` until the next update;
+3. it stops with exit code 75; the launcher installs the new dependencies, rebuilds the web app and starts the new version, which upgrades the database as usual (a copy in `data/pre-upgrade/`);
+4. if the new version can't be prepared (e.g. no internet for `npm install`), the launcher puts the previous files back and starts the previous version; About Canon says what happened.
+
+Only a Canon started by the launcher can update itself (else nothing would start it again). `npm run dev` and Docker only check. The checks and installs are in the change log.
+
 ### On a Mac
 
 `start-canon.command` does what `start-canon.bat` does, in a Terminal window:

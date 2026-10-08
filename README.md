@@ -73,7 +73,7 @@ Keep the "Canon server" window open while Canon is in use, or run Canon in the b
 
 **Docker** (server, NAS or cloud VM): run `docker compose up -d`. See [docs/DOCKER.md](docs/DOCKER.md), which also explains a test copy of the church's data that sends no e-mail.
 
-**Updating:** replace the files and start Canon again. It keeps a copy of the database before upgrading it. See [docs/UPGRADING.md](docs/UPGRADING.md).
+**Updating:** from 0.19.4, an administrator updates Canon from **About Canon → Updates** (it makes a backup, gets the new version from GitHub and restarts; Docker: `docker compose pull`). By hand: replace the files and start Canon again. It keeps a copy of the database before upgrading it. See [docs/UPGRADING.md](docs/UPGRADING.md).
 
 ## Documentation
 

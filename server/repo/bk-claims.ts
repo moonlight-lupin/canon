@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, Conflict, Forbidden, NotFound } from '../lib/table.ts';
 import { currentActor } from '../lib/actor.ts';
+import { wallSql } from '../lib/walls.ts';
 import { roleDef } from '../lib/permissions.ts';
 import { logChange } from './changelog.ts';
 import { getSettings, updateSettings } from './settings.ts';
@@ -52,7 +53,11 @@ export function getClaim(id: number): Claim {
   };
 }
 
-export interface ClaimQuery { status?: ClaimStatus | 'open'; person_id?: number; q?: string; from?: string; to?: string; limit?: number }
+export interface ClaimQuery {
+  status?: ClaimStatus | 'open'; person_id?: number; q?: string; from?: string; to?: string; limit?: number;
+  /** the office's list (Book-keeping → Claims, an assistant for the books): behind the account's congregation wall (0.19.4) */
+  walled?: boolean;
+}
 
 /** Claims, newest first, without signatures' images (a list). */
 export function listClaims(q: ClaimQuery = {}) {
@@ -61,6 +66,11 @@ export function listClaims(q: ClaimQuery = {}) {
   if (q.status === 'open') where.push("c.status IN ('submitted','approved')");
   else if (q.status) { where.push('c.status = ?'); p.push(q.status); }
   if (q.person_id) { where.push('c.person_id = ?'); p.push(q.person_id); }
+  if (q.walled) {
+    // an account limited to one congregation sees that congregation's claims and the whole church's
+    const w = wallSql('c.congregation_id');
+    if (w.sql) { where.push(w.sql.replace(/^ AND /, '')); p.push(...(w.params as (string | number)[])); }
+  }
   if (q.from) { where.push('date(c.created_at) >= ?'); p.push(q.from); }
   if (q.to) { where.push('date(c.created_at) <= ?'); p.push(q.to); }
   if (q.q?.trim()) {
@@ -157,6 +167,8 @@ function writeLines(claimId: number, lines: ClaimLine[]) {
 
 /** A new claim (a draft) for a member: by themselves, the office, or an AI assistant for its person. */
 const MAX_DRAFTS = 20;
+/** Who typed in where to repay: the claimant on their own page, else the office (an assistant never sets it). */
+const payToBy = (by: Party): 'claimant' | 'office' => (by.as === 'claimant' ? 'claimant' : 'office');
 
 export function createClaim(personId: number | null, input: ClaimInput, by: Party): Claim {
   const person = personId ? get<{ first_name: string; last_name: string | null; preferred_name: string | null; congregation_id: number | null }>('SELECT first_name, last_name, preferred_name, congregation_id FROM people WHERE id = ? AND erased_at IS NULL', personId) : null;
@@ -170,10 +182,11 @@ export function createClaim(personId: number | null, input: ClaimInput, by: Part
   const lines = cleanLines(input.lines ?? []);
   return tx(() => {
     const id = Number(run(
-      `INSERT INTO bk_claims (person_id, claimant, purpose, ministry_id, project_id, fund_id, congregation_id, pay_to, status, created_via, created_by)
-       VALUES (?,?,?,?,?,?,?,?, 'draft', ?, ?)`,
+      `INSERT INTO bk_claims (person_id, claimant, purpose, ministry_id, project_id, fund_id, congregation_id, pay_to, pay_to_by, status, created_via, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?, 'draft', ?, ?)`,
       personId, claimant, input.purpose?.trim() || null, input.ministry_id ?? null, input.project_id ?? null, input.fund_id ?? null,
-      person?.congregation_id ?? null, input.pay_to?.trim() || null, by.as === 'ai' ? 'mcp' : by.as === 'claimant' ? 'self' : 'web', by.name,
+      person?.congregation_id ?? null, input.pay_to?.trim() || null, input.pay_to?.trim() ? payToBy(by) : null,
+      by.as === 'ai' ? 'mcp' : by.as === 'claimant' ? 'self' : 'web', by.name,
     ).lastInsertRowid);
     writeLines(id, lines);
     const c = getClaim(id);
@@ -183,13 +196,16 @@ export function createClaim(personId: number | null, input: ClaimInput, by: Part
 }
 
 /** Change a claim being prepared (its claimant, the office, or the AI assistant that drafted it). */
-export function updateClaim(id: number, input: ClaimInput, by: Party): Claim {
+export function updateClaim(id: number, input: ClaimInput, by_: Party): Claim {
   const before = getClaim(id);
-  mayEdit(before, by);
+  mayEdit(before, by_);
   const lines = cleanLines(input.lines ?? []);
+  // where to repay keeps who typed it in, until someone else changes it
+  const payTo = input.pay_to?.trim() || null;
+  const by = payTo === (before.pay_to ?? null) ? before.pay_to_by : payTo ? payToBy(by_) : null;
   return tx(() => {
-    run('UPDATE bk_claims SET purpose = ?, ministry_id = ?, project_id = ?, fund_id = ?, pay_to = ?, updated_at = datetime(\'now\'), revision = revision + 1 WHERE id = ?',
-      input.purpose?.trim() || null, input.ministry_id ?? null, input.project_id ?? null, input.fund_id ?? null, input.pay_to?.trim() || null, id);
+    run('UPDATE bk_claims SET purpose = ?, ministry_id = ?, project_id = ?, fund_id = ?, pay_to = ?, pay_to_by = ?, updated_at = datetime(\'now\'), revision = revision + 1 WHERE id = ?',
+      input.purpose?.trim() || null, input.ministry_id ?? null, input.project_id ?? null, input.fund_id ?? null, payTo, by, id);
     writeLines(id, lines);
     const after = getClaim(id);
     logClaim('update', before, after);
@@ -564,12 +580,13 @@ export function saveClaimSettings(input: Pick<BookkeepingSettings, 'claims_self_
   return bkSettings();
 }
 
-/** For the dashboard and the overview. */
+/** For the dashboard and the overview (behind the account's congregation wall, like the list). */
 export function claimCounts() {
-  const n = (sql: string) => get<{ n: number }>(sql)!.n;
+  const w = wallSql('c.congregation_id');
+  const n = (sql: string) => get<{ n: number }>(sql + w.sql, ...w.params)!.n;
   return {
-    to_approve: n("SELECT COUNT(*) n FROM bk_claims WHERE status = 'submitted'"),
-    to_pay: n("SELECT COUNT(*) n FROM bk_claims WHERE status = 'approved'"),
+    to_approve: n("SELECT COUNT(*) n FROM bk_claims c WHERE c.status = 'submitted'"),
+    to_pay: n("SELECT COUNT(*) n FROM bk_claims c WHERE c.status = 'approved'"),
     to_pay_total: n("SELECT COALESCE(SUM(l.amount),0) n FROM bk_claim_lines l JOIN bk_claims c ON c.id = l.claim_id WHERE c.status = 'approved'"),
   };
 }

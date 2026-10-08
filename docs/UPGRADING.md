@@ -21,7 +21,11 @@ Tests run on Windows and Linux, on Node.js 24, for every change ([CI](../.github
 - on Windows, encrypt while Canon runs as the account it will keep running as (the background task's account);
 - know which plain copies you keep yourself outside Canon's folders: Canon lists the ones in its folders and leaves them alone.
 
-## Windows PC or Mac
+## From inside Canon (0.19.4 and later; Windows PC or Mac)
+
+An administrator opens **About Canon** (bottom of the sidebar) → **Updates** → **Update now…**. Canon makes a backup, gets the new version from GitHub and restarts; it installs what the new version needs and rebuilds, then upgrades the database (keeping a copy). It is unavailable for a minute or two. If the new version can't be prepared, Canon goes back to the version you had and says so. This needs Canon to have been started with `start-canon.bat` / `start-canon.command` (or the background task). A git copy with changes of its own, Docker, and versions before 0.19.4 are updated by hand, as below.
+
+## Windows PC or Mac, by hand
 
 1. **Make a backup.** Use Settings → Backups → **Back up now**, or `npm run backup` (safe while Canon is running).
 2. **Stop Canon:** close the "Canon server" window. If Canon runs in the background (its icon by the clock), right-click the icon → **Exit**.

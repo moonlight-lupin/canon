@@ -100,6 +100,9 @@ const PATHS: [RegExp, string][] = [
   [/^\/events\/(\d+)/, 'SELECT congregation_id AS c FROM events WHERE id = ?'],
   [/^\/visitor-cards\/(\d+)/, 'SELECT s.congregation_id AS c FROM visitor_cards v JOIN services s ON s.id = v.service_id WHERE v.id = ?'],
   [/^\/assignments\/(\d+)/, 'SELECT s.congregation_id AS c FROM assignments a JOIN services s ON s.id = a.service_id WHERE a.id = ?'],
+  // expense claims (0.19.4): a claim belongs to its claimant's congregation
+  [/^\/bookkeeping\/claims\/(\d+)/, 'SELECT congregation_id AS c FROM bk_claims WHERE id = ?'],
+  [/^\/bookkeeping\/claims\/files\/(\d+)/, 'SELECT c.congregation_id AS c FROM bk_claim_files f JOIN bk_claims c ON c.id = f.claim_id WHERE f.id = ?'],
 ];
 
 /** Does this request name an item of another congregation? */

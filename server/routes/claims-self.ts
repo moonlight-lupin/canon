@@ -89,6 +89,8 @@ function view(c: ReturnType<typeof C.getClaim>, p: C.Party) {
     ...c,
     // where to repay is for the claimant and the office, not approvers
     pay_to: own ? c.pay_to : c.pay_to ? '•••' : null,
+    // approvers don't see where to repay, but are told when the office typed it in rather than the claimant (0.19.4)
+    office_typed_pay_to: !own && !!c.pay_to && c.pay_to_by === 'office',
     lines: c.lines.map((l) => ({ id: l.id, date: l.date, description: l.description, payee: l.payee, amount: l.amount, ministry_id: l.ministry_id, project_id: l.project_id })),
     may_edit: own && c.status === 'draft',
     may_withdraw: own && (c.status === 'draft' || c.status === 'submitted'),

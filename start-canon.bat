@@ -6,60 +6,18 @@ REM installs and rebuilds what changed, and the database is upgraded (a copy is 
 REM Machine-specific settings (e.g. set CANON_PORT=5018) go in canon.local.bat next to this file;
 REM it is not part of the repository.
 REM CANON_BACKGROUND=1 (set by scripts\windows-task.ps1): no window to answer, so no "press a key" pauses.
+REM Canon is started again if it stops by itself (an error); closing this window or Ctrl+C stops it for good.
+REM Canon writes what happens to data\logs\canon-<date>.log (and the launcher to data\logs\launcher.log).
 cd /d "%~dp0"
 if exist "%~dp0canon.local.bat" call "%~dp0canon.local.bat"
 if not defined CANON_PORT set CANON_PORT=3000
 where node >nul 2>nul
 if errorlevel 1 goto nonode
-REM Installs dependencies and rebuilds the web app when Canon was updated; refuses a too-old Node.js.
-node scripts\startup-check.mjs
-if errorlevel 1 goto err
-if not exist data\canon.db call npm run import:bible
-set NODE_ENV=production
-echo.
-echo Canon is starting. Open http://localhost:%CANON_PORT% on this PC,
-REM this PC's address on the office network (falls back to its name when none is found)
-set CANON_LAN=
-for /f "usebackq delims=" %%a in (`node scripts\lan-address.mjs`) do if not defined CANON_LAN set CANON_LAN=%%a
-if not defined CANON_LAN set CANON_LAN=%COMPUTERNAME%
-echo or http://%CANON_LAN%:%CANON_PORT% from other computers on the office network.
-echo Keep this window open while Canon is in use.
-echo.
-REM Restarts Canon if it stops by itself (an error); closing this window or Ctrl+C stops it for good.
-REM Canon writes what happens to data\logs\canon-<date>.log.
-set CANON_RESTARTS=0
-:run
-call npm start
-if not errorlevel 1 goto stopped
-set /a CANON_RESTARTS+=1
-if %CANON_RESTARTS% GTR 10 goto gaveup
-echo.
-echo Canon stopped unexpectedly. Starting it again in 10 seconds (see data\logs for why)...
-if exist data\logs echo %date% %time% Canon stopped unexpectedly and was started again>> data\logs\launcher.log
-timeout /t 10 /nobreak >nul
-goto run
-:gaveup
-REM in the background nobody would see that it gave up: wait five minutes and begin again
-if defined CANON_BACKGROUND (
-  if exist data\logs echo %date% %time% Canon stopped unexpectedly 10 times; trying again in 5 minutes>> data\logs\launcher.log
-  timeout /t 300 /nobreak >nul
-  set CANON_RESTARTS=0
-  goto run
-)
-echo.
-echo Canon stopped unexpectedly 10 times, so it was not started again. See data\logs for why.
-if not defined CANON_BACKGROUND pause
-exit /b 1
-:stopped
-echo.
-echo Canon has stopped.
-if not defined CANON_BACKGROUND pause
-goto :eof
+REM scripts\launcher.mjs does the rest: preparing Canon, starting it, starting it again, installing updates.
+REM Keep it all on ONE line: an update may replace this file while Canon runs, and Windows reads a batch file
+REM line by line as it goes (one line is read whole before it runs).
+node scripts\launcher.mjs & (if errorlevel 1 if not defined CANON_BACKGROUND pause) & exit /b
 :nonode
 echo Node.js is not installed on this computer. Install the "LTS" version from https://nodejs.org,
 echo then double-click this file again.
-if not defined CANON_BACKGROUND pause
-goto :eof
-:err
-echo Something went wrong - see the messages above. Your data has not been changed.
 if not defined CANON_BACKGROUND pause

@@ -12,6 +12,7 @@ import type { Settings } from '../types-client.ts';
 import { allows, pageModule } from '../../shared/permissions.ts';
 import { pageOff } from '../../shared/modules.ts';
 import { setExportContext } from './xlsx-download.ts';
+import { UpdateNotice } from './Updates.tsx';
 
 // newTab: a page outside Canon's frame (the phone claims page) opens in a tab of its own
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean; newTab?: boolean }[] }[] = [
@@ -157,6 +158,7 @@ export function Layout() {
             <NavLink to="/guide" className="small muted" style={{ textDecoration: 'none' }}>{t('Guide')}</NavLink>
             <NavLink to="/about" className="small muted" style={{ textDecoration: 'none' }}>{t('About Canon')}</NavLink>
           </div>
+          {admin && <UpdateNotice />}
           <div className="row between">
             <span title={user.username}>{user.display_name} · <span className="badge">{t(user.role[0].toUpperCase() + user.role.slice(1))}</span></span>
             <button className="btn ghost sm icon" onClick={logout} title={t('Sign out')} aria-label={t('Sign out')}>

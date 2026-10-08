@@ -112,7 +112,7 @@ const RULES: Rule[] = [
   [/^\/sample-data$/, 'admin'],
   [/^\/self\//, 'signed_in'], // lending self-service: public, handled before sign-in
   [/^\/(me|settings|dashboard|calendar|about|congregations|presentation\/defaults|reports\/archived-years|link-base)$/, 'signed_in'],
-  [/^\/(users|access-roles|modules|backups|archives|security|member-views|storage|change-log|log-retention|mcp|email\/(settings|test)|offering-settings)(\/|\.|$)/, 'admin'],
+  [/^\/(users|access-roles|modules|backups|archives|security|member-views|storage|change-log|log-retention|mcp|updates|email\/(settings|test)|offering-settings)(\/|\.|$)/, 'admin'],
   // read by editors' screens; changed by administrators (the route says so)
   [/^\/visitor-form-settings$/, 'records'],
   [/^\/services\/\d+\/record(\/|$)/, 'records'],

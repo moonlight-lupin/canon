@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { all, get } from '../db.ts';
 import * as C from '../repo/bk-claims.ts';
 import { roleDef } from '../lib/permissions.ts';
+import { checkRef, inSight } from '../lib/walls.ts';
 import { DateStr, Id, RO, WRITE, type Ctx, type ToolDef } from './common.ts';
 
 class InputError extends Error {
@@ -30,7 +31,7 @@ function out(c: ReturnType<typeof C.getClaim>) {
   return {
     id: c.id, number: c.number, claimant: c.claimant, purpose: c.purpose, status: c.status, total_cents: c.total, ministry: c.ministry_id ? min.get(c.ministry_id) : undefined,
     lines: c.lines.map((l) => ({ date: l.date, description: l.description, payee: l.payee ?? undefined, amount_cents: l.amount, account: l.account_id ? acc.get(l.account_id) : undefined, ministry: l.ministry_id ? min.get(l.ministry_id) : undefined })),
-    receipts: c.files.map((f) => f.name), repay_to_set: !!c.pay_to,
+    receipts: c.files.map((f) => f.name), repay_to_set: !!c.pay_to, repay_to_entered_by_office: c.pay_to_by === 'office' || undefined,
     approvals: c.approvals.map((a) => ({ name: a.name, decision: a.decision, note: a.note ?? undefined, at: a.at })),
     approvals_needed: C.approvalsNeeded(c), submitted_at: c.submitted_at ?? undefined, approved_at: c.approved_at ?? undefined, paid_on: c.paid_on ?? undefined,
     approver_also_paid: c.approver_paid || undefined, still_needed: c.status === 'draft' ? C.submitProblems(c) : undefined, link: C.claimLink(c.id),
@@ -46,11 +47,12 @@ export const CLAIMS_TOOLS: ToolDef[] = [
       const me = ctx.auth.user.person_id ?? null;
       if (a.id) {
         const c = C.getClaim(a.id);
-        const party: C.Party = { as: keeper(ctx) ? 'office' : 'claimant', person_id: me, name: ctx.auth.user.display_name };
+        // the books' view stops at the account's congregation wall; the claimant and its approvers still see it
+        const party: C.Party = { as: keeper(ctx) && inSight(c.congregation_id) ? 'office' : 'claimant', person_id: me, name: ctx.auth.user.display_name };
         if (!C.maySee(c, party)) throw new InputError('Claim not found.');
         return { amounts_in: 'cents', ...out(c) };
       }
-      const all = keeper(ctx) ? C.listClaims({ status: a.status, q: a.q }) : me ? C.listClaims({ status: a.status, q: a.q, person_id: me }) : [];
+      const all = keeper(ctx) ? C.listClaims({ status: a.status, q: a.q, walled: true }) : me ? C.listClaims({ status: a.status, q: a.q, person_id: me }) : [];
       return {
         amounts_in: 'cents',
         claims: all.map((r) => ({ id: r.id, number: r.number, claimant: r.claimant, purpose: r.purpose, status: r.status, total_cents: r.total, receipts: r.files, submitted_at: r.submitted_at ?? undefined, paid_on: r.paid_on ?? undefined })),
@@ -74,6 +76,7 @@ export const CLAIMS_TOOLS: ToolDef[] = [
       if (forOther && !keeperEdits(ctx)) throw new InputError('You can draft claims for yourself only.');
       const person = (a.claimant_person_id as number | undefined) ?? me;
       if (!person) throw new InputError('Your Canon account is not linked to your member record: ask an administrator to link it (Settings → User accounts).');
+      if (forOther) checkRef('people', person); // a member behind the account's congregation wall is not found
       const lines = (a.lines as { date: string; description: string; payee?: string; amount_cents: number; ministry?: string; account?: string }[]).map((l) => ({
         date: l.date, description: l.description, payee: l.payee ?? null, amount: l.amount_cents,
         ministry_id: codeOf('bk_ministries', l.ministry, 'ministry'), account_id: codeOf('bk_accounts', l.account, 'account'),
@@ -83,7 +86,7 @@ export const CLAIMS_TOOLS: ToolDef[] = [
       let c;
       if (a.id) {
         const cur = C.getClaim(a.id);
-        if (cur.person_id !== me && !keeperEdits(ctx)) throw new InputError('That is someone else’s claim.');
+        if (cur.person_id !== me && (!keeperEdits(ctx) || !inSight(cur.congregation_id))) throw new InputError('That is someone else’s claim.');
         c = C.updateClaim(a.id, { ...input, fund_id: cur.fund_id, pay_to: cur.pay_to }, party);
       } else c = C.createClaim(person, input, party);
       return {

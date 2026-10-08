@@ -4,6 +4,8 @@ import { useI18n } from '../i18n.tsx';
 import { PageHead } from '../components/ui.tsx';
 import { ReedMark } from '../components/icons.tsx';
 import { Tagline } from '../components/brand.tsx';
+import { UpdatesCard } from '../components/Updates.tsx';
+import { useSession } from '../components/ui.tsx';
 
 interface About { name: string; version: string; license: string; schema: number; node?: string }
 
@@ -20,6 +22,7 @@ const SOFTWARE = ['React', 'Vite', 'Express', 'Node.js', 'better-sqlite3-multipl
 export default function AboutPage() {
   const { t } = useI18n();
   const { data } = useApi<About>('/about');
+  const { isAdmin } = useSession();
   return (
     <div className="page" style={{ maxWidth: 860 }}>
       <PageHead eyebrow={t('About')} title="Canon" />
@@ -47,6 +50,8 @@ export default function AboutPage() {
             </tbody>
           </table>
         </section>
+
+        {isAdmin && <UpdatesCard />}
 
         <section className="card stack">
           <h2>{t('Content credits')}</h2>
@@ -84,6 +89,8 @@ export default function AboutPage() {
             {t('Member data is stored only in your own Canon database (data/canon.db, or the Docker data volume). Share links never include contact details; AI assistants see only the modules an administrator opens in Settings → AI / MCP, and every call is logged.')}
           </p>
         </section>
+
+        <p className="about-sdg" lang="la">Soli Deo Gloria</p>
       </div>
     </div>
   );

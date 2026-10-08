@@ -154,7 +154,7 @@ function ClaimDialog({ id, onClose, onChanged }: { id: number; onClose: () => vo
         </div>
         {c.note && <div className="callout warn small">{c.note}</div>}
         {c.approver_paid && <div className="callout small">{t('Paid by one of its approvers.')}</div>}
-        {b.canEdit && c.pay_to && <div className="small">{t('Repay to')}: <strong>{c.pay_to}</strong></div>}
+        {b.canEdit && c.pay_to && <div className="small">{t('Repay to')}: <strong>{c.pay_to}</strong>{c.pay_to_by === 'office' && <span className="muted"> · {t('typed in by the office: approvers are told')}</span>}</div>}
 
         <div className="table-wrap">
           <table className="t bk-lines">

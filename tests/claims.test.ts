@@ -300,3 +300,80 @@ test('review: AI assistants with read-only access to the books write claims for 
   const deesDraft = C.createClaim(dee, { purpose: 'Dee’s own (fictional)', lines: [] }, { as: 'claimant', person_id: dee, name: 'Dee' });
   assert.throws(() => mcp(() => tool.handler({ id: deesDraft.id, claimant_person_id: dee, lines: [{ date: '2030-08-01', description: 'Changed', amount_cents: 100 }] }, ctx)), /yourself only|someone else/);
 });
+
+// ---------------------------------------------------------------- 0.19.4: congregations and where to repay
+
+test('0.19.4: an account limited to one congregation sees that congregation’s claims and the whole church’s, not another’s', async () => {
+  const { saveCongregation } = await import('../server/repo/congregations.ts');
+  const north = saveCongregation(null, { name: { en: 'Test North' }, code: 'TN' }).id;
+  const south = saveCongregation(null, { name: { en: 'Test South' }, code: 'TS' }).id;
+  const nora = Number(run('INSERT INTO people (first_name, last_name, email, congregation_id) VALUES (?,?,?,?)', 'Nora', 'North', 'nora@example.org', north).lastInsertRowid);
+  const sam = Number(run('INSERT INTO people (first_name, last_name, email, congregation_id) VALUES (?,?,?,?)', 'Sam', 'South', 'sam@example.org', south).lastInsertRowid);
+  createUser({ username: 'northbooks', display_name: 'Test north books', password: 'correct-horse-7', role: 'treasurer' });
+  run('UPDATE users SET congregation_id = ?, person_id = ? WHERE username = ?', north, nora, 'northbooks');
+  const nb = await login('northbooks');
+  const line = [{ date: '2030-09-01', description: 'Wall test', payee: 'A shop', amount: 1500 }];
+  const forNora = (await call(as.treasurer, 'POST', '/bookkeeping/claims', { person_id: nora, lines: line })).body;
+  const forSam = (await call(as.treasurer, 'POST', '/bookkeeping/claims', { person_id: sam, lines: line })).body;
+  await call(as.treasurer, 'POST', `/bookkeeping/claims/${forSam.id}/files?name=scan.png`, PNG);
+  const samFile = C.getClaim(forSam.id).files[0].id;
+  assert.equal(forSam.congregation_id, south);
+
+  const list = (await call(nb, 'GET', '/bookkeeping/claims')).body;
+  const ids = list.claims.map((c: Json) => c.id);
+  assert.ok(ids.includes(forNora.id), 'her own congregation');
+  assert.ok(list.claims.some((c: Json) => c.person_id === ann), 'the whole church’s (a member of no congregation)');
+  assert.ok(!ids.includes(forSam.id), 'not another congregation’s');
+  assert.equal((await call(nb, 'GET', `/bookkeeping/claims/${forSam.id}`)).status, 404);
+  assert.equal((await call(nb, 'GET', `/bookkeeping/claims/files/${samFile}`)).status, 404, 'nor its receipts');
+  assert.equal((await call(nb, 'PUT', `/bookkeeping/claims/${forSam.id}`, { lines: line })).status, 404, 'nor change it');
+  assert.equal((await call(nb, 'POST', '/bookkeeping/claims', { person_id: sam, lines: line })).status, 404, 'nor claim for its members');
+  assert.equal((await call(nb, 'GET', '/bookkeeping/claim-people?q=Sam')).body.length, 0, 'whose names it isn’t offered');
+  assert.equal((await call(nb, 'GET', '/bookkeeping/claim-people?q=Nora')).body.length, 1);
+  assert.equal((await call(nb, 'GET', `/bookkeeping/claims/${forNora.id}`)).status, 200);
+  // the whole church's account still sees everything
+  assert.ok((await call(as.treasurer, 'GET', '/bookkeeping/claims')).body.claims.some((c: Json) => c.id === forSam.id));
+
+  // AI assistants follow the same wall
+  const { CLAIMS_TOOLS } = await import('../server/mcp-tools/claims.ts');
+  const tool = (n: string) => CLAIMS_TOOLS.find((x) => x.name === n)!;
+  const user = get<Json>("SELECT * FROM users WHERE username = 'northbooks'")!;
+  const ctx = { auth: { user, clientId: 'test', scopes: new Set(['canon:write']), grantId: 'g' }, pii: false } as never;
+  const mcp = <T,>(fn: () => T) => asActor({ user_id: user.id, user_name: 'Test north books', via: 'mcp', congregation_id: north }, fn);
+  const seen = (await mcp(() => tool('canon_claims').handler({}, ctx))) as Json;
+  assert.ok(seen.claims.some((c: Json) => c.id === forNora.id) && !seen.claims.some((c: Json) => c.id === forSam.id));
+  assert.throws(() => mcp(() => tool('canon_claims').handler({ id: forSam.id }, ctx)), /not found/);
+  assert.throws(() => mcp(() => tool('canon_draft_claim').handler({ claimant_person_id: sam, lines: [{ date: '2030-09-01', description: 'X', amount_cents: 100 }] }, ctx)), /not found/);
+  assert.throws(() => mcp(() => tool('canon_draft_claim').handler({ id: forSam.id, lines: [{ date: '2030-09-01', description: 'X', amount_cents: 100 }] }, ctx)), /someone else/);
+});
+
+test('0.19.4: approvers are told when the office typed in where to repay, not the claimant', async () => {
+  // a paper claim: the office types everything in
+  const paper = (await call(as.treasurer, 'POST', '/bookkeeping/claims', { person_id: ann, pay_to: 'Bank 111-111 (fictional)', lines: [{ date: '2030-10-01', description: 'Paper', payee: 'A shop', amount: 900 }] })).body;
+  assert.equal(paper.pay_to_by, 'office');
+  await call(as.treasurer, 'POST', `/bookkeeping/claims/${paper.id}/files?name=scan.png`, PNG);
+  await call(as.treasurer, 'POST', `/bookkeeping/claims/${paper.id}/submit-paper`);
+  const benSees = (await call(null, 'GET', `/self/claims/${paper.id}`, undefined, tok(ben))).body;
+  assert.equal(benSees.office_typed_pay_to, true);
+  assert.equal(benSees.pay_to, '•••', 'still not the details themselves');
+  assert.equal((await call(null, 'GET', `/self/claims/${paper.id}`, undefined, tok(ann))).body.office_typed_pay_to, false, 'the claimant sees her own details');
+
+  // the claimant's own: approvers aren't warned; once the office changes it, they are; the claimant setting it again clears it
+  const t = tok(ann);
+  let own = (await call(null, 'POST', '/self/claims', { pay_to: 'PayNow 8111 1111 (fictional)', lines: [{ date: '2030-10-02', description: 'Own', payee: 'A shop', amount: 700 }] }, t)).body;
+  assert.equal(own.pay_to_by, 'claimant');
+  own = (await call(null, 'PUT', `/self/claims/${own.id}`, { pay_to: 'PayNow 8111 1111 (fictional)', purpose: 'Changed purpose only', lines: own.lines }, t)).body;
+  assert.equal(own.pay_to_by, 'claimant', 'other changes keep who typed it in');
+  const changed = (await call(as.treasurer, 'PUT', `/bookkeeping/claims/${own.id}`, { pay_to: 'Bank 999-999 (fictional)', lines: own.lines })).body;
+  assert.equal(changed.pay_to_by, 'office');
+  own = (await call(null, 'PUT', `/self/claims/${own.id}`, { pay_to: 'PayNow 8111 1111 (fictional)', lines: own.lines }, t)).body;
+  assert.equal(own.pay_to_by, 'claimant');
+
+  // an assistant sees only that the office entered it
+  const { CLAIMS_TOOLS } = await import('../server/mcp-tools/claims.ts');
+  const tr = get<Json>("SELECT * FROM users WHERE username = 'treasurer'")!;
+  const ctx = { auth: { user: tr, clientId: 'test', scopes: new Set(['canon:read']), grantId: 'g' }, pii: false } as never;
+  const r = (await asActor({ user_id: tr.id, user_name: 'Test treasurer', via: 'mcp' }, () => CLAIMS_TOOLS.find((x) => x.name === 'canon_claims')!.handler({ id: paper.id }, ctx))) as Json;
+  assert.equal(r.repay_to_entered_by_office, true);
+  assert.ok(!JSON.stringify(r).includes('111-111'));
+});

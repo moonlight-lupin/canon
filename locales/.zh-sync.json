@@ -1628,6 +1628,10 @@
       "Canon 还没有公开网址：这个链接只在教会的网络内有效（设置 → AI / MCP）。",
       "Canon 還沒有公開網址：這個鏈接只在教會的網絡內有效（設置 → AI / MCP）。"
     ],
+    "Canon hasn’t come back yet. Look at the Canon window (or data/logs/launcher.log) on the computer it runs on.": [
+      "Canon 尚未恢复运行。请在运行 Canon 的电脑上查看 Canon 窗口（或 data/logs/launcher.log）。",
+      "Canon 尚未恢復運行。請在運行 Canon 的電腦上查看 Canon 窗口（或 data/logs/launcher.log）。"
+    ],
     "Canon is a local-first system for churches: service planning with bulletins and slides, member and co-worker registers, groups, a volunteer rota, and a permission-controlled MCP server for AI assistants. It is multilingual and self-hosted — on an office PC, the church’s own server or any Docker host — so the church’s data stays under the church’s control.": [
       "Canon 是为教会设计的本地优先系统：聚会程序与次序单、投影、会友与同工名册、小组、事奉表，以及供 AI 助手使用、权限可控的 MCP 服务器。支持多种语言；可安装在办公室电脑、自己的服务器或 Docker 上，资料始终由教会自己掌管。",
       "Canon 是為教會設計的本地優先系統：聚會程序與次序單、投影、會友與同工名冊、小組、事奉表，以及供 AI 助手使用、權限可控的 MCP 服務器。支持多種語言；可安裝在辦公室電腦、自己的服務器或 Docker 上，資料始終由教會自己掌管。"
@@ -1640,6 +1644,14 @@
       "Canon 以 MIT 许可证发布，并使用以下开源软件：",
       "Canon 以 MIT 許可證發佈，並使用以下開源軟件："
     ],
+    "Canon is restarting with the new version: installing what it needs and rebuilding takes a minute or two. This page reloads by itself.": [
+      "Canon 正以新版本重新启动：安装所需组件并重新建置约需一两分钟。本页会自动重新载入。",
+      "Canon 正以新版本重新啟動：安裝所需組件並重新建置約需一兩分鐘。本頁會自動重新載入。"
+    ],
+    "Canon is running in development mode: update it with git.": [
+      "Canon 正以开发模式运行：请用 git 更新。",
+      "Canon 正以開發模式運行：請用 git 更新。"
+    ],
     "Canon needs to know which accounts are the bank (for statements), which hold offerings, and which hold the fund balances.": [
       "Canon 需要知道哪些科目是银行（用于对账单）、哪些存放奉献、哪些记录款项余额。",
       "Canon 需要知道哪些科目是銀行（用於對賬單）、哪些存放奉獻、哪些記錄款項餘額。"
@@ -1648,13 +1660,41 @@
       "Canon 恢复密钥",
       "Canon 恢復密鑰"
     ],
+    "Canon runs in Docker: update it on the server, in the folder with docker-compose.yml:": [
+      "Canon 运行在 Docker 中：请在服务器上、docker-compose.yml 所在的文件夹中更新：",
+      "Canon 運行在 Docker 中：請在服務器上、docker-compose.yml 所在的文件夾中更新："
+    ],
     "Canon sends volunteer reminder e-mails through the church’s own e-mail account. Nothing is sent automatically: an editor presses “Send reminders” on a service’s Team tab.": [
       "Canon 通过教会自己的电邮账户发送同工服事提醒。系统不会自动发送：须由编辑者在聚会的“同工”分页按“发送提醒”。",
       "Canon 通過教會自己的電郵賬戶發送同工服事提醒。系統不會自動發送：須由編輯者在聚會的“同工”分頁按“發送提醒”。"
     ],
+    "Canon was updated from {a} to {b} on {date}.": [
+      "Canon 已于 {date} 从 {a} 更新到 {b}。",
+      "Canon 已於 {date} 從 {a} 更新到 {b}。"
+    ],
+    "Canon wasn’t started with start-canon.bat (or start-canon.command), so it can’t restart itself: update it by hand, as in docs/UPGRADING.md.": [
+      "Canon 不是由 start-canon.bat（或 start-canon.command）启动的，所以无法自行重新启动：请按照 docs/UPGRADING.md 手动更新。",
+      "Canon 不是由 start-canon.bat（或 start-canon.command）啟動的，所以無法自行重新啟動：請按照 docs/UPGRADING.md 手動更新。"
+    ],
     "Canon will:": [
       "Canon 会：",
       "Canon 會："
+    ],
+    "Canon {v} is available": [
+      "Canon {v} 已发布",
+      "Canon {v} 已發佈"
+    ],
+    "Canon {v} is running. Reloading…": [
+      "Canon {v} 已在运行。正在重新载入……",
+      "Canon {v} 已在運行。正在重新載入……"
+    ],
+    "Canon {v} is the latest version.": [
+      "Canon {v} 是最新版本。",
+      "Canon {v} 是最新版本。"
+    ],
+    "Canon {v}.": [
+      "Canon {v}。",
+      "Canon {v}。"
     ],
     "Canon’s library": [
       "Canon 自带资料库",
@@ -1800,6 +1840,14 @@
       "检查资料库",
       "檢查資料庫"
     ],
+    "Check now": [
+      "立即检查",
+      "立即檢查"
+    ],
+    "Check once a day": [
+      "每天检查一次",
+      "每天檢查一次"
+    ],
     "Check what can be archived": [
       "查看可归档的资料",
       "查看可歸檔的資料"
@@ -1807,6 +1855,14 @@
     "Checked {s} songs, {x} liturgical texts and {c} Bible chapters.": [
       "已检查 {s} 首诗歌、{x} 篇礼文和 {c} 章圣经。",
       "已檢查 {s} 首詩歌、{x} 篇禮文和 {c} 章聖經。"
+    ],
+    "Checked {when}.": [
+      "检查于 {when}。",
+      "檢查於 {when}。"
+    ],
+    "Checking asks GitHub for the latest release; nothing about the church is sent.": [
+      "检查时只向 GitHub 查询最新版本，不会传送任何教会资料。",
+      "檢查時只向 GitHub 查詢最新版本，不會傳送任何教會資料。"
     ],
     "Checking the file…": [
       "正在检查文件…",
@@ -4824,6 +4880,10 @@
       "请在「资料库 → 二维码与短句」中制作。",
       "請在「資料庫 → 二維碼與短句」中製作。"
     ],
+    "Making a backup and getting the new version…": [
+      "正在备份并取得新版本……",
+      "正在備份並取得新版本……"
+    ],
     "Male": [
       "男",
       "男"
@@ -7216,6 +7276,10 @@
       "已拒绝",
       "已拒絕"
     ],
+    "Release notes": [
+      "版本说明",
+      "版本說明"
+    ],
     "Remind me later": [
       "稍后提醒",
       "稍後提醒"
@@ -9000,6 +9064,10 @@
       "文字的最大字号；较长的内容仍会缩小以放得下。",
       "文字的最大字號；較長的內容仍會縮小以放得下。"
     ],
+    "The last check didn’t reach GitHub: {error}": [
+      "上次检查未能连上 GitHub：{error}",
+      "上次檢查未能連上 GitHub：{error}"
+    ],
     "The last upload failed ({when}): {error}": [
       "最近一次上传失败（{when}）：{error}",
       "最近一次上傳失敗（{when}）：{error}"
@@ -9147,6 +9215,10 @@
     "The two passwords differ.": [
       "两次输入的密码不同。",
       "兩次輸入的密碼不同。"
+    ],
+    "The update to Canon {b} failed, so Canon {a} was started again: {error}": [
+      "更新到 Canon {b} 失败，已重新启动 Canon {a}：{error}",
+      "更新到 Canon {b} 失敗，已重新啟動 Canon {a}：{error}"
     ],
     "The visitor form is off for the church.": [
       "教会尚未开启新朋友表格。",
@@ -9712,6 +9784,18 @@
       "更新",
       "更新"
     ],
+    "Update Canon to {v}? Canon makes a backup first, then gets the new version and restarts. It is unavailable for a minute or two; people using it reload the page afterwards.": [
+      "要把 Canon 更新到 {v} 吗？Canon 会先做一份备份，然后取得新版本并重新启动。期间约有一两分钟无法使用；正在使用的人之后重新载入页面即可。",
+      "要把 Canon 更新到 {v} 嗎？Canon 會先做一份備份，然後取得新版本並重新啟動。期間約有一兩分鐘無法使用；正在使用的人之後重新載入頁面即可。"
+    ],
+    "Update now…": [
+      "立即更新……",
+      "立即更新……"
+    ],
+    "Updates": [
+      "更新",
+      "更新"
+    ],
     "Upload a PNG, JPEG or WebP picture": [
       "请上传 PNG、JPEG 或 WebP 图片",
       "請上傳 PNG、JPEG 或 WebP 圖片"
@@ -10112,6 +10196,10 @@
       "WhatsApp",
       "WhatsApp"
     ],
+    "What’s new": [
+      "新功能",
+      "新功能"
+    ],
     "When": [
       "时间",
       "時間"
@@ -10143,6 +10231,10 @@
     "Where the bulletin link’s QR code sits on the title slide, and how big (Share → Bulletin for the congregation → Show the QR code on the title slide). The PowerPoint download uses the same.": [
       "次序单链接的二维码在标题投影上的位置和大小（分享 → 给会众的次序单 → 在标题投影角落显示二维码）。PowerPoint 下载也相同。",
       "次序單鏈接的二維碼在標題投影上的位置和大小（分享 → 給會眾的次序單 → 在標題投影角落顯示二維碼）。PowerPoint 下載也相同。"
+    ],
+    "Where to repay this claim was typed in by the office, not by the claimant. Before approving, check with the claimant (or on the form they signed) that the money goes to them.": [
+      "此报销的还款去处是由办公室输入的，而不是申请人本人。批准前，请向申请人（或在其签署的表格上）确认款项会付给本人。",
+      "此報銷的還款去處是由辦公室輸入的，而不是申請人本人。批准前，請向申請人（或在其簽署的表格上）確認款項會付給本人。"
     ],
     "Where to repay you": [
       "还款到哪里",
@@ -10291,6 +10383,10 @@
     "You have unsaved changes. The preview already shows them.": [
       "有尚未保存的修改，预览已显示修改后的样子。",
       "有尚未保存的修改，預覽已顯示修改後的樣子。"
+    ],
+    "You have {v}.": [
+      "你目前使用 {v}。",
+      "你目前使用 {v}。"
     ],
     "You would need the file to upload it again.": [
       "如要再次使用，需要重新上传文件。",
@@ -10916,6 +11012,10 @@
       "两种或以上语言",
       "兩種或以上語言"
     ],
+    "typed in by the office: approvers are told": [
+      "由办公室输入：会告知批准人",
+      "由辦公室輸入：會告知批准人"
+    ],
     "unchanged": [
       "没有变动",
       "沒有變動"
@@ -11214,8 +11314,8 @@
     ]
   },
   "guide": [
-    "57989b78e1a3e4ed",
-    "b0e66d73265fabea"
+    "d42f505327c565ff",
+    "8962a852e59d4323"
   ],
   "outputs": {
     "Advent": [

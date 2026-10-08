@@ -51,6 +51,17 @@ Canon runs as an unprivileged user (uid 1000) inside the container. When it star
 
 Backups can also go to the church's Google Drive (Settings → Backups → Google Drive). The sign-in uses a code at google.com/device, so it works from the container with no public address or port. The container only needs outbound HTTPS. See the user guide, "Backups to Google Drive".
 
+## Updates
+
+About Canon → **Updates** tells administrators when a newer version is out (Canon asks GitHub once a day; turn that off there). Canon can't replace its own image: update on the server with
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+The database is upgraded on start, with a copy in `pre-upgrade/` inside the data volume.
+
 ## Restoring a backup
 
 The easy way: **Settings → Backups → Restore** (or **Restore from a file…**) while Canon is running. Canon saves a copy of the current data first.

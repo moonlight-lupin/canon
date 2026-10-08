@@ -1267,4 +1267,13 @@ export const MIGRATIONS: (string | Migration)[] = [
       d.prepare("UPDATE settings SET value = ? WHERE key = '_sample_data'").run(JSON.stringify({ ...a, batch }));
     },
   },
+  // 37 (0.19.4): who typed in where to repay a claimant — the claimant, or the office (a paper claim, or a change made
+  // for them). Approvers never see the details; they are told when the office entered them. Claims already made: from
+  // the claimant's own page → the claimant; entered by the office → the office; drafted by an AI assistant → not known.
+  {
+    sql: `
+    ALTER TABLE bk_claims ADD COLUMN pay_to_by TEXT;
+    UPDATE bk_claims SET pay_to_by = CASE created_via WHEN 'self' THEN 'claimant' WHEN 'web' THEN 'office' END WHERE pay_to IS NOT NULL;
+    `,
+  },
 ];

@@ -137,6 +137,8 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 16px 0; }
 
 /* ---------- brand: tagline (1 Cor 14:40), church logo, season chip ---------- */
 .tagline { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 12px; line-height: 1.45; margin: 0; }
+/* About Canon's last line (0.19.4) */
+.about-sdg { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 15px; letter-spacing: 0.08em; text-align: center; margin: 8px 0 4px; }
 .tagline:lang(zh-Hans), .tagline:lang(zh-Hant) { font-style: normal; letter-spacing: 0.04em; }
 .tagline-ref { font-style: normal; font-size: 0.88em; white-space: nowrap; color: var(--ink-3); opacity: 0.85; }
 .brand-tagline { padding: 0 8px 16px; margin-top: -8px; font-size: 11.5px; }

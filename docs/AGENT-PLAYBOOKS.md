@@ -148,7 +148,8 @@ Patterns:
   - **Drafting:** a person drafts their own claims with `canon_draft_claim`; an administrator or someone who may change the books (read-only access is not enough) may name `claimant_person_id`.
   - **From receipt photos:** when the user shows you receipts, read the shop, date, items and total. Confirm the lines with the user, then draft one line per receipt with `amount_cents`.
   - **The link:** you cannot attach the photos, submit, approve or pay. Give the user the `link` from the result; on their phone they attach the receipt photos, check the lines, say where to repay them and sign.
-  - **Status:** `canon_claims` shows the status and what is `still_needed`. Where a claimant is repaid is never shown.
+  - **Status:** `canon_claims` shows the status and what is `still_needed`. Where a claimant is repaid is never shown; `repay_to_entered_by_office` says when the office typed it in rather than the claimant (approvers are told too).
+  - **Congregations:** for someone who keeps the books but whose account is limited to one congregation, `canon_claims` lists that congregation's claims and the whole church's, and `canon_draft_claim` drafts only for those members (another congregation's claim or member is "not found").
 - Dates are `YYYY-MM-DD`, times `HH:MM` (24h). Results are `{"ok":true,"data":…}` or `{"ok":false,"error":…,"errors":[…]}`.
 
 ### Writing services and songs

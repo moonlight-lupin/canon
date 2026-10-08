@@ -60,8 +60,11 @@ export function handleControl(server: Server, req: IncomingMessage, res: ServerR
   return true;
 }
 
-/** Stop Canon: no new requests, a few seconds for running ones, then the database is closed and Canon exits. */
-export function stop(server: Server, why: string) {
+/**
+ * Stop Canon: no new requests, a few seconds for running ones, then the database is closed and Canon exits — with 0
+ * (stopped on purpose), or with RESTART_FOR_UPDATE (75) for the launcher to install an update and start Canon again.
+ */
+export function stop(server: Server, why: string, code = 0) {
   if (stopping) return;
   stopping = true;
   console.log(`Canon is stopping (${why}).`);
@@ -78,7 +81,7 @@ export function stop(server: Server, why: string) {
       fs.rmSync(controlFile(), { force: true });
     } catch { /* already gone */ }
     console.log('Canon has stopped.');
-    process.exit(0);
+    process.exit(code);
   };
   // requests still running get 5 seconds (an upload, a backup download); then they're cut off
   const timer = setTimeout(() => { server.closeAllConnections(); finish(); }, 5000);

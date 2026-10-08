@@ -14,9 +14,11 @@ COPY . .
 RUN npm run build
 
 FROM node:24-slim AS runtime
+# CANON_DOCKER: Canon checks for updates, but installing them is `docker compose pull` (0.19.4)
 ENV NODE_ENV=production \
     CANON_HOST=0.0.0.0 \
-    CANON_PORT=3000
+    CANON_PORT=3000 \
+    CANON_DOCKER=1
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force

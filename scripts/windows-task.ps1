@@ -38,7 +38,7 @@ function Test-Listening { [bool](Get-NetTCPConnection -LocalPort $Port -State Li
 
 # Stop Canon properly (as the tray's Exit: running requests finish, the database is closed); if it doesn't answer
 # (an older Canon, or it hangs), end its processes: whatever listens on the port, and the launcher above it — only
-# processes that are Canon's (their command line names Canon's folder, start-canon.bat, server/index.ts or npm start),
+# processes that are Canon's (their command line names Canon's folder, start-canon.bat, the launcher, server/index.ts or npm start),
 # never the window or tool someone started it from.
 function Stop-Canon {
   if (-not (Test-Listening)) { return }
@@ -54,7 +54,7 @@ function Stop-Canon {
   $chain = @()
   while ($p -and $p.Name -in @('node.exe', 'cmd.exe')) {
     $cl = "$($p.CommandLine)"
-    $canons = $cl.Contains($Root) -or $cl -match 'start-canon\.bat|server[\\/]index\.ts|npm(-cli\.js"?|\.cmd"?)?\s+start'
+    $canons = $cl.Contains($Root) -or $cl -match 'start-canon\.bat|scripts[\\/]launcher\.mjs|server[\\/]index\.ts|npm(-cli\.js"?|\.cmd"?)?\s+start'
     if (-not $canons) { break }
     $chain += $p
     # start-canon.bat is the top of Canon's own processes

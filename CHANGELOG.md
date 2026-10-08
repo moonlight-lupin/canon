@@ -4,6 +4,15 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.4 — Updates from inside Canon; claims and congregations
+
+- **Check for updates and update from inside Canon** (administrators, About Canon → **Updates**): Canon asks GitHub once a day whether there is a newer version (it can be switched off; nothing about the church is sent), and the sidebar says when there is. On a Windows PC or a Mac, **Update now…** makes a backup, gets the new version (a git copy: the release's tag; a download: the release's archive, written over the folder, never over the data) and restarts; Canon installs what the new version needs, rebuilds and upgrades the database as usual. If the new version can't be prepared, Canon goes back to the version you had and says so. In Docker, Canon only tells you: update with `docker compose pull`.
+- **A new launcher**: `start-canon.bat` and `start-canon.command` hand over to `scripts/launcher.mjs`, which prepares, starts and restarts Canon as the batch file did, and installs updates. The batch file now does this on one line, so an update can replace it while it runs. The Windows background task and the tray icon work as before. **Updating to 0.19.4 itself is by hand** (as before); later versions can be installed from inside Canon.
+- **Claims follow congregations**: an account limited to one congregation sees that congregation's claims and the whole church's in Book-keeping → Claims (also through AI assistants), and enters claims only for those members; another congregation's claim, its receipts and its members are not found. The journals, reports and approvers stay the whole church's: the books are one set.
+- **Approvers are told when the office typed in where to repay** (a paper claim, or a change made for the claimant): approvers never see the details, so the claim says so, and they check with the claimant. The office's view marks it too. (Database version 37.)
+- **About Canon** ends with *Soli Deo Gloria*.
+- Database: version 37 (who typed in where to repay a claim).
+
 ## 0.19.3 — One backup file holds everything
 
 - **A backup is a complete package**: each backup of an encrypted Canon is one file with the database **and every archived year**, encrypted with the backup key, so the copy in Google Drive (or on a USB drive) is the whole of the church's data. Before, archived years were copied beside local backups only and never reached Drive.
