@@ -41,5 +41,8 @@ jobs:
           grep -q '"version"' about.json
           grep -q 'from other computers on the office network' launcher.log
           pgrep -x caffeinate > /dev/null
-          pkill -x caffeinate || true
+          # the launcher first: it would start Canon again (0.19.4), then Canon and caffeinate
+          pkill -f 'scripts/launcher.mjs' || true
+          sleep 2
           pkill -f 'server/index.ts' || true
+          pkill -x caffeinate || true
