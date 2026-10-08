@@ -41,7 +41,10 @@ function Get-Running {
     $resp = $req.GetResponse()
     $body = (New-Object System.IO.StreamReader $resp.GetResponseStream()).ReadToEnd()
     $resp.Close()
-    return ($body | ConvertFrom-Json).version
+    $j = $body | ConvertFrom-Json
+    # an encrypted Canon whose keys this computer can't unlock waits for the recovery key (0.19.0)
+    if ($j.locked) { return 'locked' }
+    return $j.version
   } catch { return $null }
 }
 
@@ -84,7 +87,12 @@ function Update-Tray {
   # a start that hasn't answered in two minutes has failed (see data\logs)
   if ($script:starting -and ([DateTime]::Now - $script:startedAt).TotalMinutes -gt 2) { $script:starting = $false }
   $url = "http://$($script:address):$Port"
-  if ($script:version) {
+  if ($script:version -eq 'locked') {
+    $script:starting = $false
+    $tray.Icon = $IconOff
+    $miStatus.Text = 'Canon is locked: open it to enter the recovery key'
+    $text = "Canon is locked`nOpen it to enter the recovery key"
+  } elseif ($script:version) {
     $script:starting = $false
     $tray.Icon = $IconOn
     $miStatus.Text = "Canon is running (version $($script:version))"
