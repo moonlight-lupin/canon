@@ -1,3 +1,4 @@
+import { encryptionRoutes } from './routes/encryption.ts';
 import { isSqliteError } from './lib/sqlite.ts';
 import fs from 'node:fs';
 import { uploadLinkInfo, uploadViaLink } from './repo/scores.ts';
@@ -477,6 +478,7 @@ api.use(bookkeepingRoutes);
 api.use(groupRoutes);
 api.use(emailRoutes);
 api.use(backupRoutes);
+api.use(encryptionRoutes);
 api.use(designRoutes);
 api.use(presentationRoutes);
 api.use(csvRoutes);
@@ -494,5 +496,6 @@ api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     return res.status(409).json({ error: e.message });
   }
   if (!e.status || e.status >= 500) console.error(err);
-  res.status(e.status ?? 500).json({ error: e.message ?? 'Server error', ...((e as { needs_password?: boolean }).needs_password ? { needs_password: true } : {}) });
+  const n = e as { needs_password?: boolean; needs_recovery?: boolean; recovery_id?: string | null };
+  res.status(e.status ?? 500).json({ error: e.message ?? 'Server error', ...(n.needs_password ? { needs_password: true } : {}), ...(n.needs_recovery ? { needs_recovery: true, recovery_id: n.recovery_id ?? null } : {}) });
 });

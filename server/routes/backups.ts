@@ -1,11 +1,12 @@
 // Settings → Backups (administrators only).
+import { isBackupV2Data } from '../lib/backup-file.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { seed } from '../seed/index.ts';
 import { z } from 'zod';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import {
-  DEFAULT_BACKUP_DIR, backupDir, backupPath, checkBackupFile, checkFolder, createBackup, deleteBackup, lastBackupAt, lastRestore, listBackups, nextDue, prune,
-  newestEncrypted, restoreBackup, saveUpload, withPlainBackup,
+  DEFAULT_BACKUP_DIR, backupDir, backupPath, checkFolder, createBackup, deleteBackup, lastBackupAt, lastRestore, listBackups, nextDue, prune,
+  newestEncrypted, restoreBackup, saveUpload,
 } from '../repo/backups.ts';
 import path from 'node:path';
 import { isAdmin } from '../lib/permissions.ts';
@@ -99,25 +100,21 @@ backupRoutes.post('/backups/:name/restore', adminOnly, async (req, res, next) =>
 backupRoutes.post('/backups/restore-upload', adminOnly, express.raw({ type: () => true, limit: '500mb' }), async (req, res, next) => {
   try {
     const data = req.body as Buffer;
-    const encrypted = Buffer.isBuffer(data) && data.subarray(0, 9).toString() === 'CANONENC1';
+    const encrypted = Buffer.isBuffer(data) && (data.subarray(0, 9).toString() === 'CANONENC1' || isBackupV2Data(data));
     if (!Buffer.isBuffer(data) || data.length < 512 || (!encrypted && data.subarray(0, 15).toString() !== 'SQLite format 3')) {
       return res.status(400).json({ error: 'Choose a Canon backup file (.db or .db.enc).' });
     }
     // the password of an encrypted backup comes in a header (not in the address)
     const password = req.get('x-backup-password') ? decodeURIComponent(req.get('x-backup-password')!) : null;
     const file = saveUpload(data);
-    let problem: string | null;
+    let r: Awaited<ReturnType<typeof restoreBackup>>;
     try {
-      problem = await withPlainBackup(file, password, (plain) => checkBackupFile(plain));
+      // checked before anything changes; a file that isn't a Canon backup (or needs its password or recovery key) is not kept
+      r = await restoreBackup(file, password);
     } catch (e) {
       deleteBackup(file.split(/[\\/]/).pop()!);
       throw e;
     }
-    if (problem) {
-      deleteBackup(file.split(/[\\/]/).pop()!);
-      return res.status(400).json({ error: problem });
-    }
-    const r = await restoreBackup(file, password);
     await seed();
     res.json({ ...r, ...status() });
   } catch (e) {

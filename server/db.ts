@@ -3,16 +3,57 @@ import path from 'node:path';
 import { config } from './config.ts';
 import { MIGRATIONS, type Migration } from './migrations.ts';
 import { openDb, type Db } from './lib/sqlite.ts';
+import { createKeys, loadKeys, type Keys } from './lib/keys.ts';
 
 export { MIGRATIONS };
 
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
+/**
+ * A new database is encrypted from the start (0.19.0): its keys are made first, so nothing is ever written in plain.
+ * Tests keep plain databases unless they ask (CANON_ENCRYPT=1); CANON_ENCRYPT=0 keeps a new one plain.
+ */
+const encryptNew = () => process.env.CANON_ENCRYPT === '1' || (process.env.CANON_ENCRYPT !== '0' && !process.env.NODE_TEST_CONTEXT);
+if (!fs.existsSync(config.dbPath) && encryptNew()) {
+  try {
+    loadKeys() ?? createKeys();
+  } catch (e) {
+    console.error('Encryption keys could not be made:', (e as Error).message);
+  }
+}
+// throws KeysLockedError when the keys can't be unlocked on this computer (server/index.ts then asks for the recovery key)
+let keys: Keys | null = loadKeys();
+let encrypted = false;
+
 const open = () => {
-  const d = openDb(config.dbPath);
+  let d: Db;
+  if (keys && fs.existsSync(config.dbPath)) {
+    try {
+      d = openDb(config.dbPath, { key: keys.db });
+      encrypted = true;
+    } catch (e) {
+      // keys made, but the database not encrypted yet (encrypting was interrupted): it opens as it is, and Settings
+      // still says it is not encrypted
+      if ((e as { code?: string }).code !== 'SQLITE_NOTADB') throw e;
+      d = openDb(config.dbPath);
+      encrypted = false;
+    }
+  } else {
+    d = openDb(config.dbPath, { key: keys?.db });
+    encrypted = !!keys;
+  }
   d.pragma('busy_timeout = 5000');
   return d;
 };
+/** The database is encrypted on disk. */
+export const dbEncrypted = () => encrypted;
+/** The database key, when the database is encrypted (for its copies and the archived years). */
+export const dbKey = () => (encrypted ? keys!.db : null);
+/** After the database was encrypted in place: it is opened with its key from now on. */
+export function setEncrypted(k: Keys) {
+  keys = k;
+  encrypted = true;
+}
 /** The church's database. `let`: a restore closes it, puts the restored file in its place and opens it again. */
 export let db: Db = open();
 

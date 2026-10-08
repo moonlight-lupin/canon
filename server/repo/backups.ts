@@ -2,8 +2,10 @@
 // A backup is a consistent copy made with SQLite's VACUUM INTO, safe while Canon is running.
 import fs from 'node:fs';
 import path from 'node:path';
-import { db, migrate, reopenDb, schemaVersion } from '../db.ts';
-import { openDb, type Db } from '../lib/sqlite.ts';
+import { db, dbEncrypted, dbKey, migrate, reopenDb, schemaVersion } from '../db.ts';
+import { openDb, rekeyDb, type Db } from '../lib/sqlite.ts';
+import { loadKeys } from '../lib/keys.ts';
+import { isBackupV2, isBackupV2Data, scratch, unwrapBackupFile, writeBackupFile } from '../lib/backup-file.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
@@ -14,7 +16,8 @@ import { decryptFile, encryptFile, isEncrypted, keyForBackup } from '../lib/back
 import { driveMeta, putDriveMeta, syncToDrive } from '../lib/gdrive.ts';
 
 export const DEFAULT_BACKUP_DIR = path.join(config.root, 'backups');
-// .db.enc: encrypted with the church's backup password (lib/backup-crypto.ts)
+// .db.enc: encrypted — with the backup key of an encrypted Canon (lib/backup-file.ts), or (before 0.19.0) with the
+// church's backup password (lib/backup-crypto.ts)
 const NAME_RE = /^canon-\d{4}-\d{2}-\d{2}-\d{4}(-\d+|-upload\d*)?\.db(\.enc)?$/;
 
 export interface BackupFile {
@@ -59,6 +62,22 @@ export function listBackups(dir = backupDir()): BackupFile[] {
 /** Write a backup now. Returns the new file. */
 export function createBackup(dir = backupDir()): BackupFile & { path: string } {
   fs.mkdirSync(dir, { recursive: true });
+  // an encrypted Canon: always encrypted, with the backup key (a copy re-keyed in the data folder, never in plain)
+  if (dbEncrypted()) {
+    let file = path.join(dir, `canon-${stamp()}.db.enc`);
+    for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-${i}.db.enc`);
+    const tmp = scratch(path.dirname(config.dbPath), 'backup');
+    try {
+      db.exec(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
+      writeBackupFile(tmp, dbKey(), file, loadKeys()!);
+    } finally {
+      fs.rmSync(tmp, { force: true });
+    }
+    copyArchivesTo(dir);
+    setMeta('last_backup_at', new Date().toISOString());
+    const st = fs.statSync(file);
+    return { name: path.basename(file), path: file, size: st.size, created: st.mtime.toISOString() };
+  }
   // configured encryption with a missing or damaged key stops here (never a plain copy instead)
   const key = keyForBackup(getSettings().backup.encrypted);
   const ext = key ? '.db.enc' : '.db';
@@ -128,10 +147,10 @@ export async function withPlainBackup<T>(file: string, password: string | null |
 }
 
 /** Check that a file is a readable Canon database this version can open. Returns a plain-language problem, or null. */
-export function checkBackupFile(file: string): string | null {
+export function checkBackupFile(file: string, key: Buffer | null = null): string | null {
   let src: Db | null = null;
   try {
-    src = openDb(file, { readonly: true });
+    src = openDb(file, { readonly: true, key });
     const tables = new Set((src.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name));
     if (CANON_TABLES.some((t) => !tables.has(t))) return 'This file is not a Canon backup.';
     const v = (src.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
@@ -152,26 +171,43 @@ export function checkBackupFile(file: string): string | null {
  * swap fails, the database as it was is put back. Everyone is signed out unless their sign-in is also in the backup.
  */
 export async function restoreBackup(file: string, password?: string | null): Promise<{ safety: string; restored_schema: number }> {
-  if (isEncrypted(file)) return withPlainBackup(file, password, (plain) => restorePlain(plain, path.basename(file)));
-  return restorePlain(file, path.basename(file));
+  // the backup, copied into the data folder as a database: still encrypted (a backup of an encrypted Canon), or
+  // decrypted (one made with a backup password, before 0.19.0), or as it is (a plain one)
+  const incoming = scratch(path.dirname(config.dbPath), 'restore-in');
+  try {
+    let key: Buffer | null = null;
+    if (isBackupV2(file)) key = unwrapBackupFile(file, incoming, loadKeys(), password);
+    else if (isEncrypted(file)) decryptFile(file, incoming, password);
+    else fs.copyFileSync(file, incoming);
+    const problem = checkBackupFile(incoming, key);
+    if (problem) throw Object.assign(new Error(problem), { status: 400 });
+    // given this database's own key (or none, while this Canon isn't encrypted)
+    if (key || dbKey()) {
+      const d = openDb(incoming, { key });
+      try {
+        rekeyDb(d, dbKey());
+      } finally {
+        d.close();
+      }
+    }
+    return await restoreInto(incoming, path.basename(file));
+  } finally {
+    fs.rmSync(incoming, { force: true });
+  }
 }
 
-async function restorePlain(file: string, name: string): Promise<{ safety: string; restored_schema: number }> {
-  const problem = checkBackupFile(file);
-  if (problem) throw Object.assign(new Error(problem), { status: 400 });
+/** Put a prepared database (keyed as the live one) in the live database's place, then bring it up to date. */
+async function restoreInto(incoming: string, name: string): Promise<{ safety: string; restored_schema: number }> {
   // settings that belong to this computer, not to the data: kept as they are
   const here = getSettings();
   const keep = { backup: here.backup, public_url: here.public_url, trust_proxy: here.trust_proxy };
   // the Google Drive connection belongs to this computer too
   const drive = driveMeta();
   const safety = createBackup();
-  const dir = path.dirname(config.dbPath);
-  const incoming = path.join(dir, `.restore-in-${process.pid}-${Date.now()}.db`);
-  const outgoing = path.join(dir, `.restore-out-${process.pid}-${Date.now()}.db`);
-  fs.copyFileSync(file, incoming);
+  const outgoing = scratch(path.dirname(config.dbPath), 'restore-out');
   let restored = 0;
   try {
-    const src = openDb(incoming);
+    const src = openDb(incoming, { key: dbKey() });
     restored = (src.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
     src.close();
     reopenDb(() => {
@@ -212,7 +248,7 @@ export function newestEncrypted(dir = backupDir()): { name: string; path: string
 /** Save an uploaded backup file into the backup folder (under a backup-style name) and return its path. */
 export function saveUpload(data: Buffer, dir = backupDir()): string {
   fs.mkdirSync(dir, { recursive: true });
-  const ext = data.subarray(0, 9).toString() === 'CANONENC1' ? '.db.enc' : '.db';
+  const ext = data.subarray(0, 9).toString() === 'CANONENC1' || isBackupV2Data(data) ? '.db.enc' : '.db';
   let file = path.join(dir, `canon-${stamp()}-upload${ext}`);
   for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-upload${i}${ext}`);
   fs.writeFileSync(file, data);

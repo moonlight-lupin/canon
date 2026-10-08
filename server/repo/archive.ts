@@ -11,8 +11,10 @@
 //    a restored backup is erased again straight away.
 import fs from 'node:fs';
 import path from 'node:path';
-import { openDb, type Db } from '../lib/sqlite.ts';
-import { all, db, get, run, tx } from '../db.ts';
+import { attachKey, openDb, type Db } from '../lib/sqlite.ts';
+import { loadKeys } from '../lib/keys.ts';
+import { writeBackupFile } from '../lib/backup-file.ts';
+import { all, db, dbEncrypted, dbKey, get, run, tx } from '../db.ts';
 import { config } from '../config.ts';
 import { BadRequest, Conflict, NotFound } from '../lib/table.ts';
 import { logChange } from './changelog.ts';
@@ -135,7 +137,7 @@ function countsFor(year: number, parts: Parts = { records: true, logs: true }) {
 /** Attach a year's archive file as `arc` (read-write) for the duration of fn. */
 function withArchive<T>(year: number, fn: () => T): T {
   fs.mkdirSync(archiveDir(), { recursive: true });
-  db.exec(`ATTACH DATABASE '${archiveFile(year).replace(/'/g, "''")}' AS arc`);
+  db.exec(`ATTACH DATABASE '${archiveFile(year).replace(/'/g, "''")}' AS arc${attachKey(dbKey())}`);
   try {
     return fn();
   } finally {
@@ -306,7 +308,7 @@ export function listArchives() {
 function open(year: number) {
   const file = archiveFile(year);
   if (!fs.existsSync(file)) throw new NotFound(`No archive for ${year}.`);
-  return openDb(file, { readonly: true });
+  return openDb(file, { readonly: true, key: dbKey() });
 }
 
 export const archivePath = (year: number) => {
@@ -364,12 +366,14 @@ export function copyArchivesTo(dir: string) {
   let n = 0;
   for (const name of fs.readdirSync(src).filter((x) => FILE_RE.test(x))) {
     const a = path.join(src, name);
-    const key = keyForBackup(getSettings().backup.encrypted);
-    const b = path.join(dest, key ? `${name}.enc` : name);
+    const enc = dbEncrypted();
+    const key = enc ? null : keyForBackup(getSettings().backup.encrypted);
+    const b = path.join(dest, enc || key ? `${name}.enc` : name);
     // copied again when it changed (archiving adds to it; erasing visitors' details edits it in place)
-    if (fs.existsSync(b) && (key || fs.statSync(b).size === fs.statSync(a).size) && fs.statSync(b).mtimeMs >= fs.statSync(a).mtimeMs) continue;
+    if (fs.existsSync(b) && (enc || key || fs.statSync(b).size === fs.statSync(a).size) && fs.statSync(b).mtimeMs >= fs.statSync(a).mtimeMs) continue;
     fs.mkdirSync(dest, { recursive: true });
-    if (key) encryptFile(a, b, key);
+    if (enc) writeBackupFile(a, dbKey(), b, loadKeys()!, 'archive');
+    else if (key) encryptFile(a, b, key);
     else fs.copyFileSync(a, b);
     n++;
   }
