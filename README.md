@@ -3,7 +3,7 @@
 *"Let all things be done decently and in order."* — 1 Corinthians 14:40
 *凡事都要规规矩矩地按着次序行。* — 哥林多前书 14:40
 
-**Canon** is a local-first, multilingual system for running a church: plan the service, print the bulletin, project the slides, and keep the registers and records. It runs on an office PC, a server or any Docker host, with no cloud account, so the church's data stays under the church's control. Staff use it in a browser, and AI assistants such as Claude can connect through a permission-controlled MCP server.
+**Canon** is a local-first, multilingual system for running a church: plan the service, print the bulletin, project the slides, keep the registers and records, and keep the church's books. It runs on an office PC, a server or any Docker host, with no cloud account, so the church's data stays under the church's control. Staff use it in a browser, and AI assistants such as Claude can connect through a permission-controlled MCP server.
 
 It was designed with a bilingual (English / 中文) Reformed and Presbyterian congregation in mind, but its languages, liturgies and templates are all configurable. The name comes from the Greek *κανών*: a measuring reed, a rule (Ezek 40:3; Gal 6:16).
 
@@ -37,13 +37,23 @@ It was designed with a bilingual (English / 中文) Reformed and Presbyterian co
   - attendance and new visitors, with a visitor form on their phones;
   - offerings, with a cash count signed on paper or on screen;
   - reports to print or export to Excel.
+- **Book-keeping** (optional):
+  - double-entry books kept by fund (General, Missions, Building …), starting from a church chart of accounts, with projects, ministries and congregations;
+  - verified offerings drafted into the books, PayNow and transfers included;
+  - bank statements imported from the bank's CSV or Excel file and reconciled, several lines to one entry when the totals agree;
+  - journals numbered when posted and never changed afterwards (corrected by a reversal), months closed, every change in the audit trail;
+  - reports: income and expenditure, balance sheet, fund movements, trial balance, ledgers, and an export for the accountant.
+- **Expense claims:**
+  - members claim on their phones, with a photo of each receipt, and sign on screen;
+  - named approvers approve, two above an amount if the church wants, never their own claims;
+  - approval and payment are drafted into the books.
 - **Everywhere:**
   - worship languages side by side (Chinese Simplified ↔ Traditional automatic); the interface is in English, 简体 and 繁體;
   - Excel import and export;
   - a change log;
-  - backups and archives;
+  - backups (encrypted, also to Google Drive) and archives;
   - roles a church can adjust, congregation walls and optional modules;
-  - an audit-logged MCP server for AI agents, following the same roles.
+  - an audit-logged MCP server for AI agents, following the same roles. Claude can read the books and draft journals and expense claims (from photos of receipts); a person always posts and approves.
 
 The [user guide](docs/guide/en.md) describes all of it.
 
@@ -54,14 +64,14 @@ The [user guide](docs/guide/en.md) describes all of it.
 2. Download or clone this repository, then double-click **`start-canon.bat`**. The first run installs and builds everything.
 3. Open <http://localhost:3000>. Setup asks for your church's languages and creates the administrator account. Other computers on the office network open the address the Canon window shows, e.g. `http://192.168.1.20:3000`.
 
-Keep the "Canon server" window open while Canon is in use.
+Keep the "Canon server" window open while Canon is in use, or run Canon in the background, starting with Windows, with an icon by the clock showing its address: see [docs/ADMINISTRATION.md](docs/ADMINISTRATION.md#in-the-background-on-windows).
 
 **Mac**
 1. Install **Node.js 24 or newer** (LTS) from <https://nodejs.org>.
 2. Download or clone this repository. The first time, **right-click** **`start-canon.command`** and choose **Open** (macOS asks once about a file from the internet); after that, double-click it. Choose **Allow** when macOS asks whether Node may accept incoming connections, so other computers can reach Canon.
 3. Open <http://localhost:3000>. The Terminal window shows the address for other computers and keeps the Mac awake while Canon runs.
 
-**Docker** (server, NAS or cloud VM): run `docker compose up -d`. See [docs/DOCKER.md](docs/DOCKER.md).
+**Docker** (server, NAS or cloud VM): run `docker compose up -d`. See [docs/DOCKER.md](docs/DOCKER.md), which also explains a test copy of the church's data that sends no e-mail.
 
 **Updating:** replace the files and start Canon again. It keeps a copy of the database before upgrading it. See [docs/UPGRADING.md](docs/UPGRADING.md).
 
@@ -83,6 +93,7 @@ Keep the "Canon server" window open while Canon is in use.
 - Member data stays in your own database (`data/`, never in the repository).
 - Read-only accounts see members' names, not their contact details or notes, and see birthdays as day and month only. Custom fields marked sensitive are hidden from read-only accounts too (editors and administrators see them).
 - AI agents see personal details only if an administrator allows it, and never when acting for a read-only user.
+- Where to repay a claimant is seen only by the claimant and whoever keeps the books: not by approvers, read-only accounts or AI agents.
 - **Settings → Security & privacy** has a checklist, a log of who opened which member, how long visitors' details are kept, and yearly archives. Administrators can export or erase a member's personal data on request.
 - Sign-in attempts are limited; two-step sign-in can be required for administrators; backups can be encrypted with a password.
 - The database is an ordinary file: protect the computer it is on with disk encryption, and an account for each person.
