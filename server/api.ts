@@ -1,3 +1,4 @@
+import { isSqliteError } from './lib/sqlite.ts';
 import fs from 'node:fs';
 import { uploadLinkInfo, uploadViaLink } from './repo/scores.ts';
 import { roleOffered } from './repo/access-roles.ts';
@@ -489,7 +490,7 @@ api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   }
   if (err instanceof RefError) return res.status(400).json({ error: err.message });
   const e = err as { status?: number; message?: string; code?: string };
-  if (e.code === 'ERR_SQLITE_ERROR' && /UNIQUE|FOREIGN KEY|CHECK/.test(e.message ?? '')) {
+  if (isSqliteError(e) && /UNIQUE|FOREIGN KEY|CHECK/.test(e.message ?? '')) {
     return res.status(409).json({ error: e.message });
   }
   if (!e.status || e.status >= 500) console.error(err);

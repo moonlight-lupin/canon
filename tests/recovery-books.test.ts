@@ -20,7 +20,7 @@ const Rp = await import('../server/repo/bk-reports.ts');
 const Bank = await import('../server/repo/bk-bank.ts');
 const C = await import('../server/repo/bk-claims.ts');
 const { asActor } = await import('../server/lib/actor.ts');
-const { db, get, run } = await import('../server/db.ts');
+const { closeDb, get, run } = await import('../server/db.ts');
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
 const INK = `data:image/png;base64,${PNG.toString('base64')}`;
@@ -38,7 +38,7 @@ before(async () => {
 });
 after(() => {
   try {
-    db.close();
+    closeDb();
   } catch { /* ignore */ }
   fs.rmSync(tmp, { recursive: true, force: true });
 });

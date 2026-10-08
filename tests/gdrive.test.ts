@@ -12,12 +12,12 @@ process.env.CANON_DB = path.join(tmp, 'canon.db');
 
 const g = await import('../server/lib/gdrive.ts');
 const { createBackup, restoreBackup } = await import('../server/repo/backups.ts');
-const { db } = await import('../server/db.ts');
+const { closeDb } = await import('../server/db.ts');
 
 after(() => {
   g.setDriveFetch(null);
   try {
-    db.close();
+    closeDb();
   } catch { /* ignore */ }
   fs.rmSync(tmp, { recursive: true, force: true });
 });

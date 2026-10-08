@@ -1,5 +1,6 @@
 // Shared building blocks for MCP tool definitions. Each feature file (services.ts, library.ts, volunteers.ts,
 // people.ts, groups.ts) exports a ToolDef[] array which server/mcp.ts merges into the tool table.
+import { isSqliteError } from '../lib/sqlite.ts';
 import { z, ZodError } from 'zod';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { ModuleAccess, ModuleKey } from '../../shared/types.ts';
@@ -103,7 +104,7 @@ export function errorMessage(e: unknown): string {
   if (e instanceof ZodError) return e.issues.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`).join('; ');
   if (e instanceof RefError) return e.message;
   const err = e as { status?: number; message?: string; code?: string };
-  if (err.code === 'ERR_SQLITE_ERROR' && /UNIQUE|FOREIGN KEY|CHECK/.test(err.message ?? '')) {
+  if (isSqliteError(err) && /UNIQUE|FOREIGN KEY|CHECK/.test(err.message ?? '')) {
     return `Conflict: ${/FOREIGN KEY/.test(err.message ?? '') ? 'a referenced record does not exist or is still in use' : err.message}`;
   }
   if (err.status && err.status < 500 && err.message) return err.message;

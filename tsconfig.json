@@ -14,7 +14,10 @@
     "erasableSyntaxOnly": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "better-sqlite3-multiple-ciphers": ["./node_modules/better-sqlite3-multiple-ciphers/index.d.ts"]
+    }
   },
   "include": ["src", "server", "shared", "scripts", "tests"]
 }

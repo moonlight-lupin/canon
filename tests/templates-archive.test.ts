@@ -52,7 +52,7 @@ after(async () => {
 
 test('service templates: archive, restore, delete archived (administrators), built-ins and the default protected', async () => {
   const own = svc.templates.insert({ name: { en: 'Test evening service' }, description: {}, items: [] });
-  const builtin = svc.templates.find(Number(db.prepare("SELECT id FROM templates WHERE key = 'lords-day-morning'").get()?.id ?? 0))
+  const builtin = svc.templates.find(Number((db.prepare("SELECT id FROM templates WHERE key = 'lords-day-morning'").get() as { id?: number } | undefined)?.id ?? 0))
     ?? svc.templates.insert({ key: 'lords-day-morning', name: { en: 'Test built-in' }, description: {}, items: [] });
 
   const list = await call(as.editor, 'GET', '/templates');

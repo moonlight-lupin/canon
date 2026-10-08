@@ -73,13 +73,13 @@ test('restore: a backup replaces the data in place, after saving a copy of the c
   assert.ok(get("SELECT 1 FROM songs WHERE json_extract(title, '$.en') = 'Changed After Qx'"), 'undo by restoring the safety copy');
 });
 
-test('restore: only real Canon backups are accepted', () => {
+test('restore: only real Canon backups are accepted', async () => {
   const junk = path.join(tmp, 'junk.db');
   fs.writeFileSync(junk, 'not a database at all');
   assert.match(B.checkBackupFile(junk) ?? '', /not a Canon backup/);
   const other = path.join(tmp, 'other.db');
-  const { DatabaseSync } = process.getBuiltinModule('node:sqlite') as typeof import('node:sqlite');
-  const d = new DatabaseSync(other);
+  const { openDb } = await import('../server/lib/sqlite.ts');
+  const d = openDb(other);
   d.exec('CREATE TABLE things (id INTEGER)');
   d.close();
   assert.match(B.checkBackupFile(other) ?? '', /not a Canon backup/);

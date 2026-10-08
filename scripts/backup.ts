@@ -7,12 +7,12 @@
 // to the newest version, and a backup taken just before installing an update must be of the data as it is.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
 import { config } from '../server/config.ts';
+import { openDb } from '../server/lib/sqlite.ts';
 import { encryptFile, keyForBackup } from '../server/lib/backup-crypto.ts';
 
-const db = new DatabaseSync(config.dbPath);
-db.exec('PRAGMA busy_timeout = 5000');
+const db = openDb(config.dbPath);
+db.pragma('busy_timeout = 5000');
 const setting = db.prepare("SELECT value FROM settings WHERE key = 'backup'").get() as { value: string } | undefined;
 const backupSettings = setting ? (JSON.parse(setting.value) as { dir?: string; encrypted?: boolean }) : {};
 const configured = backupSettings.dir ?? '';

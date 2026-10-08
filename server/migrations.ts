@@ -1,6 +1,6 @@
 // The database schema, as an append-only list of migrations. PRAGMA user_version is how many have been applied.
 // Never edit a migration that has shipped: add a new one (and a line in CHANGELOG.md).
-import type { DatabaseSync } from 'node:sqlite';
+import type { Db } from './lib/sqlite.ts';
 import { isLeaderRole } from '../shared/group-roles.ts';
 import { BUILTIN_ROLES } from '../shared/permissions.ts';
 
@@ -11,7 +11,7 @@ import { BUILTIN_ROLES } from '../shared/permissions.ts';
  */
 export interface Migration {
   sql: string;
-  run?: (d: DatabaseSync) => void;
+  run?: (d: Db) => void;
   noForeignKeys?: boolean;
 }
 

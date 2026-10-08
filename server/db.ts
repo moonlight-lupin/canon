@@ -1,20 +1,38 @@
-import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.ts';
 import { MIGRATIONS, type Migration } from './migrations.ts';
+import { openDb, type Db } from './lib/sqlite.ts';
 
 export { MIGRATIONS };
 
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
-export const db = new DatabaseSync(config.dbPath);
-db.exec('PRAGMA busy_timeout = 5000;');
+const open = () => {
+  const d = openDb(config.dbPath);
+  d.pragma('busy_timeout = 5000');
+  return d;
+};
+/** The church's database. `let`: a restore closes it, puts the restored file in its place and opens it again. */
+export let db: Db = open();
+
+/** Close the database for good (tests, and Canon stopping). */
+export const closeDb = () => db.close();
+
+/** Close the database, run fn on the closed file (e.g. put a restored copy in its place), and open it again. */
+export function reopenDb(fn: () => void) {
+  db.close();
+  try {
+    fn();
+  } finally {
+    db = open();
+  }
+}
 /** The newest schema version this Canon knows. */
 export const schemaVersion = () => MIGRATIONS.length;
 
 /** Apply migrations to a database up to `upTo` (default: all). Exported for tests that build older databases. */
-export function applyMigrations(d: DatabaseSync, upTo = MIGRATIONS.length) {
+export function applyMigrations(d: Db, upTo = MIGRATIONS.length) {
   const current = (d.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
   for (let v = current; v < upTo; v++) {
     const m: Migration = typeof MIGRATIONS[v] === 'string' ? { sql: MIGRATIONS[v] as string } : (MIGRATIONS[v] as Migration);

@@ -17,9 +17,9 @@ const { createUser } = await import('../server/auth.ts');
 const svc = await import('../server/repo/services.ts');
 const rec = await import('../server/repo/records.ts');
 const A = await import('../server/repo/archive.ts');
-const { db, get, run } = await import('../server/db.ts');
+const { closeDb, get, run } = await import('../server/db.ts');
 const S = await import('../server/repo/settings.ts');
-const { DatabaseSync } = await import('node:sqlite');
+const { openDb } = await import('../server/lib/sqlite.ts');
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Session = { cookie: string; csrf: string };
@@ -62,7 +62,7 @@ before(async () => {
 after(async () => {
   await new Promise((r) => server.close(r));
   try {
-    db.close();
+    closeDb();
   } catch { /* ignore */ }
   fs.rmSync(tmp, { recursive: true, force: true });
 });
@@ -150,7 +150,7 @@ test('a record restored from an older backup, also in an archive: the same one i
   const sid = ids.y2019;
   assert.equal(A.archivedRecords(2019)[0].service_id, sid);
   // as if a backup from before archiving was restored: the live record is back, the archive marker is not
-  const d = new DatabaseSync(A.archivePath(2019), { readOnly: true });
+  const d = openDb(A.archivePath(2019), { readonly: true });
   const archived = d.prepare('SELECT * FROM service_records WHERE service_id = ?').get(sid) as Record<string, string | number | null>;
   d.close();
   run('DELETE FROM archived_records WHERE service_id = ?', sid);
@@ -174,7 +174,7 @@ test('a record restored from an older backup, also in an archive: the same one i
 test("erasing visitors' details also reaches archive files and the change log; archiving erases first", async () => {
   const visitor = { name: 'Late Visitor', contact: '9000 0088', prayer: 'a prayer', source: 'Friend' };
   const inArchive = (year: number, sid: number) => {
-    const d = new DatabaseSync(A.archivePath(year), { readOnly: true });
+    const d = openDb(A.archivePath(year), { readonly: true });
     try {
       return (d.prepare('SELECT visitors FROM service_records WHERE service_id = ?').get(sid) as { visitors: string }).visitors;
     } finally {
@@ -209,7 +209,7 @@ test('a record archived by an older Canon (fewer columns) can be brought back an
   rec.saveRecord(s15, { attendance: 15 }, editor);
   A.runArchive(false, 5);
   // as 0.11.0 left it: no revision column in the archive
-  const d = new DatabaseSync(A.archivePath(2015));
+  const d = openDb(A.archivePath(2015));
   d.exec('ALTER TABLE service_records DROP COLUMN revision');
   d.close();
   assert.deepEqual(A.restoreArchivedRecord(2015, s15), { restored: true, service_id: s15 });

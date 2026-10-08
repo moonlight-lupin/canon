@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
+    "better-sqlite3-multiple-ciphers": "13.0.3",
     "docx": "^9.8.1",
     "express": "^5.2.1",
     "nodemailer": "^10.0.14",

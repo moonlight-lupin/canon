@@ -11,7 +11,7 @@
 //    a restored backup is erased again straight away.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { openDb, type Db } from '../lib/sqlite.ts';
 import { all, db, get, run, tx } from '../db.ts';
 import { config } from '../config.ts';
 import { BadRequest, Conflict, NotFound } from '../lib/table.ts';
@@ -38,7 +38,7 @@ function stripLogged(v: unknown): unknown {
 }
 
 /** Erase visitors' details from one database's records and change log (main, or an attached archive). */
-function eraseIn(d: DatabaseSync, before: string, schema = 'main'): { visitors: number; log: number } {
+function eraseIn(d: Db, before: string, schema = 'main'): { visitors: number; log: number } {
   let visitors = 0;
   const rows = d.prepare(
     `SELECT r.id, r.visitors FROM ${schema}.service_records r JOIN ${schema}.services s ON s.id = r.service_id WHERE s.date < ? AND r.visitors LIKE '%"%'`,
@@ -306,7 +306,7 @@ export function listArchives() {
 function open(year: number) {
   const file = archiveFile(year);
   if (!fs.existsSync(file)) throw new NotFound(`No archive for ${year}.`);
-  return new DatabaseSync(file, { readOnly: true });
+  return openDb(file, { readonly: true });
 }
 
 export const archivePath = (year: number) => {

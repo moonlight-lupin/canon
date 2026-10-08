@@ -2,8 +2,8 @@
 // A backup is a consistent copy made with SQLite's VACUUM INTO, safe while Canon is running.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DatabaseSync, backup as sqliteBackup } from 'node:sqlite';
-import { db, migrate, schemaVersion } from '../db.ts';
+import { db, migrate, reopenDb, schemaVersion } from '../db.ts';
+import { openDb, type Db } from '../lib/sqlite.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
@@ -129,9 +129,9 @@ export async function withPlainBackup<T>(file: string, password: string | null |
 
 /** Check that a file is a readable Canon database this version can open. Returns a plain-language problem, or null. */
 export function checkBackupFile(file: string): string | null {
-  let src: DatabaseSync | null = null;
+  let src: Db | null = null;
   try {
-    src = new DatabaseSync(file, { readOnly: true });
+    src = openDb(file, { readonly: true });
     const tables = new Set((src.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name));
     if (CANON_TABLES.some((t) => !tables.has(t))) return 'This file is not a Canon backup.';
     const v = (src.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
@@ -147,9 +147,9 @@ export function checkBackupFile(file: string): string | null {
 }
 
 /**
- * Replace all of Canon's data with a backup, in place: a copy of the current data is saved first, the backup is
- * copied into the live database with SQLite's backup API, then the schema is brought up to date. Everyone is
- * signed out unless their sign-in also exists in the backup.
+ * Replace all of Canon's data with a backup: a copy of the current data is saved first, the database is closed, the
+ * backup (copied into the data folder) takes its place and is opened, then the schema is brought up to date. If the
+ * swap fails, the database as it was is put back. Everyone is signed out unless their sign-in is also in the backup.
  */
 export async function restoreBackup(file: string, password?: string | null): Promise<{ safety: string; restored_schema: number }> {
   if (isEncrypted(file)) return withPlainBackup(file, password, (plain) => restorePlain(plain, path.basename(file)));
@@ -165,14 +165,30 @@ async function restorePlain(file: string, name: string): Promise<{ safety: strin
   // the Google Drive connection belongs to this computer too
   const drive = driveMeta();
   const safety = createBackup();
-  const src = new DatabaseSync(file, { readOnly: true });
+  const dir = path.dirname(config.dbPath);
+  const incoming = path.join(dir, `.restore-in-${process.pid}-${Date.now()}.db`);
+  const outgoing = path.join(dir, `.restore-out-${process.pid}-${Date.now()}.db`);
+  fs.copyFileSync(file, incoming);
   let restored = 0;
   try {
+    const src = openDb(incoming);
     restored = (src.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
-    await sqliteBackup(src, config.dbPath);
-  } finally {
     src.close();
+    reopenDb(() => {
+      // the database as it was steps aside (its write-ahead log was folded in when it closed), the backup takes its place
+      for (const x of ['-wal', '-shm']) fs.rmSync(config.dbPath + x, { force: true });
+      fs.renameSync(config.dbPath, outgoing);
+      try {
+        fs.renameSync(incoming, config.dbPath);
+      } catch (e) {
+        fs.renameSync(outgoing, config.dbPath);
+        throw e;
+      }
+    });
+  } finally {
+    fs.rmSync(incoming, { force: true });
   }
+  fs.rmSync(outgoing, { force: true });
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   migrate();
   clearSettingsCache();

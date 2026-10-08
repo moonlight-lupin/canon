@@ -7,12 +7,12 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { openDb, type Db } from '../server/lib/sqlite.ts';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-upgrade-'));
 process.env.CANON_DB = path.join(tmp, 'live', 'canon.db');
 
-const { MIGRATIONS, applyMigrations, preUpgradeDir, get, db } = await import('../server/db.ts');
+const { MIGRATIONS, applyMigrations, preUpgradeDir, get, closeDb } = await import('../server/db.ts');
 const B = await import('../server/repo/backups.ts');
 const S = await import('../server/repo/settings.ts');
 const LATEST = MIGRATIONS.length;
@@ -20,13 +20,13 @@ const root = path.resolve(import.meta.dirname, '..');
 
 after(() => {
   try {
-    db.close();
+    closeDb();
   } catch { /* ignore */ }
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
 const version = (file: string) => {
-  const d = new DatabaseSync(file, { readOnly: true });
+  const d = openDb(file, { readonly: true });
   try {
     return (d.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
   } finally {
@@ -37,7 +37,7 @@ const version = (file: string) => {
 /** A database as an older Canon left it, with a member, a song and a service in it. */
 function oldDatabase(file: string, v: number) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const d = new DatabaseSync(file);
+  const d = openDb(file);
   applyMigrations(d, v);
   d.exec(`
     INSERT INTO people (first_name, last_name, phone) VALUES ('Tobias', 'Fernleigh', '9000 0101');
@@ -55,11 +55,11 @@ function startOn(file: string) {
 }
 
 test('every older schema upgrades step by step to the same schema as a new database, keeping its data', () => {
-  const schema = (d: DatabaseSync) => d.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").all();
-  const fresh = new DatabaseSync(':memory:');
+  const schema = (d: Db) => d.prepare("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name").all();
+  const fresh = openDb(':memory:');
   applyMigrations(fresh);
   for (let v = 1; v < LATEST; v++) {
-    const d = new DatabaseSync(':memory:');
+    const d = openDb(':memory:');
     applyMigrations(d, v);
     d.exec("INSERT INTO people (first_name) VALUES ('Tobias')");
     applyMigrations(d);
@@ -78,7 +78,7 @@ test('starting a newer Canon on an older database keeps a copy of it first, then
   const r = startOn(file);
   assert.equal(r.status, 0, r.stderr);
   assert.equal(version(file), LATEST);
-  const d = new DatabaseSync(file, { readOnly: true });
+  const d = openDb(file, { readonly: true });
   assert.equal((d.prepare('SELECT phone FROM people').get() as { phone: string }).phone, '9000 0101');
   assert.equal((d.prepare('SELECT title FROM services').get() as { title: string }).title, '{"en":"Test Old Service"}');
   d.close();
@@ -114,7 +114,7 @@ test('only the newest three pre-upgrade copies are kept', () => {
 test('a database from a newer Canon is refused and left untouched', () => {
   const file = path.join(tmp, 'newer', 'canon.db');
   oldDatabase(file, LATEST);
-  const d = new DatabaseSync(file);
+  const d = openDb(file);
   d.exec(`PRAGMA user_version = ${LATEST + 3}`);
   d.close();
   const before = fs.readFileSync(file);
@@ -141,7 +141,7 @@ test('an older backup can be restored: it is upgraded, and the data from before 
 
   const newer = path.join(tmp, 'backup-from-newer.db');
   oldDatabase(newer, LATEST);
-  const d = new DatabaseSync(newer);
+  const d = openDb(newer);
   d.exec(`PRAGMA user_version = ${LATEST + 1}`);
   d.close();
   assert.match(B.checkBackupFile(newer) ?? '', /newer version of Canon/);
