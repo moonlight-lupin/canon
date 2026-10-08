@@ -66,6 +66,21 @@ const verified = (f: KeyFile, k: Keys): Keys => {
 // ---------------------------------------------------------------- locking to this computer
 
 const SERVICE = () => `Canon (${crypto.createHash('sha256').update(path.resolve(config.dbPath)).digest('hex').slice(0, 12)})`;
+/** The keychain: the login keychain, or CANON_KEYCHAIN (a keychain file: tests use a throwaway one). */
+const keychainArg = () => (process.env.CANON_KEYCHAIN ? [process.env.CANON_KEYCHAIN] : []);
+/**
+ * Put a key in the keychain through `security -i`, which reads its commands from standard input: the key never
+ * appears on a command line, where any user of the Mac could see it (ps).
+ */
+function keychainPut(name: string, key: Buffer) {
+  const q = (x: string) => `"${x.replace(/(["\\])/g, '\\$1')}"`;
+  const cmd = ['add-generic-password', '-U', '-s', q(SERVICE()), '-a', q(name), '-w', key.toString('hex'), ...keychainArg().map(q)].join(' ');
+  execFileSync('security', ['-i'], { input: `${cmd}\n`, stdio: ['pipe', 'ignore', 'pipe'] });
+  // `security -i` reports a failed command without failing itself: read it back to be sure
+  if (!keychainGet(name).equals(key)) throw new Error('the key could not be stored in the keychain');
+}
+const keychainGet = (name: string) =>
+  Buffer.from(execFileSync('security', ['find-generic-password', '-s', SERVICE(), '-a', name, '-w', ...keychainArg()], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim(), 'hex');
 
 /** Windows DPAPI through PowerShell (always there on Windows): each line of input is base64, each line of output too. */
 function dpapi(op: 'Protect' | 'Unprotect', items: string[]): string[] {
@@ -104,9 +119,8 @@ function lockToMachine(p: Protection, keys: Keys): Wrapped {
     return { db, backup };
   }
   if (p === 'keychain') {
-    for (const [name, k] of [['db', keys.db], ['backup', keys.backup]] as const) {
-      execFileSync('security', ['add-generic-password', '-U', '-s', SERVICE(), '-a', name, '-w', k.toString('hex')], { stdio: 'ignore' });
-    }
+    keychainPut('db', keys.db);
+    keychainPut('backup', keys.backup);
     return { db: 'keychain', backup: 'keychain' };
   }
   if (p === 'secret') {
@@ -123,8 +137,7 @@ function unlockOnMachine(f: KeyFile): Keys {
       return verified(f, { db: Buffer.from(db, 'base64'), backup: Buffer.from(backup, 'base64') });
     }
     if (f.protection === 'keychain') {
-      const read = (name: string) => Buffer.from(execFileSync('security', ['find-generic-password', '-s', SERVICE(), '-a', name, '-w'], { encoding: 'utf8' }).trim(), 'hex');
-      return verified(f, { db: read('db'), backup: read('backup') });
+      return verified(f, { db: keychainGet('db'), backup: keychainGet('backup') });
     }
     if (f.protection === 'secret') {
       const s = secretKey();
