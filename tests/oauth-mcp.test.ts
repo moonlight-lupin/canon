@@ -771,6 +771,30 @@ test('refresh rotation; reuse of an old refresh token kills the family', async (
   assert.equal(r3.body.error, 'invalid_grant');
 });
 
+test('a second assistant connecting (or the same one again) leaves the first connected', async () => {
+  // claude.ai and Claude Code, say: two clients, the same Canon account
+  const other = (await register({ client_name: 'Second assistant (test)' })).body;
+  const first = await fullFlow(client.client_id, admin);
+  const second = await fullFlow(other.client_id, admin);
+  const again = await fullFlow(client.client_id, admin);
+  for (const t of [first, second, again]) assert.equal((await mcp(t.access_token, 'tools/list')).status, 200);
+  // each refreshes on its own; one refreshing doesn't touch the others
+  const r2 = await token({ grant_type: 'refresh_token', refresh_token: second.refresh_token, client_id: other.client_id });
+  assert.equal(r2.status, 200);
+  assert.equal((await mcp(first.access_token, 'tools/list')).status, 200);
+  const r1 = await token({ grant_type: 'refresh_token', refresh_token: first.refresh_token, client_id: client.client_id });
+  assert.equal(r1.status, 200, 'the first can still refresh after the others connected');
+  // calls interleave: no session to take over
+  const [a, b] = await Promise.all([mcp(r1.body.access_token, 'tools/list'), mcp(r2.body.access_token, 'tools/list')]);
+  assert.deepEqual([a.status, b.status], [200, 200]);
+  // disconnecting one (its refresh token revoked) leaves the others
+  const rev = await fetch(`${base}/oauth/revoke`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: r2.body.refresh_token, client_id: other.client_id }) });
+  assert.equal(rev.status, 200);
+  assert.equal((await mcp(r2.body.access_token, 'tools/list')).status, 401);
+  assert.equal((await mcp(r1.body.access_token, 'tools/list')).status, 200);
+  assert.equal((await mcp(again.access_token, 'tools/list')).status, 200);
+});
+
 test('module "off" hides tools; "read" hides write tools', async () => {
   setMcp({ modules: { members: 'off' } });
   let names = await toolNames(tokens.access_token);
