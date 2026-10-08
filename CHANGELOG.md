@@ -4,12 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## Unreleased — fixes from the v0.19.1 review
+## 0.19.2 — Fixes from the v0.19.1 review
 
 - **Sample data marks its own rows** (database version 36): removing it takes only the people, households, groups and services that carry its mark. Before, a real service made after a sample one was deleted could take its number and be removed with the sample.
 - **An explicitly configured key file is that or nothing**: if `CANON_KEY_FILE` is missing, unreadable or too short, Canon stops with a message — it no longer quietly keeps the keys in a form anyone with the data folder can read, nor makes a new database unencrypted; the same when a recovery key re-locks the keys.
 - **Restoring by hand works with encryption**: `npm run restore-backup -- <file> [recovery key]`, with Canon stopped, opens the backup, gives it this Canon's own key, sets the database there was aside and brings back archived years found next to the backup; on a new computer it makes new keys and shows their recovery key once. (Copying a decrypted backup over `canon.db`, as the guide said, left a plain database beside the keys, which Canon rightly refuses.)
 - The README's privacy section and the roadmap say how things stand now: encryption, the pilot conditions for the books, and a 0.20.0 milestone for recovery and operational acceptance.
+- Database: version 36 (sample data's mark on its rows).
 
 ## 0.19.1 — Installing without build tools
 

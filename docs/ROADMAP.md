@@ -24,6 +24,8 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.18.0 | Third hardening round: three independent reviews of the books, claims, upgrades and Docker fixed with tests; Canon in the background on Windows with an icon by the clock; chart of accounts import; signing on a phone; a test-copy switch — done |
 | 0.19.0 | Encryption: the database and its copies encrypted with their own key, backups with a separate key, a recovery key shown once at setup, Canon locked until it is given; Encrypt now for older installs; two independent security reviews fixed — done |
 | 0.19.1 | Dependencies installed without compiling (the Docker image builds again) — done |
+| 0.19.2 | The v0.19.1 review: sample data marks its own rows, an explicit key file fails closed, restoring by hand with encryption (npm run restore-backup) — done |
+| 0.19.3 | A complete backup package: the database and the archived years in one file, sent to Google Drive whole, restored in the app and by hand |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
