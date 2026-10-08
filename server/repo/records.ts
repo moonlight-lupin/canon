@@ -324,6 +324,16 @@ export function forViewer(r: ServiceRecord & { saved?: boolean }) {
   };
 }
 
+/**
+ * A record for a role that sees the money but not members' details (an external auditor, a treasurer): everything
+ * but what visitors told the church — their contact details, prayer request, how they describe themselves and the
+ * follow-up notes (review, 0.19.0: these went to those roles before).
+ */
+export const withoutVisitorDetails = <R extends { visitors: ServiceRecord['visitors'] }>(r: R): R => ({
+  ...r,
+  visitors: r.visitors.map((v) => ({ name: v.name, source: v.source, status: v.status, follow_up_by: v.follow_up_by })),
+});
+
 /** A list row for a viewer: the same allowlist idea (no money of any currency). */
 export const listRowForViewer = (r: ReturnType<typeof listRecords>[number]) => ({
   service_id: r.service_id, date: r.date, start_time: r.start_time, title: r.title, congregation_id: r.congregation_id,

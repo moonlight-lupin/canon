@@ -1114,3 +1114,17 @@ test('0.15.7: canon_whoami brief is a small identity check; meeting-only fields 
   // an id or a reference is one compact type list
   assert.deepEqual(create.inputSchema.properties.template.type, ['integer', 'string']);
 });
+
+test('when the church requires two-step sign-in, an account without it gets no AI access (0.19.0 review)', async () => {
+  assert.equal((await mcp(tokens.access_token, 'tools/list')).status, 200);
+  const security = getSettings().security;
+  updateSettings({ security: { ...security, require_all_2fa: true } });
+  try {
+    const r = await mcp(tokens.access_token, 'tools/list');
+    assert.equal(r.status, 403);
+    assert.equal(r.body.error, 'two_step_required');
+  } finally {
+    updateSettings({ security });
+  }
+  assert.equal((await mcp(tokens.access_token, 'tools/list')).status, 200);
+});

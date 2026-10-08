@@ -21,9 +21,12 @@ export function createApp() {
   // address someone writes into X-Forwarded-For themselves can't dodge the sign-in limits (0.18.0 review).
   app.set('trust proxy', (addr: string) => trustProxy() && PROXY_NET.test(addr.replace(/^::ffff:/, '')));
 
-  app.use((_req, res, next) => {
+  app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
+    // the API's answers carry members' data: never kept in a browser's cache on a shared office PC (a route that
+    // serves something cacheable, e.g. a picture, sets its own)
+    if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
     next();
   });
 

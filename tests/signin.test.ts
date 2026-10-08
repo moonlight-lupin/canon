@@ -55,8 +55,10 @@ after(async () => {
 test('five wrong passwords lock the account for a while — even the right password; a new password unlocks it', async () => {
   for (let i = 0; i < 5; i++) assert.equal((await post('/login', { username: 'locky', password: 'wrong-wrong' })).status, 401);
   const locked = await post('/login', { username: 'locky', password: 'correct-horse-3' });
-  assert.equal(locked.status, 429);
-  assert.match(locked.body.error, /locked/);
+  // the same answer as a wrong password: nobody learns from it which usernames exist (0.19.0 review)
+  assert.equal(locked.status, 401);
+  assert.equal(locked.body.error, (await post('/login', { username: 'nobody-by-this-name', password: 'x' })).body.error);
+  assert.match(locked.body.error, /waits 15 minutes/);
   const boss = await login('boss');
   const id = (await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').id;
   assert.ok((await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').locked);
@@ -116,4 +118,31 @@ test('a church can require two-step sign-in for administrators; an administrator
   assert.equal((await call(boss2fa, 'PATCH', `/users/${edId}`, { reset_two_step: true })).status, 200);
   assert.ok((await post('/login', { username: 'ed', password: 'correct-horse-3' })).body.csrf, 'password alone again');
   await call(boss2fa, 'PUT', '/security', { require_admin_2fa: false });
+});
+
+test('guessing the two-step code locks the account like wrong passwords; setting it up again while it is on is refused; signing out needs the session (0.19.0 review)', async () => {
+  createUser({ username: 'guessy', display_name: 'Test guessy', password: 'correct-horse-3', role: 'editor' });
+  const g = await login('guessy');
+  const setup = (await call(g, 'POST', '/me/two-step/setup', {})).body;
+  assert.equal((await call(g, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) })).status, 200);
+  // set up again while on: refused (it would have switched it off without the password)
+  assert.equal((await call(g, 'POST', '/me/two-step/setup', {})).status, 409);
+  // the password is known, the phone is not: a new ticket for every guess still counts against the account
+  const wrong = (n: string) => (n === '000000' ? '111111' : '000000');
+  for (let i = 0; i < 5; i++) {
+    const t = await post('/login', { username: 'guessy', password: 'correct-horse-3' });
+    assert.equal(t.body.second_step, true, JSON.stringify(t.body));
+    assert.equal((await post('/login/code', { ticket: t.body.ticket, code: wrong(T.totp(setup.secret)) })).status, 401);
+  }
+  // locked: the right password and the right code don't sign in now
+  const after5 = await post('/login', { username: 'guessy', password: 'correct-horse-3' });
+  assert.equal(after5.status, 401, 'locked');
+  // signing out: only with the session's own token
+  const ed = await login('ed');
+  assert.ok(ed.csrf, 'a session (two-step sign-in is off for this account)');
+  const noToken = await fetch(`${base}/api/logout`, { method: 'POST', headers: { Cookie: ed.cookie } });
+  assert.equal(noToken.status, 403);
+  assert.ok((await call(ed, 'GET', '/me')).body.user, 'still signed in');
+  assert.equal((await post('/logout', {}, ed)).status, 200);
+  assert.equal((await call(ed, 'GET', '/me')).body.user, null, 'signed out');
 });

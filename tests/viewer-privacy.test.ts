@@ -111,3 +111,26 @@ test('AI connections approved by a read-only account never get personal data', (
   // 0.15.1: contact details only while the Members register is on
   assert.equal(piiFor({ ...cfg, modules: { members: 'off' } as never }, 'admin'), false);
 });
+
+test('roles that see the money but not members’ details (an auditor, a treasurer) don’t get what visitors told the church (0.19.0 review)', async () => {
+  const R = await import('../server/repo/records.ts');
+  const { asActor } = await import('../server/lib/actor.ts');
+  const sid = svc.createService({ date: '2031-03-02' }).service.id;
+  asActor({ user_id: null, user_name: 'Test', via: 'web' }, () => R.saveRecord(sid, {
+    attendance: 40, visitors: [{ name: 'Vera Visitor', contact: '9123 4567', prayer: 'private prayer request', about: 'Exploring', notes: 'follow-up note', source: 'A friend' }],
+  }, { name: 'Test', admin: true, money: true }));
+  for (const role of ['guest', 'treasurer']) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-3', role });
+  for (const role of ['guest', 'treasurer']) {
+    const who = await login(role);
+    const rec = await get(who, `/services/${sid}/record`);
+    assert.equal(rec.status, 200, rec.text);
+    assert.match(rec.text, /Vera Visitor/, `${role}: the name, for the count`);
+    for (const secret of ['9123 4567', 'private prayer request', 'follow-up note', 'Exploring']) assert.ok(!rec.text.includes(secret), `${role}: ${secret}`);
+    const rep = await get(who, '/reports/visitors?from=2031-01-01&to=2031-12-31');
+    assert.ok(!rep.text.includes('9123 4567'), `${role}: report`);
+    assert.equal((await get(who, `/services/${sid}/visitor-cards`)).status, 403, `${role}: the visitor cards`);
+  }
+  // editors still see it all
+  const ed = await get(as.editor, `/services/${sid}/record`);
+  assert.ok(ed.text.includes('9123 4567') && ed.text.includes('private prayer request'));
+});

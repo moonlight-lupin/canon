@@ -99,7 +99,8 @@ export function exportLibrary(o: ExportOptions = {}): Buffer {
 function readFile(buf: Buffer): LibraryFile {
   let json: string;
   try {
-    json = (buf[0] === 0x1f && buf[1] === 0x8b ? zlib.gunzipSync(buf) : buf).toString('utf8');
+    // a library file unpacks to a few MB; a file that would unpack to more than 200 MB is not one (a "zip bomb")
+    json = (buf[0] === 0x1f && buf[1] === 0x8b ? zlib.gunzipSync(buf, { maxOutputLength: 200 * 1024 * 1024 }) : buf).toString('utf8');
   } catch {
     throw new BadRequest('This is not a Canon library file.');
   }

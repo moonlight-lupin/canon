@@ -5,7 +5,7 @@ import { PageHead } from '../components/ui.tsx';
 import { ReedMark } from '../components/icons.tsx';
 import { Tagline } from '../components/brand.tsx';
 
-interface About { name: string; version: string; license: string; schema: number; node: string }
+interface About { name: string; version: string; license: string; schema: number; node?: string }
 
 // `what` is translated with t() (locales/<code>/ui.json)
 const CREDITS: { what: string; source: string; licence: string; url?: string }[] = [
@@ -15,7 +15,7 @@ const CREDITS: { what: string; source: string; licence: string; url?: string }[]
   { what: 'Hymns, psalms and historic liturgy in the starter library', source: 'Texts written before 1929 and historic creeds', licence: 'Public domain' },
 ];
 
-const SOFTWARE = ['React', 'Vite', 'Express', 'Node.js (node:sqlite)', 'Model Context Protocol SDK', 'zod', 'dnd-kit', 'docx', 'nodemailer', 'qrcode', 'OpenCC (opencc-js)'];
+const SOFTWARE = ['React', 'Vite', 'Express', 'Node.js', 'better-sqlite3-multiple-ciphers (SQLite with encryption)', 'Model Context Protocol SDK', 'zod', 'dnd-kit', 'docx', 'nodemailer', 'qrcode', 'OpenCC (opencc-js)'];
 
 export default function AboutPage() {
   const { t } = useI18n();

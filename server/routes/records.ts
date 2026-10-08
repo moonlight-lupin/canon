@@ -1,4 +1,5 @@
 // REST routes for service records (attendance, visitors, offerings), reports and the visitor form. Mounted inside /api after authentication.
+import { seesMemberDetails } from '../lib/permissions.ts';
 import express, { type Request } from 'express';
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
@@ -43,8 +44,13 @@ const reportPeriod = (req: Request) => reports.period({
   kind: str(req.query.kind), group_id: Number(req.query.group) || undefined,
 });
 const canSeeMoney = (req: Request) => can(req.user, 'contributions', 'read');
+/**
+ * What visitors told the church (contact details, prayer requests, notes): roles that see members' details too — not
+ * every role that sees the money (an external auditor, a treasurer).
+ */
+const seesVisitors = (req: Request) => canSeeMoney(req) && seesMemberDetails(req.user);
 /** The visitor form of a service and its entries: editors and administrators, or the leader of that meeting. */
-const mayHandleForm = (req: Request, serviceId: number) => canSeeMoney(req) || leadsMeeting(req.user?.person_id, serviceId);
+const mayHandleForm = (req: Request, serviceId: number) => seesVisitors(req) || leadsMeeting(req.user?.person_id, serviceId);
 // which years are in archive files (reports cover the live database only, and say so)
 recordRoutes.get('/reports/archived-years', h(() => ({ years: arc.archiveYears() })));
 recordRoutes.get('/reports/attendance', h((req) => reports.attendanceReport(reportPeriod(req))));
@@ -52,7 +58,7 @@ recordRoutes.get('/reports/offerings', h((req) => {
   if (!canSeeMoney(req)) throw new Forbidden('Offerings are only shown to editors and administrators.');
   return reports.offeringsReport(reportPeriod(req));
 }));
-recordRoutes.get('/reports/visitors', h((req) => reports.visitorsReport(reportPeriod(req), { contact: canSeeMoney(req) })));
+recordRoutes.get('/reports/visitors', h((req) => reports.visitorsReport(reportPeriod(req), { contact: seesVisitors(req) })));
 recordRoutes.get('/reports/serving', h((req) => reports.servingReport(reportPeriod(req))));
 recordRoutes.get('/reports/songs', h((req) => reports.songsReport(reportPeriod(req))));
 recordRoutes.get('/reports/scripture', h((req) => reports.scriptureReport({
@@ -62,8 +68,10 @@ recordRoutes.get('/reports/scripture', h((req) => reports.scriptureReport({
 recordRoutes.get('/reports/membership', h((req) => reports.membershipReport(reportPeriod(req))));
 recordRoutes.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));
-  // editors and administrators, and the leader of this meeting, see the whole record
-  return canSeeMoney(req) || leadsMeeting(req.user?.person_id, id(req)) ? r : rec.forViewer(r);
+  // editors and administrators, and the leader of this meeting, see the whole record; roles that see the money but
+  // not members' details see it without what visitors told the church
+  if (leadsMeeting(req.user?.person_id, id(req)) || seesVisitors(req)) return r;
+  return canSeeMoney(req) ? rec.withoutVisitorDetails(r) : rec.forViewer(r);
 }));
 // visitor form: settings (administrators), a service's form (editors), the review queue (editors)
 const origin = (req: Request) => `${req.protocol}://${req.get('host')}`;

@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 import { publicUrl, trustProxy } from './lib/public-url.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import type { Role } from '../shared/types.ts';
-import { getUser, sessionUser, sha256, type User } from './auth.ts';
+import { getUser, sessionUser, sha256, twoStepRequired, type User } from './auth.ts';
 import { all, get, run, tx } from './db.ts';
 import { getSettings } from './repo/settings.ts';
 import { consentPage, disabledPage, errorPage } from './oauth-pages.ts';
@@ -49,8 +49,6 @@ function safeEqual(a: string, b: string): boolean {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
-const first = (v: string | undefined) => v?.split(',')[0]?.trim() || undefined;
-
 /**
  * The externally visible origin (no trailing slash). Used both to mint metadata/token audiences and to check them.
  * The public address (Settings → AI / MCP, or CANON_PUBLIC_URL) wins; X-Forwarded-* only when trusted; otherwise the request's own protocol + host.
@@ -58,11 +56,9 @@ const first = (v: string | undefined) => v?.split(',')[0]?.trim() || undefined;
 export function externalBase(req: Request): string {
   const pub = publicUrl();
   if (pub) return pub;
-  if (trustProxy()) {
-    const proto = first(req.get('x-forwarded-proto')) ?? req.protocol;
-    const host = first(req.get('x-forwarded-host')) ?? req.get('host');
-    return `${proto}://${host}`;
-  }
+  // Express believes X-Forwarded-Proto / -Host only from the church's own proxy (server/app.ts): a header someone
+  // sends from elsewhere can't change the issuer or the token audience (0.19.0 review)
+  if (trustProxy()) return `${req.protocol}://${req.host}`;
   return `${req.protocol}://${req.get('host')}`;
 }
 
@@ -360,6 +356,7 @@ oauthRouter.get('/oauth/authorize', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     return res.redirect(302, `/login?next=${encodeURIComponent(req.originalUrl)}`);
   }
+  if (twoStepRequired(user) && !user.totp_enabled) return errorPage(res, 403, 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.');
   consentPage(res, a, user);
 });
 
@@ -380,6 +377,7 @@ oauthRouter.post('/oauth/authorize', express.urlencoded({ extended: false, limit
     return errorPage(res, 403, 'The form has expired or was not submitted from Canon. Please start again.');
   }
   if (!getSettings().mcp.enabled) return disabledPage(res);
+  if (twoStepRequired(user) && !user.totp_enabled) return errorPage(res, 403, 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.');
   const iss = externalBase(req);
   if (p.decision !== 'allow') {
     return redirectWith(res, a.redirect_uri, { error: 'access_denied', error_description: 'The user denied access', state: a.state, iss }, 303);
@@ -587,6 +585,10 @@ export function bearerAuth(req: Request, res: Response, next: NextFunction) {
   }
   const user = getUser(row.user_id);
   if (!user) return unauthorized(req, res, true, 'User no longer exists');
+  // the church requires two-step sign-in for this account and it isn't set up: no AI access either (0.19.0 review)
+  if (twoStepRequired(user) && !user.totp_enabled) {
+    return res.status(403).json({ error: 'two_step_required', error_description: 'Set up two-step sign-in in Canon (Settings → My profile) first: this church requires it.' });
+  }
   const scopes = new Set(row.scope.split(' ').filter((s) => (SCOPES as readonly string[]).includes(s)));
   if (!editsAnything(user)) scopes.delete('canon:write'); // re-cap by the user's current role
   run('UPDATE oauth_tokens SET last_used_at = ? WHERE token_hash = ?', Date.now(), row.token_hash);

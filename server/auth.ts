@@ -92,8 +92,19 @@ export function authenticate(username: string, password: string): SignIn {
     else run('UPDATE users SET failed_logins = ? WHERE id = ?', n, row.id);
     return null;
   }
+  // with two-step sign-in, the count goes on until the code is right too: a known password and a loop of guesses at
+  // the code still lock the account (0.19.0 review)
+  if (row.totp_enabled) return { second_step: row.id };
   run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', row.id);
-  return row.totp_enabled ? { second_step: row.id } : { user: getUser(row.id)! };
+  return { user: getUser(row.id)! };
+}
+
+/** A wrong code (or password) for this account: five in a row lock it for 15 minutes. */
+function failedFor(userId: number) {
+  const row = get<{ failed_logins: number }>('SELECT failed_logins FROM users WHERE id = ?', userId);
+  const n = (row?.failed_logins ?? 0) + 1;
+  if (n >= MAX_FAILED) run('UPDATE users SET failed_logins = 0, locked_until = ? WHERE id = ?', new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString(), userId);
+  else run('UPDATE users SET failed_logins = ? WHERE id = ?', n, userId);
 }
 
 // ---- two-step sign-in -----------------------------------------------------------------
@@ -115,8 +126,12 @@ export function secondStep(ticket: string, code: string): User | null {
     return null;
   }
   t.tries++;
-  const row = get<{ totp_secret: string | null; recovery_codes: string }>('SELECT totp_secret, recovery_codes FROM users WHERE id = ?', t.user_id);
+  const row = get<{ totp_secret: string | null; recovery_codes: string; locked_until: string | null }>('SELECT totp_secret, recovery_codes, locked_until FROM users WHERE id = ?', t.user_id);
   if (!row?.totp_secret) return null;
+  if (row.locked_until && row.locked_until > new Date().toISOString()) {
+    tickets.delete(ticket);
+    return null;
+  }
   let ok = verifyTotp(row.totp_secret, code);
   if (!ok) {
     const codes = JSON.parse(row.recovery_codes || '[]') as string[];
@@ -126,8 +141,12 @@ export function secondStep(ticket: string, code: string): User | null {
       ok = true;
     }
   }
-  if (!ok) return null;
+  if (!ok) {
+    failedFor(t.user_id);
+    return null;
+  }
   tickets.delete(ticket);
+  run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', t.user_id);
   return getUser(t.user_id) ?? null;
 }
 

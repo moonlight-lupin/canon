@@ -40,7 +40,7 @@ import { serviceRoutes } from './routes/services.ts';
 import { adminRoutes } from './routes/admin.ts';
 import {
   authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginThrottle,
-  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES,
+  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES, MAX_FAILED,
   firstAdminId, memberLinkProblem, personLinkProblem, twoStepRequired,
 } from './auth.ts';
 import { all, get, run } from './db.ts';
@@ -110,14 +110,14 @@ api.post('/login', h((req, res) => {
   if (loginThrottle(ip)) throw Object.assign(new Error('Too many attempts — try again in 15 minutes'), { status: 429 });
   const b = z.object({ username: z.string(), password: z.string() }).parse(req.body);
   const r = authenticate(b.username, b.password);
-  if (!r) {
+  // a locked account answers like a wrong password: the answer never tells which usernames exist (0.19.0 review)
+  if (!r || 'locked' in r) {
     loginFailed(ip);
-    throw Object.assign(new Error('Wrong username or password'), { status: 401 });
+    throw Object.assign(new Error(`Wrong username or password. After ${MAX_FAILED} wrong tries an account waits ${LOCK_MINUTES} minutes.`), { status: 401 });
   }
-  if ('locked' in r) throw Object.assign(new Error(`This account is locked for ${LOCK_MINUTES} minutes after too many wrong passwords. Try again later, or ask an administrator to reset the password.`), { status: 429 });
-  loginOk(ip);
-  // two-step sign-in: the code comes next (POST /login/code)
+  // two-step sign-in: the code comes next (POST /login/code); this address's tries are forgiven only once it is right
   if ('second_step' in r) return { second_step: true, ticket: secondStepTicket(r.second_step) };
+  loginOk(ip);
   const csrf = startSession(req, res, r.user);
   return { user: r.user, csrf };
 }));
@@ -137,6 +137,9 @@ api.post('/login/code', h((req, res) => {
 }));
 
 api.post('/logout', (req, res) => {
+  // signing out needs the session's own token (another site can't sign anyone out); without a session, nothing to do
+  const u = sessionUser(req);
+  if (u && req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Sign out from Canon itself.' });
   endSession(req, res);
   res.json({ ok: true });
 });
@@ -174,7 +177,8 @@ api.get('/about', (_req, res) => {
     version: PKG.version,
     license: PKG.license,
     schema: (get<{ user_version: number }>('PRAGMA user_version')?.user_version) ?? 0,
-    node: process.versions.node,
+    // the Node.js version: for signed-in users (About Canon), not for anyone who asks
+    ...(sessionUser(_req) ? { node: process.versions.node } : {}),
     // a test copy of the church's data: no e-mail, no Google Drive (the screens say so)
     ...(config.testCopy ? { test_copy: true } : {}),
   });
@@ -219,6 +223,10 @@ api.patch('/me', h((req) => {
 // ---------------------------------------------------------------- two-step sign-in (my profile)
 
 api.post('/me/two-step/setup', h(async (req) => {
+  // while it is on, setting it up again would turn it off without the password (0.19.0 review): turn it off first
+  if (get<{ totp_enabled: number }>('SELECT totp_enabled FROM users WHERE id = ?', req.user!.id)?.totp_enabled) {
+    throw Object.assign(new Error('Two-step sign-in is on. To use another phone, turn it off (with your password), then set it up again.'), { status: 409 });
+  }
   const secret = newSecret();
   run('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?', secret, req.user!.id);
   const issuer = `Canon · ${(getSettings().church_name.en || Object.values(getSettings().church_name).find(Boolean) || 'church').slice(0, 40)}`;
