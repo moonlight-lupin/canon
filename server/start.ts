@@ -3,7 +3,7 @@ import { config } from './config.ts';
 import { createApp } from './app.ts';
 import { seed } from './seed/index.ts';
 import { publicUrl } from './lib/public-url.ts';
-import { startBackupScheduler } from './repo/backups.ts';
+import { startBackupScheduler, sweepScratch } from './repo/backups.ts';
 import http from 'node:http';
 import { handleControl, stop, writeControlFile } from './lib/control.ts';
 
@@ -13,6 +13,7 @@ let server: http.Server | null = null;
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP'] as const) process.on(sig, () => (server ? stop(server, sig) : process.exit(0)));
 
 await seed();
+sweepScratch();
 startBackupScheduler();
 
 const app = createApp();

@@ -2,6 +2,7 @@
 // another Windows account than the one that locked them, or the data was moved to a new computer. Instead of the
 // app, a single page asks for the recovery key, on this computer only (the key is never sent over the network).
 // With the right key, the keys are locked to this computer again and Canon starts as usual.
+import crypto from 'node:crypto';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,6 +27,9 @@ function page(body: string) {
 </style></head><body><main>${body}</main></body></html>`;
 }
 
+// the form carries a token only this page has, and a guess must come from the page itself: another web page open
+// on this computer can't post guesses (and use up the tries)
+const TOKEN = crypto.randomBytes(24).toString('hex');
 const form = (error = '') => page(`
   <h1>Canon is locked</h1>
   <p>Canon's data is encrypted, and its keys can't be opened on this computer: Canon is running as another Windows account than before, or it was moved to a new computer.</p>
@@ -33,7 +37,7 @@ const form = (error = '') => page(`
   <p>Enter the <b>recovery key</b> printed when the data was encrypted (eight groups of five letters and numbers). Canon then starts as usual.</p>
   <p class="zh">请输入加密时打印的<b>恢复密钥</b>（八组，每组五个字母或数字）。之后 Canon 会照常启动。</p>
   ${error ? `<p class="err">${esc(error)}</p>` : ''}
-  <form method="post" action="/unlock"><input name="key" autocomplete="off" spellcheck="false" autofocus placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"><button>Unlock / 解锁</button></form>`);
+  <form method="post" action="/unlock"><input type="hidden" name="t" value="${TOKEN}"><input name="key" autocomplete="off" spellcheck="false" autofocus placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"><button>Unlock / 解锁</button></form>`);
 
 const remote = () => page(`
   <h1>Canon is locked</h1>
@@ -43,6 +47,7 @@ const remote = () => page(`
 /** Serve the locked page until the right recovery key is entered; resolves then (the keys unlocked, held in memory). */
 export function serveLocked(why: string): Promise<void> {
   console.error(`Canon is locked: ${why}`);
+  console.error('Open Canon on this computer and enter the recovery key, or run: npm run unlock -- <recovery key>');
   const version = (() => {
     try {
       return (JSON.parse(fs.readFileSync(path.join(config.root, 'package.json'), 'utf8')) as { version: string }).version;
@@ -63,8 +68,13 @@ export function serveLocked(why: string): Promise<void> {
       let body = '';
       req.on('data', (c) => { body += c; if (body.length > 2000) req.destroy(); });
       req.on('end', () => {
+        const q = new URLSearchParams(body);
+        const origin = req.headers.origin;
+        const site = req.headers['sec-fetch-site'];
+        const ownPage = q.get('t') === TOKEN && (!origin || /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) && (!site || site === 'same-origin' || site === 'none');
+        if (!ownPage) return send(403, form('Open this page again on this computer and enter the key there.'));
         if (++tries > 20) return send(429, form('Too many tries. Restart Canon to try again.'));
-        const key = new URLSearchParams(body).get('key') ?? '';
+        const key = q.get('key') ?? '';
         try {
           unlockWithRecovery(key);
         } catch (e) {

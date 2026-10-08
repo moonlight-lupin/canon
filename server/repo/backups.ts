@@ -5,7 +5,7 @@ import path from 'node:path';
 import { db, dbEncrypted, dbKey, migrate, reopenDb, schemaVersion } from '../db.ts';
 import { openDb, rekeyDb, type Db } from '../lib/sqlite.ts';
 import { loadKeys } from '../lib/keys.ts';
-import { isBackupV2, isBackupV2Data, scratch, unwrapBackupFile, writeBackupFile } from '../lib/backup-file.ts';
+import { SCRATCH_RE, isBackupV2, isBackupV2Data, scratch, unwrapBackupFile, writeBackupFile } from '../lib/backup-file.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
@@ -57,6 +57,23 @@ export function listBackups(dir = backupDir()): BackupFile[] {
       return { name, size: st.size, created: st.mtime.toISOString() };
     })
     .sort((a, b) => b.created.localeCompare(a.created));
+}
+
+/**
+ * When Canon starts: scratch files a crash left behind — copies in the data folder made while backing up, restoring
+ * or encrypting (some of them plain), and half-written backups in the backup folder — are removed.
+ */
+export function sweepScratch() {
+  const gone = (f: string) => {
+    try {
+      fs.rmSync(f, { force: true });
+    } catch { /* in use: next time */ }
+  };
+  const data = path.dirname(config.dbPath);
+  if (fs.existsSync(data)) for (const n of fs.readdirSync(data)) if (SCRATCH_RE.test(n)) gone(path.join(data, n));
+  for (const d of [backupDir(), path.join(backupDir(), 'archives')]) {
+    if (fs.existsSync(d)) for (const n of fs.readdirSync(d)) if (/\.enc\.tmp$/.test(n)) gone(path.join(d, n));
+  }
 }
 
 /** Write a backup now. Returns the new file. */

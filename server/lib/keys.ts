@@ -28,6 +28,12 @@ interface KeyFile {
   recovery: (Wrapped & { id: string; made_at: string }) | null;
   /** tells whether keys unlocked here are the right ones (a damaged or foreign key file fails it) */
   check: string;
+  /**
+   * Set while a database made before 0.19.0 is being encrypted (an HMAC made with the database key, so nobody without
+   * the keys can set it): only then may a plain database open next to keys. Otherwise a plain canon.db beside
+   * keys.json was put there by someone — Canon refuses it (review, 0.19.0).
+   */
+  encrypting?: string;
   created_at: string;
 }
 export interface Keys { db: Buffer; backup: Buffer }
@@ -82,16 +88,40 @@ function keychainPut(name: string, key: Buffer) {
 const keychainGet = (name: string) =>
   Buffer.from(execFileSync('security', ['find-generic-password', '-s', SERVICE(), '-a', name, '-w', ...keychainArg()], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim(), 'hex');
 
-/** Windows DPAPI through PowerShell (always there on Windows): each line of input is base64, each line of output too. */
+/**
+ * Windows DPAPI through PowerShell (always there on Windows): each line of input is base64, each line of output too.
+ * The keys go in on stdin, never on a command line; unlocked keys come back masked with a one-time pad that also
+ * came in on stdin, so a PowerShell transcript (a Group Policy some offices turn on) records only noise.
+ */
 function dpapi(op: 'Protect' | 'Unprotect', items: string[]): string[] {
+  const pads = items.map(() => crypto.randomBytes(64));
   const script = [
     'Add-Type -AssemblyName System.Security',
     "$e = [Text.Encoding]::UTF8.GetBytes('Canon key')",
     '$lines = [Console]::In.ReadToEnd().Split("`n") | Where-Object { $_.Trim() }',
-    `foreach ($l in $lines) { [Convert]::ToBase64String([Security.Cryptography.ProtectedData]::${op}([Convert]::FromBase64String($l.Trim()), $e, 'CurrentUser')) }`,
+    `foreach ($l in $lines) { $p = $l.Trim().Split('|'); $b = [Security.Cryptography.ProtectedData]::${op}([Convert]::FromBase64String($p[0]), $e, 'CurrentUser'); ` +
+      (op === 'Unprotect' ? "$k = [Convert]::FromBase64String($p[1]); for ($i = 0; $i -lt $b.Length; $i++) { $b[$i] = $b[$i] -bxor $k[$i] }; " : '') +
+      '[Convert]::ToBase64String($b) }',
   ].join('; ');
-  const out = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { input: items.join('\n'), encoding: 'utf8', windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-  return out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const input = items.map((x, i) => (op === 'Unprotect' ? `${x}|${pads[i].toString('base64')}` : x)).join('\n');
+  const out = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { input, encoding: 'utf8', windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  const lines = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (op === 'Protect') return lines;
+  return lines.map((l, i) => {
+    const b = Buffer.from(l, 'base64');
+    for (let j = 0; j < b.length; j++) b[j] ^= pads[i][j];
+    return b.toString('base64');
+  });
+}
+
+/** Windows ignores a file's mode: keys.json (and its temporary copy) is made readable by this account only. */
+function privateOnWindows(file: string) {
+  if (process.platform !== 'win32') return;
+  try {
+    execFileSync('icacls', [file, '/inheritance:r', '/grant:r', `${os.userInfo().username}:F`], { stdio: 'ignore', windowsHide: true });
+  } catch (e) {
+    console.error(`Encryption: could not make ${file} private to this account: ${(e as Error).message.split('\n')[0]}`);
+  }
 }
 
 /** A secret kept outside the data folder (CANON_KEY_FILE): any file of at least 32 bytes, hashed into a key. */
@@ -159,9 +189,27 @@ function writeFile(f: KeyFile) {
   const file = keysFile();
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, '', { mode: 0o600 });
+  privateOnWindows(tmp);
   fs.writeFileSync(tmp, JSON.stringify(f, null, 1), { mode: 0o600 });
   fs.renameSync(tmp, file);
 }
+
+// ---------------------------------------------------------------- encrypting a database made before 0.19.0
+
+const encryptingMark = (k: Keys) => crypto.createHmac('sha256', k.db).update('canon-encrypting').digest('hex').slice(0, 32);
+/** Before encrypting a plain database in place: should it be interrupted, the plain file may open next to the keys. */
+export function markEncrypting(k: Keys) {
+  writeFile({ ...readFile(), encrypting: encryptingMark(k) });
+}
+/** The database is encrypted: from now on a plain canon.db beside these keys is refused. */
+export function clearEncrypting() {
+  const f = readFile();
+  delete f.encrypting;
+  writeFile(f);
+}
+/** A plain database next to these keys is an interrupted encryption (and not a file someone put there). */
+export const encryptingMarked = (k: Keys) => keysExist() && readFile().encrypting === encryptingMark(k);
 
 let cached: Keys | null = null;
 

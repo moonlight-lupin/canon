@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../server/config.ts';
 import { openDb, type Db } from '../server/lib/sqlite.ts';
-import { loadKeys, type Keys } from '../server/lib/keys.ts';
+import { encryptingMarked, loadKeys, type Keys } from '../server/lib/keys.ts';
 import { scratch, writeBackupFile } from '../server/lib/backup-file.ts';
 import { encryptFile, keyForBackup } from '../server/lib/backup-crypto.ts';
 
@@ -29,6 +29,11 @@ if (keys) {
     encrypted = true;
   } catch (e) {
     if ((e as { code?: string }).code !== 'SQLITE_NOTADB') throw e;
+    // as Canon itself: a plain database beside the keys only after an interrupted encryption
+    if (!encryptingMarked(keys)) {
+      console.error(`${config.dbPath} is not encrypted, but keys.json says it must be: the database file has been replaced. No backup was made.`);
+      process.exit(1);
+    }
     db = openDb(config.dbPath);
   }
 } else {

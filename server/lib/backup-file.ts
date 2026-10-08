@@ -8,6 +8,7 @@
 // Older backups stay readable: "CANONENC1" (encrypted with a backup password, lib/backup-crypto.ts) and plain .db.
 import fs from 'node:fs';
 import path from 'node:path';
+import { config } from '../config.ts';
 import { openDb, rekeyDb } from './sqlite.ts';
 import { backupKeyForRecovery, openBackupKey, type Keys } from './keys.ts';
 
@@ -36,10 +37,11 @@ export const isBackupV2Data = (b: Buffer) => b.subarray(0, 9).equals(MAGIC);
 
 /**
  * Write `dest` as a backup of the database file `src` (encrypted with `srcKey`, or plain): a copy is re-keyed to the
- * backup key next to `dest`, then wrapped with the header. `src` is left as it is.
+ * backup key in the data folder (never in the backup folder, which may be a synced folder or a USB drive: the copy of
+ * a plain file is plain until it is re-keyed), then wrapped with the header. `src` is left as it is.
  */
 export function writeBackupFile(src: string, srcKey: Buffer | null, dest: string, keys: Keys, kind: BackupHeader['kind'] = 'database') {
-  const part = `${dest}.part`;
+  const part = scratch(path.dirname(config.dbPath), 'part');
   fs.copyFileSync(src, part);
   try {
     const d = openDb(part, { key: srcKey });
@@ -119,5 +121,7 @@ export function unwrapBackupFile(file: string, dest: string, keys: Keys | null, 
   throw new NeedsRecoveryKey(`This backup is from another Canon, or from before the recovery key was replaced. Enter the recovery key with ID ${id} to restore it.`, id);
 }
 
+/** The data folder's scratch files (below): what a crash may leave behind, removed when Canon starts. */
+export const SCRATCH_RE = /^\.(backup|restore|restore-in|restore-out|part|upload)-[\w-]+\.db$/;
 /** The data folder's scratch files for backups and restores (never inside the backup folder). */
 export const scratch = (dir: string, what: string) => path.join(dir, `.${what}-${process.pid}-${Date.now()}.db`);

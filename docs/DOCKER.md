@@ -121,7 +121,12 @@ secrets:
     file: ./canon-key.bin   # 32 random bytes or more, e.g. `head -c 32 /dev/urandom > canon-key.bin`
 ```
 
-Set it before the first start (or before **Encrypt now**). Keep a copy of that file and the printed recovery key somewhere safe: without the file Canon starts locked and asks for the recovery key.
+Set it before the first start (or before **Encrypt now**). Keep a copy of that file and the printed recovery key somewhere safe: without the file Canon starts locked. The locked page answers only a browser on the same computer, which in Docker is never the case, so unlock from the command line instead, then restart:
+
+```bash
+docker compose run --rm --user node canon npm run unlock -- XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
+docker compose restart canon
+```
 
 ## What's in the image
 

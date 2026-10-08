@@ -35,7 +35,8 @@
     "i18n": "node --disable-warning=ExperimentalWarning scripts/i18n.ts",
     "i18n:check": "node --disable-warning=ExperimentalWarning scripts/i18n.ts --check",
     "i18n:new": "node --disable-warning=ExperimentalWarning scripts/i18n.ts new",
-    "prebuild": "npm run i18n"
+    "prebuild": "npm run i18n",
+    "unlock": "node --disable-warning=ExperimentalWarning scripts/unlock.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",

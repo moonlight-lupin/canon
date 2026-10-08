@@ -13,10 +13,12 @@ export interface EncryptionStatus {
   protection: 'dpapi' | 'keychain' | 'secret' | 'file' | null;
   account: string;
   recovery: { id: string; made_at: string } | null;
+  backup_dir: string;
   plain_copies: string[];
   others: string[];
 }
-interface EncryptResult { recovery: RecoveryKey; safety: string; converted: string[]; failed: { file: string; error: string }[]; others: string[] }
+interface CopiesResult { converted: string[]; failed: { file: string; error: string }[]; others: string[] }
+interface EncryptResult extends CopiesResult { recovery: RecoveryKey; safety: string }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -134,6 +136,17 @@ export function EncryptionCard() {
             </div>
           )}
           {s.recovery && <div className="small muted">{t('A new recovery key replaces this one for opening the database. Backups made before keep needing the key that was current when they were made.')}</div>}
+          {s.plain_copies.length > 0 && (
+            <div className="callout warn small stack tight">
+              <strong>{t('Plain copies are still here: they hold members’ data unencrypted.')}</strong>
+              <ul style={{ margin: 0 }}>{s.plain_copies.map((f) => <li key={f} className="code">{f}</li>)}</ul>
+              <div><button className="btn sm" disabled={busy} onClick={() => run(async () => {
+                const r = await api.post<CopiesResult>('/security/encryption/copies');
+                st.reload();
+                if (r.failed.length) throw new Error(r.failed.map((f) => `${f.file}: ${f.error}`).join('; '));
+              }, t('Encrypted.'))}><Icon name="lock" />{t('Encrypt them now')}</button></div>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -157,7 +170,8 @@ export function EncryptNow({ status, onClose }: { status: EncryptionStatus; onCl
   const { run, busy } = useAction();
   const [result, setResult] = useState<EncryptResult | null>(null);
   const [keyDone, setKeyDone] = useState(false);
-  const go = () => run(async () => setResult(await api.post<EncryptResult>('/security/encryption/encrypt')));
+  const [password, setPassword] = useState('');
+  const go = () => run(async () => setResult(await api.post<EncryptResult>('/security/encryption/encrypt', { password })));
   if (result && !keyDone) {
     return (
       <Modal title={t('The data is encrypted: the recovery key')} onClose={closeUnconfirmed(t, () => setKeyDone(true))}>
@@ -186,7 +200,7 @@ export function EncryptNow({ status, onClose }: { status: EncryptionStatus; onCl
     <Modal title={t('Encrypt the church’s data')} onClose={onClose} size="lg" footer={
       <>
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
-        <button className="btn primary" onClick={go} disabled={busy}><Icon name="lock" />{busy ? t('Encrypting…') : t('Encrypt now')}</button>
+        <button className="btn primary" onClick={go} disabled={busy || !password}><Icon name="lock" />{busy ? t('Encrypting…') : t('Encrypt now')}</button>
       </>
     }>
       <div className="stack">
@@ -203,7 +217,11 @@ export function EncryptNow({ status, onClose }: { status: EncryptionStatus; onCl
           </details>
         )}
         {status.others.length > 0 && <OthersList files={status.others} />}
+        <p className="small">{t('Backups are in')} <span className="code">{status.backup_dir}</span>. {t('If another Canon (a test copy) keeps its backups in the same folder, change that folder first.')}</p>
         <p className="small muted">{t('It takes a few seconds; anyone using Canon just then may need to try again.')}</p>
+        <Field label={t('Your password')}>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" style={{ maxWidth: 260 }} onKeyDown={(e) => e.key === 'Enter' && password && go()} />
+        </Field>
       </div>
     </Modal>
   );

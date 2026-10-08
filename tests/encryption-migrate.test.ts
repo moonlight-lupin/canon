@@ -87,7 +87,10 @@ test('Encrypt now: the database, then every plain copy Canon holds; files Canon 
   assert.ok(st.plain_copies.includes(plainBackup.name) && st.plain_copies.includes(path.basename(pre)) && st.plain_copies.includes('canon-archive-2016.db'));
   assert.ok(st.others.some((f: string) => f.endsWith('canon-before-move-20261007.db')));
 
-  const r = await call('POST', '/security/encryption/encrypt');
+  assert.equal((await call('POST', '/security/encryption/encrypt')).status, 400, 'the password is asked again');
+  assert.equal((await call('POST', '/security/encryption/encrypt', { password: 'wrong-password' })).status, 403);
+  assert.equal(D.dbEncrypted(), false, 'nothing done');
+  const r = await call('POST', '/security/encryption/encrypt', { password: 'correct-horse-7' });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.match(r.body.recovery.key, /^([0-9A-Z]{5}-){7}[0-9A-Z]{5}$/);
   assert.equal(r.body.failed.length, 0, JSON.stringify(r.body.failed));
@@ -127,6 +130,42 @@ test('Encrypt now: the database, then every plain copy Canon holds; files Canon 
   assert.equal(plainIn(process.env.CANON_DB!), false);
 
   // once is enough
-  assert.equal((await call('POST', '/security/encryption/encrypt')).status, 409);
+  assert.equal((await call('POST', '/security/encryption/encrypt', { password: 'correct-horse-7' })).status, 409);
   assert.deepEqual((await call('GET', '/security/encryption')).body.plain_copies, []);
+});
+
+test('plain copies left after Encrypt now are named, and encrypted later on request', async () => {
+  // a plain backup that couldn't be converted then (a drive unplugged): here again
+  const left = path.join(backups, 'canon-2026-01-04-0900.db');
+  const d = openDb(left);
+  d.exec("CREATE TABLE settings (key TEXT); CREATE TABLE people (first_name TEXT); INSERT INTO people VALUES ('Philippa')");
+  d.close();
+  assert.ok((await call('GET', '/security/encryption')).body.plain_copies.includes('canon-2026-01-04-0900.db'));
+  const r = await call('POST', '/security/encryption/copies');
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.converted, ['canon-2026-01-04-0900.db']);
+  assert.ok(!fs.existsSync(left) && fs.existsSync(`${left}.enc`));
+  assert.deepEqual((await call('GET', '/security/encryption')).body.plain_copies, []);
+});
+
+test('scratch files a crash left behind are swept when Canon starts; a plain upload into an encrypted Canon is not kept', async () => {
+  const leftovers = [path.join(data, '.part-123-456.db'), path.join(data, '.restore-in-1-2.db'), path.join(backups, 'canon-2026-02-01-0900.db.enc.tmp')];
+  for (const f of leftovers) fs.writeFileSync(f, 'SQLite format 3\0 plain leftover');
+  B.sweepScratch();
+  for (const f of leftovers) assert.ok(!fs.existsSync(f), f);
+  // a plain backup file restored from this computer: restored, not kept in the backup folder
+  const plain = path.join(tmp, 'from-usb.db');
+  fs.copyFileSync(path.join(backups, fs.readdirSync(backups).find((n) => n.endsWith('.db.enc'))!), path.join(tmp, 'enc-copy.db.enc'));
+  const own = openDb(process.env.CANON_DB!, { key: K.loadKeys()!.db, readonly: true });
+  own.exec(`VACUUM INTO '${path.join(tmp, 'tmp-enc.db').replace(/'/g, "''")}'`);
+  own.close();
+  const t = openDb(path.join(tmp, 'tmp-enc.db'), { key: K.loadKeys()!.db });
+  (await import('../server/lib/sqlite.ts')).rekeyDb(t, null);
+  t.close();
+  fs.renameSync(path.join(tmp, 'tmp-enc.db'), plain);
+  const before = fs.readdirSync(backups).filter((n) => n.endsWith('.db'));
+  const up = await fetch(`${base}/api/backups/restore-upload`, { method: 'POST', headers: { Cookie: admin.cookie, 'X-CSRF-Token': admin.csrf, 'Content-Type': 'application/octet-stream' }, body: fs.readFileSync(plain) });
+  assert.equal(up.status, 200, await up.text());
+  assert.deepEqual(fs.readdirSync(backups).filter((n) => n.endsWith('.db')), before, 'no plain file added to the backup folder');
+  assert.equal(D.dbEncrypted(), true);
 });

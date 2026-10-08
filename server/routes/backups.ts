@@ -1,6 +1,8 @@
 // Settings → Backups (administrators only).
+import fs from 'node:fs';
 import { dbEncrypted } from '../db.ts';
-import { isBackupV2Data } from '../lib/backup-file.ts';
+import { isBackupV2Data, scratch } from '../lib/backup-file.ts';
+import { config } from '../config.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { seed } from '../seed/index.ts';
 import { z } from 'zod';
@@ -107,6 +109,19 @@ backupRoutes.post('/backups/restore-upload', adminOnly, express.raw({ type: () =
     }
     // the password of an encrypted backup comes in a header (not in the address)
     const password = req.get('x-backup-password') ? decodeURIComponent(req.get('x-backup-password')!) : null;
+    // an encrypted Canon keeps no plain file in its backup folder: a plain upload is restored from the data folder
+    // and not kept (the backup made before the restore is the copy to go back to)
+    if (dbEncrypted() && !encrypted) {
+      const tmp = scratch(path.dirname(config.dbPath), 'upload');
+      fs.writeFileSync(tmp, data);
+      try {
+        const r = await restoreBackup(tmp, password);
+        await seed();
+        return res.json({ ...r, ...status() });
+      } finally {
+        fs.rmSync(tmp, { force: true });
+      }
+    }
     const file = saveUpload(data);
     let r: Awaited<ReturnType<typeof restoreBackup>>;
     try {

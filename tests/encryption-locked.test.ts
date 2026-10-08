@@ -2,7 +2,7 @@
 // starts locked — one page asking for the recovery key, on this computer only — and with the right key starts as usual.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -50,8 +50,15 @@ test('keys this computer can’t unlock: Canon starts locked, and the recovery k
     assert.equal(about.locked, true, 'the tray icon can say so');
     const page = await fetch(`${base}/`);
     assert.equal(page.status, 423);
-    assert.match(await page.text(), /recovery key/);
-    const unlock = (key: string) => fetch(`${base}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ key }) });
+    const html = await page.text();
+    assert.match(html, /recovery key/);
+    const token = /name="t" value="([0-9a-f]+)"/.exec(html)![1];
+    // another web page open on this computer can't post guesses: no token, or another site's Origin
+    const foreign = await fetch(`${base}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ key: recovery }) });
+    assert.equal(foreign.status, 403);
+    const elsewhere = await fetch(`${base}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Origin: 'https://evil.example' }, body: new URLSearchParams({ key: recovery, t: token }) });
+    assert.equal(elsewhere.status, 403);
+    const unlock = (key: string) => fetch(`${base}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ key, t: token }) });
     const wrong = await unlock('AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA');
     assert.equal(wrong.status, 400);
     assert.match(await wrong.text(), /not the recovery key/);
@@ -69,6 +76,30 @@ test('keys this computer can’t unlock: Canon starts locked, and the recovery k
       await exited;
     }
     // Windows lets go of the files a moment after the process ends
+    fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
+});
+
+test('a plain database put in place of an encrypted one is refused (it could get its owner a recovery key for the real one); after an interrupted encryption it opens', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canon-swap-'));
+  const db = path.join(tmp, 'canon.db');
+  const env = { ...process.env, CANON_DB: db, CANON_ENCRYPT: '1', CANON_KEY_PROTECT: 'file', CANON_LOG: 'off', NODE_TEST_CONTEXT: '' };
+  const node = (code: string) => spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', '--input-type=module', '-e', code], { cwd: root, env, encoding: 'utf8' });
+  try {
+    assert.equal(node("const D = await import('./server/db.ts'); D.closeDb();").status, 0);
+    // someone who can write the data folder (but can't unlock keys.json) puts a plain database of their own there
+    fs.renameSync(db, `${db}.real`);
+    for (const x of ['-wal', '-shm']) fs.rmSync(db + x, { force: true });
+    const plain = node("const { openDb } = await import('./server/lib/sqlite.ts'); const d = openDb(process.env.CANON_DB); d.exec('CREATE TABLE x (y)'); d.close();");
+    assert.equal(plain.status, 0, plain.stderr);
+    const r = node("await import('./server/db.ts');");
+    assert.notEqual(r.status, 0, 'Canon refuses to open it');
+    assert.match(r.stderr, /has been replaced/);
+    // the same plain file during an interrupted encryption (the mark made with the database key): it opens
+    const ok = node("const K = await import('./server/lib/keys.ts'); K.markEncrypting(K.loadKeys()); const D = await import('./server/db.ts'); console.log(D.dbEncrypted()); D.closeDb();");
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.match(ok.stdout, /false/);
+  } finally {
     fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });

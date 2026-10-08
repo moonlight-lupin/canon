@@ -3,7 +3,7 @@ import path from 'node:path';
 import { config } from './config.ts';
 import { MIGRATIONS, type Migration } from './migrations.ts';
 import { openDb, type Db } from './lib/sqlite.ts';
-import { createKeys, loadKeys, type Keys } from './lib/keys.ts';
+import { createKeys, encryptingMarked, loadKeys, type Keys } from './lib/keys.ts';
 
 export { MIGRATIONS };
 
@@ -32,9 +32,13 @@ const open = () => {
       d = openDb(config.dbPath, { key: keys.db });
       encrypted = true;
     } catch (e) {
-      // keys made, but the database not encrypted yet (encrypting was interrupted): it opens as it is, and Settings
-      // still says it is not encrypted
       if ((e as { code?: string }).code !== 'SQLITE_NOTADB') throw e;
+      // a plain database beside the keys: only an interrupted encryption leaves one (marked with the database key).
+      // Otherwise someone put it there — perhaps to have Canon hand them a recovery key for these keys — so Canon
+      // refuses it rather than open it.
+      if (!encryptingMarked(keys)) {
+        throw new Error(`${config.dbPath} is not encrypted, but this Canon's keys (keys.json) say it must be: the database file has been replaced. Canon won't open it. Restore the newest backup (Settings → Backups, or docs/ADMINISTRATION.md "Encryption"); if this file really is the church's database, move keys.json aside first.`);
+      }
       d = openDb(config.dbPath);
       encrypted = false;
     }

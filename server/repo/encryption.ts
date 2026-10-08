@@ -7,7 +7,7 @@ import QRCode from 'qrcode';
 import { db, dbEncrypted, reopenDb, setEncrypted } from '../db.ts';
 import { config } from '../config.ts';
 import { openDb, rekeyDb } from '../lib/sqlite.ts';
-import { createKeys, keyProtection, loadKeys, machineAccount, makeRecoveryKey, recoveryInfo, type Keys } from '../lib/keys.ts';
+import { clearEncrypting, createKeys, keyProtection, loadKeys, machineAccount, makeRecoveryKey, markEncrypting, recoveryInfo, type Keys } from '../lib/keys.ts';
 import { writeBackupFile } from '../lib/backup-file.ts';
 import { Conflict } from '../lib/table.ts';
 import { logChange } from './changelog.ts';
@@ -17,7 +17,7 @@ const dataDir = () => path.dirname(config.dbPath);
 const BACKUP_RE = /^canon-\d{4}-\d{2}-\d{2}-\d{4}(-\d+|-upload\d*)?\.db$/;
 const ARCHIVE_RE = /^canon-archive-\d{4}\.db$/;
 const PRE_UPGRADE_RE = /^canon-v\d+-before-v\d+-[\d-]+\.db$/;
-const SCRATCH_RE = /^\.(backup|restore|restore-in|restore-out)-[\w-]+\.db$/;
+export const SCRATCH_RE = /^\.(backup|restore|restore-in|restore-out|part)-[\w-]+\.db$/;
 
 /** A plain SQLite database (its first bytes say so; an encrypted one starts with random bytes). */
 const isPlainDb = (file: string) => {
@@ -39,11 +39,13 @@ const filesIn = (dir: string, re: RegExp) => (fs.existsSync(dir) ? fs.readdirSyn
 /** The plain copies Canon holds, by kind (made before the database was encrypted). */
 function plainCopies() {
   const bdir = backupDir();
+  // a test copy of the church's data (CANON_TEST_COPY=1) leaves its backup folder alone: it may be the real Canon's
+  const backupsToo = !config.testCopy;
   return {
     pre_upgrade: filesIn(path.join(dataDir(), 'pre-upgrade'), PRE_UPGRADE_RE).filter(isPlainDb),
     archives: filesIn(path.join(dataDir(), 'archives'), ARCHIVE_RE).filter(isPlainDb),
-    backups: filesIn(bdir, BACKUP_RE).filter(isPlainDb),
-    backup_archives: filesIn(path.join(bdir, 'archives'), ARCHIVE_RE).filter(isPlainDb),
+    backups: backupsToo ? filesIn(bdir, BACKUP_RE).filter(isPlainDb) : [],
+    backup_archives: backupsToo ? filesIn(path.join(bdir, 'archives'), ARCHIVE_RE).filter(isPlainDb) : [],
     scratch: filesIn(dataDir(), SCRATCH_RE),
   };
 }
@@ -52,7 +54,7 @@ function othersInFolders(): string[] {
   const known = new Set([path.resolve(config.dbPath)]);
   return [dataDir(), backupDir()]
     .flatMap((d) => (fs.existsSync(d) ? fs.readdirSync(d).map((n) => path.join(d, n)) : []))
-    .filter((f) => /\.(db|sqlite|sqlite3)$/i.test(f) && !known.has(path.resolve(f)) && !BACKUP_RE.test(path.basename(f)) && !SCRATCH_RE.test(path.basename(f)) && isPlainDb(f));
+    .filter((f) => /\.(db|sqlite|sqlite3)$/i.test(f) && !known.has(path.resolve(f)) && (config.testCopy || !BACKUP_RE.test(path.basename(f))) && !SCRATCH_RE.test(path.basename(f)) && isPlainDb(f));
 }
 
 export function encryptionStatus() {
@@ -63,6 +65,8 @@ export function encryptionStatus() {
     protection: keyProtection(),
     account: machineAccount(),
     recovery: recoveryInfo(),
+    /** where backups go: Encrypt now converts the plain ones there (shown before it does) */
+    backup_dir: backupDir(),
     plain_copies: Object.values(plain).flat().map((f) => path.basename(f)),
     others: othersInFolders().map((f) => f),
   };
@@ -87,11 +91,29 @@ export async function newRecoveryKey() {
 export async function encryptNow() {
   if (dbEncrypted()) throw new Conflict('The database is encrypted already.');
   const safety = createBackup();
+  // keys beside a plain database exist only after an interrupted encryption (db.ts refuses any other plain file)
   const keys: Keys = loadKeys() ?? createKeys();
+  markEncrypting(keys);
   const recovery = makeRecoveryKey();
   rekeyDb(db, keys.db);
   setEncrypted(keys);
   reopenDb(() => undefined);
+  clearEncrypting();
+  const copies = encryptPlainCopies(keys);
+  logChange({
+    entity: 'settings', entity_id: null, action: 'update',
+    summary: `The database was encrypted (recovery key ID ${recovery.id}); ${copies.converted.length} plain cop${copies.converted.length === 1 ? 'y' : 'ies'} encrypted or removed${copies.failed.length ? `, ${copies.failed.length} could not be` : ''}`,
+  });
+  return { recovery: await recoveryOut(recovery), safety: safety.name, ...copies };
+}
+
+/**
+ * The plain copies Canon holds, encrypted: the copies kept before upgrades and the archived years with the database
+ * key, backups and their archive copies in the backup format (each plain original removed once its encrypted copy is
+ * written). Part of Encrypt now, and again later for any it couldn't do then (a USB drive unplugged, a file in use).
+ */
+export function encryptPlainCopies(keys: Keys | null = loadKeys()) {
+  if (!dbEncrypted() || !keys) throw new Conflict('Encrypt the database first.');
   const done: string[] = [];
   const failed: { file: string; error: string }[] = [];
   const step = (file: string, fn: () => void) => {
@@ -121,9 +143,5 @@ export async function encryptNow() {
   for (const f of plain.backups) step(f, () => asBackup(f, 'database'));
   for (const f of plain.backup_archives) step(f, () => asBackup(f, 'archive'));
   for (const f of plain.scratch) step(f, () => fs.rmSync(f, { force: true }));
-  logChange({
-    entity: 'settings', entity_id: null, action: 'update',
-    summary: `The database was encrypted (recovery key ID ${recovery.id}); ${done.length} plain cop${done.length === 1 ? 'y' : 'ies'} encrypted or removed${failed.length ? `, ${failed.length} could not be` : ''}`,
-  });
-  return { recovery: await recoveryOut(recovery), safety: safety.name, converted: done, failed, others: othersInFolders() };
+  return { converted: done, failed, others: othersInFolders() };
 }

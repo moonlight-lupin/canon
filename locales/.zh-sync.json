@@ -1200,6 +1200,10 @@
       "备份一律加密，并使用自己的密钥（不是数据库的密钥）。在这台电脑上可直接还原；在其他电脑上，则需要教会的恢复密钥（设置 → 安全与隐私）。以前用备份密码做的备份，仍可用该密码还原。",
       "備份一律加密，並使用自己的密鑰（不是數據庫的密鑰）。在這臺電腦上可直接還原；在其他電腦上，則需要教會的恢復密鑰（設置 → 安全與隱私）。以前用備份密碼做的備份，仍可用該密碼還原。"
     ],
+    "Backups are in": [
+      "备份存放在",
+      "備份存放在"
+    ],
     "Backups are no longer encrypted.": [
       "备份不再加密。",
       "備份不再加密。"
@@ -3136,9 +3140,17 @@
       "加密教会的资料",
       "加密教會的資料"
     ],
+    "Encrypt them now": [
+      "立即加密它们",
+      "立即加密它們"
+    ],
     "Encrypted": [
       "已加密",
       "已加密"
+    ],
+    "Encrypted.": [
+      "已加密。",
+      "已加密。"
     ],
     "Encrypting…": [
       "正在加密……",
@@ -4083,6 +4095,10 @@
     "If a new recovery key is made, this one no longer opens the database; keep it for the backups made before then.": [
       "若之后另做新的恢复密钥，这一个就不能再打开数据库；请保留它，以还原在那之前做的备份。",
       "若之後另做新的恢復密鑰，這一個就不能再打開數據庫；請保留它，以還原在那之前做的備份。"
+    ],
+    "If another Canon (a test copy) keeps its backups in the same folder, change that folder first.": [
+      "若另一个 Canon（测试副本）也把备份存放在同一个文件夹，请先更换文件夹。",
+      "若另一個 Canon（測試副本）也把備份存放在同一個文件夾，請先更換文件夾。"
     ],
     "If this address is on the church’s member list, a 6-digit code is on its way. It works for 10 minutes.": [
       "如果这个地址在教会的会友名单中，6 位数验证码正在寄出，10 分钟内有效。",
@@ -6643,6 +6659,10 @@
     "Plain copies Canon holds: {n}": [
       "Canon 保存的未加密副本：{n} 份",
       "Canon 保存的未加密副本：{n} 份"
+    ],
+    "Plain copies are still here: they hold members’ data unencrypted.": [
+      "这里仍有未加密的副本：其中的会友资料没有加密。",
+      "這裡仍有未加密的副本：其中的會友資料沒有加密。"
     ],
     "Plain database files Canon didn’t make, left as they are:": [
       "不是 Canon 制作的未加密数据库文件，保持原样：",
@@ -11186,8 +11206,8 @@
     ]
   },
   "guide": [
-    "9e01deffe4635811",
-    "62c1758b06a93bed"
+    "e6970a934227896e",
+    "0adaf5adcaa3f752"
   ],
   "outputs": {
     "Advent": [
