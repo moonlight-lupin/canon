@@ -32,3 +32,6 @@ Thumbs.db
 # machine-specific launcher settings (port etc.)
 canon.local.bat
 canon.local.sh
+
+# scratch copies of the Excel date fixtures (not used by tests)
+tests/fixtures/_rc/

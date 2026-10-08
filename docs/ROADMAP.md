@@ -21,7 +21,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.17.1 | Claim forms — done |
 | 0.17.2–0.17.3 | Excel exports with a title block, Excel imports, importing journals; reversals as drafts (also by AI assistants) — done |
 | 0.17.4 | The v0.17.2 review's findings: bank re-imports, one offering per receipt, group matching, safe sample-data removal, congregation walls in the library and asset register, Excel 1904 dates — done |
-| 0.18.0 | Third hardening round: financial correctness first (the v0.17.2 review), then security, recovery and the Windows service |
+| 0.18.0 | Third hardening round: three independent reviews of the books, claims, upgrades and Docker fixed with tests; Canon in the background on Windows with an icon by the clock; chart of accounts import; signing on a phone; a test-copy switch — done |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
@@ -190,7 +190,7 @@ Decided (2026-10-08):
   - **Return a link:** a connector can't receive the photo itself, so the reply is the claim's link. The claimant opens it on a phone, checks the lines, attaches the receipts and signs.
   - **Never:** submit without the claimant's signature, approve or pay.
 
-## 0.18.0 — Third hardening round
+## 0.18.0 — Third hardening round (released)
 
 After book-keeping, which adds financial records and approvals: a review of security, data integrity, upgrades and backups across the whole app, including the new modules (for example the accounts' audit trail and period close, and claim approvals). Also carried forward from 0.13: running Canon as a Windows service instead of a console window.
 

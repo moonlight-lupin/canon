@@ -4,7 +4,7 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.18.0 — Hardening (in progress)
+## 0.18.0 — Hardening: the books reviewed, Canon in the background
 
 - **Importing the chart of accounts and the funds** (Book-keeping → Accounts and funds → Import…) from Excel or CSV — the same columns as their export. Rows are matched by code; a preview first; nothing deleted; an account already used keeps its type.
 - **Canon in the background on Windows** (`scripts\windows-task.ps1 install`, as administrator): a Task Scheduler task starts Canon with the computer, before anyone signs in, without a window, and again if it stops by itself; it runs as the office account (Windows asks for its password once and keeps it). See `docs/ADMINISTRATION.md`.
