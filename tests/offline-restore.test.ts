@@ -63,11 +63,13 @@ test('the same computer: an encrypted Canon restored by hand starts again, with 
   assert.deepEqual(JSON.parse(c.stdout.trim()), { last_name: 'Fictional-Restore', encrypted: true, archived: 27 });
 });
 
-test('a new computer, the old data folder lost: the backup folder and the recovery key bring the database and the archived years back', () => {
+test('a new computer, the old data folder lost: one backup file (as from Google Drive) and the recovery key bring the database and the archived years back', () => {
   assert.ok(setup, made.stderr);
   const dirB = path.join(tmp, 'new-computer');
-  fs.cpSync(backups, path.join(dirB, 'usb'), { recursive: true });
+  // only the backup file itself — no archives folder beside it: the package carries the archived years (0.19.3)
+  fs.mkdirSync(path.join(dirB, 'usb'), { recursive: true });
   const file = path.join(dirB, 'usb', path.basename(setup!.backup));
+  fs.copyFileSync(setup!.backup, file);
   // without the recovery key: this computer's new keys don't open the backup
   const without = restore(envFor(dirB), file);
   assert.notEqual(without.status, 0);

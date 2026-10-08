@@ -5,11 +5,11 @@ import path from 'node:path';
 import { db, dbEncrypted, dbKey, migrate, reopenDb, schemaVersion } from '../db.ts';
 import { openDb, rekeyDb, type Db } from '../lib/sqlite.ts';
 import { loadKeys } from '../lib/keys.ts';
-import { SCRATCH_RE, isBackupV2, isBackupV2Data, scratch, unwrapBackupFile, writeBackupFile } from '../lib/backup-file.ts';
+import { SCRATCH_RE, isBackupV2, isEncryptedBackupData, isPackage, scratch, unwrapBackupFile, unwrapPackage, writePackage } from '../lib/backup-file.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
-import { copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
+import { archiveDir, copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
 import { createAllMeetingsAhead } from './services.ts';
 import { clearSettingsCache, getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 import { decryptFile, encryptFile, isEncrypted, keyForBackup } from '../lib/backup-crypto.ts';
@@ -76,21 +76,34 @@ export function sweepScratch() {
   }
 }
 
+const canonVersion = () => {
+  try {
+    return (JSON.parse(fs.readFileSync(path.join(config.root, 'package.json'), 'utf8')) as { version: string }).version;
+  } catch {
+    return '';
+  }
+};
+
 /** Write a backup now. Returns the new file. */
 export function createBackup(dir = backupDir()): BackupFile & { path: string } {
   fs.mkdirSync(dir, { recursive: true });
-  // an encrypted Canon: always encrypted, with the backup key (a copy re-keyed in the data folder, never in plain)
+  // an encrypted Canon: a backup package (0.19.3) — the database and every archived year in one file, encrypted with
+  // the backup key (copies re-keyed in the data folder, never in plain). One file is the whole of the church's data,
+  // so the copy in Google Drive is complete.
   if (dbEncrypted()) {
     let file = path.join(dir, `canon-${stamp()}.db.enc`);
     for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-${i}.db.enc`);
     const tmp = scratch(path.dirname(config.dbPath), 'backup');
     try {
       db.exec(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
-      writeBackupFile(tmp, dbKey(), file, loadKeys()!);
+      const archives = fs.existsSync(archiveDir()) ? fs.readdirSync(archiveDir()).filter((n) => /^canon-archive-\d{4}\.db$/.test(n)).sort() : [];
+      writePackage([
+        { name: 'canon.db', kind: 'database', src: tmp, key: dbKey() },
+        ...archives.map((n) => ({ name: n, kind: 'archive' as const, src: path.join(archiveDir(), n), key: dbKey() })),
+      ], file, loadKeys()!, { canon: canonVersion(), schema: schemaVersion() });
     } finally {
       fs.rmSync(tmp, { force: true });
     }
-    copyArchivesTo(dir);
     setMeta('last_backup_at', new Date().toISOString());
     const st = fs.statSync(file);
     return { name: path.basename(file), path: file, size: st.size, created: st.mtime.toISOString() };
@@ -190,6 +203,26 @@ export function checkBackupFile(file: string, key: Buffer | null = null): string
 export async function restoreBackup(file: string, password?: string | null): Promise<{ safety: string; restored_schema: number }> {
   // the backup, copied into the data folder as a database: still encrypted (a backup of an encrypted Canon), or
   // decrypted (one made with a backup password, before 0.19.0), or as it is (a plain one)
+  // a package (0.19.3): its database and its archived years
+  if (isPackage(file)) {
+    const u = unwrapPackage(file, loadKeys(), password);
+    const parts = [u.database, ...u.archives.map((a) => a.file)];
+    try {
+      const problem = checkBackupFile(u.database, u.key);
+      if (problem) throw Object.assign(new Error(problem), { status: 400 });
+      for (const f of parts) {
+        const d = openDb(f, { key: u.key });
+        try {
+          rekeyDb(d, dbKey());
+        } finally {
+          d.close();
+        }
+      }
+      return await restoreInto(u.database, path.basename(file), u.archives);
+    } finally {
+      for (const f of parts) fs.rmSync(f, { force: true });
+    }
+  }
   const incoming = scratch(path.dirname(config.dbPath), 'restore-in');
   try {
     let key: Buffer | null = null;
@@ -213,8 +246,12 @@ export async function restoreBackup(file: string, password?: string | null): Pro
   }
 }
 
-/** Put a prepared database (keyed as the live one) in the live database's place, then bring it up to date. */
-async function restoreInto(incoming: string, name: string): Promise<{ safety: string; restored_schema: number }> {
+/**
+ * Put a prepared database (keyed as the live one) in the live database's place, then bring it up to date. With a
+ * package's archived years, they take the place of the archived years there were (those are set aside in
+ * data/pre-restore/), so the data is as it was when the backup was made.
+ */
+async function restoreInto(incoming: string, name: string, archives?: { name: string; file: string }[]): Promise<{ safety: string; restored_schema: number }> {
   // settings that belong to this computer, not to the data: kept as they are
   const here = getSettings();
   const keep = { backup: here.backup, public_url: here.public_url, trust_proxy: here.trust_proxy };
@@ -242,6 +279,17 @@ async function restoreInto(incoming: string, name: string): Promise<{ safety: st
     fs.rmSync(incoming, { force: true });
   }
   fs.rmSync(outgoing, { force: true });
+  if (archives) {
+    const dir = archiveDir();
+    const now = fs.existsSync(dir) ? fs.readdirSync(dir).filter((n) => /^canon-archive-\d{4}\.db$/.test(n)) : [];
+    if (now.length) {
+      const aside = path.join(path.dirname(config.dbPath), 'pre-restore', `archives-${stamp()}-${Date.now() % 100000}`);
+      fs.mkdirSync(aside, { recursive: true });
+      for (const n of now) fs.renameSync(path.join(dir, n), path.join(aside, n));
+    }
+    fs.mkdirSync(dir, { recursive: true });
+    for (const a of archives) fs.renameSync(a.file, path.join(dir, a.name));
+  }
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   migrate();
   clearSettingsCache();
@@ -252,7 +300,7 @@ async function restoreInto(incoming: string, name: string): Promise<{ safety: st
   eraseVisitorContacts(getSettings().retention.visitor_contact_months);
   setMeta('last_backup_at', safety.created);
   setMeta('last_restore', JSON.stringify({ at: new Date().toISOString(), from: name, safety: safety.name }));
-  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${name} (the data before it was saved as ${safety.name})` });
+  logChange({ entity: 'backups', entity_id: null, action: 'update', summary: `Restored backup ${name}${archives ? ` with ${archives.length} archived year${archives.length === 1 ? '' : 's'}` : ''} (the data before it was saved as ${safety.name})` });
   return { safety: safety.name, restored_schema: restored };
 }
 
@@ -265,7 +313,7 @@ export function newestEncrypted(dir = backupDir()): { name: string; path: string
 /** Save an uploaded backup file into the backup folder (under a backup-style name) and return its path. */
 export function saveUpload(data: Buffer, dir = backupDir()): string {
   fs.mkdirSync(dir, { recursive: true });
-  const ext = data.subarray(0, 9).toString() === 'CANONENC1' || isBackupV2Data(data) ? '.db.enc' : '.db';
+  const ext = data.subarray(0, 9).toString() === 'CANONENC1' || isEncryptedBackupData(data) ? '.db.enc' : '.db';
   let file = path.join(dir, `canon-${stamp()}-upload${ext}`);
   for (let i = 2; fs.existsSync(file); i++) file = path.join(dir, `canon-${stamp()}-upload${i}${ext}`);
   fs.writeFileSync(file, data);

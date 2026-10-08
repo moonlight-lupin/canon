@@ -99,23 +99,25 @@ test('the recovery key: made once and shown once (QR code too); a new one needs 
 test('backups: encrypted with their own key; restore here by themselves, and on another computer with the recovery key', async () => {
   const b = B.createBackup();
   assert.match(b.name, /\.db\.enc$/);
-  assert.equal(BF.isBackupV2(b.path), true);
+  assert.equal(BF.isPackage(b.path), true, 'a backup package (0.19.3)');
   assert.equal(plainIn(b.path), false);
-  const { header } = BF.readHeader(b.path);
+  const { header } = BF.readPackageHeader(b.path);
   assert.equal(header.recovery!.id, K.recoveryInfo()!.id, 'it names the recovery key that opens it');
+  assert.equal(header.parts[0].name, 'canon.db');
   // not with the database's own key: a separate key
-  const scratch = path.join(tmp, 'peek.db');
   const keys = K.loadKeys()!;
   assert.ok(!keys.db.equals(keys.backup));
-  assert.equal(BF.unwrapBackupFile(b.path, scratch, keys).equals(keys.backup), true);
-  assert.throws(() => openDb(scratch, { key: keys.db, readonly: true }), /not a database/);
-  fs.rmSync(scratch, { force: true });
+  const mine = BF.unwrapPackage(b.path, keys);
+  assert.equal(mine.key.equals(keys.backup), true);
+  assert.throws(() => openDb(mine.database, { key: keys.db, readonly: true }), /not a database/);
+  fs.rmSync(mine.database, { force: true });
   // another computer: its own keys don't open it; the recovery key does
   const other = { db: crypto.randomBytes(32), backup: crypto.randomBytes(32) };
-  assert.throws(() => BF.unwrapBackupFile(b.path, scratch, other), (e: Error & { needs_recovery?: boolean }) => !!e.needs_recovery);
-  assert.throws(() => BF.unwrapBackupFile(b.path, scratch, other, 'AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA'), /not the recovery key/);
-  assert.equal(BF.unwrapBackupFile(b.path, scratch, other, recovery).equals(keys.backup), true);
-  fs.rmSync(scratch, { force: true });
+  assert.throws(() => BF.unwrapPackage(b.path, other), (e: Error & { needs_recovery?: boolean }) => !!e.needs_recovery);
+  assert.throws(() => BF.unwrapPackage(b.path, other, 'AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA'), /not the recovery key/);
+  const theirs = BF.unwrapPackage(b.path, other, recovery);
+  assert.equal(theirs.key.equals(keys.backup), true);
+  fs.rmSync(theirs.database, { force: true });
   // restored here: the data as it was, the database still encrypted
   D.run("UPDATE people SET last_name = 'Changed' WHERE first_name = 'Zebediah'");
   await B.restoreBackup(b.path);
@@ -132,14 +134,13 @@ test('a backup made under an earlier recovery key still restores with that one',
   const b = B.createBackup();
   const newer = (await call('POST', '/security/recovery-key', { password: 'correct-horse-7' })).body.key;
   const other = { db: crypto.randomBytes(32), backup: crypto.randomBytes(32) };
-  const scratch = path.join(tmp, 'peek2.db');
-  assert.throws(() => BF.unwrapBackupFile(b.path, scratch, other, newer), /not the recovery key/);
-  assert.ok(BF.unwrapBackupFile(b.path, scratch, other, older));
-  fs.rmSync(scratch, { force: true });
+  assert.throws(() => BF.unwrapPackage(b.path, other, newer), /not the recovery key/);
+  const u = BF.unwrapPackage(b.path, other, older);
+  for (const f of [u.database, ...u.archives.map((a) => a.file)]) fs.rmSync(f, { force: true });
   recovery = newer;
 });
 
-test('archived years are encrypted with the database, and so are their copies with backups', () => {
+test('archived years are encrypted with the database, and go inside every backup package; restoring one brings them back (0.19.3)', async () => {
   const ed = { name: 'Test', admin: true, money: true };
   const s = svc.createService({ date: '2016-03-06' }).service;
   asActor({ user_id: null, user_name: 'Test', via: 'web' }, () => R.saveRecord(s.id, { attendance: 44, counters: ['Zebediah Fictional-Member'] }, ed));
@@ -147,10 +148,29 @@ test('archived years are encrypted with the database, and so are their copies wi
   const file = A.archivePath(2016);
   assert.equal(plainIn(file), false);
   assert.equal(A.archivedRecords(2016)[0].attendance, 44, 'read with the database key');
-  assert.equal(A.copyArchivesTo(backups), 1);
-  const copy = path.join(backups, 'archives', 'canon-archive-2016.db.enc');
-  assert.equal(BF.isBackupV2(copy), true);
-  assert.equal(plainIn(copy), false);
+  // the backup package carries the archived year: one file is the whole of the church's data
+  const b = B.createBackup();
+  assert.deepEqual(BF.readPackageHeader(b.path).header.parts.map((x) => x.name), ['canon.db', 'canon-archive-2016.db']);
+  assert.equal(plainIn(b.path), false);
+  // the archived year lost (a new computer, a deleted folder): restoring the package brings it back
+  fs.rmSync(file);
+  await B.restoreBackup(b.path);
+  assert.equal(A.archivedRecords(2016)[0].attendance, 44, 'back, with the database key');
+  assert.equal(plainIn(A.archivePath(2016)), false);
+  // an archived year there when restoring is set aside, not lost
+  const again = B.createBackup();
+  await B.restoreBackup(again.path);
+  const asides = fs.readdirSync(path.join(path.dirname(process.env.CANON_DB!), 'pre-restore')).filter((n) => n.startsWith('archives-'));
+  assert.ok(asides.length >= 1, 'the archived years there were are kept aside');
+  // a package that was damaged on the way (one byte changed, or cut short) is refused, and nothing changes
+  const bad = path.join(tmp, 'damaged.db.enc');
+  const bytes = fs.readFileSync(again.path);
+  bytes[bytes.length - 100] ^= 0xff;
+  fs.writeFileSync(bad, bytes);
+  await assert.rejects(B.restoreBackup(bad), /damaged/);
+  fs.writeFileSync(bad, bytes.subarray(0, bytes.length - 500));
+  await assert.rejects(B.restoreBackup(bad), /damaged or incomplete/);
+  assert.equal(A.archivedRecords(2016)[0].attendance, 44);
 });
 
 test('keys this computer can no longer unlock open with the recovery key, and are locked to it again', () => {

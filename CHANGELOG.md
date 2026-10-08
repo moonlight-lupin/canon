@@ -4,6 +4,14 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.3 — One backup file holds everything
+
+- **A backup is a complete package**: each backup of an encrypted Canon is one file with the database **and every archived year**, encrypted with the backup key, so the copy in Google Drive (or on a USB drive) is the whole of the church's data. Before, archived years were copied beside local backups only and never reached Drive.
+- **Restoring brings the archived years back**, in Settings → Backups and with `npm run restore-backup`: the package's archived years take their place, and the ones Canon had are set aside in `data/pre-restore/`, not deleted. The change log says how many archived years came back.
+- **A damaged backup is refused**: each part carries its SHA-256, so a file changed or cut short on the way is turned away before anything changes.
+- `npm run decrypt-backup` writes a package's archived years to `<name>-archives/`; `npm run backup` writes packages too. Older backups (`.db.enc` from 0.19.0–0.19.2, and those made with a backup password) still restore as before.
+- Database: no change.
+
 ## 0.19.2 — Fixes from the v0.19.1 review
 
 - **Sample data marks its own rows** (database version 36): removing it takes only the people, households, groups and services that carry its mark. Before, a real service made after a sample one was deleted could take its number and be removed with the sample.

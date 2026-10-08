@@ -10,7 +10,8 @@ import path from 'node:path';
 import { config } from '../server/config.ts';
 import { openDb, type Db } from '../server/lib/sqlite.ts';
 import { encryptingMarked, loadKeys, type Keys } from '../server/lib/keys.ts';
-import { scratch, writeBackupFile } from '../server/lib/backup-file.ts';
+import { scratch, writePackage } from '../server/lib/backup-file.ts';
+import { MIGRATIONS } from '../server/migrations.ts';
 import { encryptFile, keyForBackup } from '../server/lib/backup-crypto.ts';
 
 // an encrypted Canon (0.19.0): the database opens with its key, and the backup is encrypted with the backup key
@@ -64,7 +65,14 @@ if (encrypted) {
   const tmp = scratch(path.dirname(config.dbPath), 'backup');
   try {
     db.exec(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
-    writeBackupFile(tmp, keys!.db, file, keys!);
+    // a package (0.19.3): the database and every archived year in one file
+    const arcDir = path.join(path.dirname(config.dbPath), 'archives');
+    const arcs = fs.existsSync(arcDir) ? fs.readdirSync(arcDir).filter((n) => /^canon-archive-\d{4}\.db$/.test(n)).sort() : [];
+    const version = (JSON.parse(fs.readFileSync(path.join(config.root, 'package.json'), 'utf8')) as { version: string }).version;
+    writePackage([
+      { name: 'canon.db', kind: 'database', src: tmp, key: keys!.db },
+      ...arcs.map((n) => ({ name: n, kind: 'archive' as const, src: path.join(arcDir, n), key: keys!.db })),
+    ], file, keys!, { canon: version, schema: MIGRATIONS.length });
   } finally {
     fs.rmSync(tmp, { force: true });
   }
@@ -80,16 +88,15 @@ if (encrypted) {
   db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
 }
 db.prepare("INSERT INTO settings (key, value) VALUES ('_last_backup_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(new Date().toISOString());
-// archive files (one per archived year) go along with every backup
+// archive files (one per archived year) go along with every backup (an encrypted Canon's package has them inside)
 const archives = path.join(path.dirname(config.dbPath), 'archives');
-if (fs.existsSync(archives)) {
+if (!encrypted && fs.existsSync(archives)) {
   fs.mkdirSync(path.join(dir, 'archives'), { recursive: true });
   for (const name of fs.readdirSync(archives).filter((n) => /^canon-archive-\d{4}\.db$/.test(n))) {
     const from = path.join(archives, name);
-    const to = path.join(dir, 'archives', encrypted || key ? `${name}.enc` : name);
+    const to = path.join(dir, 'archives', key ? `${name}.enc` : name);
     if (fs.existsSync(to) && fs.statSync(to).mtimeMs >= fs.statSync(from).mtimeMs) continue;
-    if (encrypted) writeBackupFile(from, keys!.db, to, keys!, 'archive');
-    else if (key) encryptFile(from, to, key);
+    if (key) encryptFile(from, to, key);
     else fs.copyFileSync(from, to);
   }
 }

@@ -65,7 +65,7 @@ What Canon does is written to `data\logs\` as before (`launcher.log` for restart
 
 From 0.19.0 Canon encrypts the church's data on the computer it runs on (SQLCipher format, AES-256):
 - **The database** (`data/canon.db`), the copies kept before upgrades (`data/pre-upgrade/`) and the archived years (`data/archives/`), with the **database key**.
-- **Backups**, with a separate **backup key**: a backup copied to a USB drive or Google Drive and the live database never share a secret.
+- **Backups**, with a separate **backup key**: a backup copied to a USB drive or Google Drive and the live database never share a secret. From 0.19.3 each backup is one **package**: the database and every archived year in one file (each part with its SHA-256, so a damaged or cut-short file is refused), so a single Drive copy restores everything.
 - Both keys are random and kept in **`data/keys.json`**, locked to this computer:
   - **Windows**: DPAPI, with the Windows account Canon runs as. Another account, or the file copied elsewhere, can't open them. Install the background task (above) as the same account that encrypted the data, or Canon starts locked.
   - **macOS**: the login keychain.
@@ -89,15 +89,15 @@ npm run backup                      # → backups/canon-YYYY-MM-DD-HHMM.db
 npm run backup -- D:\CanonBackups   # to a USB drive or synced folder
 ```
 
-Backups of an encrypted Canon are always encrypted (`.db.enc`, with the backup key; see [Encryption](#encryption)). Before 0.19.0 — and while a database isn't encrypted yet — a backup password (Settings → Backups → Encryption) encrypts them instead (AES-256-GCM; the key in `data/backup-key.json`, never inside a backup). To restore a backup by hand — Canon stopped, because it won't start, or on a new computer after the old one was lost:
+Backups of an encrypted Canon are always encrypted (`.db.enc`, with the backup key; see [Encryption](#encryption)), and from 0.19.3 carry the archived years inside the same file. Before 0.19.0 — and while a database isn't encrypted yet — a backup password (Settings → Backups → Encryption) encrypts them instead (AES-256-GCM; the key in `data/backup-key.json`, never inside a backup). To restore a backup by hand — Canon stopped, because it won't start, or on a new computer after the old one was lost:
 
 ```bash
 npm run restore-backup -- D:\CanonBackups\canon-2026-01-04-0900.db.enc
 ```
 
-It opens the backup (this computer's keys; for a backup from another computer, add its **recovery key** after the file name — or, for a backup from before 0.19.0, its backup password), checks it, gives it this Canon's own key, sets the database there was aside in `data/pre-restore/`, and brings back the archived years found next to the backup (its `archives/` folder) that this Canon doesn't have. On a computer with no keys yet it makes new ones and shows their new recovery key once: print it. Then start Canon. (Don't copy a backup over `canon.db` yourself: an encrypted Canon refuses a plain database beside its keys, on purpose.)
+It opens the backup (this computer's keys; for a backup from another computer, add its **recovery key** after the file name — or, for a backup from before 0.19.0, its backup password), checks it, gives it this Canon's own key, sets the database there was aside in `data/pre-restore/`, and brings back the archived years: a package's own (the ones here are set aside in `data/pre-restore/` first), or, for an older backup, those found next to it (its `archives/` folder) that this Canon doesn't have. On a computer with no keys yet it makes new ones and shows their new recovery key once: print it. Then start Canon. (Don't copy a backup over `canon.db` yourself: an encrypted Canon refuses a plain database beside its keys, on purpose.)
 
-`npm run decrypt-backup -- <file> [recovery key]` still writes a plain copy of a backup, for looking into it elsewhere — keep it away from synced folders and delete it afterwards.
+`npm run decrypt-backup -- <file> [recovery key]` still writes a plain copy of a backup (a package's archived years in `<name>-archives/`), for looking into it elsewhere — keep it away from synced folders and delete it afterwards.
 
 Archive files are copied with every backup. To restore by hand, or to update Canon and go back, see [UPGRADING.md](UPGRADING.md). For Docker, see [DOCKER.md](DOCKER.md).
 

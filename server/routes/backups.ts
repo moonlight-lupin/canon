@@ -1,7 +1,7 @@
 // Settings → Backups (administrators only).
 import fs from 'node:fs';
 import { dbEncrypted } from '../db.ts';
-import { isBackupV2Data, scratch } from '../lib/backup-file.ts';
+import { isEncryptedBackupData, scratch } from '../lib/backup-file.ts';
 import { config } from '../config.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { seed } from '../seed/index.ts';
@@ -103,7 +103,7 @@ backupRoutes.post('/backups/:name/restore', adminOnly, async (req, res, next) =>
 backupRoutes.post('/backups/restore-upload', adminOnly, express.raw({ type: () => true, limit: '500mb' }), async (req, res, next) => {
   try {
     const data = req.body as Buffer;
-    const encrypted = Buffer.isBuffer(data) && (data.subarray(0, 9).toString() === 'CANONENC1' || isBackupV2Data(data));
+    const encrypted = Buffer.isBuffer(data) && (data.subarray(0, 9).toString() === 'CANONENC1' || isEncryptedBackupData(data));
     if (!Buffer.isBuffer(data) || data.length < 512 || (!encrypted && data.subarray(0, 15).toString() !== 'SQLite format 3')) {
       return res.status(400).json({ error: 'Choose a Canon backup file (.db or .db.enc).' });
     }

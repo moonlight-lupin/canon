@@ -63,7 +63,7 @@ docker compose run --rm --user node canon npm run restore-backup -- /app/backups
 docker compose start canon
 ```
 
-Replace the file name with your backup (the `backups` folder next to `docker-compose.yml` is `/app/backups` inside). For a backup from another Canon — a new NAS after the old one was lost — add its recovery key after the file name; a new volume gets new keys, and their new recovery key is shown once: print it. The command checks the backup, gives it this Canon's own key, sets the database there was aside in `pre-restore/` and brings back the archived years in `backups/archives/` that the volume doesn't have. Don't copy a backup over `canon.db` by hand: an encrypted Canon refuses a plain database beside its keys, on purpose.
+Replace the file name with your backup (the `backups` folder next to `docker-compose.yml` is `/app/backups` inside). For a backup from another Canon — a new NAS after the old one was lost — add its recovery key after the file name; a new volume gets new keys, and their new recovery key is shown once: print it. The command checks the backup, gives it this Canon's own key, sets the database there was aside in `pre-restore/` and brings back the archived years — from inside the backup (0.19.3 and later; the volume's own are set aside first), or for an older backup those in `backups/archives/` that the volume doesn't have. Don't copy a backup over `canon.db` by hand: an encrypted Canon refuses a plain database beside its keys, on purpose.
 
 ## Going back to the previous version
 

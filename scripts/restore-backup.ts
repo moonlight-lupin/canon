@@ -15,7 +15,7 @@ import { config } from '../server/config.ts';
 import { MIGRATIONS } from '../server/migrations.ts';
 import { openDb, rekeyDb } from '../server/lib/sqlite.ts';
 import { KeysLockedError, createKeys, keysExist, loadKeys, makeRecoveryKey, unlockWithRecovery, type Keys } from '../server/lib/keys.ts';
-import { isBackupV2, scratch, unwrapBackupFile } from '../server/lib/backup-file.ts';
+import { isBackupV2, isPackage, scratch, unwrapBackupFile, unwrapPackage } from '../server/lib/backup-file.ts';
 import { decryptFile, isEncrypted as isPasswordBackup } from '../server/lib/backup-crypto.ts';
 
 const [fileArg, secretArg] = process.argv.slice(2);
@@ -66,11 +66,21 @@ if (keysExist()) {
 }
 
 // ---------------------------------------------------------------- the backup, as a database in the data folder
-const incoming = scratch(data, 'restore-in');
-const cleanup = () => fs.rmSync(incoming, { force: true });
+let incoming = scratch(data, 'restore-in');
+// a package (0.19.3) brings its archived years with it: they take the place of the ones here
+let packageArchives: { name: string; file: string }[] | null = null;
+const cleanup = () => {
+  fs.rmSync(incoming, { force: true });
+  for (const a of packageArchives ?? []) fs.rmSync(a.file, { force: true });
+};
 let backupKey: Buffer | null = null;
 try {
-  if (isBackupV2(file)) backupKey = unwrapBackupFile(file, incoming, keys, secret);
+  if (isPackage(file)) {
+    const u = unwrapPackage(file, keys, secret);
+    incoming = u.database;
+    packageArchives = u.archives;
+    backupKey = u.key;
+  } else if (isBackupV2(file)) backupKey = unwrapBackupFile(file, incoming, keys, secret);
   else if (isPasswordBackup(file)) decryptFile(file, incoming, secret);
   else fs.copyFileSync(file, incoming);
 } catch (e) {
@@ -93,13 +103,15 @@ try {
   fail((e as Error).message);
 }
 
-// this Canon's own key (or none, when it isn't encrypted)
+// this Canon's own key (or none, when it isn't encrypted) — the database and a package's archived years
 if (backupKey || keys) {
-  const d = openDb(incoming, { key: backupKey });
-  try {
-    rekeyDb(d, keys?.db ?? null);
-  } finally {
-    d.close();
+  for (const f of [incoming, ...(packageArchives ?? []).map((a) => a.file)]) {
+    const d = openDb(f, { key: backupKey });
+    try {
+      rekeyDb(d, keys?.db ?? null);
+    } finally {
+      d.close();
+    }
   }
 }
 
@@ -115,12 +127,26 @@ if (fs.existsSync(config.dbPath)) {
 }
 fs.renameSync(incoming, config.dbPath);
 
-// ---------------------------------------------------------------- archived years next to the backup
+// ---------------------------------------------------------------- archived years: the package's, or those next to an older backup
 const archivesHere = path.join(data, 'archives');
 const archivesThere = path.join(path.dirname(file), 'archives');
 const restored: string[] = [];
 const skipped: string[] = [];
-if (fs.existsSync(archivesThere)) {
+if (packageArchives) {
+  // the data as it was when the package was made: the archived years here step aside, the package's take their place
+  const now = fs.existsSync(archivesHere) ? fs.readdirSync(archivesHere).filter((n) => /^canon-archive-\d{4}\.db$/.test(n)) : [];
+  if (now.length) {
+    const aside = path.join(data, 'pre-restore', `archives-${stamp}`);
+    fs.mkdirSync(aside, { recursive: true });
+    for (const n of now) fs.renameSync(path.join(archivesHere, n), path.join(aside, n));
+    console.log(`The archived years there were are kept in ${aside}.`);
+  }
+  fs.mkdirSync(archivesHere, { recursive: true });
+  for (const a of packageArchives) {
+    fs.renameSync(a.file, path.join(archivesHere, a.name));
+    restored.push(a.name);
+  }
+} else if (fs.existsSync(archivesThere)) {
   for (const n of fs.readdirSync(archivesThere)) {
     const m = /^(canon-archive-\d{4}\.db)(\.enc)?$/.exec(n);
     if (!m) continue;
