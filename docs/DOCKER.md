@@ -36,8 +36,6 @@ On a Synology NAS: **Container Manager → Project → Create**, choose the fold
 
 To stay on one version, use `ghcr.io/moonlight-lupin/canon:0.18.0` (or `CANON_VERSION=0.18.0` with this repository's compose file) instead of `latest`.
 
-While the repository is private, so is its image: sign in once on the NAS with `docker login ghcr.io -u moonlight-lupin`, using a GitHub token with the *read:packages* permission as the password (github.com → Settings → Developer settings → Personal access tokens). Once the image is public, nobody needs to sign in.
-
 Open <http://localhost:3000> (or `http://<server-name>:3000` from the office network). The first screen creates the administrator account and asks for your worship languages. The Bible import runs from the onboarding page, so no command line is needed after this point.
 
 | Task | Command |
