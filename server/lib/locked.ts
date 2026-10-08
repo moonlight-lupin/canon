@@ -92,6 +92,6 @@ export function serveLocked(why: string): Promise<void> {
     const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP'] as const;
     for (const sig of SIGNALS) process.on(sig, quit);
     server.on('close', () => { for (const sig of SIGNALS) process.off(sig, quit); });
-    server.listen(config.port, config.host);
+    server.listen(config.port, config.host, () => console.error(`The locked page is at http://localhost:${config.port} (on this computer).`));
   });
 }

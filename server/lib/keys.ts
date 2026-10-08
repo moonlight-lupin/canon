@@ -133,6 +133,12 @@ function secretKey(): Buffer | null {
   return crypto.createHash('sha256').update(raw).digest();
 }
 
+/**
+ * The protection was asked for (CANON_KEY_FILE or CANON_KEY_PROTECT), not chosen by Canon: then it is that or nothing.
+ * A missing or too-short key file must never quietly become keys anyone with the data folder can read (0.19.1 review, B).
+ */
+const protectionAskedFor = () => !!process.env.CANON_KEY_FILE || !!process.env.CANON_KEY_PROTECT;
+
 /** How keys are locked on this computer: CANON_KEY_PROTECT overrides (tests use "file"). */
 function protectionHere(): Protection {
   const forced = process.env.CANON_KEY_PROTECT as Protection | undefined;
@@ -231,6 +237,7 @@ export function createKeys(): Keys {
   try {
     machine = lockToMachine(protection, keys);
   } catch (e) {
+    if (protectionAskedFor()) throw new Error(`Encryption keys were not made: ${protection} was asked for (${process.env.CANON_KEY_FILE ? 'CANON_KEY_FILE' : 'CANON_KEY_PROTECT'}) and can't be used — ${(e as Error).message.split('\n')[0]}. Fix it, then start Canon again.`);
     // no DPAPI or keychain to be had: the file's permissions, said so in Settings → Security & privacy
     console.error(`Encryption: could not use ${protection} (${(e as Error).message.split('\n')[0]}); the keys are protected by the file's permissions.`);
     used = 'file';
@@ -348,7 +355,9 @@ export function unlockWithRecovery(typed: string): Keys {
   let machine: Wrapped;
   try {
     machine = lockToMachine(protection, keys);
-  } catch {
+  } catch (e) {
+    // as when the keys are made: what was asked for, or nothing (the keys stay locked as they were)
+    if (protectionAskedFor()) throw new KeysLockedError(`The recovery key is right, but ${protection} was asked for and can't be used — ${(e as Error).message.split('\n')[0]}. Fix it, then try again.`);
     used = 'file';
     machine = lockToMachine('file', keys);
   }

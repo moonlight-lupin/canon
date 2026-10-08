@@ -89,13 +89,15 @@ npm run backup                      # → backups/canon-YYYY-MM-DD-HHMM.db
 npm run backup -- D:\CanonBackups   # to a USB drive or synced folder
 ```
 
-Backups of an encrypted Canon are always encrypted (`.db.enc`, with the backup key; see [Encryption](#encryption)). Before 0.19.0 — and while a database isn't encrypted yet — a backup password (Settings → Backups → Encryption) encrypts them instead (AES-256-GCM; the key in `data/backup-key.json`, never inside a backup). To restore an encrypted backup by hand, decrypt it first (this computer's keys; or give the recovery key, or the backup password, after the file name):
+Backups of an encrypted Canon are always encrypted (`.db.enc`, with the backup key; see [Encryption](#encryption)). Before 0.19.0 — and while a database isn't encrypted yet — a backup password (Settings → Backups → Encryption) encrypts them instead (AES-256-GCM; the key in `data/backup-key.json`, never inside a backup). To restore a backup by hand — Canon stopped, because it won't start, or on a new computer after the old one was lost:
 
 ```bash
-npm run decrypt-backup -- D:\CanonBackups\canon-2026-01-04-0900.db.enc
+npm run restore-backup -- D:\CanonBackups\canon-2026-01-04-0900.db.enc
 ```
 
-Add the password after the file for a backup from another computer or made before the password changed.
+It opens the backup (this computer's keys; for a backup from another computer, add its **recovery key** after the file name — or, for a backup from before 0.19.0, its backup password), checks it, gives it this Canon's own key, sets the database there was aside in `data/pre-restore/`, and brings back the archived years found next to the backup (its `archives/` folder) that this Canon doesn't have. On a computer with no keys yet it makes new ones and shows their new recovery key once: print it. Then start Canon. (Don't copy a backup over `canon.db` yourself: an encrypted Canon refuses a plain database beside its keys, on purpose.)
+
+`npm run decrypt-backup -- <file> [recovery key]` still writes a plain copy of a backup, for looking into it elsewhere — keep it away from synced folders and delete it afterwards.
 
 Archive files are copied with every backup. To restore by hand, or to update Canon and go back, see [UPGRADING.md](UPGRADING.md). For Docker, see [DOCKER.md](DOCKER.md).
 

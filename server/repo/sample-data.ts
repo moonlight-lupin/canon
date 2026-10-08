@@ -3,7 +3,8 @@
 // fellowships, Sunday school, people on every serving team, and the rota of the next service and the one after.
 // Canon keeps a list of everything it added (meta _sample_data), so removing it takes out exactly that and nothing
 // a person typed. Every person's notes say they are sample data.
-import { get, tx } from '../db.ts';
+import crypto from 'node:crypto';
+import { get, run, tx } from '../db.ts';
 import { deleteMeta, getMeta, setMeta } from './settings.ts';
 import * as reg from './registers.ts';
 import * as grp from './groups.ts';
@@ -15,6 +16,8 @@ export const SAMPLE_NOTE = 'Sample person (fictional) — Settings → Sample da
 
 interface Added {
   added_at: string;
+  /** marks every row the sample added (people, households, groups, services: column sample_batch) */
+  batch?: string;
   people: number[];
   households: number[];
   groups: number[];
@@ -109,7 +112,7 @@ export function addSampleData(opts: { rota?: boolean; today?: string } = {}) {
   let seed = 20261011;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
   const pick = <T,>(a: T[], n: number) => [...a].sort(() => rnd() - 0.5).slice(0, n);
-  const out: Added = { added_at: new Date().toISOString(), people: [], households: [], groups: [], services: [], assignments: [] };
+  const out: Added = { added_at: new Date().toISOString(), batch: `sample-${crypto.randomBytes(8).toString('hex')}`, people: [], households: [], groups: [], services: [], assignments: [] };
 
   tx(() => {
     interface Made { id: number; born: string; area: Area; child: boolean }
@@ -195,21 +198,18 @@ export function addSampleData(opts: { rota?: boolean; today?: string } = {}) {
         }
       }
     }
+    // every row the sample added carries its batch: removing the sample takes those rows and no others (0.19.2)
+    for (const [table, ids] of [['people', out.people], ['households', out.households], ['groups', out.groups], ['services', out.services]] as const) {
+      for (const id of ids) run(`UPDATE ${table} SET sample_batch = ? WHERE id = ?`, out.batch!, id);
+    }
     setMeta('sample_data', JSON.stringify(out));
   });
   return sampleDataStatus();
 }
 
-/** Created within an hour of the sample data (stored UTC "YYYY-MM-DD HH:MM:SS" or ISO). */
-const near = (created: string | null | undefined, addedAt: string) => {
-  if (!created) return false;
-  const c = Date.parse(created.includes('T') ? created : `${created.replace(' ', 'T')}Z`);
-  return Math.abs(c - Date.parse(addedAt)) < 3_600_000;
-};
-const SAMPLE_HOUSEHOLDS = new Set(HOUSEHOLDS.map((h) => h.name));
-const sampleGroupNames = () => new Set<string>([
-  ...CELLS.map(([, n]) => n.en), 'Church Council', 'Missions Committee', 'Finance Committee', 'Worship Committee', 'Young Adults Fellowship', 'Seniors Fellowship', 'Sunday School',
-]);
+/** The row still carries this sample's batch (a row that took a deleted sample row's number never does). */
+const ofBatch = (table: 'people' | 'households' | 'groups' | 'services', id: number, batch: string | undefined) =>
+  !!batch && !!get(`SELECT 1 FROM ${table} WHERE id = ? AND sample_batch = ?`, id, batch);
 
 /** Why a sample person must stay: real records now hang on them. */
 function personTies(id: number): string[] {
@@ -236,9 +236,8 @@ function serviceTies(id: number): string[] {
 /**
  * Take out what the sample data added (people with their places on teams, groups and rotas; households; groups; the
  * copied service) and nothing else (v0.17.2 review, F3 and F4):
- * - only rows that are still the sample's: a person still marked as sample data and created when it was added, a
- *   household or group with a sample name, a service created when it was added — so a number reused by something
- *   real is never removed;
+ * - only rows that carry the sample's batch (0.19.2: on the row itself, not judged from its number, name or creation
+ *   time) — so a number reused by something real is never removed;
  * - and only what has gained no real records: a sample person linked to an account, with loans or claims, or a
  *   service with a record or journals, stays (and is listed as kept).
  */
@@ -249,31 +248,27 @@ export function removeSampleData() {
   const kept: { what: 'person' | 'service' | 'household' | 'group'; id: number; name: string; why: string[] }[] = [];
   tx(() => {
     for (const id of a.services) {
-      const sv = get<{ created_at: string; date: string }>('SELECT created_at, date FROM services WHERE id = ?', id);
-      if (!sv || !near(sv.created_at, a.added_at)) continue; // gone, or the number is something else's now
+      const sv = get<{ date: string }>('SELECT date FROM services WHERE id = ?', id);
+      if (!sv || !ofBatch('services', id, a.batch)) continue; // gone, or the number is something else's now
       const ties = serviceTies(id);
       if (ties.length) kept.push({ what: 'service', id, name: sv.date, why: ties });
       else { svc.services.remove(id); done.services++; }
     }
     // a person's team places, role pools, group places and rota places go with them
     for (const id of a.people) {
-      const p = get<{ notes: string | null; created_at: string; first_name: string; last_name: string }>('SELECT notes, created_at, first_name, last_name FROM people WHERE id = ?', id);
-      if (!p || !(p.notes ?? '').includes(SAMPLE_NOTE) || !near(p.created_at, a.added_at)) continue;
+      const p = get<{ first_name: string; last_name: string }>('SELECT first_name, last_name FROM people WHERE id = ?', id);
+      if (!p || !ofBatch('people', id, a.batch)) continue;
       const ties = personTies(id);
       if (ties.length) kept.push({ what: 'person', id, name: `${p.first_name} ${p.last_name}`.trim(), why: ties });
       else { reg.people.remove(id); done.people++; }
     }
     for (const id of a.households) {
       // a household someone real (or a kept sample person) belongs to stays
-      const h = get<{ name: string }>('SELECT name FROM households WHERE id = ?', id);
-      if (!h || !SAMPLE_HOUSEHOLDS.has(h.name)) continue;
+      if (!ofBatch('households', id, a.batch)) continue;
       if (!get('SELECT 1 FROM people WHERE household_id = ?', id)) { reg.households.remove(id); done.households++; }
     }
-    const names = sampleGroupNames();
     for (const id of a.groups) {
-      const g = get<{ name: string }>('SELECT name FROM groups WHERE id = ?', id);
-      const en = g ? ((): string => { try { return (JSON.parse(g.name) as { en?: string }).en ?? ''; } catch { return g.name; } })() : '';
-      if (!g || !names.has(en)) continue;
+      if (!ofBatch('groups', id, a.batch)) continue;
       if (!get('SELECT 1 FROM group_members WHERE group_id = ?', id)) { grp.deleteGroup(id); done.groups++; }
     }
     deleteMeta('sample_data');

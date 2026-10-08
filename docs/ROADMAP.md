@@ -209,7 +209,7 @@ After book-keeping, which adds financial records and approvals: a review of secu
 4. **Validate the whole financial cycle** on a fictional reference church, with expected balances checked by a test: opening balances, offerings, claims (approval, expense, payment), bank clearance, corrections, a month locked and reopened, the year's end, and the accountant's export.
 5. **Recovery and operation:** upgrade and restore with posted journals, claims and bank links; encrypted Drive upload and restore; the Windows service; signing on a phone.
 
-Until 1 and 2 ship, run Canon's books alongside the church's existing books, not instead of them.
+Items 1 and 2 shipped in 0.17.4. Canon's books can now be a church's main books in a **supported pilot**: a named person who looks after the computer, a treasurer, a reconciled month and a restore drill done in front of them, before the existing books are retired.
 
 **Done so far in 0.18.0:**
 - the reference church's whole financial cycle as a test, against figures worked out by hand;
@@ -221,13 +221,21 @@ Until 1 and 2 ship, run Canon's books alongside the church's existing books, not
 - a test copy switch (`CANON_TEST_COPY=1`) for trying new versions on the church's data, e.g. on a NAS.
 
 **Found by the reviews, left for later:**
-- Archived years (records and change log moved out of the database) are copied with local backups but not sent to Google Drive, and a restore doesn't bring them back.
+- Archived years (records and change log moved out of the database) are copied with local backups and brought back by `npm run restore-backup` (0.19.2), but are not sent to Google Drive, and the in-app restore doesn't bring them back.
 - Claims are church-wide: an account limited to one congregation still sees other congregations' claimants in Book-keeping → Claims. Decide whether the books follow congregation walls.
 - Where to repay a claimant is masked for approvers; when the office typed it in for a paper claim, approvers aren't told.
 - No test yet sends a real encrypted backup through "copy from Google Drive" and restores it.
-- CI doesn't build the Docker image (amd64 and arm64).
+- Release tags build and publish the Docker image (amd64 and arm64); ordinary changes don't build or start it.
 
 Reports carry each year's surplus into its fund; there is no posted year-end closing journal (none is needed).
+
+## 0.20.0 — Recovery and operational acceptance (next)
+
+Before Canon is offered for unattended use or to replace a church's books outright (from the v0.19.1 review):
+1. **Complete disaster recovery**: one backup package with the database, the archived years and what recovery needs; sent to Google Drive whole; restored in the app and by hand into a fresh computer, with nothing needed from the lost one. *Done when* a test restores the package from Drive onto an empty computer with the recovery key, and current and archived records read back.
+2. **Deployment acceptance**: the published image pulled and started on amd64 and arm64, backup and restore, `docker stop` during start-up and in normal use; on Windows a restart, the task's account, a lost Windows profile (recovery key), and the icon. *Done when* each has a written result.
+3. **Congregation scope for claims** and approvers being told when the office typed the repayment details. *Done when* decided, built and documented, or recorded as church-wide on purpose.
+4. **A pilot cycle** with a church: the weekly service, a month reconciled, a claim submitted, approved and paid, and a restore drill — with the church's operational owner. *Done when* written up with what was learned.
 
 ## Later
 

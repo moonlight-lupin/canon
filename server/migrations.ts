@@ -1232,4 +1232,39 @@ export const MIGRATIONS: (string | Migration)[] = [
       BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
     `,
   },
+  // 36 (0.19.2, review): sample data marks its own rows. Removing it once trusted a row's number and a creation time
+  // close to the sample's — a real service made after a sample one was deleted could take its number and be removed.
+  // Now every person, household, group and service the sample adds carries its batch, and only those go. Rows of sample
+  // data added before this version are marked by the checks used until now (each row once, here).
+  {
+    sql: `
+    ALTER TABLE people ADD COLUMN sample_batch TEXT;
+    ALTER TABLE households ADD COLUMN sample_batch TEXT;
+    ALTER TABLE groups ADD COLUMN sample_batch TEXT;
+    ALTER TABLE services ADD COLUMN sample_batch TEXT;
+    `,
+    run: (d) => {
+      const meta = d.prepare("SELECT value FROM settings WHERE key = '_sample_data'").get() as { value: string } | undefined;
+      if (!meta) return;
+      const a = JSON.parse(meta.value) as { added_at: string; people?: number[]; households?: number[]; groups?: number[]; services?: number[]; batch?: string };
+      const batch = 'before-0.19.2';
+      const near = (created: string | null) => {
+        if (!created) return false;
+        const t = Date.parse(created.includes('T') ? created : `${created.replace(' ', 'T')}Z`);
+        return Math.abs(t - Date.parse(a.added_at)) < 3_600_000;
+      };
+      for (const id of a.people ?? []) {
+        const r = d.prepare('SELECT notes, created_at FROM people WHERE id = ?').get(id) as { notes: string | null; created_at: string } | undefined;
+        if (r && (r.notes ?? '').includes('Sample person (fictional)') && near(r.created_at)) d.prepare('UPDATE people SET sample_batch = ? WHERE id = ?').run(batch, id);
+      }
+      for (const id of a.services ?? []) {
+        const r = d.prepare('SELECT created_at FROM services WHERE id = ?').get(id) as { created_at: string } | undefined;
+        if (r && near(r.created_at)) d.prepare('UPDATE services SET sample_batch = ? WHERE id = ?').run(batch, id);
+      }
+      for (const [table, ids] of [['households', a.households ?? []], ['groups', a.groups ?? []]] as const) {
+        for (const id of ids) d.prepare(`UPDATE ${table} SET sample_batch = ? WHERE id = ?`).run(batch, id);
+      }
+      d.prepare("UPDATE settings SET value = ? WHERE key = '_sample_data'").run(JSON.stringify({ ...a, batch }));
+    },
+  },
 ];

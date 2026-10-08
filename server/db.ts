@@ -15,11 +15,8 @@ fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
  */
 const encryptNew = () => process.env.CANON_ENCRYPT === '1' || (process.env.CANON_ENCRYPT !== '0' && !process.env.NODE_TEST_CONTEXT);
 if (!fs.existsSync(config.dbPath) && encryptNew()) {
-  try {
-    loadKeys() ?? createKeys();
-  } catch (e) {
-    console.error('Encryption keys could not be made:', (e as Error).message);
-  }
+  // keys that can't be made stop Canon here: a new database is never made unencrypted instead (0.19.1 review, B)
+  loadKeys() ?? createKeys();
 }
 // throws KeysLockedError when the keys can't be unlocked on this computer (server/index.ts then asks for the recovery key)
 let keys: Keys | null = loadKeys();

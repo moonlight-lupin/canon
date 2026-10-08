@@ -95,8 +95,8 @@ Keep the "Canon server" window open while Canon is in use, or run Canon in the b
 - AI agents see personal details only if an administrator allows it, and never when acting for a read-only user.
 - Where to repay a claimant is seen only by the claimant and whoever keeps the books: not by approvers, read-only accounts or AI agents.
 - **Settings → Security & privacy** has a checklist, a log of who opened which member, how long visitors' details are kept, and yearly archives. Administrators can export or erase a member's personal data on request.
-- Sign-in attempts are limited; two-step sign-in can be required for administrators; backups can be encrypted with a password.
-- The database is an ordinary file: protect the computer it is on with disk encryption, and an account for each person.
+- Sign-in attempts are limited (wrong two-step codes too); two-step sign-in can be required for administrators or for everyone, AI access included.
+- **The data is encrypted on disk** (from 0.19.0): the database, its copies and the archived years with one key, backups with another. The keys open by themselves through the Windows account Canon runs as (the macOS keychain; in Docker, a key file kept outside the data volume), so Canon still starts with the computer; a **recovery key**, printed at setup, opens the data on a new computer and restores any backup. Where the keys are protected only by the file's permissions (Docker without a key file), whoever can copy the whole data folder can read it — keep disk encryption on too, and an account for each person.
 
 ## Content and copyright
 

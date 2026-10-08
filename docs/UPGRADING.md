@@ -70,8 +70,7 @@ Restore a backup in Settings → Backups → **Restore**. Canon saves a copy of 
 If Canon will not start:
 
 1. Stop Canon.
-2. In `data/`, delete `canon.db-wal` and `canon.db-shm`.
-3. Copy the backup over `data/canon.db`.
-4. Start Canon.
+2. In the Canon folder: `npm run restore-backup -- <backup file>` (add the recovery key after the file name for a backup from another computer). It sets the database there was aside in `data/pre-restore/`, gives the backup this Canon's key, and brings back archived years from the backup's `archives/` folder that are missing here.
+3. Start Canon.
 
-Archive files (`data/archives/`) are copied along with every backup. To restore them, copy them back into `data/archives/`.
+Archive files are copied along with every local backup; Google Drive receives the database backups only, so keep the local backup folder (or a copy of its `archives/`) too.

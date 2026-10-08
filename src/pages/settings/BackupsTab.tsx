@@ -245,8 +245,7 @@ export default function BackupsTab() {
           <summary>{t('If Canon will not start: restore by hand')}</summary>
         <ol className="small" style={{ margin: '8px 0 0', paddingLeft: 18, lineHeight: 1.7 }}>
           <li>{t('Close the “Canon server” window (or stop the Docker container).')}</li>
-          <li>{t('In the Canon folder, open “data”. Delete canon.db-wal and canon.db-shm if they are there.')}</li>
-          <li>{t('Copy the backup file into “data” and rename it to canon.db (replace the old one).')} {t('An encrypted backup (.db.enc) is decrypted first: npm run decrypt-backup -- <file> (see docs/ADMINISTRATION.md).')}</li>
+          <li>{t('In the Canon folder, run: npm run restore-backup -- <backup file>. For a backup from another computer, add its recovery key after the file name.')} {t('It sets the database there was aside, gives the backup this Canon’s key and brings back archived years found next to the backup.')}</li>
           <li>{t('Start Canon again (start-canon.bat, or docker compose up -d).')}</li>
         </ol>
         <div className="small muted">{t('Docker: see docs/DOCKER.md → Restoring a backup.')}</div>

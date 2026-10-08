@@ -55,15 +55,15 @@ Backups can also go to the church's Google Drive (Settings → Backups → Googl
 
 The easy way: **Settings → Backups → Restore** (or **Restore from a file…**) while Canon is running. Canon saves a copy of the current data first.
 
-If Canon will not start, restore by hand:
+If Canon will not start, restore by hand, with Canon stopped:
 
 ```bash
-docker compose down
-docker run --rm -v canon_canon-data:/data -v "$PWD/backups:/b" alpine sh -c "rm -f /data/canon.db-wal /data/canon.db-shm && cp /b/canon-YYYY-MM-DD-HHMM.db /data/canon.db && chown 1000:1000 /data/canon.db"
-docker compose up -d
+docker compose stop canon
+docker compose run --rm --user node canon npm run restore-backup -- /app/backups/canon-YYYY-MM-DD-HHMM.db.enc
+docker compose start canon
 ```
 
-Replace the file name with your backup. The volume is called `<folder>_canon-data`; `docker volume ls` shows the exact name. An encrypted backup (`.db.enc`) must be decrypted first: `docker compose run --rm canon npm run decrypt-backup -- /app/backups/canon-YYYY-MM-DD-HHMM.db.enc` writes the `.db` next to it (add the recovery key after the file name for a backup from another Canon). Canon opens a decrypted database as it is and asks an administrator to encrypt it again.
+Replace the file name with your backup (the `backups` folder next to `docker-compose.yml` is `/app/backups` inside). For a backup from another Canon — a new NAS after the old one was lost — add its recovery key after the file name; a new volume gets new keys, and their new recovery key is shown once: print it. The command checks the backup, gives it this Canon's own key, sets the database there was aside in `pre-restore/` and brings back the archived years in `backups/archives/` that the volume doesn't have. Don't copy a backup over `canon.db` by hand: an encrypted Canon refuses a plain database beside its keys, on purpose.
 
 ## Going back to the previous version
 

@@ -282,3 +282,35 @@ test('removing sample data keeps what gained real records and never removes a re
   assert.ok(!get("SELECT 1 FROM people WHERE notes LIKE 'Sample person (fictional)%'"), 'the sample people go');
   assert.ok(get('SELECT 1 FROM services WHERE id = ?', sunday.id));
 });
+
+test('sample data marks its own rows: a real service, household or person that takes a deleted sample row’s number stays (0.19.1 review, A)', async () => {
+  const sd = await import('../server/repo/sample-data.ts');
+  const reg = await import('../server/repo/registers.ts');
+  const svc = await import('../server/repo/services.ts');
+  svc.createService({ date: '2038-03-28' });
+  sd.addSampleData({ today: '2038-03-26' });
+  // the copied sample service is deleted normally, before it has a record; a genuine service then takes its number
+  const copy = get<{ id: number }>("SELECT id FROM services WHERE date = '2038-04-04'")!;
+  assert.ok(copy, 'the copied sample service');
+  const del = await fetch(`${base}/api/services/${copy.id}`, { method: 'DELETE', headers: { Cookie: as.admin.cookie, 'x-csrf-token': as.admin.csrf } });
+  assert.equal(del.status, 200);
+  const genuine = (svc.createService({ date: '2038-04-04', title: { en: 'Genuine planned service' } }) as { service: { id: number } }).service;
+  assert.equal(genuine.id, copy.id, 'the number was reused (the case the review found)');
+  // a sample household deleted and a real one with the same name takes its number
+  const lastHh = get<{ id: number; name: string }>('SELECT id, name FROM households ORDER BY id DESC LIMIT 1')!;
+  reg.households.remove(lastHh.id);
+  const realHh = reg.households.insert({ name: lastHh.name } as never) as { id: number };
+  assert.equal(realHh.id, lastHh.id);
+  // a real person whose notes happen to carry the sample's wording, on a reused number
+  const lastP = get<{ id: number }>('SELECT MAX(id) id FROM people')!.id;
+  reg.people.remove(lastP);
+  const realP = reg.people.insert({ first_name: 'Real', last_name: 'Copier', notes: sd.SAMPLE_NOTE, status: 'member' } as never) as { id: number };
+  assert.equal(realP.id, lastP);
+
+  const r = await fetch(`${base}/api/sample-data`, { method: 'DELETE', headers: { Cookie: as.admin.cookie, 'x-csrf-token': as.admin.csrf } });
+  assert.equal(r.status, 200);
+  assert.equal(get<{ title: string }>('SELECT title FROM services WHERE id = ?', genuine.id)?.title, JSON.stringify({ en: 'Genuine planned service' }), 'the genuine service and its plan stay');
+  assert.ok(get('SELECT 1 FROM households WHERE id = ?', realHh.id), 'the real household stays');
+  assert.ok(get('SELECT 1 FROM people WHERE id = ?', realP.id), 'the real person stays');
+  assert.equal(get<{ n: number }>('SELECT COUNT(*) n FROM people WHERE sample_batch IS NOT NULL')!.n, 0, 'every sample person went');
+});

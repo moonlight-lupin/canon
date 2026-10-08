@@ -44,7 +44,7 @@ test('keys this computer can’t unlock: Canon starts locked, and the recovery k
         await new Promise((r) => setTimeout(r, 100));
       }
     };
-    await wait(/Canon is locked/);
+    await wait(/The locked page is at/);
     const base = `http://127.0.0.1:${port}`;
     let about = await (await fetch(`${base}/api/about`)).json();
     assert.equal(about.locked, true, 'the tray icon can say so');

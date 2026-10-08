@@ -4220,6 +4220,10 @@
       "在 Canon 文件夹中打开「data」。若有 canon.db-wal 和 canon.db-shm，请删除。",
       "在 Canon 文件夾中打開「data」。若有 canon.db-wal 和 canon.db-shm，請刪除。"
     ],
+    "In the Canon folder, run: npm run restore-backup -- <backup file>. For a backup from another computer, add its recovery key after the file name.": [
+      "在 Canon 文件夹中执行：npm run restore-backup -- <备份文件>。若是来自另一台电脑的备份，请在文件名后加上它的恢复密钥。",
+      "在 Canon 文件夾中執行：npm run restore-backup -- <備份文件>。若是來自另一臺電腦的備份，請在文件名後加上它的恢復密鑰。"
+    ],
     "In the books": [
       "账簿中",
       "賬簿中"
@@ -4319,6 +4323,10 @@
     "It opens Canon’s encrypted data if that computer, or its Windows account, is lost or replaced, and it restores the church’s backups on any computer.": [
       "若那台电脑或其 Windows 帐户遗失或更换，它能打开 Canon 已加密的资料，也能在任何电脑上还原教会的备份。",
       "若那臺電腦或其 Windows 帳戶遺失或更換，它能打開 Canon 已加密的資料，也能在任何電腦上還原教會的備份。"
+    ],
+    "It sets the database there was aside, gives the backup this Canon’s key and brings back archived years found next to the backup.": [
+      "它会把原有的数据库另存一旁，为备份套上这个 Canon 的密钥，并取回备份旁边的归档年份。",
+      "它會把原有的數據庫另存一旁，為備份套上這個 Canon 的密鑰，並取回備份旁邊的歸檔年份。"
     ],
     "It takes a few seconds; anyone using Canon just then may need to try again.": [
       "需要几秒钟；当时正在使用 Canon 的人可能需要再试一次。",
