@@ -4,9 +4,39 @@ Docker is an alternative to `start-canon.bat`. It suits a small always-on server
 
 ## Start
 
+Canon's image is published on GitHub for every release, for ordinary PCs and servers (amd64) and for ARM machines such as many NAS models (arm64): `ghcr.io/moonlight-lupin/canon`. Nothing needs building.
+
+**From GitHub, without the source:** make a folder (e.g. `canon`) with a `backups` folder in it and this `docker-compose.yml`:
+
+```yaml
+services:
+  canon:
+    image: ghcr.io/moonlight-lupin/canon:latest
+    container_name: canon
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: Asia/Kuala_Lumpur
+    volumes:
+      - canon-data:/app/data
+      - ./backups:/app/backups
+volumes:
+  canon-data:
+```
+
 ```bash
+docker compose pull
 docker compose up -d
 ```
+
+On a Synology NAS: **Container Manager → Project → Create**, choose the folder, and paste the file above. On QNAP: **Container Station → Applications → Create**.
+
+**With the source** (this repository): `docker compose pull && docker compose up -d` uses the same published image; `docker compose up -d --build` builds it from the source instead.
+
+To stay on one version, use `ghcr.io/moonlight-lupin/canon:0.18.0` (or `CANON_VERSION=0.18.0` with this repository's compose file) instead of `latest`.
+
+While the repository is private, so is its image: sign in once on the NAS with `docker login ghcr.io -u moonlight-lupin`, using a GitHub token with the *read:packages* permission as the password (github.com → Settings → Developer settings → Personal access tokens). Once the image is public, nobody needs to sign in.
 
 Open <http://localhost:3000> (or `http://<server-name>:3000` from the office network). The first screen creates the administrator account and asks for your worship languages. The Bible import runs from the onboarding page, so no command line is needed after this point.
 
@@ -14,7 +44,7 @@ Open <http://localhost:3000> (or `http://<server-name>:3000` from the office net
 |---|---|
 | See logs | `docker compose logs -f canon` |
 | Stop | `docker compose down` (your data is kept) |
-| Update to a new version | `git pull` (or copy in the new files), then `docker compose up -d --build` |
+| Update to a new version | `docker compose pull && docker compose up -d` (from the source: `git pull`, then `docker compose up -d --build`) |
 | Back up now | `docker compose exec canon npm run backup` (the backup file is written to `./backups` on the host) |
 | Restore | see [Restoring a backup](#restoring-a-backup) |
 | Use another port | `CANON_HTTP_PORT=8080 docker compose up -d` |
@@ -48,6 +78,8 @@ docker run --rm -v canon_canon-data:/data alpine sh -c "ls /data/pre-upgrade"
 docker run --rm -v canon_canon-data:/data alpine sh -c "rm -f /data/canon.db-wal /data/canon.db-shm && cp /data/pre-upgrade/<the copy> /data/canon.db && chown 1000:1000 /data/canon.db"
 docker compose up -d --build
 ```
+
+With the published image (no source), put the version you had in the compose file instead of `latest` (e.g. `ghcr.io/moonlight-lupin/canon:0.17.4`), copy the database back as above, then `docker compose pull && docker compose up -d`.
 
 Anything entered since the upgrade is not in that copy.
 

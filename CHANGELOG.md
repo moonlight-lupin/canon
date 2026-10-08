@@ -4,6 +4,11 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## Unreleased
+
+- **Canon's Docker image on GitHub:** every release is built for amd64 and arm64 (most NAS models included) and published as `ghcr.io/moonlight-lupin/canon` (`:latest` and `:<version>`). `docker compose pull && docker compose up -d` installs or updates Canon without building it; docs/DOCKER.md has a compose file that needs no source.
+- A **Sponsor** button: Buy Me a Coffee (`.github/FUNDING.yml`).
+
 ## 0.18.0 — Hardening: the books reviewed, Canon in the background
 
 - **Importing the chart of accounts and the funds** (Book-keeping → Accounts and funds → Import…) from Excel or CSV — the same columns as their export. Rows are matched by code; a preview first; nothing deleted; an account already used keeps its type.

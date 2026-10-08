@@ -33,9 +33,11 @@ If something goes wrong at step 4, the window says what happened and your data h
 ## Docker
 
 ```bash
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
+
+(Built from the source instead: `git pull`, then `docker compose up -d --build`.)
 
 The database is upgraded on start in the same way, with the copy in `data/pre-upgrade/` inside the data volume. See [DOCKER.md](DOCKER.md).
 

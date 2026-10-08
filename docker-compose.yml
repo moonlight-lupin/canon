@@ -1,14 +1,16 @@
 # Canon with Docker Compose.
 #
-#   docker compose up -d                         # start Canon on http://localhost:3000
+#   docker compose pull && docker compose up -d  # Canon's published image from GitHub, on http://localhost:3000
+#   docker compose up -d --build                 # or built here from this folder's source
 #   docker compose --profile tunnel up -d        # also start a Cloudflare Tunnel (needs TUNNEL_TOKEN in .env)
 #   docker compose exec canon npm run backup     # write a backup into ./backups
 #
 # The public address for claude.ai is entered in Canon itself: Settings → AI / MCP → Public address.
 services:
   canon:
+    # the release published on GitHub (CANON_VERSION=0.18.0 for one version; latest = the newest)
+    image: ghcr.io/moonlight-lupin/canon:${CANON_VERSION:-latest}
     build: .
-    image: canon:latest
     container_name: canon
     restart: unless-stopped
     ports:
