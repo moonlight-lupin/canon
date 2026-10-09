@@ -107,6 +107,7 @@ function serviceDetail(id: number, includeText: boolean) {
         custom_body: hasAnyText(it.body) || undefined,
         // QR codes / notes projected after the item (deleted blocks are left out)
         slide_blocks: ri.slide_blocks.length ? ri.slide_blocks.map((b) => ({ id: b.id, name: blockName.get(b.id) ?? '', kind: b.kind })) : undefined,
+        slide_images: ri.slide_images?.length ? ri.slide_images.map((p) => ({ id: p.id, name: p.name })) : undefined,
         // the item's own slide background picture (a picture block), when it has one
         slide_background: ri.slide_bg ? { id: ri.slide_bg.id, name: bgName(ri.slide_bg.id) } : undefined,
       };
@@ -377,7 +378,7 @@ export const SERVICE_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_edit_order', module: 'services', access: 'write', title: 'Edit the order of service', annotations: DESTRUCTIVE,
-    description: 'Apply item operations to one service, in order and all-or-nothing (per-op errors if one fails): add {item, position?}, update {item_id, item: fields to change}, move {item_id, position}, remove {item_id}. Returns the new order. Item kinds and fields (stanzas for hymn verses and catechism parts, posture, slide_blocks, slide_background_id, bibles): handbook "Writing services and songs". Ask before removing. Example: {"service_id":12,"ops":[{"op":"add","item":{"kind":"song","ref_id":40,"stanzas":["1","3"]},"position":2},{"op":"remove","item_id":91}]}.',
+    description: 'Apply item operations to one service, in order and all-or-nothing (per-op errors if one fails): add {item, position?}, update {item_id, item: fields to change}, move {item_id, position}, remove {item_id}. Returns the new order. Item kinds and fields (stanzas for hymn verses and catechism parts, posture, slide_blocks, slide_background_id, slide_images — pictures from canon_search_library type "images", each on a slide of its own after the item, max 12 — bibles): handbook "Writing services and songs". Ask before removing. Example: {"service_id":12,"ops":[{"op":"add","item":{"kind":"song","ref_id":40,"stanzas":["1","3"]},"position":2},{"op":"remove","item_id":91}]}.',
     input: { service_id: Id, ops: z.array(OrderOp).min(1).max(50) },
     handler: (a) => {
       svc.services.get(a.service_id);

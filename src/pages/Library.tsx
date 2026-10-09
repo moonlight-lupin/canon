@@ -10,16 +10,17 @@ import { useI18n } from '../i18n.tsx';
 import { PageHead, useSession } from '../components/ui.tsx';
 import { BundledLibraryButton } from './library/BundledLibrary.tsx';
 import { BackgroundsTab } from './Backgrounds.tsx';
+import { ImagesTab } from './Images.tsx';
 import { LibraryCheckButton } from './LibraryCheck.tsx';
 import { Bible } from './library/Bible.tsx';
 import { Hymnals, Songs } from './library/Songs.tsx';
 import { Texts } from './library/Texts.tsx';
 
-type LibTab = 'songs' | 'hymnals' | 'texts' | 'bible' | 'blocks' | 'backgrounds';
+type LibTab = 'songs' | 'hymnals' | 'texts' | 'bible' | 'images' | 'blocks' | 'backgrounds';
 
-const LIB_TABS: LibTab[] = ['songs', 'hymnals', 'texts', 'bible', 'blocks', 'backgrounds'];
+const LIB_TABS: LibTab[] = ['songs', 'hymnals', 'texts', 'bible', 'images', 'blocks', 'backgrounds'];
 
-const LIB_TAB_LABEL: Record<LibTab, string> = { songs: 'Hymns & songs', hymnals: 'Hymnals', texts: 'Liturgical texts', bible: 'Bible', blocks: 'QR codes & notes', backgrounds: 'Slide backgrounds' };
+const LIB_TAB_LABEL: Record<LibTab, string> = { songs: 'Hymns & songs', hymnals: 'Hymnals', texts: 'Liturgical texts', bible: 'Bible', images: 'Images', blocks: 'QR codes & notes', backgrounds: 'Slide backgrounds' };
 
 export default function Library() {
   const { t } = useI18n();
@@ -46,6 +47,7 @@ export default function Library() {
       {tab === 'texts' && <Texts key={version} />}
       {tab === 'bible' && <Bible />}
       {tab === 'blocks' && <BlocksTab />}
+      {tab === 'images' && <ImagesTab />}
       {tab === 'backgrounds' && <BackgroundsTab />}
     </div>
   );

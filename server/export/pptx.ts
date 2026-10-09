@@ -22,7 +22,7 @@ type TextProps = PptxGenJS.TextProps;
 const SHAPES = { '16:9': { w: 13.333, layout: 'LAYOUT_WIDE' }, '4:3': { w: 10, layout: 'LAYOUT_4x3' } } as const;
 const H = 7.5;
 /** Largest text per slide type in points (the projector's sizes: 1920 px wide = 960 pt). */
-const MAX_PT: Record<SlideDef['type'], number> = { title: 56, section: 56, sermon: 52, item: 50, lyrics: 40, scripture: 32, text: 34, blocks: 28 };
+const MAX_PT: Record<SlideDef['type'], number> = { title: 56, section: 56, sermon: 52, item: 50, lyrics: 40, scripture: 32, text: 34, blocks: 28, image: 28 };
 const MIN_PT = 12;
 
 const hex = (c: string) => c.replace('#', '').slice(0, 6).toUpperCase();
@@ -205,9 +205,29 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
     }
     return itemBgs.get(id)!;
   };
+  // Library → Images (0.19.10): a picture on a slide of its own
+  const pictures = new Map<number, { data: string; size: { w: number; h: number } | null } | null>();
+  const picture = (id: number) => {
+    if (!pictures.has(id)) {
+      const a = assetRow(`image-${id}`);
+      pictures.set(id, a?.data?.length ? { data: dataUri(a.mime, a.data), size: imageSize(Buffer.from(a.data)) } : null);
+    }
+    return pictures.get(id)!;
+  };
 
   slides.forEach((s, i) => {
     const sl = pptx.addSlide({ masterName: 'CANON' });
+    // a picture: the whole picture on the template's background, or filling the slide (its edges cut off)
+    if (s.type === 'image' && s.image) {
+      const p = picture(s.image.id);
+      if (p?.size) {
+        const k = s.image.fit === 'cover' ? Math.max(W / p.size.w, H / p.size.h) : Math.min(W / p.size.w, H / p.size.h);
+        sl.addImage({ data: p.data, x: (W - p.size.w * k) / 2, y: (H - p.size.h * k) / 2, w: p.size.w * k, h: p.size.h * k });
+      } else if (p) {
+        sl.addImage({ data: p.data, x: 0, y: 0, w: W, h: H });
+      }
+      return;
+    }
     // an item's own background picture covers the template's, faded with the background colour
     const own = s.bg ? itemBg(s.bg.id) : null;
     if (own) {

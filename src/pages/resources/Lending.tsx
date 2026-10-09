@@ -10,6 +10,7 @@ import { InfoTip } from '../../components/InfoTip.tsx';
 import { CsvTools } from '../../components/CsvTools.tsx';
 import { langInfo } from '../../../shared/languages.ts';
 import { PersonSearch, type PersonHit } from './common.tsx';
+import { CopyCard, saveSession, type Session as SelfSession } from '../self/SelfService.tsx';
 import './resources.css';
 
 type Kind = 'book' | 'dvd' | 'curriculum' | 'other';
@@ -20,7 +21,7 @@ interface Book {
   kind: Kind; category: string | null; language: string | null; shelf: string | null; description: string | null; notes: string | null; has_cover: boolean; updated_at: string;
 }
 interface BookRow extends Book { copies: number; available: number; on_loan: number; numbers: string[] }
-interface CopyLoan { id: number; person_id: number | null; borrower: string | null; elsewhere?: boolean; lent_on: string; due_on: string; renewals: number }
+interface CopyLoan { id: number; person_id: number | null; borrower: string | null; elsewhere?: boolean; lent_on: string; due_on: string; renewals: number; return_pending_on?: string | null }
 interface Copy { id: number; book_id: number; number: string; status: 'in' | 'lost' | 'withdrawn'; condition: string | null; acquired_on: string | null; notes: string | null; loan: CopyLoan | null }
 interface BookFull extends Book { copies: Copy[]; history: { id: number; number: string; borrower: string | null; elsewhere?: boolean; lent_on: string; due_on: string; returned_on: string | null }[] }
 interface Loan { id: number; copy_id: number; elsewhere?: boolean; number: string; book_id: number; title: string; authors: string | null; person_id: number | null; borrower: string | null; has_email: boolean; lent_on: string; due_on: string; returned_on: string | null; renewals: number; overdue_days: number; via: 'desk' | 'self'; return_pending_on: string | null }
@@ -65,6 +66,7 @@ export default function Lending() {
 
 function LendTab() {
   const { t } = useI18n();
+  const summary = useApi<{ titles: number }>('/lending/summary');
   const [code, setCode] = useState('');
   const [scan, setScan] = useState<Scan | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +97,7 @@ function LendTab() {
         </div>
         {error && <div className="scan-result"><ErrorBox error={error} /></div>}
         {scan && <div className="scan-result"><ScanCard scan={scan} onDone={done} onChanged={() => look(scan.copy.number)} /></div>}
+        {summary.data?.titles === 0 && <p className="small muted" style={{ marginBottom: 0 }}>{t('The catalogue is empty: add the library’s books under Catalogue → New book first.')} <Link to="/lending?tab=catalogue">{t('Catalogue')} →</Link></p>}
       </section>
       <OverdueShort />
     </div>
@@ -139,6 +142,11 @@ function ScanCard({ scan, onDone, onChanged }: { scan: Scan; onDone: () => void;
           {book.authors && <div className="small">{book.authors}</div>}
           {copy.status !== 'in' ? (
             <div className="callout warn small">{copy.status === 'lost' ? t('This copy is marked lost.') : t('This copy is withdrawn.')}</div>
+          ) : loan?.return_pending_on ? (
+            <div className="stack tight">
+              <div><span className="badge lapis">{t('Returned by the borrower: check it in')}</span> <span className="small muted">{(loan.elsewhere ? t('another congregation') : loan.borrower) ?? t('(erased)')} · {fmtDate(loan.return_pending_on, lang)}</span></div>
+              {canEdit && <div><button className="btn primary" onClick={back} disabled={busy}><Icon name="check" />{t('Check in')}</button></div>}
+            </div>
           ) : loan ? (
             <div className="stack tight">
               <div>{t('On loan to')} <strong>{(loan.elsewhere ? t('another congregation') : loan.borrower) ?? t('(erased)')}</strong> · {t('due')} {fmtDate(loan.due_on, lang)}{' '}
@@ -185,19 +193,61 @@ function OverdueShort() {
   );
 }
 
-/** The page a copy's QR label opens. */
+/**
+ * The page a copy's QR label opens, for someone signed in to Canon (0.19.10). A member borrows, or says they're
+ * bringing it back, as themselves — it used to show only the librarian's card (a read-only member could do nothing
+ * with it). Whoever may lend also gets the desk's card, to lend it to someone else.
+ */
 export function CopyPage() {
   const { number = '' } = useParams();
   const { t } = useI18n();
-  const [n, setN] = useState(0);
-  const { data, error } = useApi<Scan>(`/lending/scan?q=${encodeURIComponent(number)}&n=${n}`);
+  const { user, can } = useSession();
+  const desk = can('lending', 'edit');
+  const mine = !!user.person_id;
+  // either card changing the copy refreshes the other
+  const [deskN, setDeskN] = useState(0);
+  const [mineN, setMineN] = useState(0);
   return (
     <div className="page" style={{ maxWidth: 720 }}>
       <PageHead eyebrow={t('Lending library')} title={number} />
-      {error ? <ErrorBox error={error} /> : !data ? <Loading /> : <ScanCard scan={data} onDone={() => setN((x) => x + 1)} onChanged={() => setN((x) => x + 1)} />}
-      <p className="small"><Link to="/lending">{t('Lending library')} →</Link></p>
+      {desk && <DeskCopy number={number} reloadKey={deskN} onChanged={() => setMineN((x) => x + 1)} />}
+      {mine && (
+        <>
+          {desk && <h3 className="sect" style={{ marginTop: 18 }}>{t('For me')}</h3>}
+          <MemberCopy number={number} compact={desk} reloadKey={mineN} onChanged={() => setDeskN((x) => x + 1)} />
+        </>
+      )}
+      {!desk && !mine && <div className="callout small">{t('To borrow a book with your account, it must be linked to your member record: ask an administrator (Settings → User accounts), or ask the librarian.')}</div>}
+      <p className="small"><Link to={desk ? '/lending' : '/self/loans'}>{desk ? t('Lending library') : t('My loans')} →</Link></p>
     </div>
   );
+}
+
+function DeskCopy({ number, reloadKey, onChanged }: { number: string; reloadKey: number; onChanged: () => void }) {
+  const [n, setN] = useState(0);
+  const { data, error } = useApi<Scan>(`/lending/scan?q=${encodeURIComponent(number)}&n=${n}-${reloadKey}`);
+  const changed = () => {
+    setN((x) => x + 1);
+    onChanged();
+  };
+  return error ? <ErrorBox error={error} /> : !data ? <Loading /> : <ScanCard scan={data} onDone={changed} onChanged={changed} />;
+}
+
+/** The member's own card: their account signs them in to self-service (no e-mailed code). */
+function MemberCopy({ number, compact, reloadKey, onChanged }: { number: string; compact: boolean; reloadKey: number; onChanged: () => void }) {
+  const { t } = useI18n();
+  const [session, setSession] = useState<SelfSession | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    api.post<{ token: string; name: string }>('/me/lending-session').then((r) => {
+      const s = { token: r.token, name: r.name, at: Date.now() };
+      // My loans (on this phone) uses the same sign-in
+      saveSession(s);
+      setSession(s);
+    }).catch((e: Error) => setProblem(t(e.message)));
+  }, []);
+  if (problem) return <div className="callout small">{problem}</div>;
+  return session ? <CopyCard number={number} session={session} compact={compact} reloadKey={reloadKey} onChanged={onChanged} /> : <Loading />;
 }
 
 // ---------------------------------------------------------------- on loan
@@ -311,7 +361,7 @@ function CatalogueTab() {
       {error && <ErrorBox error={error} />}
       {!data ? <Loading /> : !data.length ? (
         <Empty title={dq || kind || category || available ? t('Nothing matches.') : t('The catalogue is empty.')}>
-          {canEdit && !dq && <p className="small muted">{t('Add books one by one (an ISBN fills in the rest), or bring in a whole list with Import CSV.')}</p>}
+          {canEdit && !dq && <p className="small muted">{t('Add books one by one with New book (an ISBN fills in the rest), or bring in a whole list with Import….')}</p>}
         </Empty>
       ) : (
         <div className="res-cards">
@@ -332,14 +382,14 @@ function CatalogueTab() {
           ))}
         </div>
       )}
-      {open !== null && <BookDialog id={open === 'new' ? null : open} categories={cats.data ?? []} onClose={() => setOpen(null)} onChanged={() => { reload(); cats.reload(); }} />}
+      {open !== null && <BookDialog key={String(open)} id={open === 'new' ? null : open} categories={cats.data ?? []} onClose={() => setOpen(null)} onCreated={(id) => setOpen(id)} onChanged={() => { reload(); cats.reload(); }} />}
     </div>
   );
 }
 
 interface Lookup { isbn: string; title: string; subtitle: string | null; authors: string | null; publisher: string | null; year: number | null; language: string | null; description: string | null; cover_url: string | null; source: string }
 
-function BookDialog({ id, categories, onClose, onChanged }: { id: number | null; categories: string[]; onClose: () => void; onChanged: () => void }) {
+function BookDialog({ id, categories, onClose, onChanged, onCreated }: { id: number | null; categories: string[]; onClose: () => void; onChanged: () => void; onCreated?: (id: number) => void }) {
   const { t, lang } = useI18n();
   const { can, settings } = useSession();
   const canEdit = can('lending', 'edit');
@@ -366,10 +416,12 @@ function BookDialog({ id, categories, onClose, onChanged }: { id: number | null;
     const fields = { title: b.title ?? '', subtitle: b.subtitle ?? null, authors: b.authors ?? null, isbn: b.isbn ?? null, publisher: b.publisher ?? null, year: b.year ?? null, kind: b.kind, category: b.category ?? null, language: b.language ?? null, shelf: b.shelf ?? null, description: b.description ?? null, notes: b.notes ?? null };
     const r = id
       ? await run(() => api.patch(`/lending/books/${id}`, { ...fields, cover_url: cover }), t('Saved.'))
-      : await run(() => api.post('/lending/books', { ...fields, copies, cover_url: cover }), t('Saved.'));
+      : await run(() => api.post<{ id: number }>('/lending/books', { ...fields, copies, cover_url: cover }), t('Saved. Print its labels below, then stick one in each copy.'));
     if (r) {
       onChanged();
-      onClose();
+      // a new book opens again with its copies, so its labels can be printed straight away
+      if (!id && onCreated && typeof r === 'object' && r && 'id' in r) onCreated((r as { id: number }).id);
+      else onClose();
     }
   };
   const remove = async () => {

@@ -7,6 +7,7 @@ import { forAttendees, serviceByAttendeeToken } from './repo/attendee-link.ts';
 import { publicUrl } from './lib/public-url.ts';
 import { addressForOthers } from './lib/lan.ts';
 import { lendingSelfRoutes } from './routes/lending-self.ts';
+import { accountToken as lendingAccountToken } from './repo/lending-self.ts';
 import { claimsSelfRoutes, sessionToken as claimsSessionToken } from './routes/claims-self.ts';
 import { lendingRoutes } from './routes/lending.ts';
 import { bookkeepingRoutes } from './routes/bookkeeping.ts';
@@ -57,6 +58,7 @@ import * as bible from './repo/bible.ts';
 import * as svc from './repo/services.ts';
 import * as cong from './repo/congregations.ts';
 import * as bg from './repo/backgrounds.ts';
+import * as images from './repo/images.ts';
 import { libraryChecks } from './repo/checks.ts';
 import * as grp from './repo/groups.ts';
 import { renderService } from './repo/render.ts';
@@ -231,6 +233,8 @@ api.use(viewerScrub);
 
 // expense claims: someone signed in claims (or approves) as their linked member, without an e-mailed code
 api.post('/me/claims-session', h((req) => claimsSessionToken(req.user?.person_id ?? null)));
+// the lending library: a member signed in to Canon borrows, renews and returns as themselves (a book's label, My loans)
+api.post('/me/lending-session', h((req) => lendingAccountToken(req.user?.person_id)));
 
 // where links for other people point (share links, e-mails): the public address, else this computer's network address
 api.get('/link-base', (req, res) => {
@@ -429,12 +433,14 @@ api.get('/dashboard', h((req) => {
   // furthest as "Next service" — found with the 0.19.7 sample church)
   const upcoming = svc.listServices({ from: today, to: in8w })
     .sort((a, b) => `${a.date} ${a.start_time ?? ''}`.localeCompare(`${b.date} ${b.start_time ?? ''}`));
+  // each part only for a role that may read it (0.19.10: a librarian saw member counts and members' birthdays)
+  const reads = (m: Parameters<typeof allows>[1]) => allows(role, m, 'read');
   return {
-    upcoming: upcoming.slice(0, 6).map((s) => ({ ...s, warnings: vol.rosterWarnings(s.id) })),
-    members: reg.memberStats(),
-    birthdays: reg.upcomingBirthdays(14).map((b) => ({ ...b, name: reg.displayName(b.person), person_id: b.person.id, person: undefined })),
-    coworkers: reg.listCoworkers({ active: true }).length,
-    library: {
+    upcoming: reads('services') ? upcoming.slice(0, 6).map((s) => ({ ...s, warnings: reads('volunteers') ? vol.rosterWarnings(s.id) : [] })) : null,
+    members: reads('members') ? reg.memberStats() : null,
+    birthdays: reads('members') ? reg.upcomingBirthdays(14).map((b) => ({ ...b, name: reg.displayName(b.person), person_id: b.person.id, person: undefined })) : null,
+    coworkers: reads('coworkers') ? reg.listCoworkers({ active: true }).length : null,
+    library: !reads('library') ? null : {
       songs: get<{ n: number }>('SELECT COUNT(*) n FROM songs')!.n,
       texts: get<{ n: number }>('SELECT COUNT(*) n FROM texts')!.n,
       // the installed versions, by language (a verse count says little)
@@ -533,6 +539,14 @@ api.get('/backgrounds', h(() => bg.listBackgrounds()));
 api.post('/backgrounds', rawPicture, h((req) => bg.saveBackground(null, str(req.query.name), req.get('content-type') ?? '', req.body as Buffer)));
 api.put('/backgrounds/:id', rawPicture, h((req) => bg.saveBackground(id(req), undefined, req.get('content-type') ?? '', req.body as Buffer)));
 api.patch('/backgrounds/:id', h((req) => bg.renameBackground(id(req), z.object({ name: z.string().max(120) }).parse(req.body).name)));
+
+// ---------------------------------------------------------------- Library → Images (pictures on slides of their own)
+
+api.get('/images', h((req) => images.listImages(str(req.query.q) ?? '')));
+api.post('/images', rawPicture, h((req) => images.saveImage(null, str(req.query.name), req.get('content-type') ?? '', req.body as Buffer)));
+api.put('/images/:id', rawPicture, h((req) => images.saveImage(id(req), undefined, req.get('content-type') ?? '', req.body as Buffer)));
+api.patch('/images/:id', h((req) => images.updateImage(id(req), z.object({ name: z.string().max(120).optional(), fit: z.string().max(20).optional() }).parse(req.body))));
+api.delete('/images/:id', h((req) => images.deleteImage(id(req))));
 api.delete('/backgrounds/:id', h((req) => bg.deleteBackground(id(req))));
 
 // ---------------------------------------------------------------- congregations

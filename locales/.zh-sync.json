@@ -384,6 +384,10 @@
       "请先在「资料库 → 投影背景」加入图片",
       "請先在「資料庫 → 投影背景」加入圖片"
     ],
+    "Add a picture…": [
+      "加入图片……",
+      "加入圖片……"
+    ],
     "Add a role…": [
       "加入岗位…",
       "加入崗位…"
@@ -424,9 +428,9 @@
       "新增背景…",
       "新增背景…"
     ],
-    "Add books one by one (an ISBN fills in the rest), or bring in a whole list with Import CSV.": [
-      "可逐本新增（输入 ISBN 即可填入其余资料），或用“导入 CSV”一次导入整份书单。",
-      "可逐本新增（輸入 ISBN 即可填入其餘資料），或用“導入 CSV”一次導入整份書單。"
+    "Add books one by one with New book (an ISBN fills in the rest), or bring in a whole list with Import….": [
+      "可按“新增书籍”逐本加入（输入 ISBN 即可填入其余资料），或用“导入…”一次导入整份书单。",
+      "可按“新增書籍”逐本加入（輸入 ISBN 即可填入其餘資料），或用“導入…”一次導入整份書單。"
     ],
     "Add choice": [
       "加入选项",
@@ -503,6 +507,14 @@
     "Add person": [
       "添加会友",
       "添加會友"
+    ],
+    "Add pictures in Library → Images": [
+      "在“资料库 → 图片”中加入图片",
+      "在“資料庫 → 圖片”中加入圖片"
+    ],
+    "Add pictures…": [
+      "加入图片……",
+      "加入圖片……"
     ],
     "Add receipts or the signed form": [
       "加入收据或已签名的表格",
@@ -627,6 +639,10 @@
     "Address": [
       "地址",
       "地址"
+    ],
+    "Adds the picture as an item of its own, on the slides only. To show pictures after an item instead, open the item: Pictures on slides.": [
+      "把图片加为一个独立的项目，只在投影中出现。若要在某个项目之后显示图片，请打开该项目：投影图片。",
+      "把圖片加為一個獨立的項目，只在投影中出現。若要在某個項目之後顯示圖片，請打開該項目：投影圖片。"
     ],
     "Admin": [
       "管理员",
@@ -1467,6 +1483,10 @@
     "Borrower": [
       "借阅者",
       "借閱者"
+    ],
+    "Borrowing on your phone is off at the moment: ask the librarian to lend it to you.": [
+      "目前无法用手机借书：请图书管理员为你办理借出。",
+      "目前無法用手機借書：請圖書管理員為你辦理借出。"
     ],
     "Both": [
       "双语",
@@ -2788,6 +2808,14 @@
       "确定删除此人？其事奉记录和岗位资格也会一并删除。",
       "確定刪除此人？其事奉記錄和崗位資格也會一併刪除。"
     ],
+    "Delete this picture?": [
+      "删除这张图片？",
+      "刪除這張圖片？"
+    ],
+    "Delete this picture? {n} service items show it; it comes off their slides.": [
+      "删除这张图片？有 {n} 个聚会项目显示它；它会从这些项目的投影中移除。",
+      "刪除這張圖片？有 {n} 個聚會項目顯示它；它會從這些項目的投影中移除。"
+    ],
     "Delete this role and all its rota assignments?": [
       "确定删除此岗位及其所有事奉安排？",
       "確定刪除此崗位及其所有事奉安排？"
@@ -3584,6 +3612,10 @@
       "铺满画面（可能裁切）",
       "鋪滿畫面（可能裁切）"
     ],
+    "Fill the slide": [
+      "铺满投影片",
+      "鋪滿投影片"
+    ],
     "Filled 1 empty slot.": [
       "已填补 1 个空缺。",
       "已填補 1 個空缺。"
@@ -3699,6 +3731,10 @@
     "For lines nobody has booked yet; the office can change each line before the expense is posted.": [
       "用于还没有人指定科目的项目；在支出过账前，办公室可以逐项更改。",
       "用於還沒有人指定科目的項目；在支出過賬前，辦公室可以逐項更改。"
+    ],
+    "For me": [
+      "我自己借",
+      "我自己借"
     ],
     "For new rows": [
       "新增时必填",
@@ -4259,6 +4295,14 @@
     "Ignored columns:": [
       "已忽略的栏位：",
       "已忽略的欄位："
+    ],
+    "Images": [
+      "图片",
+      "圖片"
+    ],
+    "Images: {a} new": [
+      "图片：新增 {a} 张",
+      "圖片：新增 {a} 張"
     ],
     "Import": [
       "导入",
@@ -5760,6 +5804,10 @@
       "没有图片",
       "沒有圖片"
     ],
+    "No pictures yet.": [
+      "还没有图片。",
+      "還沒有圖片。"
+    ],
     "No project": [
       "无项目",
       "無項目"
@@ -5795,6 +5843,10 @@
     "No reminders are due today.": [
       "今天没有需要发送的提醒。",
       "今天沒有需要發送的提醒。"
+    ],
+    "No renewals left: please bring it back.": [
+      "已不能再续借：请归还。",
+      "已不能再續借：請歸還。"
     ],
     "No returned loans yet.": [
       "还没有归还记录。",
@@ -6107,6 +6159,10 @@
     "Nothing booked.": [
       "没有预订。",
       "沒有預訂。"
+    ],
+    "Nothing in Canon is open to your role at the moment. If you expected something here, ask an administrator (your role in Settings → User accounts, or the parts switched on in Settings → Modules).": [
+      "目前 Canon 中没有向你的角色开放的内容。若你本应看到某些内容，请询问管理员（“设置 → 用户帐户”中你的角色，或“设置 → 模块”中开启的部分）。",
+      "目前 Canon 中沒有向你的角色開放的內容。若你本應看到某些內容，請詢問管理員（“設置 → 用戶帳戶”中你的角色，或“設置 → 模塊”中開啟的部分）。"
     ],
     "Nothing is on loan.": [
       "没有借出的物品。",
@@ -6872,6 +6928,22 @@
       "图片已保存。",
       "圖片已保存。"
     ],
+    "Pictures": [
+      "图片",
+      "圖片"
+    ],
+    "Pictures for the slides — a poster for the announcements, a photo, a map. Each is shown on a slide of its own after a service item: choose them in the planner (item → Pictures on slides), or add one from the Pictures tab beside the order of service.": [
+      "投影用的图片——报告事项的海报、照片、地图等。每张图片在某个聚会项目之后以独立的投影片显示：在聚会策划中选择（项目 → 投影图片），或从程序单旁的“图片”分页加入。",
+      "投影用的圖片——報告事項的海報、照片、地圖等。每張圖片在某個聚會項目之後以獨立的投影片顯示：在聚會策劃中選擇（項目 → 投影圖片），或從程序單旁的“圖片”分頁加入。"
+    ],
+    "Pictures from Library → Images, each on a slide of its own after this item’s slides (an item that is not on the slides shows only its pictures). Not printed.": [
+      "“资料库 → 图片”中的图片，每张在此项目的投影片之后以独立的投影片显示（不在投影中的项目只显示其图片）。不会印在程序单上。",
+      "“資料庫 → 圖片”中的圖片，每張在此項目的投影片之後以獨立的投影片顯示（不在投影中的項目只顯示其圖片）。不會印在程序單上。"
+    ],
+    "Pictures on slides": [
+      "投影图片",
+      "投影圖片"
+    ],
     "Place": [
       "地点",
       "地點"
@@ -7544,6 +7616,10 @@
       "可续借次数",
       "可續借次數"
     ],
+    "Renewals left: {n}": [
+      "还可续借 {n} 次",
+      "還可續借 {n} 次"
+    ],
     "Renewed until {date}.": [
       "已续借至 {date}。",
       "已續借至 {date}。"
@@ -7959,6 +8035,10 @@
     "Saved.": [
       "已保存。",
       "已保存。"
+    ],
+    "Saved. Print its labels below, then stick one in each copy.": [
+      "已保存。请在下方打印标签，然后在每本副本上贴一张。",
+      "已保存。請在下方打印標籤，然後在每本副本上貼一張。"
     ],
     "Saving…": [
       "正在保存…",
@@ -8632,6 +8712,10 @@
       "投影背景",
       "投影背景"
     ],
+    "Slide backgrounds go behind an item’s words; QR codes & notes are small cards that also print on the bulletin. These pictures fill a slide of their own, and are not printed.": [
+      "投影背景显示在项目文字的后面；二维码与备注是小卡片，也会印在程序单上。这里的图片则独占一张投影片，不会印出。",
+      "投影背景顯示在項目文字的後面；二維碼與備註是小卡片，也會印在程序單上。這裡的圖片則獨佔一張投影片，不會印出。"
+    ],
     "Slide backgrounds: {a} new": [
       "投影背景：新增 {a} 个",
       "投影背景：新增 {a} 個"
@@ -9108,6 +9192,10 @@
       "账簿开始日期",
       "賬簿開始日期"
     ],
+    "The borrower said this copy is back: check it in.": [
+      "借阅者说这本已归还：请办理归还登记。",
+      "借閱者說這本已歸還：請辦理歸還登記。"
+    ],
     "The cash count is verified, so the cash is locked. To correct it, an administrator reopens the count; it is then verified again.": [
       "现金点算已确认，现金已锁定。如需更正，由管理员重新开启点算，之后须再次确认。",
       "現金點算已確認，現金已鎖定。如需更正，由管理員重新開啟點算，之後須再次確認。"
@@ -9123,6 +9211,10 @@
     "The catalogue is empty.": [
       "目录是空的。",
       "目錄是空的。"
+    ],
+    "The catalogue is empty: add the library’s books under Catalogue → New book first.": [
+      "目录是空的：请先在“目录 → 新增书籍”中加入图书馆的书。",
+      "目錄是空的：請先在“目錄 → 新增書籍”中加入圖書館的書。"
     ],
     "The change log keeps {m} months, so its entries are removed before they are old enough to archive: archives will hold service records, not their history. To archive the history too, keep the change log longer (Settings → Change log).": [
       "修改记录只保留 {m} 个月，日志在够旧可以归档之前就会被删除：归档只会有聚会记录，没有修改历史。若要连历史一起归档，请把修改记录保留久一点（设置 → 修改记录）。",
@@ -9695,6 +9787,10 @@
     "To age": [
       "截止年龄",
       "截止年齡"
+    ],
+    "To borrow a book with your account, it must be linked to your member record: ask an administrator (Settings → User accounts), or ask the librarian.": [
+      "要用你的帐户借书，帐户必须连结到你的会友资料：请询问管理员（设置 → 用户帐户），或请图书管理员协助。",
+      "要用你的帳戶借書，帳戶必須連結到你的會友資料：請詢問管理員（設置 → 用戶帳戶），或請圖書管理員協助。"
     ],
     "To borrow, scan the QR code on the book’s label.": [
       "要借书，请扫描书上标签的二维码。",
@@ -10504,6 +10600,10 @@
       "全教会",
       "全教會"
     ],
+    "Whole picture": [
+      "完整图片",
+      "完整圖片"
+    ],
     "Why (optional)": [
       "原因（可选）",
       "原因（可選）"
@@ -10635,6 +10735,10 @@
     "Your account has no access.": [
       "你的帐户没有任何权限。",
       "你的帳戶沒有任何權限。"
+    ],
+    "Your account is not linked to your member record, so it can’t borrow. Ask an administrator to link it (Settings → User accounts), or ask the librarian.": [
+      "你的帐户没有连结到你的会友资料，所以不能借书。请管理员为它连结（设置 → 用户帐户），或请图书管理员协助。",
+      "你的帳戶沒有連結到你的會友資料，所以不能借書。請管理員為它連結（設置 → 用戶帳戶），或請圖書管理員協助。"
     ],
     "Your account is not linked to your member record.": [
       "您的帐户尚未连结到您的会友资料。",
@@ -11492,6 +11596,10 @@
       "{n} 段经文",
       "{n} 段經文"
     ],
+    "{n} pictures saved.": [
+      "已保存 {n} 张图片。",
+      "已保存 {n} 張圖片。"
+    ],
     "{n} public-domain hymns, metrical psalms and service music (Doxology, Gloria Patri …): English words, credits, tune and metre; a few also in Chinese.": [
       "{n} 首公共领域的诗歌、韵文诗篇与礼仪短歌（三一颂、荣耀颂……）：英文歌词、作者、曲调与格律；少数也有中文。",
       "{n} 首公共領域的詩歌、韻文詩篇與禮儀短歌（三一頌、榮耀頌……）：英文歌詞、作者、曲調與格律；少數也有中文。"
@@ -12226,7 +12334,7 @@
     ]
   },
   "guide": [
-    "9646ca996a8e6f9e",
-    "6d64e2488f13d5e8"
+    "3fbb5c9f17713c27",
+    "2ea6c1a62c10056f"
   ]
 }

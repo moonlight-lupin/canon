@@ -20,6 +20,11 @@ const TIMEOUT_MS = 8000;
 const COVER_HOSTS = /^(covers\.openlibrary\.org|books\.google\.com|books\.googleusercontent\.com)$/;
 const MAX_COVER_BYTES = 2 * 1024 * 1024;
 
+// MARC language codes (Open Library) → the languages Canon knows
+const MARC: Record<string, string> = { eng: 'en', chi: 'zh', zho: 'zh', may: 'ms', msa: 'ms', ind: 'id', tam: 'ta', kor: 'ko', jpn: 'ja', spa: 'es', tgl: 'tl', fil: 'tl', vie: 'vi' };
+/** A MARC language code ("eng", or Open Library's "/languages/eng") as Canon's language code; null when unknown. */
+export const marcLanguage = (code: string | null | undefined) => (code ? MARC[code.replace(/^\/languages\//, '').toLowerCase()] ?? null : null);
+
 const yearOf = (s: unknown) => {
   const m = String(s ?? '').match(/\b(1[5-9]\d\d|20\d\d|21\d\d)\b/);
   return m ? Number(m[1]) : null;
@@ -37,9 +42,11 @@ async function openLibrary(isbn: string): Promise<IsbnResult | null> {
   if (!b || typeof b.title !== 'string') return null;
   const names = (v: unknown) => (Array.isArray(v) ? v.map((x) => (x as { name?: string }).name).filter(Boolean).join(', ') : '') || null;
   const cover = b.cover as { medium?: string; large?: string } | undefined;
+  // the language is on the edition record only (0.19.10: it was left empty)
+  const edition = (await getJson(`https://openlibrary.org/isbn/${isbn}.json`).catch(() => null)) as { languages?: { key?: string }[] } | null;
   return {
     isbn, title: b.title, subtitle: typeof b.subtitle === 'string' ? b.subtitle : null, authors: names(b.authors), publisher: names(b.publishers),
-    year: yearOf(b.publish_date), language: null, description: null, cover_url: cover?.medium ?? cover?.large ?? null, source: 'Open Library',
+    year: yearOf(b.publish_date), language: marcLanguage(edition?.languages?.[0]?.key), description: null, cover_url: cover?.medium ?? cover?.large ?? null, source: 'Open Library',
   };
 }
 

@@ -1331,4 +1331,23 @@ export const MIGRATIONS: (string | Migration)[] = [
     CREATE INDEX account_notices_user ON account_notices(user_id, seen_at);
     `,
   },
+  // 41 (0.19.10): Library → Images — pictures shown on slides of their own after a service item (the picture itself in
+  // assets, key image-<id>); each item's pictures, in order.
+  {
+    sql: `
+    CREATE TABLE images (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      width INTEGER,
+      height INTEGER,
+      bytes INTEGER NOT NULL DEFAULT 0,
+      version TEXT NOT NULL,
+      -- contain: the whole picture; cover: it fills the slide
+      fit TEXT NOT NULL DEFAULT 'contain' CHECK (fit IN ('contain','cover')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    ALTER TABLE service_items ADD COLUMN slide_images TEXT NOT NULL DEFAULT '[]';
+    `,
+  },
 ];

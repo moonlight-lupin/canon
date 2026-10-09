@@ -4,6 +4,30 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.10 — Images on slides; the lending library walked through
+
+### Library → Images
+
+- **A picture library for the slides**, apart from the slide backgrounds: a poster for the announcements, a photo from the mission trip, a map. **Add pictures…** takes one or several PNG, JPEG or WebP files (10 MB each); each is shown as the **Whole picture** (on the slide template's background) or to **Fill the slide** (edges cut off), with a warning when it would be enlarged on a widescreen projector, and how many items use it. Rename, replace or delete (a deleted picture comes off the slides that showed it).
+- **On the slides**: any item's **Pictures on slides** (up to 12, in order) shows each picture on a slide of its own after the item's slides; an item that is not on the slides shows only its pictures. The planner's library panel has a **Pictures** tab: a picture becomes an item of its own, on the slides only and not in the bulletin. In the slides and presenter view, the PowerPoint and FreeShow downloads, and the "next slide" preview. Not printed.
+- Service templates keep an item's pictures by name, and the library file (Settings → Export data, and the Library's **Export**) carries them, with how each fills the slide.
+- **AI assistants**: `canon_search_library` type `images` lists the pictures; `slide_images` on an item (`canon_edit_order`) shows them; `canon_get_service` lists the ones in use.
+- **Fixed: pictures on slides and bulletins were for administrators only.** Theme backgrounds, slide backgrounds and picture blocks answered "Administrators only" to every other role, so an editor's, a planner's or a read-only projector operator's slides showed without them. Everyone signed in now sees them (not without signing in).
+- Fixed: the playbook for importing a service from files said to upload item backgrounds to QR codes & notes and set `slide_bg`; it is Slide backgrounds and `slide_background_id`.
+
+### The lending library, walked through
+
+An adversarial walk-through: a librarian adding a new book and printing its labels, a member with no account and a member with their own Canon account scanning the label, borrowing, renewing and returning, and the librarian checking the book in. Each fix has its test (`tests/lending-ux.test.ts`).
+
+- **A member signed in to Canon who scans a book's label borrows it as themselves.** They were shown the librarian's card — lend to a borrower, take back — which a read-only member could do nothing with, and which made an office role pick themselves from the member list. Now **Borrow it** and **I'm bringing it back** use their account (linked to their member record), with no e-mailed code, while self-service is on; someone who may lend sees the desk's card too, to lend to someone else. The two cards keep each other up to date. My loans then works on that phone as well.
+- **A code pasted from the e-mail works.** The code box took six characters before taking out spaces, so "340 740" became "34074" and Sign in stayed greyed out with no reason given (library self-service and expense claims).
+- **My loans says how many renewals are left**, and has **I'm bringing it back** beside each loan, so a member needn't find the label again.
+- **The desk shows when the borrower said a book is back**: "Returned by the borrower: check it in", with **Check in** — it showed "On loan" with Take back and **Renew**, and renewing it was allowed (now refused).
+- **The dashboard shows only what the role may open.** A librarian saw member counts, members' upcoming birthdays (names), the services and the song library, with links that went nowhere, and the library's own card last; now the parts they can't read are left out (also in what the server sends), and a role that can open nothing is told so.
+- **The ISBN lookup fills in the language** (Open Library's edition record), and a new book opens again after **Save** with its copies, ready for **Print labels**.
+- The empty catalogue named a button that isn't there (**Import CSV**; it is **Import…**); **Lend & return** in an empty library says to add books under Catalogue first.
+- Database: version 41 (`images`; `service_items.slide_images`).
+
 ## 0.19.9 — Account security
 
 From the same read-only study of Canon's sign-in code (0.19.7) as 0.19.8: what that version left open. Each fix has its test (`tests/account-security.test.ts`).

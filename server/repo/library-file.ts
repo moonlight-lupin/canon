@@ -13,6 +13,7 @@ import * as lib from './library.ts';
 import { addScore, scoreData, scoresFor } from './scores.ts';
 import { createBlock, listBlocks, setBlockImage } from './presentation.ts';
 import { backgroundKey, backgroundByName, backgrounds as bgTable, saveBackground } from './backgrounds.ts';
+import { imageIdsByName, imageKey, images as imageTable, saveImage, updateImage } from './images.ts';
 
 export const LIBRARY_FORMAT = 'canon-library';
 const VERSION = 1;
@@ -27,15 +28,18 @@ interface LibraryFile {
   texts: Record<string, unknown>[];
   blocks?: { name: string; kind: string; data: Record<string, unknown>; image?: FileBlob }[];
   backgrounds?: { name: string; image: FileBlob }[];
+  /** Library → Images (0.19.10) */
+  images?: { name: string; fit: string; image: FileBlob }[];
   bibles?: { code: string; lang: string; name: string; license: string; notes: string | null; edition: string | null; rights: string; verses: [number, number, number, string][] }[];
 }
 
-export type LibrarySection = 'songs' | 'texts' | 'blocks' | 'backgrounds' | 'bibles';
+export type LibrarySection = 'songs' | 'texts' | 'blocks' | 'backgrounds' | 'images' | 'bibles';
 export interface ExportOptions {
   scores?: boolean;
   blocks?: boolean;
   bibles?: boolean;
   backgrounds?: boolean;
+  images?: boolean;
   /** only these sections (default: the whole library, as the flags above say) */
   sections?: LibrarySection[];
   /** songs: only one hymnal's (an id), or 'none' = the songs in no hymnal */
@@ -83,6 +87,12 @@ export function exportLibrary(o: ExportOptions = {}): Buffer {
       return a ? { name: b.name, image: { mime: a.mime, data: Buffer.from(a.data).toString('base64') } } : null;
     }).filter((x): x is NonNullable<typeof x> => !!x);
   }
+  if (want('images', o.images !== false)) {
+    file.images = imageTable.list('', [], 'name COLLATE NOCASE, id').map((i) => {
+      const a = get<{ mime: string; data: Uint8Array }>('SELECT mime, data FROM assets WHERE key = ?', imageKey(i.id));
+      return a ? { name: i.name, fit: i.fit, image: { mime: a.mime, data: Buffer.from(a.data).toString('base64') } } : null;
+    }).filter((x): x is NonNullable<typeof x> => !!x);
+  }
   if (want('bibles', !!o.bibles)) {
     file.bibles = all<{ code: string; lang: string; name: string; license: string; notes: string | null; edition: string | null; rights: string }>(
       `SELECT code, lang, name, license, notes, edition, rights FROM bible_translations WHERE source = 'upload'${o.bible ? ' AND code = ?' : ''} ORDER BY code`,
@@ -121,6 +131,7 @@ export interface ImportSummary {
   texts: { added: number; existing: number };
   blocks: { added: number; existing: number };
   backgrounds: { added: number; existing: number };
+  images: { added: number; existing: number };
   bibles: { added: number; existing: number; skipped: number };
   problems: string[];
 }
@@ -135,7 +146,7 @@ export function importLibrary(buf: Buffer, o: { dryRun?: boolean; biblePermissio
   const f = readFile(buf);
   const sum: ImportSummary = {
     hymnals: { added: 0, existing: 0 }, songs: { added: 0, existing: 0, numbers_added: 0, sheet_music_added: 0 },
-    texts: { added: 0, existing: 0 }, blocks: { added: 0, existing: 0 }, backgrounds: { added: 0, existing: 0 }, bibles: { added: 0, existing: 0, skipped: 0 }, problems: [],
+    texts: { added: 0, existing: 0 }, blocks: { added: 0, existing: 0 }, backgrounds: { added: 0, existing: 0 }, images: { added: 0, existing: 0 }, bibles: { added: 0, existing: 0, skipped: 0 }, problems: [],
   };
   const run = () => {
     // hymnals by abbreviation
@@ -226,6 +237,22 @@ export function importLibrary(buf: Buffer, o: { dryRun?: boolean; biblePermissio
           saveBackground(null, b.name, b.image.mime, Buffer.from(b.image.data, 'base64'));
         } catch (e) {
           sum.problems.push(`${b.name}: ${(e as Error).message}`);
+        }
+      }
+    }
+    // Library → Images by name
+    const haveImages = imageIdsByName();
+    for (const i of f.images ?? []) {
+      if (haveImages.has(i.name.trim().toLowerCase())) sum.images.existing++;
+      else {
+        sum.images.added++;
+        if (o.dryRun) continue;
+        try {
+          const row = saveImage(null, i.name, i.image.mime, Buffer.from(i.image.data, 'base64'));
+          if (i.fit === 'cover') updateImage(row.id, { fit: 'cover' });
+          haveImages.set(i.name.trim().toLowerCase(), row.id);
+        } catch (e) {
+          sum.problems.push(`${i.name}: ${(e as Error).message}`);
         }
       }
     }

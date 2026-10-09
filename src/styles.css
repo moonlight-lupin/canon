@@ -491,6 +491,11 @@ table.t tr.click:hover td { background: var(--sunk); }
 .bg-thumb { aspect-ratio: 16 / 9; border-radius: 6px; background: var(--paper-3) center / cover no-repeat; box-shadow: 0 0 0 1px var(--rule); }
 .bg-name { font-weight: 600; }
 .bg-mini { width: 54px; height: 30px; border-radius: 4px; background: center / cover no-repeat; box-shadow: 0 0 0 1px var(--rule); flex: none; }
+/* Library → Images (0.19.10): the thumbnail shows the picture as the slide will */
+.img-thumb.fit-contain { background-size: contain; background-color: #14161b; }
+.img-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.img-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 4px; border-radius: 6px; box-shadow: 0 0 0 1px var(--rule); background: var(--paper-2); }
+.img-pick .bg-mini { margin-top: 2px; }
 .warn-text { color: var(--warn); }
 
 /* Library → Check (pages/LibraryCheck.tsx) */

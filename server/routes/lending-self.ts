@@ -73,6 +73,11 @@ lendingSelfRoutes.post('/self/borrow', library, running, h((req) => {
   const loan = S.borrow(pid, b.number);
   return { due_on: loan.due_on, loans: S.myLoans(pid) };
 }));
+lendingSelfRoutes.post('/self/loans/:id/return', library, running, h((req) => {
+  const pid = S.personOf(token(req));
+  S.returnMine(pid, id(req));
+  return { loans: S.myLoans(pid) };
+}));
 lendingSelfRoutes.post('/self/loans/:id/renew', library, running, h((req) => {
   const pid = S.personOf(token(req));
   const loan = S.renewMine(pid, id(req));

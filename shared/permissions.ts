@@ -106,6 +106,9 @@ const RULES: Rule[] = [
   [/^\/congregations\/\d+$/, 'admin'],
   [/^\/people\/\d+\/(personal-data|erase)$/, 'admin'],
   [/^\/me\//, 'signed_in'],
+  // pictures on slides and bulletins (themes, slide backgrounds, picture blocks, the image library): whoever may open
+  // a service may see them (0.19.10: they were for administrators only, so other roles' slides lost their pictures)
+  [/^\/assets\//, 'signed_in'],
   // the church's spaces: everyone signed in reads them (pickers, clashes, report); changes are for administrators
   [/^\/spaces(\/|$)/, 'signed_in'],
   // Settings → Export data: one-click downloads of every part, the library file and its import
@@ -125,7 +128,7 @@ const RULES: Rule[] = [
   [/^\/(meetings|events)(\/|$)/, 'meetings'],
   [/^\/groups\/\d+\/meetings-ahead$/, 'meetings'],
   [/^\/(templates|templates-default|slide-themes|bulletin-templates|bulletin-blocks|backgrounds|template-files)(\/|$)/, 'templates'],
-  [/^\/(songs|texts|hymnals|library|bible)(\/|$)/, 'library'],
+  [/^\/(songs|texts|hymnals|library|bible|images)(\/|$)/, 'library'],
   [/^\/(rota|roles|teams|unavailability|assignments|email\/log)(\/|$)/, 'volunteers'],
   [/^\/lending(\/|$)/, 'lending'],
   [/^\/equipment(\/|$)/, 'equipment'],

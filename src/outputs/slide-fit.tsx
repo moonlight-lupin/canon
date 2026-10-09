@@ -59,7 +59,7 @@ export function Stage({ children, className, onClick }: { children: ReactNode; c
   );
 }
 
-export const MAX_FONT: Record<SlideDef['type'], number> = { title: 112, section: 112, sermon: 104, item: 100, lyrics: 80, scripture: 64, text: 68, blocks: 56 };
+export const MAX_FONT: Record<SlideDef['type'], number> = { title: 112, section: 112, sermon: 104, item: 100, lyrics: 80, scripture: 64, text: 68, blocks: 56, image: 56 };
 
 export const fitCache = new Map<string, number>();
 

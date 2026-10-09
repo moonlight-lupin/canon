@@ -182,7 +182,7 @@ function SignInCard({ status, onDone }: { status: Status; onDone: (s: Session) =
         <>
           <p className="small">{t('If this address is on the church’s member list, a 6-digit code is on its way. It works for 10 minutes.')}</p>
           <label className="self-label">{t('Code')}</label>
-          <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} className="self-code" />
+          <input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} className="self-code" />
           <button className="btn primary self-btn" disabled={busy || code.length !== 6} onClick={() => run(async () => {
             const r = await call<{ token: string; name: string }>('POST', '/verify', { email, code });
             onDone({ token: r.token, name: r.name, at: Date.now() });

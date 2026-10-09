@@ -52,7 +52,7 @@ import { assetRow, getTheme, qrPng } from '../repo/presentation.ts';
 interface FsText { value: string; style: string }
 interface FsLine { align: string; text: FsText[] }
 /** A text box (lines) or, with type "media", a picture: src is a file path, an http(s) URL or a data: URI. */
-interface FsItem { style: string; lines?: FsLine[]; type?: 'media'; src?: string; fit?: 'contain' }
+interface FsItem { style: string; lines?: FsLine[]; type?: 'media'; src?: string; fit?: 'contain' | 'cover' }
 interface FsSlide { group: string | null; color: string | null; settings: Record<string, unknown>; notes: string; items: FsItem[] }
 interface FsShow {
   name: string;
@@ -421,7 +421,12 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
 
   for (const it of r.items) {
     const qr = it.kind === 'section' ? null : blocksSlide(it, langs, media);
-    if (!it.on_slides && !qr) continue;
+    // Library → Images (0.19.10): a slide each, the picture as a media item over the whole slide
+    const pics = (it.slide_images ?? []).flatMap((p) => {
+      const a = assetRow(`image-${p.id}`);
+      return a?.data?.length ? [{ ...p, src: `data:${a.mime || 'image/png'};base64,${Buffer.from(a.data).toString('base64')}` }] : [];
+    });
+    if (!it.on_slides && !qr && !pics.length) continue;
     const title = bi(it.title, langs) || it.kind;
     const showId = id.show(it.id);
     let built: Built;
@@ -468,6 +473,7 @@ export async function freeshowProject(r: RenderedService): Promise<FreeShowProje
       built.slides.unshift({ key: 'cover', slide: titleSlide(it, langs, it.leader ? [it.leader] : []) });
       built.order.unshift('cover');
     }
+    pics.forEach((p, i) => addSlide(built, `img${i}`, slide(p.name || 'Picture', COLORS.tag, [{ type: 'media', src: p.src, fit: p.fit, style: box(0, 0, 1080, 1920) }])));
     if (qr) addSlide(built, 'qr', qr);
     if (!built.order.length) continue;
 

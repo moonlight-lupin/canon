@@ -319,6 +319,8 @@ export function returnLoan(loanId: number): Loan {
 export function renewLoan(loanId: number, dueOn?: string | null): Loan {
   const l = loans.get(loanId);
   if (l.returned_on) throw new BadRequest('This loan was already returned.');
+  // the borrower said it is back (self-service): it is checked in, not renewed (0.19.10)
+  if (l.return_pending_on) throw new BadRequest('The borrower said this copy is back: check it in.');
   const rules = getSettings().lending;
   if (l.renewals >= rules.max_renewals) throw new BadRequest(`Renewed ${l.renewals} time(s) already — the most this library allows.`);
   const today = localToday();

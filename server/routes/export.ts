@@ -19,7 +19,7 @@ import { accountsCsv, fundsCsv, journalsCsv } from '../repo/bk-export.ts';
 import { toCsv } from '../../shared/reports.ts';
 
 export const exportRoutes = express.Router();
-const SECTIONS: LibrarySection[] = ['songs', 'texts', 'blocks', 'backgrounds', 'bibles'];
+const SECTIONS: LibrarySection[] = ['songs', 'texts', 'blocks', 'backgrounds', 'images', 'bibles'];
 exportRoutes.use('/export', requireAdmin);
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -78,7 +78,7 @@ exportRoutes.get('/export/library.canonlib', (req, res, next) => {
     const hymnal = req.query.hymnal === 'none' ? 'none' : Number(req.query.hymnal) || undefined;
     const bible = typeof req.query.bible === 'string' && /^[\w-]{1,20}$/.test(req.query.bible) ? req.query.bible : undefined;
     const body = exportLibrary({
-      scores: flag(req.query.scores, true), blocks: flag(req.query.blocks, true), bibles: flag(req.query.bibles, false), backgrounds: flag(req.query.backgrounds, true),
+      scores: flag(req.query.scores, true), blocks: flag(req.query.blocks, true), bibles: flag(req.query.bibles, false), backgrounds: flag(req.query.backgrounds, true), images: flag(req.query.images, true),
       ...(section ? { sections: [section], hymnal, bible } : {}),
     });
     const abbr = typeof hymnal === 'number' ? hymnals.list('id = ?', [hymnal])[0]?.abbr : hymnal === 'none' ? 'no-hymnal' : undefined;

@@ -61,7 +61,7 @@ Inputs: date (default next Sunday), template, sermon_ref, sermon_title, preacher
 3. Show printed item → Canon item (existing / new / plain title) and anything unreadable; ask.
 4. After yes: missing library items with `canon_save_song` (title + `hymnal_numbers`; words only if public domain or the church confirms a licence) and `canon_save_text`; tag `imported`.
 5. `canon_create_service` (closest template or `copy_from`) + ONE `canon_edit_order`; announcements → `bulletin_content` (`canon_update_service`); leave `draft`; `canon_save_service_as_template` if asked.
-6. No tool edits bulletin / slide templates: write a settings sheet following the editor steps (bulletin: paper & languages, what to print, cover & order, page layout; slides: colours & background as hex, fonts & size, lines per slide, 16:9 or 4:3, footer). Per-item pictures: user uploads to Library → QR codes & notes, then `slide_bg` via `canon_edit_order`.
+6. No tool edits bulletin / slide templates: write a settings sheet following the editor steps (bulletin: paper & languages, what to print, cover & order, page layout; slides: colours & background as hex, fonts & size, lines per slide, 16:9 or 4:3, footer). Per-item background pictures: the user uploads them to Library → Slide backgrounds, then `slide_background_id` via `canon_edit_order`; slides that are just a picture (a poster, a photo): the user uploads it to Library → Images, then `slide_images` on the item (ids from `canon_search_library` type "images").
 7. Report what was created, what needs a person, and the sheet. Roster names only match existing people — never create people from a bulletin.
 
 ## check_library — languages that drift apart, duplicates

@@ -332,6 +332,9 @@ export const blockImageKey = (id: number) => `bulletin-block-${id}`;
 /** A slide background picture (Library → Slide backgrounds); `v` busts the cache when it changes. */
 export const backgroundUrl = (id: number, version: string) => `/api/assets/slide-bg-${id}?v=${encodeURIComponent(version)}`;
 
+/** A picture from Library → Images (0.19.10). */
+export const imageUrl = (id: number, version: string) => `/api/assets/image-${id}?v=${encodeURIComponent(version)}`;
+
 export const blockImageUrl = (id: number, version: string) => `/api/assets/${blockImageKey(id)}?v=${encodeURIComponent(version)}`;
 
 /** The block's QR code as SVG (PNG with `.png`); `v` busts the cache when the block changes. */

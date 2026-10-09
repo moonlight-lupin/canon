@@ -40,6 +40,7 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   events: { en: 'Calendar event', zh: '日历活动' },
   access_roles: { en: 'Role', zh: '角色' },
   backgrounds: { en: 'Slide background', zh: '投影背景' },
+  images: { en: 'Picture (Library → Images)', zh: '图片（资料库 → 图片）' },
   lending_books: { en: 'Library book', zh: '图书馆书目' },
   lending_copies: { en: 'Library copy', zh: '图书副本' },
   lending_loans: { en: 'Library loan', zh: '借阅' },

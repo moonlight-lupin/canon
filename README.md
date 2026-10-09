@@ -12,7 +12,7 @@ It was designed with a bilingual (English / 中文) Reformed and Presbyterian co
 ## Features
 
 - **Service planner:** build the order of worship from templates, with drag-and-drop, clock times, roles and postures.
-- **Library:** hymns (with hymnal numbers), responsive liturgy, catechisms in numbered parts, and Bibles. KJV and 和合本 are built in; other Bibles download in one click or can be uploaded under your own licence.
+- **Library:** hymns (with hymnal numbers), responsive liturgy, catechisms in numbered parts, and Bibles. KJV and 和合本 are built in; other Bibles download in one click or can be uploaded under your own licence. Images (posters, photos) to show on slides of their own.
 - **From one plan:**
   - a printed bulletin, folded into a booklet automatically;
   - projector slides with a presenter view;

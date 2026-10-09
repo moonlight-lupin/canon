@@ -1,7 +1,7 @@
 // Slides: what one slide shows, and measuring a whole deck off-screen to choose its text size.
 import { Fragment, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { L10n, Lang, RenderedService } from '../types-client.ts';
-import { backgroundUrl, blockImageUrl, blockQrSrc } from '../../shared/presentation.ts';
+import { backgroundUrl, blockImageUrl, blockQrSrc, imageUrl } from '../../shared/presentation.ts';
 import type { SlideAspect } from '../../shared/slide-theme.ts';
 import type { RenderedSlideBlock } from '../../shared/render-types.ts';
 import { Bi, LANG_ATTR, biParts, biText, dateParts, hasAny, speaker, timeRange } from './content.tsx';
@@ -53,6 +53,14 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
   const logo = s.type === 'title' && r.has_logo && logoVersion ? logoUrl(logoVersion) : null;
   const key = `${JSON.stringify(s)}|${langs.join()}|${split}|${logo ?? ''}|${theme.id}:${theme.sig}`;
   const { boxRef, fitRef } = useAutoFit(key, MAX_FONT[s.type], deckPx, !!measuring || (!!deck && !!group && deck.pending));
+  // a picture from Library → Images: the whole slide (on the template's background, or filling it)
+  if (s.type === 'image' && s.image) {
+    return (
+      <div className={`sl-face slide t-image${s.kind ? ` kind-${s.kind}` : ''}`}>
+        <img className={`sl-image fit-${s.image.fit}`} src={imageUrl(s.image.id, s.image.v)} alt={s.image.name} />
+      </div>
+    );
+  }
   const big = (v: L10n | undefined, cls: string) =>
     biParts(v, langs).map((p) => (
       <div key={p.lang} className={`${cls} lang-${p.lang}`} lang={LANG_ATTR[p.lang]}>{p.text}</div>

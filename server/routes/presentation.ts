@@ -79,10 +79,10 @@ presentationRoutes.put('/slide-themes/:id/background', readImage, h((req) => {
 }));
 presentationRoutes.delete('/slide-themes/:id/background', h((req) => P.removeThemeBackground(id(req))));
 
-/** Theme background pictures and bulletin block pictures (other assets, such as the logo, have their own public route). */
+/** Theme background pictures, bulletin block pictures, slide backgrounds and Library → Images (the logo has its own public route). */
 presentationRoutes.get('/assets/:key', (req, res, next) => {
   const key = String(req.params.key);
-  if (!/^(slide-theme-\d+-bg|bulletin-block-\d+|slide-bg-\d+)$/.test(key)) return next();
+  if (!/^(slide-theme-\d+-bg|bulletin-block-\d+|slide-bg-\d+|image-\d+)$/.test(key)) return next();
   const row = P.assetRow(key);
   if (!row) {
     res.status(404).json({ error: 'No picture' });

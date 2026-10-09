@@ -294,6 +294,8 @@ export interface ServiceItem {
   slide_blocks: number[];
   /** background picture for this item's slides (Library → Slide backgrounds); null = the slide template's */
   slide_background_id?: number | null;
+  /** pictures from Library → Images, each on a slide of its own after this item (0.19.10) */
+  slide_images?: number[];
   /** custom / pasted body text, overrides library text when set */
   body: L10n;
   duration_min: number;
@@ -410,6 +412,8 @@ export interface TemplateItem {
   slide_blocks?: string[];
   /** slide background picture, by its name in Library → Slide backgrounds */
   slide_bg?: string;
+  /** pictures shown after this item, by their names in Library → Images */
+  slide_images?: string[];
   slide_cover?: SlideCover;
 }
 

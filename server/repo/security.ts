@@ -88,7 +88,7 @@ const fileSize = (p: string) => {
 
 /** What uses the space inside the database, in plain words. */
 const TABLE_LABEL: Record<string, string> = {
-  bible_verses: 'Bible texts', assets: 'Pictures and files (logo, QR codes and notes, backgrounds, book covers, asset photos and receipts)', slide_backgrounds: 'Slide backgrounds',
+  bible_verses: 'Bible texts', assets: 'Pictures and files (logo, QR codes and notes, backgrounds, book covers, asset photos and receipts)', slide_backgrounds: 'Slide backgrounds', images: 'Images (Library)',
   songs: 'Songs', texts: 'Liturgy and catechisms', services: 'Services', service_items: 'Orders of service',
   service_records: 'Service records', change_log: 'Change log', mcp_audit: 'AI activity log', member_views: 'Member record views',
   people: 'Members', email_log: 'E-mail log', visitor_cards: 'Visitor cards',

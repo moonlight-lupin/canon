@@ -16,6 +16,7 @@ interface Summary {
   texts: { added: number; existing: number };
   blocks: { added: number; existing: number };
   backgrounds?: { added: number; existing: number };
+  images?: { added: number; existing: number };
   bibles: { added: number; existing: number; skipped: number };
   problems: string[];
 }
@@ -133,6 +134,7 @@ export function ImportLibrary() {
     t('Hymnals: {a} new').replace('{a}', String(s.hymnals.added)),
     t('QR codes & notes: {a} new').replace('{a}', String(s.blocks.added)),
     s.backgrounds?.added ? t('Slide backgrounds: {a} new').replace('{a}', String(s.backgrounds.added)) : '',
+    s.images?.added ? t('Images: {a} new').replace('{a}', String(s.images.added)) : '',
     s.bibles.added + s.bibles.skipped ? t('Bibles: {a} new').replace('{a}', String(s.bibles.added + (done ? 0 : s.bibles.skipped))) : '',
   ].filter(Boolean);
   return (
@@ -174,5 +176,6 @@ export function librarySections(hymnals: { id: number; abbr: string; name: L10n 
     ...bibles.map((b) => ({ section: 'bibles', label: `${t('Bible')}: ${b.code} · ${b.name}`, note: t('only if its licence allows sharing'), href: u(`section=bibles&bible=${encodeURIComponent(b.code)}`) })),
     { section: 'blocks', label: t('QR codes & notes'), note: '', href: u('section=blocks') },
     { section: 'backgrounds', label: t('Slide backgrounds'), note: '', href: u('section=backgrounds') },
+    { section: 'images', label: t('Images'), note: '', href: u('section=images') },
   ];
 }

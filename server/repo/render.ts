@@ -137,6 +137,12 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
       return b ? [slideBlock(b, langs)] : [];
     });
 
+  // Library → Images: each picture on a slide of its own after the item
+  const slideImages = (ids: number[] | undefined): RenderedItem['slide_images'] =>
+    (ids ?? []).flatMap((pid) => {
+      const p = get<{ id: number; version: string; name: string; width: number | null; height: number | null; fit: 'contain' | 'cover' }>('SELECT id, version, name, width, height, fit FROM images WHERE id = ?', pid);
+      return p ? [{ id: p.id, v: p.version, name: p.name, width: p.width, height: p.height, fit: p.fit }] : [];
+    });
   const slideBackground = (bid: number | null | undefined): RenderedItem['slide_bg'] => {
     const b = bid ? get<{ id: number; version: string }>('SELECT id, version FROM slide_backgrounds WHERE id = ?', bid) : undefined;
     return b ? { id: b.id, v: b.version } : null;
@@ -180,6 +186,7 @@ export function renderService(svcOrId: number | ServiceFull): RenderedService {
       slide_cover: it.slide_cover ?? null,
       slide_blocks: [...slideBlocks(it.slide_blocks), ...(it.id === qrAfter ? visitorSlideBlock() : [])],
       slide_bg: slideBackground(it.slide_background_id),
+      slide_images: it.kind === 'section' ? [] : slideImages(it.slide_images),
     };
 
     if (it.kind === 'song' && it.ref_id) {

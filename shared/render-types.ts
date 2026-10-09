@@ -94,6 +94,20 @@ export interface RenderedItem {
   slide_blocks: RenderedSlideBlock[];
   /** this item's own slide background (Library → Slide backgrounds), else the template's */
   slide_bg?: { id: number; v: string } | null;
+  /** pictures from Library → Images, each on a slide of its own after the item's (deleted ones left out) */
+  slide_images?: RenderedImage[];
+}
+
+/** A picture from Library → Images, as a slide shows it. */
+export interface RenderedImage {
+  id: number;
+  /** changes with the picture (for caching) */
+  v: string;
+  name: string;
+  width: number | null;
+  height: number | null;
+  /** contain: the whole picture; cover: it fills the slide */
+  fit: 'contain' | 'cover';
 }
 
 export interface RenderedService {

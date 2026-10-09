@@ -11,6 +11,7 @@ import { joinNames, sermonLeaders } from '../../shared/leaders.ts';
 import { getSettings } from './settings.ts';
 import { listCongregations } from './congregations.ts';
 import { backgroundByName } from './backgrounds.ts';
+import { checkImageIds, imageIdsByName } from './images.ts';
 import { inWall, wallSql } from '../lib/walls.ts';
 
 export const services = table<Service>({
@@ -31,9 +32,9 @@ export const items = table<ServiceItem>({
   name: 'service_items',
   cols: [
     'service_id', 'position', 'kind', 'title', 'ref_id', 'scripture_ref', 'stanzas', 'hymnal_id', 'bulletin_text', 'posture', 'bibles', 'slide_blocks', 'body', 'duration_min', 'role_id',
-    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id', 'slide_cover', 'leader_people',
+    'leader', 'notes', 'in_bulletin', 'on_slides', 'slide_background_id', 'slide_cover', 'leader_people', 'slide_images',
   ],
-  json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks', 'leader_people'],
+  json: ['title', 'stanzas', 'body', 'bibles', 'slide_blocks', 'leader_people', 'slide_images'],
   bool: ['in_bulletin', 'on_slides'],
   log: { parent: (r) => ({ entity: 'services', id: Number(r.service_id) }) },
   guard: { refs: { service_id: 'services' } },
@@ -192,6 +193,7 @@ export function addItem(serviceId: number, input: Partial<ServiceItem>, position
   validateLeaders(serviceId, input);
   validateRefs(input);
   validateBackground(input);
+  checkImageIds(input.slide_images);
   return tx(() => {
     const pos = position ?? nextPosition(serviceId);
     run('UPDATE service_items SET position = position + 1 WHERE service_id = ? AND position >= ?', serviceId, pos);
@@ -207,6 +209,7 @@ export function updateItem(itemId: number, patch: Partial<ServiceItem>): Service
   validateLeaders(cur.service_id, patch, cur);
   validateRefs({ ...cur, ...patch });
   if (patch.slide_background_id !== undefined) validateBackground(patch);
+  if (patch.slide_images !== undefined) checkImageIds(patch.slide_images);
   const { service_id: _s, position: _p, id: _i, ...rest } = patch as ServiceItem;
   const out = items.update(itemId, rest);
   touch(cur.service_id);
@@ -239,6 +242,8 @@ export function materialise(tItems: TemplateItem[]) {
   const missing: string[] = [];
   // QR codes / notes on slides are stored by block name in a template; a name that no longer exists is skipped
   const blockIds = tItems.some((t) => t.slide_blocks?.length) ? blockIdsByName() : new Map<string, number>();
+  // pictures too (Library → Images), by name
+  const imageIds = tItems.some((t) => t.slide_images?.length) ? imageIdsByName() : new Map<string, number>();
   const out = tItems.map((t) => {
     let ref_id: number | null = null;
     if (t.song_key) {
@@ -270,6 +275,7 @@ export function materialise(tItems: TemplateItem[]) {
       ...(t.bulletin_text ? { bulletin_text: t.bulletin_text } : {}),
       ...(t.slide_blocks?.length ? { slide_blocks: [...new Set(t.slide_blocks.map((n) => blockIds.get(n.trim().toLowerCase())).filter((x): x is number => !!x))] } : {}),
       ...(t.slide_bg && backgroundByName(t.slide_bg) ? { slide_background_id: backgroundByName(t.slide_bg)! } : {}),
+      ...(t.slide_images?.length ? { slide_images: t.slide_images.map((n) => imageIds.get(n.trim().toLowerCase())).filter((x): x is number => !!x) } : {}),
     });
   });
   return { items: out, missing };
@@ -446,6 +452,8 @@ export function saveAsTemplate(serviceId: number, name: L10n) {
       const bg = get<{ name: string }>('SELECT name FROM slide_backgrounds WHERE id = ?', it.slide_background_id);
       if (bg) t.slide_bg = bg.name;
     }
+    const pics = (it.slide_images ?? []).map((pid) => get<{ name: string }>('SELECT name FROM images WHERE id = ?', pid)?.name).filter((n): n is string => !!n);
+    if (pics.length) t.slide_images = pics;
     return t;
   });
   return templates.insert({

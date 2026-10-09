@@ -10,12 +10,13 @@ import type { RosterWarning, ServiceListRow } from '../types-client.ts';
 import { langInfo } from '../../shared/languages.ts';
 import { greetingFor } from '../../shared/greeting.ts';
 
+/** Each part is null when the account's role may not read it (0.19.10). */
 interface Dash {
-  upcoming: (ServiceListRow & { warnings: RosterWarning[] })[];
-  members: { status: string; n: number }[];
-  birthdays: { in_days: number; date: string; name: string; person_id: number }[];
-  coworkers: number;
-  library: { songs: number; texts: number; bibles?: { code: string; lang: string; name: string }[] };
+  upcoming: (ServiceListRow & { warnings: RosterWarning[] })[] | null;
+  members: { status: string; n: number }[] | null;
+  birthdays: { in_days: number; date: string; name: string; person_id: number }[] | null;
+  coworkers: number | null;
+  library: { songs: number; texts: number; bibles?: { code: string; lang: string; name: string }[] } | null;
   /** the optional modules, when on and readable (null otherwise) */
   lending?: { on_loan: number; overdue: number; titles: number; to_check_in?: number } | null;
   equipment?: { items: number; maintenance_due: number } | null;
@@ -24,14 +25,18 @@ interface Dash {
 
 export default function Dashboard() {
   const { t, lt, lang } = useI18n();
-  const { user, canEdit, settings } = useSession();
+  const { user, canEdit, settings, can } = useSession();
   const seasons = settings?.season_colours !== false;
   const { data, error } = useApi<Dash>('/dashboard');
   if (error) return <div className="page"><ErrorBox error={error} /></div>;
   if (!data) return <Loading />;
-  const next = data.upcoming[0];
-  const count = (s: string) => data.members.find((m) => m.status === s)?.n ?? 0;
-  const bibleLangs = [...new Set((data.library.bibles ?? []).map((b) => b.lang))].map((l) => [l, (data.library.bibles ?? []).filter((b) => b.lang === l)] as const);
+  const next = data.upcoming?.[0];
+  const count = (s: string) => data.members?.find((m) => m.status === s)?.n ?? 0;
+  const bibles = data.library?.bibles ?? [];
+  const bibleLangs = [...new Set(bibles.map((b) => b.lang))].map((l) => [l, bibles.filter((b) => b.lang === l)] as const);
+  const modules = !!(data.lending || data.equipment || data.bookkeeping);
+  // a role that reads none of this (e.g. the Librarian with the library switched off): say so, not an empty page
+  const nothing = !data.upcoming && !data.members && !data.library && !modules;
   // follows the time of day and the church year, a different one each day (shared/greeting.ts)
   const greeting = `${t(greetingFor(new Date()))}${lang === 'en' ? ', ' : '，'}${user.display_name}`;
 
@@ -41,8 +46,11 @@ export default function Dashboard() {
         {canEdit && <Link className="btn primary" to="/services?new"><Icon name="plus" />{t('New service')}</Link>}
       </PageHead>
 
-      <div className="grid cols-2">
-        <div className="card">
+      {nothing && <div className="callout">{t('Nothing in Canon is open to your role at the moment. If you expected something here, ask an administrator (your role in Settings → User accounts, or the parts switched on in Settings → Modules).')}</div>}
+      {modules && !data.upcoming && <ModuleCards data={data} />}
+
+      {(data.upcoming || data.members) && <div className="grid cols-2">
+        {data.upcoming && <div className="card">
           <div className="card-head">
             <h2><Icon name="calendar" width={18} height={18} />{t('Next service')}</h2>
             {next && <span className={`badge ${next.status === 'final' ? 'ok' : ''}`}>{t(next.status === 'final' ? 'Final' : 'Draft')}</span>}
@@ -69,19 +77,19 @@ export default function Dashboard() {
           ) : (
             <div className="muted">{t('No services planned in the next eight weeks.')}</div>
           )}
-        </div>
+        </div>}
 
-        <div className="card">
+        {data.members && <div className="card">
           <div className="card-head"><h2><Icon name="users" width={18} height={18} />{t('Members')}</h2><Link to="/members" className="small">{t('Open')} →</Link></div>
           <div className="grid cols-4 stats" style={{ gap: 10 }}>
             <div className="stat"><span className="n">{count('member')}</span><span className="l">{t('Member')}</span></div>
             <div className="stat"><span className="n">{count('regular')}</span><span className="l">{t('Regular')}</span></div>
             <div className="stat"><span className="n">{count('visitor')}</span><span className="l">{t('Visitor')}</span></div>
-            <div className="stat"><span className="n">{data.coworkers}</span><span className="l">{t('Co-workers')}</span></div>
+            {data.coworkers !== null && <div className="stat"><span className="n">{data.coworkers}</span><span className="l">{t('Co-workers')}</span></div>}
           </div>
           <hr />
           <h3 style={{ marginBottom: 8 }}><Icon name="cake" width={15} height={15} style={{ verticalAlign: -2, marginRight: 6 }} />{t('Upcoming birthdays')}</h3>
-          {data.birthdays.length ? (
+          {data.birthdays?.length ? (
             <div className="stack tight">
               {data.birthdays.slice(0, 6).map((b) => (
                 <div key={b.person_id} className="row between small">
@@ -91,13 +99,13 @@ export default function Dashboard() {
               ))}
             </div>
           ) : <div className="muted small">—</div>}
-        </div>
-      </div>
+        </div>}
+      </div>}
 
-      <div className="card flush mt">
+      {data.upcoming && <div className="card flush mt">
         <div className="card-head" style={{ padding: '14px 18px 0' }}>
           <h2>{t('Upcoming')}</h2>
-          <Link to="/volunteers" className="small">{t('Volunteer rota')} →</Link>
+          {can('volunteers', 'read') && settings?.modules?.volunteers !== false && <Link to="/volunteers" className="small">{t('Volunteer rota')} →</Link>}
         </div>
         <div className="table-wrap">
           <table className="t">
@@ -130,9 +138,9 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
-      <div className="grid cols-3 mt">
+      {data.library && <div className="grid cols-3 mt">
         <Link to="/library?tab=songs" className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
           <div className="stat"><span className="n">{data.library.songs}</span><span className="l">{t('Hymns & songs')}</span></div>
         </Link>
@@ -150,8 +158,16 @@ export default function Dashboard() {
             )) : <span className="muted small">{t('No Bible installed yet')}</span>}
           </div>
         </Link>
-      </div>
-      {(data.lending || data.equipment || data.bookkeeping) && (
+      </div>}
+      {modules && data.upcoming && <ModuleCards data={data} />}
+    </div>
+  );
+}
+
+/** The optional modules' cards (first, for a role that sees nothing else: a librarian's work comes first). */
+function ModuleCards({ data }: { data: Dash }) {
+  const { t } = useI18n();
+  return (
         <div className="grid cols-3 mt">
           {data.lending && (
             <Link to={data.lending.overdue ? '/lending?tab=loans' : '/lending'} className="card" style={{ color: 'inherit', textDecoration: 'none' }}>
@@ -185,8 +201,6 @@ export default function Dashboard() {
             </Link>
           )}
         </div>
-      )}
-    </div>
   );
 }
 

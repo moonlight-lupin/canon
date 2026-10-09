@@ -1,10 +1,10 @@
 // Builds the projector slide list from a rendered service (shared by Slides and the run sheet's AV cues).
 import type { L10n, Lang, Posture } from './types.ts';
-import type { Line, Paras, RenderedItem, RenderedService, RenderedSlideBlock, RenderedVerse } from './render-types.ts';
+import type { Line, Paras, RenderedImage, RenderedItem, RenderedService, RenderedSlideBlock, RenderedVerse } from './render-types.ts';
 import { biText, hasAny, isRefrain, stanzaLabel } from './output-labels.ts';
 import { alignChunks, chunkParagraph, groupUnits, joinPieces, lineLimit, splitSentences, type ChunkLine, type LineLimits } from './slide-chunks.ts';
 
-export type SlideType = 'title' | 'section' | 'lyrics' | 'scripture' | 'text' | 'sermon' | 'item' | 'blocks';
+export type SlideType = 'title' | 'section' | 'lyrics' | 'scripture' | 'text' | 'sermon' | 'item' | 'blocks' | 'image';
 
 export interface SlideVerse {
   /** verse number ('' on the later parts of a verse split over several slides) */
@@ -47,6 +47,8 @@ export interface SlideDef {
   blocks?: RenderedSlideBlock[];
   /** the item's own background picture (Library → Slide backgrounds), instead of the template's */
   bg?: { id: number; v: string };
+  /** 'image' slides: a picture from Library → Images, the whole slide */
+  image?: RenderedImage;
 }
 
 /** At most this many blocks share one slide (more would make the QR codes too small to scan). */
@@ -203,6 +205,8 @@ export function buildSlides(r: RenderedService, langs: Lang[], limits?: SlideDec
   slides.push({ key: 'title', type: 'title', itemId: null, kind: 'service', heading: r.church.name, big: r.title, sub: hasAny(r.theme) ? r.theme : undefined, ...(corner ? { corner } : {}) });
   for (const it of r.items) {
     const own: SlideDef[] = it.on_slides ? itemSlides(r, it, langs, limits) : [];
+    // pictures (Library → Images): a slide each after the item's own; an item not otherwise on the slides shows only these
+    (it.slide_images ?? []).forEach((image, i) => own.push({ key: `${it.id}-img-${i}`, type: 'image', itemId: it.id, kind: it.kind, heading: it.title, image }));
     // QR codes / notes: one slide after the item's own; an item that is not on the slides shows only this one
     const b = it.kind === 'section' ? null : blocksSlide(it, !it.on_slides);
     if (b) own.push(b);
@@ -240,6 +244,7 @@ export function slideText(s: SlideDef, langs: Lang[], max = 90): string {
   let txt = '';
   if (s.lines) txt = langs.map((l) => s.lines![l]?.map((x) => x.text.replace(/\n/g, ' ')).join(' / ')).filter(Boolean)[0] ?? '';
   else if (s.verses) txt = langs.map((l) => s.verses![l]?.map((v) => `${v.n} ${v.text}`).join(' ')).filter(Boolean)[0] ?? '';
+  else if (s.image) txt = `▣ ${s.image.name}`;
   else if (s.blocks) txt = `▦ ${s.blocks.map((b) => biText(b.kind === 'text' ? b.text : b.caption, langs.slice(0, 1)).split('\n')[0] || (b.kind === 'qr' ? 'QR' : '…')).join(' · ')}`;
   else txt = biText(s.big, langs);
   const head = s.label ? `${biText(s.label, langs.slice(0, 1))} · ` : '';

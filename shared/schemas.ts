@@ -171,6 +171,7 @@ export const ServiceItemInput = z.object({
   bibles: z.record(LangSchema, z.string().max(20)).optional(),
   slide_blocks: z.array(z.number().int()).max(6).optional(),
   slide_background_id: z.number().int().nullable().optional(),
+  slide_images: z.array(z.number().int()).max(12).optional(),
   slide_cover: z.enum(['cover', 'both']).nullable().optional(),
   body: L10nSchema.optional(),
   duration_min: z.number().min(0).max(240).optional(),
@@ -250,6 +251,7 @@ export const TemplateItemSchema = z.object({
   bulletin_text: z.enum(['full', 'title']).optional(),
   slide_blocks: z.array(z.string().max(100)).max(6).optional(),
   slide_bg: z.string().max(100).optional(),
+  slide_images: z.array(z.string().max(120)).max(12).optional(),
   slide_cover: z.enum(['cover', 'both']).optional(),
 });
 export const TemplateInput = z.object({

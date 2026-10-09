@@ -15,6 +15,7 @@ import { MultiPick } from '../../components/MultiPick.tsx';
 import { itemLeaders, leaderPool, type RotaEntry } from '../../../shared/leaders.ts';
 import { SlideBlocksPicker } from '../Blocks.tsx';
 import { SlideBackgroundPicker } from '../Backgrounds.tsx';
+import { SlideImagesPicker } from '../Images.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import type { BulletinBlock } from '../../../shared/presentation.ts';
@@ -125,6 +126,12 @@ export function ItemEditor({
             {!!item.slide_blocks?.length && (
               <span className="field-hint">{item.on_slides ? t('Shown together on one slide after this item.') : t('Shown on a slide of their own, even though this item has no slides.')}</span>
             )}
+          </div>
+        )}
+        {item.kind !== 'section' && (
+          <div className="field">
+            <span>{t('Pictures on slides')} <InfoTip text={t('Pictures from Library → Images, each on a slide of its own after this item’s slides (an item that is not on the slides shows only its pictures). Not printed.')} /></span>
+            <SlideImagesPicker value={item.slide_images ?? []} onChange={(v) => onPatch({ slide_images: v }, true)} />
           </div>
         )}
         {(item.on_slides || !!item.slide_blocks?.length) && (

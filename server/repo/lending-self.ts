@@ -193,6 +193,7 @@ export function myLoans(personId: number) {
   const max = getSettings().lending.max_renewals;
   return L.listLoans({ status: 'open', person_id: personId, limit: 100 }).map((l) => ({
     id: l.id, number: l.number, title: l.title, due_on: l.due_on, overdue_days: l.overdue_days, renewals: l.renewals,
+    renewals_left: Math.max(0, max - l.renewals),
     can_renew: l.renewals < max && !l.return_pending_on, returned: !!l.return_pending_on,
   }));
 }
@@ -207,6 +208,25 @@ export function renewMine(personId: number, loanId: number) {
   if (l.person_id !== personId) throw new NotFound('Not found');
   if (l.return_pending_on) throw new BadRequest('You said this is back already.');
   return L.renewLoan(loanId);
+}
+
+/** "I'm bringing it back" from My loans (0.19.10): the borrower's own loan only. */
+export function returnMine(personId: number, loanId: number) {
+  const l = L.loans.get(loanId);
+  if (l.person_id !== personId || l.returned_on) throw new NotFound('Not found');
+  if (!l.return_pending_on) L.loans.update(l.id, { return_pending_on: L.localToday() });
+  return { ok: true };
+}
+
+/**
+ * A member signed in to Canon with an account linked to them (0.19.10): their own self-service sign-in, without an
+ * e-mailed code, when they scan a book's label. Only while self-service is running: otherwise the librarian lends.
+ */
+export async function accountToken(personId: number | null | undefined) {
+  if (getSettings().modules.lending === false) throw new NotFound('Not found');
+  if (!personId) throw new BadRequest('Your account is not linked to your member record, so it can’t borrow. Ask an administrator to link it (Settings → User accounts), or ask the librarian.');
+  if (!(await selfServiceReady())) throw Object.assign(new Error('Borrowing on your phone is off at the moment: ask the librarian to lend it to you.'), { status: 409 });
+  return memberToken(personId, 'library');
 }
 
 /** "I've put it back": the loan waits for the librarian to check the copy in (anyone holding it may say so). */

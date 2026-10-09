@@ -1,5 +1,6 @@
 // The service planner: the library panel and quick add, with when each hymn was last sung.
 import { useEffect, useState, type ReactNode } from 'react';
+import { PicturesPanel } from '../Images.tsx';
 import { useDraggable } from '@dnd-kit/core';
 import { useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -125,7 +126,7 @@ export function QuickAdd({ at, time, date, songs, texts, onAdd, onClose }: {
 export function LibraryPanel({ date, songs, texts, openItem, onAdd }: { date: string; songs: Song[]; texts: LiturgyText[]; openItem: ServiceItem | null; onAdd: (i: Partial<ServiceItem>) => void }) {
   const { t, lt } = useI18n();
   const usage = useSongUsage(date);
-  const [tab, setTab] = useState<'songs' | 'texts' | 'scripture' | 'elements'>('songs');
+  const [tab, setTab] = useState<'songs' | 'texts' | 'scripture' | 'pictures' | 'elements'>('songs');
   const [q, setQ] = useState('');
   const [ref, setRef] = useState('');
   const ql = q.trim().toLowerCase();
@@ -139,9 +140,9 @@ export function LibraryPanel({ date, songs, texts, openItem, onAdd }: { date: st
     <div className="panel">
       <div className="card">
         <div className="tabs" style={{ marginBottom: 10 }}>
-          {(['songs', 'texts', 'scripture', 'elements'] as const).map((k) => (
+          {(['songs', 'texts', 'scripture', 'pictures', 'elements'] as const).map((k) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
-              {t({ songs: 'Hymns & psalms', texts: 'Creeds & liturgy', scripture: 'Scripture', elements: 'Elements' }[k])}
+              {t({ songs: 'Hymns & psalms', texts: 'Creeds & liturgy', scripture: 'Scripture', pictures: 'Pictures', elements: 'Elements' }[k])}
             </button>
           ))}
         </div>
@@ -190,6 +191,7 @@ export function LibraryPanel({ date, songs, texts, openItem, onAdd }: { date: st
             <button className="btn primary" type="submit"><Icon name="plus" />{t('Add to service')}</button>
           </form>
         )}
+        {tab === 'pictures' && <PicturesPanel onAdd={onAdd} />}
         {tab === 'elements' && (
           <div className="palette">
             {KINDS.filter((k) => k !== 'song' && k !== 'text').map((k) => (

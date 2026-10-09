@@ -12,8 +12,8 @@ import type { L10n } from '../../../shared/types.ts';
 import '../resources/resources.css';
 
 interface Copy { number: string; book_id: number; title: string; authors: string | null; shelf: string | null; has_cover: boolean; updated_at: string; status: 'available' | 'out' | 'returned' | 'unavailable'; due_on: string | null; loan_days: number }
-interface MyLoan { id: number; number: string; title: string; due_on: string; overdue_days: number; renewals: number; can_renew: boolean; returned: boolean }
-interface Session { token: string; name: string; at: number }
+interface MyLoan { id: number; number: string; title: string; due_on: string; overdue_days: number; renewals: number; renewals_left: number; can_renew: boolean; returned: boolean }
+export interface Session { token: string; name: string; at: number }
 
 const KEY = 'canon.library.self';
 const readSession = (): Session | null => {
@@ -24,7 +24,7 @@ const readSession = (): Session | null => {
     return null;
   }
 };
-const saveSession = (s: Session | null) => {
+export const saveSession = (s: Session | null) => {
   try {
     if (s) sessionStorage.setItem(KEY, JSON.stringify(s));
     else sessionStorage.removeItem(KEY);
@@ -140,7 +140,7 @@ function SignIn({ onDone }: { onDone: (s: Session, loans: MyLoan[]) => void }) {
         <>
           <p className="small">{t('If this address is on the church’s member list, a 6-digit code is on its way. It works for 10 minutes.')}</p>
           <label className="self-label">{t('Code')}</label>
-          <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && code.length === 6 && verify()} className="self-code" />
+          <input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} onKeyDown={(e) => e.key === 'Enter' && code.length === 6 && verify()} className="self-code" />
           <button className="btn primary self-btn" disabled={busy || code.length !== 6} onClick={verify}>{t('Sign in')}</button>
           <button className="btn ghost sm" onClick={() => { setSent(false); setCode(''); }}>{t('Use another address')}</button>
         </>
@@ -150,19 +150,31 @@ function SignIn({ onDone }: { onDone: (s: Session, loans: MyLoan[]) => void }) {
   );
 }
 
-function CopyCard() {
-  const { number = '' } = useParams();
+/**
+ * A copy, as its label opens it: Borrow it / I'm bringing it back. In Canon itself (0.19.10) a signed-in member's
+ * page shows it too, with their account's sign-in (`session`) in place of an e-mailed code.
+ */
+export function CopyCard({ number: given, session: account, compact, reloadKey, onChanged }: {
+  number?: string; session?: Session;
+  /** beside the desk's card (the book is shown there already): the status and the buttons only */
+  compact?: boolean;
+  /** changes when the desk's card changed the copy: read it again */
+  reloadKey?: number;
+  onChanged?: () => void;
+} = {}) {
+  const params = useParams();
+  const number = given ?? params.number ?? '';
   const { t, lang } = useI18n();
   const [copy, setCopy] = useState<Copy | null>(null);
   const [error, setError] = useState<SelfError | null>(null);
-  const [session, setSession] = useState<Session | null>(readSession);
+  const [session, setSession] = useState<Session | null>(() => account ?? readSession());
   const [signing, setSigning] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const load = () => call<Copy>('GET', `/copy/${encodeURIComponent(number)}`).then(setCopy).catch((e) => setError(e as SelfError));
   useEffect(() => {
     void load();
-  }, [number]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [number, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
   if (error?.paused) return <Paused />;
   if (error) return <div className="card self-card"><p>{error.message}</p></div>;
   if (!copy) return <div className="card self-card"><p className="muted">…</p></div>;
@@ -171,6 +183,7 @@ function CopyCard() {
     try {
       setDone(await fn());
       await load();
+      onChanged?.();
     } catch (e) {
       const se = e as SelfError;
       if (se.status === 401) {
@@ -193,7 +206,7 @@ function CopyCard() {
   });
   return (
     <div className="card self-card stack">
-      <div className="book-head">
+      <div className="book-head" style={compact ? { display: 'none' } : undefined}>
         {copy.has_cover ? <img className="book-cover" src={`/api/self/books/${copy.book_id}/cover?v=${encodeURIComponent(copy.updated_at)}`} alt="" /> : null}
         <div className="grow stack tight">
           <span className="code">{copy.number}</span>
@@ -205,6 +218,14 @@ function CopyCard() {
           {copy.status === 'unavailable' && <span className="badge">{t('Not available')}</span>}
         </div>
       </div>
+      {compact && (
+        <div>
+          {copy.status === 'available' && <span className="badge ok">{t('Available')}</span>}
+          {copy.status === 'out' && <span className="badge warn">{t('On loan, due {date}').replace('{date}', fmtDate(copy.due_on, lang))}</span>}
+          {copy.status === 'returned' && <span className="badge lapis">{t('Returned: waiting for the librarian')}</span>}
+          {copy.status === 'unavailable' && <span className="badge">{t('Not available')}</span>}
+        </div>
+      )}
       {done && <p className="callout small">{done}</p>}
       {copy.status === 'available' && !done && (
         session ? (
@@ -256,6 +277,16 @@ function MyLoans() {
       setMsg((e as Error).message);
     }
   };
+  // "I'm bringing it back" without finding the label again (0.19.10)
+  const giveBack = async (l: MyLoan) => {
+    try {
+      const r = await call<{ loans: MyLoan[] }>('POST', `/loans/${l.id}/return`, {}, session.token);
+      setLoans(r.loans);
+      setMsg(t('Thank you! The librarian will check it in.'));
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  };
   return (
     <div className="card self-card stack">
       <div className="row" style={{ alignItems: 'center' }}>
@@ -271,8 +302,14 @@ function MyLoans() {
             <div className="small">
               {l.returned ? t('Returned: waiting for the librarian') : <>{t('due')} {fmtDate(l.due_on, lang)}{l.overdue_days > 0 && <span className="badge warn" style={{ marginLeft: 6 }}>{t('{n} days overdue').replace('{n}', String(l.overdue_days))}</span>}</>}
             </div>
+            {!l.returned && <div className="small muted">{l.renewals_left > 0 ? t('Renewals left: {n}').replace('{n}', String(l.renewals_left)) : t('No renewals left: please bring it back.')}</div>}
           </div>
-          {l.can_renew && <button className="btn sm" onClick={() => renew(l)}>{t('Renew')}</button>}
+          {!l.returned && (
+            <div className="stack tight" style={{ alignItems: 'flex-end' }}>
+              {l.can_renew && <button className="btn sm" onClick={() => renew(l)}>{t('Renew')}</button>}
+              <button className="btn ghost sm" onClick={() => giveBack(l)}>{t('I’m bringing it back')}</button>
+            </div>
+          )}
         </div>
       ))}
       <p className="small muted">{t('To borrow, scan the QR code on the book’s label.')}</p>

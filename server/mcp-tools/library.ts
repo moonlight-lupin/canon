@@ -1,6 +1,7 @@
 // MCP tools for the library: songs (with hymnal numbers), liturgical texts (with catechism / confession parts),
 // hymnals and the Bible.
 import { z } from 'zod';
+import { listImages } from '../repo/images.ts';
 import * as S from '../../shared/schemas.ts';
 import { parsePartSelection, partRuns } from '../../shared/parts.ts';
 import { isCJK, isChinese } from '../../shared/languages.ts';
@@ -116,10 +117,10 @@ function textItem(id: number, selection: string | undefined, ctx: Ctx) {
 export const LIBRARY_TOOLS: ToolDef[] = [
   {
     name: 'canon_search_library', module: 'library', access: 'read', title: 'Search the library', annotations: RO,
-    description: 'Search songs and liturgical texts by words in any language, or songs by hymnal number ("HP 123"). type: all | songs | texts | hymnals (the hymnbooks) | checks (languages that drift apart and likely duplicates; see the check_library playbook). Songs carry stanza labels, hymnal numbers and usage {last_used, times_12m} before `before` (default today) — avoid hymns sung in the last ~4 weeks; sort "least_recent" or "most_used". Example: {"q":"grace","type":"songs","before":"2026-10-11"}.',
+    description: 'Search songs and liturgical texts by words in any language, or songs by hymnal number ("HP 123"). type: all | songs | texts | hymnals (the hymnbooks) | images (Library → Images: pictures to show on a slide of their own after an item — put their ids in the item\'s slide_images with canon_edit_order) | checks (languages that drift apart and likely duplicates; see the check_library playbook). Songs carry stanza labels, hymnal numbers and usage {last_used, times_12m} before `before` (default today) — avoid hymns sung in the last ~4 weeks; sort "least_recent" or "most_used". Example: {"q":"grace","type":"songs","before":"2026-10-11"}.',
     input: {
       q: z.string().max(200).optional(),
-      type: z.enum(['all', 'songs', 'texts', 'hymnals', 'checks']).default('all'),
+      type: z.enum(['all', 'songs', 'texts', 'hymnals', 'images', 'checks']).default('all'),
       category: z.enum([...SONG_CATEGORIES, ...TEXT_CATEGORIES]).optional(),
       usage: z.boolean().default(true).describe('songs: add last_used and times_12m'),
       sort: z.enum(['least_recent', 'most_used']).optional().describe('songs, by usage'),
@@ -132,6 +133,9 @@ export const LIBRARY_TOOLS: ToolDef[] = [
         const r = libraryChecks();
         const issues = r.issues.filter((i) => !q || JSON.stringify(i).toLowerCase().includes(q.toLowerCase()));
         return { checked: r.checked, counts: r.counts, total: issues.length, issues: issues.slice(0, Math.max(a.limit, 100)) };
+      }
+      if (a.type === 'images') {
+        return { images: listImages(q).slice(0, a.limit).map((i) => ({ id: i.id, name: i.name, width: i.width, height: i.height, fit: i.fit, uses: i.uses })) };
       }
       if (a.type === 'hymnals') {
         const ql = q.toLowerCase();
