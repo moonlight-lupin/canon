@@ -65,6 +65,7 @@ import { getSettings, setMeta, updateSettings, type Settings } from './repo/sett
 import { fileForToken } from './repo/downloads.ts';
 import { isAdmin, roleDef } from './lib/permissions.ts';
 import { hashCode, newRecoveryCodes, newSecret, otpauthUri, totpStep } from './lib/totp.ts';
+import { revokeUserGrants } from './oauth.ts';
 import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
 import { seesSensitiveFields } from './lib/permissions.ts';
@@ -304,9 +305,12 @@ api.patch('/users/:id', requireAdmin, h((req) => {
   if (b.reset_two_step) run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]', totp_last_step = NULL WHERE id = ?", uid);
   // a new password also unlocks the account
   if (b.password) run('UPDATE users SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?', hashPassword(b.password), uid);
-  // either signs the account out everywhere (a lost or stolen phone, a password someone else knew); an administrator
-  // doing it to their own account stays signed in where they did it
-  if (b.password || b.reset_two_step) endSessionsOf(uid, uid === req.user!.id ? req : undefined);
+  // either signs the account out everywhere (a lost or stolen phone, a password someone else knew) and disconnects its
+  // AI assistants; an administrator doing it to their own account stays signed in where they did it
+  if (b.password || b.reset_two_step) {
+    endSessionsOf(uid, uid === req.user!.id ? req : undefined);
+    revokeUserGrants(uid);
+  }
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
   if (b.congregation_id !== undefined) run('UPDATE users SET congregation_id = ? WHERE id = ?', b.congregation_id, uid);
   if (b.person_id !== undefined) run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);

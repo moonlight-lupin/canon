@@ -90,4 +90,4 @@ Call to Worship → Invocation → Hymn of praise (stand) → Reading of the Law
 - `member_care` missing → members off, or member details not exposed (the default).
 - "N of M operations failed — nothing was applied" → fix the per-op errors, resend the whole batch.
 - "No Bible is set up for language …" → an administrator adds one in Settings → Languages.
-- Unauthorised → the connection expired or was revoked; reconnect the connector.
+- Unauthorised → the connection expired or was revoked (by an administrator, or by an administrator resetting the account's password or two-step sign-in); reconnect the connector.

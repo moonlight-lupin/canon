@@ -238,3 +238,37 @@ test('expired sessions are cleared away', async () => {
   await login('boss', 'correct-horse-6', '203.0.113.73');
   assert.equal(get('SELECT 1 AS x FROM sessions WHERE token_hash = ?', 'expired-session-for-test'), undefined);
 });
+
+test('an administrator resetting someone’s password or two-step sign-in also disconnects that person’s AI assistants', async () => {
+  const { sha256 } = await import('../server/auth.ts');
+  const boss = await login('boss', 'correct-horse-6', '203.0.113.80');
+  user('sam');
+  user('uma');
+  const idOf = (u: string) => get<{ id: number }>('SELECT id FROM users WHERE username = ?', u)!.id;
+  // a connection (as claude.ai would have after the person approved it): an access token and its refresh token
+  const connect = (uid: number) => {
+    const access = `access-${crypto.randomUUID()}`;
+    const grant = crypto.randomUUID();
+    const ins = 'INSERT INTO oauth_tokens (token_hash, token_type, client_id, user_id, scope, resource, grant_id, expires_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)';
+    run(ins, sha256(access), 'access', 'canon-test-client', uid, 'canon:read', null, grant, Date.now() + 3600_000, Date.now());
+    run(ins, sha256(`refresh-${grant}`), 'refresh', 'canon-test-client', uid, 'canon:read', null, grant, Date.now() + 30 * 86400_000, Date.now());
+    return access;
+  };
+  const works = async (access: string) => (await fetch(`${base}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', Authorization: `Bearer ${access}`, ...from('203.0.113.81') }, body: '{}' })).status !== 401;
+  const live = (uid: number) => get<{ n: number }>('SELECT COUNT(*) AS n FROM oauth_tokens WHERE user_id = ? AND revoked = 0', uid)!.n;
+
+  for (const reset of [{ password: 'correct-horse-7' }, { reset_two_step: true }]) {
+    const sams = connect(idOf('sam'));
+    const umas = connect(idOf('uma'));
+    assert.equal(await works(sams), true, 'connected');
+    assert.equal((await call(boss, 'PATCH', `/users/${idOf('sam')}`, reset)).status, 200);
+    assert.equal(await works(sams), false, `disconnected by ${Object.keys(reset)[0]}`);
+    assert.equal(live(idOf('sam')), 0, 'refresh tokens too');
+    assert.equal(await works(umas), true, 'someone else’s connection stays');
+  }
+  // changing one's own password keeps one's own AI connections (one chose to connect them)
+  const sams = connect(idOf('sam'));
+  const sam = await login('sam', 'correct-horse-7', '203.0.113.82');
+  assert.equal((await call(sam, 'PATCH', '/me', { current_password: 'correct-horse-7', new_password: 'correct-horse-8' })).status, 200);
+  assert.equal(await works(sams), true);
+});

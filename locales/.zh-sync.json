@@ -9348,9 +9348,9 @@
       "提醒每天自动发送一次。",
       "提醒每天自動發送一次。"
     ],
-    "They will be signed out everywhere.": [
-      "对方会在所有设备上被登出。",
-      "對方會在所有設備上被登出。"
+    "They will be signed out everywhere, and their AI assistants disconnected.": [
+      "对方会在所有设备上被登出，连接的 AI 助手也会断开。",
+      "對方會在所有設備上被登出，連接的 AI 助手也會斷開。"
     ],
     "This church requires two-step sign-in for administrators. Set it up to continue: you need an authenticator app on your phone.": [
       "本教会要求管理员使用两步登入。请先设置才能继续：您需要手机上的验证器应用。",
@@ -9684,9 +9684,9 @@
       "关闭",
       "關閉"
     ],
-    "Turn off two-step sign-in for {name}? They are signed out everywhere, sign in with their password and can set it up again.": [
-      "关闭 {name} 的两步登入？对方会在所有设备上被登出，之后只用密码登入，可以重新设定。",
-      "關閉 {name} 的兩步登入？對方會在所有設備上被登出，之後只用密碼登入，可以重新設定。"
+    "Turn off two-step sign-in for {name}? They are signed out everywhere and their AI assistants are disconnected; they sign in with their password and can set it up again.": [
+      "关闭 {name} 的两步登入？对方会在所有设备上被登出，连接的 AI 助手也会断开；之后只用密码登入，可以重新设定。",
+      "關閉 {name} 的兩步登入？對方會在所有設備上被登出，連接的 AI 助手也會斷開；之後只用密碼登入，可以重新設定。"
     ],
     "Turn off what your church doesn’t use: it is hidden for everyone and AI assistants don’t see it. Nothing is deleted — turning it on again brings everything back.": [
       "关闭教会不使用的部分：所有人都不会再看到，AI 助手也看不到。不会删除任何资料——重新开启即可恢复一切。",
@@ -11414,8 +11414,8 @@
     ]
   },
   "guide": [
-    "73a8db15c216c3d4",
-    "03cf1f292d86d9d7"
+    "f4d8467ed8c6b854",
+    "d99e40986ba02ab9"
   ],
   "outputs": {
     "Advent": [

@@ -640,6 +640,15 @@ export function listGrants() {
   }));
 }
 
+/**
+ * Disconnect every AI assistant an account has connected (an administrator reset its password or two-step sign-in:
+ * a connection made by whoever knew the old ones must not outlive them).
+ */
+export function revokeUserGrants(userId: number) {
+  run('UPDATE oauth_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0', userId);
+  run('UPDATE oauth_codes SET used = 1 WHERE user_id = ?', userId);
+}
+
 /** Revoke every token (and outstanding code) of a grant. */
 export function revokeGrant(grantId: string) {
   const n = run('UPDATE oauth_tokens SET revoked = 1 WHERE grant_id = ? AND revoked = 0', grantId).changes;

@@ -41,7 +41,7 @@ export function UsersTab() {
     if (await run(() => api.patch(`/users/${u.id}`, { person_id: personId }), t('Saved.'))) reload();
   };
   const resetTwoStep = async (u: UserRow) => {
-    if (!confirmAction(t('Turn off two-step sign-in for {name}? They are signed out everywhere, sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
+    if (!confirmAction(t('Turn off two-step sign-in for {name}? They are signed out everywhere and their AI assistants are disconnected; they sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
     if (await run(() => api.patch(`/users/${u.id}`, { reset_two_step: true }), t('Saved.'))) reload();
   };
   const setRole = async (u: UserRow, role: Role) => {
@@ -170,7 +170,7 @@ export function ResetPasswordModal({ user, onClose }: { user: UserRow; onClose: 
   return (
     <Modal title={`${t('Reset password')} · ${user.display_name}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></>}>
-      <Field label={t('New password')} hint={t('They will be signed out everywhere.')}>
+      <Field label={t('New password')} hint={t('They will be signed out everywhere, and their AI assistants disconnected.')}>
         <input type="password" autoFocus autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
       </Field>
     </Modal>

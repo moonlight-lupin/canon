@@ -232,4 +232,4 @@ The MCP server offers these as prompts; each is offered only when your access al
 - **"N of M operations failed — nothing was applied"**: read the per-op errors, fix them, resend the whole batch.
 - **"No Bible is set up for language …"**: the church has no Bible for that language; an administrator adds one under Settings → Languages.
 - **A catechism is not in the library**: an administrator imports the Westminster Standards in the Library.
-- **Unauthorised / connection lost**: the token expired or was revoked under Settings → AI / MCP → Connected agents; reconnect the connector.
+- **Unauthorised / connection lost**: the token expired or was revoked — under Settings → AI / MCP → Connected agents, or because an administrator reset the account's password or two-step sign-in; reconnect the connector.
