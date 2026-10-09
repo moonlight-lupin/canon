@@ -45,7 +45,7 @@ async function call(who: Session, method: string, url: string, body?: unknown) {
 }
 
 before(async () => {
-  for (const role of ['admin', 'editor'] as const) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-4', role });
+  for (const role of ['admin', 'editor'] as const) await createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-4', role });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;

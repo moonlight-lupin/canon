@@ -33,15 +33,15 @@ import { presentationRoutes } from './routes/presentation.ts';
 import { csvRoutes } from './routes/csv.ts';
 import { bibleRoutes } from './routes/bible.ts';
 import { calendarRoutes } from './routes/calendar.ts';
-import { h, id, sendFile, str } from './routes/helpers.ts';
+import { h, id, sendFile, str, tooMany } from './routes/helpers.ts';
 import { peopleRoutes } from './routes/people.ts';
 import { recordRoutes } from './routes/records.ts';
 import { serviceRoutes } from './routes/services.ts';
 import { adminRoutes } from './routes/admin.ts';
 import {
-  authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginThrottle,
-  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES, MAX_FAILED,
-  endSessionsOf, ticketUsername, useTotpStep,
+  authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginRetryAfter, loginThrottle,
+  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES,
+  endSessionsOf, ticketUsername, useTotpStep, csrfOk, totpSecretOf,
   firstAdminId, memberLinkProblem, personLinkProblem, twoStepRequired,
 } from './auth.ts';
 import { all, get, run } from './db.ts';
@@ -64,7 +64,11 @@ import { songUsage } from './repo/history.ts';
 import { getSettings, setMeta, updateSettings, type Settings } from './repo/settings.ts';
 import { fileForToken } from './repo/downloads.ts';
 import { isAdmin, roleDef } from './lib/permissions.ts';
-import { hashCode, newRecoveryCodes, newSecret, otpauthUri, totpStep } from './lib/totp.ts';
+import { hashRecoveryCode, isOldRecoveryHash, newRecoveryCodes, newSecret, otpauthUri, totpStep } from './lib/totp.ts';
+import { sealField, currentFieldKey } from './lib/secret-field.ts';
+import { checkSetupCode, clearSetupCode } from './lib/setup-code.ts';
+import { makeLimiter, addressKey } from './lib/rate-limit.ts';
+import { markNoticesSeen, notifyAccount, unreadNotices } from './repo/account-notices.ts';
 import { revokeUserGrants } from './oauth.ts';
 import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
@@ -80,18 +84,41 @@ api.get('/me', (req, res) => {
   // leads: the groups this account's member leads (the screens offer recording their meetings)
   // role_def: what the account's role allows (the screens use it to show what may be changed)
   // first_admin: the administrator who set Canon up (reminded to link their account to their member record)
-  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id), role_def: roleDef(u.role), first_admin: u.id === firstAdminId() } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
+  // two_step: recovery codes left, and whether some are of the kind made before 0.19.9 (the profile suggests new ones)
+  // notices: unread notices about the account's own sign-in (a recovery code used, two-step sign-in reset …)
+  res.json({ user: u ? { ...u, csrf: undefined, leads: ledGroups(u.person_id), role_def: roleDef(u.role), first_admin: u.id === firstAdminId(), two_step: twoStepInfo(u.id), notices: unreadNotices(u.id) } : null, csrf: u?.csrf ?? null, needsSetup: userCount() === 0 });
 });
 
-api.post('/setup', h((req, res) => {
-  if (userCount() > 0) throw Object.assign(new Error('Already set up'), { status: 409 });
+function twoStepInfo(userId: number) {
+  const codes = JSON.parse(get<{ recovery_codes: string }>('SELECT recovery_codes FROM users WHERE id = ?', userId)?.recovery_codes || '[]') as string[];
+  return { recovery_left: codes.length, recovery_old: codes.some(isOldRecoveryHash) };
+}
+
+// Guesses at the setup code: ten per address in 15 minutes (it is 60 random bits: this is for good measure)
+const setupTries = makeLimiter(10, 15 * 60_000);
+
+api.post('/setup', h(async (req, res) => {
+  const key = addressKey(req.ip);
+  if (setupTries.over(key)) throw tooMany('Too many tries — wait a few minutes, then enter the setup code again.', setupTries.retryAfter(key));
+  // the setup code Canon printed when it started (its window, its log, data/run/setup-code.txt): whoever first reaches
+  // a new Canon over the network can't make themselves its administrator (0.19.9 review)
+  if (userCount() > 0) {
+    setupTries.add(key);
+    throw Object.assign(new Error('Already set up'), { status: 409 });
+  }
+  if (!checkSetupCode(req.body?.setup_code)) {
+    setupTries.add(key);
+    throw Object.assign(new Error('Enter the setup code shown where Canon is running (its window or log; on Docker, docker compose logs canon). It is also in data/run/setup-code.txt.'), { status: 403, code: 'setup_code' });
+  }
   const b = z.object({
+    setup_code: z.string().max(40).optional(),
     username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8),
     church_name: S.L10nSchema.optional(),
     languages: z.array(S.LangSchema).min(1).max(8).optional(),
     ui_lang: S.LangSchema.optional(),
   }).parse(req.body);
-  const user = createUser({ ...b, role: 'admin' });
+  const user = await createUser({ username: b.username, display_name: b.display_name, password: b.password, role: 'admin' });
+  clearSetupCode();
   setMeta('first_admin_id', String(user.id));
   if (b.ui_lang) run('UPDATE users SET lang = ? WHERE id = ?', b.ui_lang, user.id);
   // onboarded: false says so explicitly; otherwise a church name alone looks like a v0.1 church set up before onboarding
@@ -107,18 +134,20 @@ api.post('/setup', h((req, res) => {
   return { user, csrf };
 }));
 
-api.post('/login', h((req, res) => {
+const tooManySignIns = (ip: string) => tooMany('Too many attempts — try again in a few minutes.', loginRetryAfter(ip));
+
+api.post('/login', h(async (req, res) => {
   const ip = req.ip ?? '';
-  if (loginThrottle(ip)) throw Object.assign(new Error('Too many attempts — try again in 15 minutes'), { status: 429 });
-  const b = z.object({ username: z.string(), password: z.string() }).parse(req.body);
-  const r = authenticate(b.username, b.password);
-  // a locked account answers like a wrong password: the answer never tells which usernames exist (0.19.0 review)
+  if (loginThrottle(ip)) throw tooManySignIns(ip);
+  const b = z.object({ username: z.string().max(200), password: z.string().max(1000) }).parse(req.body);
+  const r = await authenticate(b.username, b.password, req);
+  // an account that is waiting answers like a wrong password: the answer never tells which usernames exist (0.19.0 review)
   if (!r || 'locked' in r) {
     loginFailed(ip, b.username);
-    throw Object.assign(new Error(`Wrong username or password. After ${MAX_FAILED} wrong tries an account waits ${LOCK_MINUTES} minutes.`), { status: 401 });
+    throw Object.assign(new Error(`Wrong username or password. After several wrong tries an account waits a little (up to ${LOCK_MINUTES} minutes).`), { status: 401 });
   }
   // two-step sign-in: the code comes next (POST /login/code); this address's tries are forgiven only once it is right
-  if ('second_step' in r) return { second_step: true, ticket: secondStepTicket(r.second_step) };
+  if ('second_step' in r) return { second_step: true, ticket: secondStepTicket(r.second_step, r.trusted) };
   loginOk(ip, r.user.username);
   const csrf = startSession(req, res, r.user);
   return { user: r.user, csrf };
@@ -126,10 +155,10 @@ api.post('/login', h((req, res) => {
 
 api.post('/login/code', h((req, res) => {
   const ip = req.ip ?? '';
-  if (loginThrottle(ip)) throw Object.assign(new Error('Too many attempts — try again in 15 minutes'), { status: 429 });
-  const b = z.object({ ticket: z.string().max(100), code: z.string().max(20) }).parse(req.body);
+  if (loginThrottle(ip)) throw tooManySignIns(ip);
+  const b = z.object({ ticket: z.string().max(100), code: z.string().max(40) }).parse(req.body);
   const who = ticketUsername(b.ticket);
-  const user = secondStep(b.ticket, b.code);
+  const user = secondStep(b.ticket, b.code, ip);
   if (!user) {
     loginFailed(ip, who);
     throw Object.assign(new Error('That code is not right, has expired or was just used: wait for the next code. Sign in again if it keeps failing.'), { status: 401 });
@@ -142,7 +171,7 @@ api.post('/login/code', h((req, res) => {
 api.post('/logout', (req, res) => {
   // signing out needs the session's own token (another site can't sign anyone out); without a session, nothing to do
   const u = sessionUser(req);
-  if (u && req.get('x-csrf-token') !== u.csrf) return res.status(403).json({ error: 'Sign out from Canon itself.' });
+  if (u && !csrfOk(req, u)) return res.status(403).json({ error: 'Sign out from Canon itself.' });
   endSession(req, res);
   res.json({ ok: true });
 });
@@ -208,15 +237,19 @@ api.get('/link-base', (req, res) => {
   res.json({ base: addressForOthers(`${req.protocol}://${req.get('host')}`), public: !!publicUrl() });
 });
 
-api.patch('/me', h((req) => {
-  const b = z.object({ lang: S.LangSchema.optional(), display_name: z.string().min(1).optional(), current_password: z.string().optional(), new_password: z.string().min(8).optional() }).parse(req.body);
+api.patch('/me', h(async (req) => {
+  const b = z.object({ lang: S.LangSchema.optional(), display_name: z.string().min(1).optional(), current_password: z.string().max(1000).optional(), new_password: z.string().min(8).max(1000).optional() }).parse(req.body);
   const u = req.user!;
   if (b.new_password) {
     const row = get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', u.id)!;
-    if (!b.current_password || !verifyPassword(b.current_password, row.password_hash)) {
+    if (!b.current_password || !(await verifyPassword(b.current_password, row.password_hash))) {
       throw Object.assign(new Error('Current password is wrong'), { status: 400 });
     }
-    run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(b.new_password), u.id);
+    // the password an administrator chose is to be replaced, not kept
+    if (u.must_change_password && b.new_password === b.current_password) {
+      throw Object.assign(new Error('Choose a password of your own, not the one you were given.'), { status: 400 });
+    }
+    run('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?', await hashPassword(b.new_password), u.id);
     // a new password signs the account out everywhere else (someone who knew the old one may be signed in)
     endSessionsOf(u.id, req);
   }
@@ -233,38 +266,67 @@ api.post('/me/two-step/setup', h(async (req) => {
     throw Object.assign(new Error('Two-step sign-in is on. To use another phone, turn it off (with your password), then set it up again.'), { status: 409 });
   }
   const secret = newSecret();
-  run('UPDATE users SET totp_secret = ?, totp_enabled = 0, totp_last_step = NULL WHERE id = ?', secret, req.user!.id);
+  // kept sealed with this Canon's keys (0.19.9 review): a copy of the accounts alone can't make the codes
+  run('UPDATE users SET totp_secret = ?, totp_enabled = 0, totp_last_step = NULL WHERE id = ?', sealField(secret, currentFieldKey()), req.user!.id);
   const issuer = `Canon · ${(getSettings().church_name.en || Object.values(getSettings().church_name).find(Boolean) || 'church').slice(0, 40)}`;
   const uri = otpauthUri(secret, req.user!.username, issuer);
   return { secret, uri, qr: await QRCode.toDataURL(uri, { margin: 1, width: 220 }) };
 }));
-api.post('/me/two-step/enable', h((req) => {
-  const b = z.object({ code: z.string().max(20) }).parse(req.body);
-  const row = get<{ totp_secret: string | null }>('SELECT totp_secret FROM users WHERE id = ?', req.user!.id);
-  const step = row?.totp_secret ? totpStep(row.totp_secret, b.code) : null;
+/** The account's own password, again (to change how it signs in): a session left open on a shared PC isn't enough. */
+async function confirmPassword(userId: number, password: string | undefined) {
+  const row = get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', userId)!;
+  if (!password || !(await verifyPassword(password, row.password_hash))) throw Object.assign(new Error('Password is wrong'), { status: 400 });
+}
+api.post('/me/two-step/enable', h(async (req) => {
+  const b = z.object({ code: z.string().max(20), password: z.string().max(1000).optional() }).parse(req.body);
+  // the password first (0.19.9 review: turning it on needed only the session), and a wrong one doesn't use the code up
+  await confirmPassword(req.user!.id, b.password);
+  const secret = totpSecretOf(req.user!.id);
+  const step = secret ? totpStep(secret, b.code) : null;
   // the code that turns it on is used up too: it can't then sign in
   if (step === null || !useTotpStep(req.user!.id, step)) throw Object.assign(new Error('That code is not right. Check the time on your phone and try the newest code.'), { status: 400 });
   const codes = newRecoveryCodes();
-  run('UPDATE users SET totp_enabled = 1, recovery_codes = ? WHERE id = ?', JSON.stringify(codes.map(hashCode)), req.user!.id);
+  run('UPDATE users SET totp_enabled = 1, recovery_codes = ? WHERE id = ?', JSON.stringify(codes.map(hashRecoveryCode)), req.user!.id);
   endSessionsOf(req.user!.id, req);
   logChange({ entity: 'users', entity_id: req.user!.id, action: 'update', summary: 'Two-step sign-in turned on' });
+  // they did it here and now: an e-mail (if it wasn't them, they hear of it), no notice in Canon
+  notifyAccount(req.user!.id, 'two_step_on', { ip: req.ip ?? null }, { inApp: false });
   return { recovery_codes: codes };
 }));
-api.post('/me/two-step/disable', h((req) => {
-  const b = z.object({ password: z.string() }).parse(req.body);
-  const row = get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', req.user!.id)!;
-  if (!verifyPassword(b.password, row.password_hash)) throw Object.assign(new Error('Password is wrong'), { status: 400 });
+// New recovery codes (all of them replaced): when they run low, or to replace the shorter ones made before 0.19.9
+api.post('/me/two-step/recovery-codes', h(async (req) => {
+  const b = z.object({ password: z.string().max(1000) }).parse(req.body);
+  await confirmPassword(req.user!.id, b.password);
+  if (!get<{ totp_enabled: number }>('SELECT totp_enabled FROM users WHERE id = ?', req.user!.id)?.totp_enabled) {
+    throw Object.assign(new Error('Two-step sign-in is off.'), { status: 409 });
+  }
+  const codes = newRecoveryCodes();
+  run('UPDATE users SET recovery_codes = ? WHERE id = ?', JSON.stringify(codes.map(hashRecoveryCode)), req.user!.id);
+  logChange({ entity: 'users', entity_id: req.user!.id, action: 'update', summary: 'New recovery codes' });
+  notifyAccount(req.user!.id, 'recovery_codes_new', { ip: req.ip ?? null }, { inApp: false });
+  return { recovery_codes: codes };
+}));
+api.post('/me/two-step/disable', h(async (req) => {
+  const b = z.object({ password: z.string().max(1000) }).parse(req.body);
+  await confirmPassword(req.user!.id, b.password);
   if (twoStepRequired(req.user)) throw Object.assign(new Error(getSettings().security.require_all_2fa ? 'This church requires two-step sign-in for every account.' : 'This church requires two-step sign-in for administrators.'), { status: 400 });
   run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]', totp_last_step = NULL WHERE id = ?", req.user!.id);
   endSessionsOf(req.user!.id, req);
   logChange({ entity: 'users', entity_id: req.user!.id, action: 'update', summary: 'Two-step sign-in turned off' });
+  notifyAccount(req.user!.id, 'two_step_off', { ip: req.ip ?? null }, { inApp: false });
   return { ok: true };
+}));
+
+// Notices about the account's own sign-in, read (they show above every page until then)
+api.post('/me/notices/seen', h((req) => {
+  const b = z.object({ ids: z.array(z.number().int()).max(100).optional() }).parse(req.body ?? {});
+  markNoticesSeen(req.user!.id, b.ids);
 }));
 
 // Viewers may change their own language/password above; other writes are blocked in requireUser.
 
 api.get('/users', requireAdmin, h(() => listUsers()));
-api.post('/users', requireAdmin, h((req) => {
+api.post('/users', requireAdmin, h(async (req) => {
   const b = z.object({
     username: z.string().min(2), display_name: z.string().min(1), password: z.string().min(8), role: z.string().min(1).max(40),
     /** the church member the account belongs to (required, except for an external guest) */
@@ -275,13 +337,14 @@ api.post('/users', requireAdmin, h((req) => {
   const problem = (personId && personLinkProblem(personId, null)) || memberLinkProblem(null, b.role, personId);
   if (problem) throw Object.assign(new Error(problem), { status: 400 });
   const { person_id: _p, ...fields } = b;
-  const created = createUser(fields);
+  // the administrator chose the password: the person chooses their own at their first sign-in
+  const created = await createUser({ ...fields, must_change: true });
   if (personId) run('UPDATE users SET person_id = ? WHERE id = ?', personId, created.id);
   const u = getUser(created.id)!;
   logChange({ entity: 'users', entity_id: u.id, action: 'create', after: { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null } });
   return u;
 }));
-api.patch('/users/:id', requireAdmin, h((req) => {
+api.patch('/users/:id', requireAdmin, h(async (req) => {
   const b = z.object({
     role: z.string().min(1).max(40).optional(), password: z.string().min(8).optional(), display_name: z.string().optional(),
     person_id: z.number().int().nullable().optional(),
@@ -303,8 +366,10 @@ api.patch('/users/:id', requireAdmin, h((req) => {
   }
   if (b.role) run('UPDATE users SET role = ? WHERE id = ?', b.role, uid);
   if (b.reset_two_step) run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]', totp_last_step = NULL WHERE id = ?", uid);
-  // a new password also unlocks the account
-  if (b.password) run('UPDATE users SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?', hashPassword(b.password), uid);
+  // a new password also ends the account's wait; someone else's is to be changed at their next sign-in
+  if (b.password) run('UPDATE users SET password_hash = ?, failed_logins = 0, locked_until = NULL, must_change_password = ? WHERE id = ?', await hashPassword(b.password), uid === req.user!.id ? 0 : 1, uid);
+  // the person hears of a reset of their two-step sign-in (in Canon, and by e-mail): if they didn't ask for it, they need to know
+  if (b.reset_two_step) notifyAccount(uid, 'two_step_reset', { by: req.user!.display_name }, { inApp: uid !== req.user!.id });
   // either signs the account out everywhere (a lost or stolen phone, a password someone else knew) and disconnects its
   // AI assistants; an administrator doing it to their own account stays signed in where they did it
   if (b.password || b.reset_two_step) {
@@ -519,6 +584,8 @@ api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     return res.status(409).json({ error: e.message });
   }
   if (!e.status || e.status >= 500) console.error(err);
-  const n = e as { needs_password?: boolean; needs_recovery?: boolean; recovery_id?: string | null };
-  res.status(e.status ?? 500).json({ error: e.message ?? 'Server error', ...(n.needs_password ? { needs_password: true } : {}), ...(n.needs_recovery ? { needs_recovery: true, recovery_id: n.recovery_id ?? null } : {}) });
+  const n = e as { needs_password?: boolean; needs_recovery?: boolean; recovery_id?: string | null; retry_after?: number };
+  // every "too many" says when to try again (0.19.9 review)
+  if (e.status === 429) res.setHeader('Retry-After', String(Math.max(1, Math.ceil(n.retry_after ?? 60))));
+  res.status(e.status ?? 500).json({ error: e.message ?? 'Server error', ...(e.code === 'setup_code' ? { code: e.code } : {}), ...(n.needs_password ? { needs_password: true } : {}), ...(n.needs_recovery ? { needs_recovery: true, recovery_id: n.recovery_id ?? null } : {}) });
 });

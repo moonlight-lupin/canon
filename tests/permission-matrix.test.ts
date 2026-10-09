@@ -83,7 +83,7 @@ before(async () => {
   ids.A = saveCongregation(null, { name: { en: 'Test North' }, code: 'N' }).id;
   ids.B = saveCongregation(null, { name: { en: 'Test South' }, code: 'S' }).id;
   for (const [u, role] of [['admin', 'admin'], ['walled', 'editor'], ['secretary', 'secretary'], ['planner', 'planner']] as const) {
-    createUser({ username: u, display_name: `Test ${u}`, password: PW, role });
+    await createUser({ username: u, display_name: `Test ${u}`, password: PW, role });
   }
   run('UPDATE users SET congregation_id = ? WHERE username = ?', ids.A, 'walled');
   S.updateSettings({ member_fields: [{ key: 'health', label: { en: 'Health' }, type: 'text', sensitive: true }] });

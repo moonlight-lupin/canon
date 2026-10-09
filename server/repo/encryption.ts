@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { db, dbEncrypted, reopenDb, setEncrypted } from '../db.ts';
 import { config } from '../config.ts';
 import { openDb, rekeyDb } from '../lib/sqlite.ts';
+import { sealTotpSecrets } from '../lib/secret-field.ts';
 import { clearEncrypting, createKeys, keyProtection, loadKeys, machineAccount, makeRecoveryKey, markEncrypting, recoveryInfo, type Keys } from '../lib/keys.ts';
 import { writeBackupFile } from '../lib/backup-file.ts';
 import { Conflict } from '../lib/table.ts';
@@ -99,6 +100,8 @@ export async function encryptNow() {
   setEncrypted(keys);
   reopenDb(() => undefined);
   clearEncrypting();
+  // two-step secrets kept in plain while the database wasn't encrypted are sealed with its keys now
+  sealTotpSecrets(db);
   const copies = encryptPlainCopies(keys);
   logChange({
     entity: 'settings', entity_id: null, action: 'update',

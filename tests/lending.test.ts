@@ -55,7 +55,7 @@ before(async () => {
   await seed();
   updateSettings({ languages: ['en', 'zh'], church_name: { en: 'Grace Fellowship (test)', zh: '恩典团契' } });
   for (const [u, role] of [['admin', 'admin'], ['librarian', 'librarian'], ['keeper', 'keeper'], ['viewer', 'viewer']]) {
-    createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-6', role });
+    await createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-6', role });
   }
   const p = (first: string, extra: Json = {}) => reg.people.insert({ first_name: first, last_name: 'Koh', status: 'member', ...extra } as never).id;
   ids.ruth = p('Ruth', { email: 'ruth@example.org', native_name: '许路得' });
@@ -266,7 +266,7 @@ test('congregation walls: another congregation’s borrower or custodian is not 
   L.lend({ copy_id: copies[0].id, person_id: far }, null);
   L.lend({ copy_id: copies[1].id, person_id: near }, null);
   E.saveItem(null, { name: 'Walls test projector (fictional)', custodian_id: far } as never);
-  createUser({ username: 'walledlib', display_name: 'Test walled librarian', password: 'correct-horse-6', role: 'librarian' });
+  await createUser({ username: 'walledlib', display_name: 'Test walled librarian', password: 'correct-horse-6', role: 'librarian' });
   const uid = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'walledlib').id;
   assert.equal((await call(as.admin, 'PATCH', `/users/${uid}`, { congregation_id: en })).status, 200);
   const w = await login('walledlib');
@@ -282,7 +282,7 @@ test('congregation walls: another congregation’s borrower or custodian is not 
   assert.ok(!txt(await call(w, 'GET', `/lending/scan?q=${encodeURIComponent(copies[0].number)}`)).includes('Faraway'), 'nor when the copy is scanned');
   assert.ok(!txt(await call(w, 'GET', '/lending/borrowers?q=Reader')).includes('Faraway'), 'nor in the borrower search');
 
-  createUser({ username: 'walledkeeper', display_name: 'Test walled keeper', password: 'correct-horse-6', role: 'keeper' });
+  await createUser({ username: 'walledkeeper', display_name: 'Test walled keeper', password: 'correct-horse-6', role: 'keeper' });
   const kid = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'walledkeeper').id;
   await call(as.admin, 'PATCH', `/users/${kid}`, { congregation_id: en });
   const k = await login('walledkeeper');

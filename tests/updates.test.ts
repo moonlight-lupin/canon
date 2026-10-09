@@ -81,8 +81,8 @@ let server: http.Server;
 let base = '';
 before(async () => {
   await seed();
-  createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-7', role: 'admin' });
-  createUser({ username: 'ed', display_name: 'Test editor', password: 'correct-horse-7', role: 'editor' });
+  await createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-7', role: 'admin' });
+  await createUser({ username: 'ed', display_name: 'Test editor', password: 'correct-horse-7', role: 'editor' });
   server = createApp().listen(0, '127.0.0.1');
   server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));

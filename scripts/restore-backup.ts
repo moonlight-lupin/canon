@@ -17,6 +17,7 @@ import { openDb, rekeyDb } from '../server/lib/sqlite.ts';
 import { KeysLockedError, createKeys, keysExist, loadKeys, makeRecoveryKey, unlockWithRecovery, type Keys } from '../server/lib/keys.ts';
 import { isBackupV2, isPackage, scratch, unwrapBackupFile, unwrapPackage } from '../server/lib/backup-file.ts';
 import { decryptFile, isEncrypted as isPasswordBackup } from '../server/lib/backup-crypto.ts';
+import { resealTotpSecrets } from '../server/lib/secret-field.ts';
 
 const [fileArg, secretArg] = process.argv.slice(2);
 const fail = (msg: string): never => {
@@ -109,6 +110,8 @@ if (backupKey || keys) {
     const d = openDb(f, { key: backupKey });
     try {
       rekeyDb(d, keys?.db ?? null);
+      // its two-step secrets were sealed with the backup's key: sealed again with this Canon's (0.19.9)
+      if (f === incoming && backupKey) resealTotpSecrets(d, backupKey, keys?.backup ?? null);
     } finally {
       d.close();
     }

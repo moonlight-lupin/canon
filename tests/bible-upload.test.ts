@@ -52,7 +52,7 @@ const verseText = (code: string, b: number, c: number, v: number) =>
   get<{ text: string }>('SELECT text FROM bible_verses WHERE translation = ? AND book = ? AND chapter = ? AND verse = ?', code, b, c, v)?.text;
 
 before(async () => {
-  for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: role, password: 'correct-horse-1', role });
+  for (const role of ['admin', 'editor', 'viewer'] as const) await createUser({ username: role, display_name: role, password: 'correct-horse-1', role });
   updateSettings({ languages: ['en', 'zh', 'zh-Hant'] });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)

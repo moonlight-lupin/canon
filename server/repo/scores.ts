@@ -125,7 +125,7 @@ export function uploadLinkInfo(token: string) {
 /** Add one page through a link (appended after the song's pages). */
 export function uploadViaLink(token: string, f: { name: string; mime: string; data: Buffer }) {
   const r = linkRow(token);
-  if (r.uploads >= MAX_LINK_UPLOADS) throw Object.assign(new Error(`This link has taken its ${MAX_LINK_UPLOADS} pages. Ask for a new one.`), { status: 429 });
+  if (r.uploads >= MAX_LINK_UPLOADS) throw Object.assign(new Error(`This link has taken its ${MAX_LINK_UPLOADS} pages. Ask for a new one.`), { status: 409 });
   const list = addScore(r.song_id, f);
   run('UPDATE upload_links SET uploads = uploads + 1 WHERE token = ?', token);
   return { pages: list.length, left: MAX_LINK_UPLOADS - r.uploads - 1 };

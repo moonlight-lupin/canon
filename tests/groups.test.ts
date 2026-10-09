@@ -89,7 +89,7 @@ let tan: { id: number };
 let lim: { id: number };
 
 before(async () => {
-  createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
+  await createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
   setMcp({ modules: { members: 'off', coworkers: 'off', groups: 'off', volunteers: 'write' }, expose_member_pii: false });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)

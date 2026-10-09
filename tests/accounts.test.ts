@@ -16,6 +16,7 @@ const { createApp } = await import('../server/app.ts');
 const { seed } = await import('../server/seed/index.ts');
 const T = await import('../server/lib/totp.ts');
 const { securityChecklist } = await import('../server/repo/security.ts');
+const { setupCode } = await import('../server/lib/setup-code.ts');
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Session = { cookie: string; csrf: string };
@@ -47,7 +48,7 @@ before(async () => {
   server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const setup = await call(null, 'POST', '/setup', { username: 'founder', display_name: 'Founder Tan', password: 'correct-horse-7', church_name: { en: 'Hope Chapel (test)' } });
+  const setup = await call(null, 'POST', '/setup', { setup_code: setupCode(), username: 'founder', display_name: 'Founder Tan', password: 'correct-horse-7', church_name: { en: 'Hope Chapel (test)' } });
   assert.equal(setup.status, 200, JSON.stringify(setup.body));
   boss = { cookie: setup.cookie, csrf: setup.body.csrf };
   memberA = (await call(boss, 'POST', '/people', { first_name: 'Ruth', last_name: 'Lim', status: 'member' })).body.id;
@@ -89,7 +90,10 @@ test('an external guest: no member, read-only, never members’ details; the rol
   assert.equal(g.body.person_id, null);
   // a guest account becoming a member's role needs the member
   assert.equal((await call(boss, 'PATCH', `/users/${g.body.id}`, { role: 'viewer' })).status, 400);
-  const guest = await login('auditor', 'correct-horse-9');
+  let guest = await login('auditor', 'correct-horse-9');
+  // the administrator chose the password: the guest chooses their own first (0.19.9)
+  assert.equal((await call(guest, 'PATCH', '/me', { current_password: 'correct-horse-9', new_password: 'correct-horse-99' })).status, 200);
+  guest = await login('auditor', 'correct-horse-99');
   assert.equal((await call(guest, 'GET', '/services')).status, 200, 'reads services');
   assert.equal((await call(guest, 'GET', '/people')).status, 403, 'no members');
   assert.equal((await call(guest, 'POST', '/services', { date: '2026-11-01' })).status, 403, 'changes nothing');
@@ -102,17 +106,21 @@ test('an external guest: no member, read-only, never members’ details; the rol
 test('two-step sign-in for every account: one without it can only set it up', async () => {
   // the administrator turns it on for themselves first
   const s = (await call(boss, 'POST', '/me/two-step/setup', {})).body;
-  assert.equal((await call(boss, 'POST', '/me/two-step/enable', { code: T.totp(s.secret) })).status, 200);
+  assert.equal((await call(boss, 'POST', '/me/two-step/enable', { code: T.totp(s.secret), password: 'correct-horse-7' })).status, 200);
   assert.equal((await call(boss, 'PUT', '/security', { require_all_2fa: true })).status, 200);
 
-  const ruth = await login('ruth', 'correct-horse-8');
+  let ruth = await login('ruth', 'correct-horse-8');
+  // first her own password (an administrator chose this one), then two-step sign-in
+  assert.equal((await call(ruth, 'GET', '/services')).body.code, 'password_change_required');
+  assert.equal((await call(ruth, 'PATCH', '/me', { current_password: 'correct-horse-8', new_password: 'correct-horse-88' })).status, 200);
+  ruth = await login('ruth', 'correct-horse-88');
   const blocked = await call(ruth, 'GET', '/services');
   assert.equal(blocked.status, 403);
   assert.equal(blocked.body.code, 'two_step_required');
   assert.equal((await call(ruth, 'GET', '/settings')).status, 200, 'the settings, to show why');
   const mine = (await call(ruth, 'POST', '/me/two-step/setup', {})).body;
-  assert.equal((await call(ruth, 'POST', '/me/two-step/enable', { code: T.totp(mine.secret) })).status, 200);
+  assert.equal((await call(ruth, 'POST', '/me/two-step/enable', { code: T.totp(mine.secret), password: 'correct-horse-88' })).status, 200);
   assert.equal((await call(ruth, 'GET', '/services')).status, 200, 'set up: Canon opens');
-  assert.equal((await call(ruth, 'POST', '/me/two-step/disable', { password: 'correct-horse-8' })).status, 400, 'can’t turn it off while required');
+  assert.equal((await call(ruth, 'POST', '/me/two-step/disable', { password: 'correct-horse-88' })).status, 400, 'can’t turn it off while required');
   assert.equal((await call(boss, 'PUT', '/security', { require_all_2fa: false, require_admin_2fa: false })).status, 200);
 });

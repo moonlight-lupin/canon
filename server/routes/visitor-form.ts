@@ -184,7 +184,10 @@ visitorFormRouter.post('/v/:token', express.urlencoded({ extended: false, limit:
   const [ts, sig] = String(b.t ?? '').split('.');
   const age = Date.now() - Number(ts);
   if (!ts || sig !== sign(ts + token) || !(age >= MIN_MS && age <= MAX_MS)) return page(res, 400, L, formHtml(token, svc, say('again', L), b));
-  if (limited(ipOf(req))) return page(res, 429, L, `<p class="done">${say('slow', L)}</p>`);
+  if (limited(ipOf(req))) {
+    res.setHeader('Retry-After', String(Math.max(1, perAddress.retryAfter(addressKey(ipOf(req))))));
+    return page(res, 429, L, `<p class="done">${say('slow', L)}</p>`);
+  }
   try {
     submitCard(token, { ...b });
   } catch (e) {

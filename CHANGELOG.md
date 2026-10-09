@@ -4,6 +4,24 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.9 — Account security
+
+From the same read-only study of Canon's sign-in code (0.19.7) as 0.19.8: what that version left open. Each fix has its test (`tests/account-security.test.ts`).
+
+- **A new Canon is set up only with its setup code.** Whoever first reached a new Canon — over the network, perhaps — became its administrator. A new Canon now prints a one-time code where it runs (its window, its log — Docker: `docker compose logs canon` — and `data/run/setup-code.txt`, readable by Canon's account only), and the first screen asks for it. It stays the same across restarts until Canon is set up; ten wrong codes from one address in 15 minutes, and that address waits. (Existing Canons are set up already: nothing changes for them.)
+- **Stronger password hashing that doesn't hold Canon up.** scrypt at OWASP's level (N=2^17, r=8, p=1, with N, r and p written into each hash), run in Node's worker threads (at most two at once, as each takes 128 MiB) instead of blocking every other request. Passwords hashed before (N=2^14) still sign in and are re-hashed at the account's next successful sign-in, so nobody needs a reset.
+- **Two-step secrets are kept encrypted.** They were in plain text in the accounts table; they are now sealed (AES-256-GCM) with a key made from this Canon's backup key, so a decrypted copy of the database alone can't make anyone's codes. Existing secrets are sealed when Canon starts. A backup restored on another computer (in Canon, or with `npm run restore-backup`) has them sealed again with that Canon's key. A Canon that isn't encrypted keeps them in plain until **Encrypt now**, which seals them.
+- **Longer, salted recovery codes**: 80 bits each (four groups of four letters and numbers; dashes and case don't matter), each kept as a salted HMAC and compared in constant time — they were 40 bits, kept as an unsalted SHA-256 and found with a plain list search. **Codes made before keep working until used**; My profile says when yours are of the older kind, and **New recovery codes** (with your password) replaces them all.
+- **Turning two-step sign-in on needs your password**, as turning it off did: a session left open on a shared computer is no longer enough. A wrong password doesn't use up the code.
+- **You are told** when a recovery code signs in to your account, or an administrator resets your two-step sign-in: a notice above every page (when, from which address, how many codes are left) until you press **Got it**, and an e-mail to your member record's address when e-mail is set up. Turning two-step sign-in on or off and new recovery codes are e-mailed too.
+- **An account's wait grows instead of locking it for 15 minutes at once**, and someone else can't keep it shut. Five wrong passwords or codes in a row: the account waits 1 minute, then 2, 4, 8 and at most 15 after each further wrong try; tries during a wait aren't counted (they used to be able to start a fresh lock every quarter of an hour). **A browser that signed in to the account before isn't held up** by the wait (a cookie signed by Canon and bound to the password, so a new password forgets it; five wrong tries from it and it is treated like any other browser for 15 minutes). The per-address limit (eight in 15 minutes) is unchanged.
+- **Every "too many" answer says when to try again** (`Retry-After`): sign-in, the setup code, the OAuth endpoints and `/mcp`, self-service codes and the visitor form. An upload link that has taken its pages now answers 409 and the recovery-key page after 20 wrong keys 403, since waiting doesn't help there.
+- **An unknown role gets no access.** An account whose role Canon doesn't know (e.g. after data was copied in from elsewhere) was given read-only access, which reads most of Canon; it now gets none, sees why, and Settings → User accounts marks it for the administrator.
+- **The CSRF token is compared in constant time** (and so is signing out's).
+- **A password an administrator chose must be changed at the next sign-in**: for a new account and after **Reset password** (not an administrator resetting their own). Until then the person sees only "Choose your password", and can't connect an AI assistant. The new password must differ from the one given. The user list shows **New password due**.
+- Checked again, already fixed in 0.19.8: resetting two-step sign-in checks that the account exists before changing anything.
+- Database: version 40 (`users.must_change_password`; `account_notices`). Two-step secrets are sealed at start-up, not by the migration.
+
 ## 0.19.8 — Sign-in hardening
 
 From a read-only study of Canon's sign-in code (0.19.7). Each fix has its test (`tests/sign-in-hardening.test.ts`).

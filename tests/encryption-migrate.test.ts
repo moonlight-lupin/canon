@@ -46,7 +46,7 @@ async function call(method: string, url: string, body?: unknown) {
 before(async () => {
   await seed();
   updateSettings({ backup: { ...getSettings().backup, dir: backups } });
-  createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-7', role: 'admin' });
+  await createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-7', role: 'admin' });
   D.run('INSERT INTO people (first_name, last_name) VALUES (?, ?)', 'Philippa', 'Fictional-Elder');
   server = createApp().listen(0, '127.0.0.1');
   // slow steps (encrypting, backups) under a full parallel test run: idle connections stay open for the next request

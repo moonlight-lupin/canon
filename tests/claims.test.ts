@@ -73,7 +73,7 @@ before(async () => {
   cid = person('Cid', 'Example', 'cid@example.org');
   dee = person('Dee', 'Example', 'dee@example.org');
   for (const [u, role, pid] of [['admin', 'admin', null], ['treasurer', 'treasurer', ben], ['ann', 'viewer', ann], ['guest', 'guest', null], ['editor', 'editor', null]] as const) {
-    createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-7', role });
+    await createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-7', role });
     if (pid) run('UPDATE users SET person_id = ? WHERE username = ?', pid, u);
   }
   server = createApp().listen(0, '127.0.0.1');
@@ -309,7 +309,7 @@ test('0.19.4: an account limited to one congregation sees that congregation’s 
   const south = saveCongregation(null, { name: { en: 'Test South' }, code: 'TS' }).id;
   const nora = Number(run('INSERT INTO people (first_name, last_name, email, congregation_id) VALUES (?,?,?,?)', 'Nora', 'North', 'nora@example.org', north).lastInsertRowid);
   const sam = Number(run('INSERT INTO people (first_name, last_name, email, congregation_id) VALUES (?,?,?,?)', 'Sam', 'South', 'sam@example.org', south).lastInsertRowid);
-  createUser({ username: 'northbooks', display_name: 'Test north books', password: 'correct-horse-7', role: 'treasurer' });
+  await createUser({ username: 'northbooks', display_name: 'Test north books', password: 'correct-horse-7', role: 'treasurer' });
   run('UPDATE users SET congregation_id = ?, person_id = ? WHERE username = ?', north, nora, 'northbooks');
   const nb = await login('northbooks');
   const line = [{ date: '2030-09-01', description: 'Wall test', payee: 'A shop', amount: 1500 }];

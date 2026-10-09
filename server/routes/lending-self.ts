@@ -8,7 +8,7 @@ import { getSettings } from '../repo/settings.ts';
 import * as S from '../repo/lending-self.ts';
 import { pingAnswer } from '../lib/instance.ts';
 import { addressKey, makeLimiter } from '../lib/rate-limit.ts';
-import { h, id, str } from './helpers.ts';
+import { h, id, str, tooMany as tooManyError } from './helpers.ts';
 
 export const lendingSelfRoutes = express.Router();
 
@@ -39,7 +39,7 @@ const codesPerEmail = makeLimiter(3, 15 * 60_000);
 const tries = makeLimiter(30, 15 * 60_000);
 const returns = makeLimiter(30, 15 * 60_000);
 export const resetSelfLimits = () => [codesPerAddress, codesPerEmail, tries, returns].forEach((l) => l.reset());
-const tooMany = () => Object.assign(new Error('Too many tries. Please wait a few minutes, or see the librarian.'), { status: 429 });
+const tooMany = (seconds: number) => tooManyError('Too many tries. Please wait a few minutes, or see the librarian.', seconds);
 
 lendingSelfRoutes.get('/self/status', library, h(async () => ({ on: await S.selfServiceReady(), church_name: getSettings().church_name, languages: getSettings().languages })));
 lendingSelfRoutes.get('/self/copy/:number', library, running, h((req) => S.publicCopy(String(req.params.number))));
@@ -53,14 +53,16 @@ lendingSelfRoutes.get('/self/books/:id/cover', library, running, (req, res) => {
 
 lendingSelfRoutes.post('/self/code', library, running, h(async (req) => {
   const b = z.object({ email: z.string().trim().max(200).email() }).parse(req.body);
-  if (codesPerAddress.limited(ipOf(req)) || codesPerEmail.limited(b.email.toLowerCase())) throw tooMany();
+  if (codesPerAddress.limited(ipOf(req)) || codesPerEmail.limited(b.email.toLowerCase())) {
+    throw tooMany(Math.max(codesPerAddress.retryAfter(ipOf(req)), codesPerEmail.retryAfter(b.email.toLowerCase())));
+  }
   await S.requestCode(b.email);
   // the same answer whether or not the address is on the register
   return { ok: true };
 }));
 lendingSelfRoutes.post('/self/verify', library, running, h((req) => {
   const b = z.object({ email: z.string().trim().max(200), code: z.string().max(12) }).parse(req.body);
-  if (tries.limited(ipOf(req))) throw tooMany();
+  if (tries.limited(ipOf(req))) throw tooMany(tries.retryAfter(ipOf(req)));
   const r = S.verifyCode(b.email, b.code);
   return { ...r, loans: S.myLoans(S.personOf(r.token)) };
 }));
@@ -77,7 +79,7 @@ lendingSelfRoutes.post('/self/loans/:id/renew', library, running, h((req) => {
   return { due_on: loan.due_on, loans: S.myLoans(pid) };
 }));
 lendingSelfRoutes.post('/self/return', library, running, h((req) => {
-  if (returns.limited(ipOf(req))) throw tooMany();
+  if (returns.limited(ipOf(req))) throw tooMany(returns.retryAfter(ipOf(req)));
   return S.markReturned(z.object({ number: z.string().min(1).max(200) }).parse(req.body).number);
 }));
 

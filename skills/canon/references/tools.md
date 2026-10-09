@@ -91,3 +91,6 @@ Call to Worship → Invocation → Hymn of praise (stand) → Reading of the Law
 - "N of M operations failed — nothing was applied" → fix the per-op errors, resend the whole batch.
 - "No Bible is set up for language …" → an administrator adds one in Settings → Languages.
 - Unauthorised → the connection expired or was revoked (by an administrator, or by an administrator resetting the account's password or two-step sign-in); reconnect the connector.
+- Connecting refused → the person first sets up two-step sign-in (if the church requires it) or chooses their own password (if an administrator set it) in Canon, then connects again.
+- Nothing available at all → the account's role is one Canon doesn't know (no access); an administrator chooses a role for it.
+- 429 Too many requests → wait the seconds in `Retry-After` before trying again.

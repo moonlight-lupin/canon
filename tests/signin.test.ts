@@ -36,7 +36,7 @@ async function login(username: string, password = 'correct-horse-3'): Promise<Se
 }
 
 before(async () => {
-  for (const [u, role] of [['boss', 'admin'], ['boss2', 'admin'], ['ed', 'editor'], ['locky', 'viewer']] as const) createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-3', role });
+  for (const [u, role] of [['boss', 'admin'], ['boss2', 'admin'], ['ed', 'editor'], ['locky', 'viewer']] as const) await createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-3', role });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;
@@ -52,13 +52,13 @@ after(async () => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test('five wrong passwords lock the account for a while — even the right password; a new password unlocks it', async () => {
+test('five wrong passwords make the account wait a while — even the right password; a new password ends the wait', async () => {
   for (let i = 0; i < 5; i++) assert.equal((await post('/login', { username: 'locky', password: 'wrong-wrong' })).status, 401);
   const locked = await post('/login', { username: 'locky', password: 'correct-horse-3' });
   // the same answer as a wrong password: nobody learns from it which usernames exist (0.19.0 review)
   assert.equal(locked.status, 401);
   assert.equal(locked.body.error, (await post('/login', { username: 'nobody-by-this-name', password: 'x' })).body.error);
-  assert.match(locked.body.error, /waits 15 minutes/);
+  assert.match(locked.body.error, /waits a little/);
   const boss = await login('boss');
   const id = (await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').id;
   assert.ok((await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').locked);
@@ -72,8 +72,8 @@ test('two-step sign-in: set up with an authenticator, then a code (or a recovery
   assert.equal(setup.status, 200);
   assert.match(setup.body.uri, /^otpauth:\/\/totp\//);
   assert.match(setup.body.qr, /^data:image\/png;base64,/);
-  assert.equal((await call(ed, 'POST', '/me/two-step/enable', { code: '000000' })).status, 400);
-  const on = await call(ed, 'POST', '/me/two-step/enable', { code: T.totp(setup.body.secret) });
+  assert.equal((await call(ed, 'POST', '/me/two-step/enable', { code: '000000', password: 'correct-horse-3' })).status, 400);
+  const on = await call(ed, 'POST', '/me/two-step/enable', { code: T.totp(setup.body.secret), password: 'correct-horse-3' });
   assert.equal(on.status, 200);
   assert.equal(on.body.recovery_codes.length, 8);
   // the password alone no longer signs in
@@ -102,7 +102,7 @@ test('a church can require two-step sign-in for administrators; an administrator
   const boss = await login('boss');
   assert.equal((await call(boss, 'PUT', '/security', { require_admin_2fa: true })).status, 400, 'only once you use it yourself');
   const setup = (await call(boss, 'POST', '/me/two-step/setup', {})).body;
-  await call(boss, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) });
+  await call(boss, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret), password: 'correct-horse-3' });
   const step = await post('/login', { username: 'boss', password: 'correct-horse-3' });
   const r = await post('/login/code', { ticket: step.body.ticket, code: T.totp(setup.secret, Date.now() + 30_000) });
   const boss2fa = { cookie: r.cookie, csrf: r.body.csrf };
@@ -116,17 +116,17 @@ test('a church can require two-step sign-in for administrators; an administrator
   const edId = get<{ id: number }>("SELECT id FROM users WHERE username = 'ed'")!.id;
   const ed = await login('ed');
   const s2 = (await call(ed, 'POST', '/me/two-step/setup', {})).body;
-  await call(ed, 'POST', '/me/two-step/enable', { code: T.totp(s2.secret) });
+  await call(ed, 'POST', '/me/two-step/enable', { code: T.totp(s2.secret), password: 'correct-horse-3' });
   assert.equal((await call(boss2fa, 'PATCH', `/users/${edId}`, { reset_two_step: true })).status, 200);
   assert.ok((await post('/login', { username: 'ed', password: 'correct-horse-3' })).body.csrf, 'password alone again');
   await call(boss2fa, 'PUT', '/security', { require_admin_2fa: false });
 });
 
 test('guessing the two-step code locks the account like wrong passwords; setting it up again while it is on is refused; signing out needs the session (0.19.0 review)', async () => {
-  createUser({ username: 'guessy', display_name: 'Test guessy', password: 'correct-horse-3', role: 'editor' });
+  await createUser({ username: 'guessy', display_name: 'Test guessy', password: 'correct-horse-3', role: 'editor' });
   const g = await login('guessy');
   const setup = (await call(g, 'POST', '/me/two-step/setup', {})).body;
-  assert.equal((await call(g, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) })).status, 200);
+  assert.equal((await call(g, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret), password: 'correct-horse-3' })).status, 200);
   // set up again while on: refused (it would have switched it off without the password)
   assert.equal((await call(g, 'POST', '/me/two-step/setup', {})).status, 409);
   // the password is known, the phone is not: a new ticket for every guess still counts against the account

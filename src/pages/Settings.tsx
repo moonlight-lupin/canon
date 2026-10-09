@@ -112,18 +112,34 @@ export function TwoStepCard({ forced }: { forced?: boolean }) {
   const [pw, setPw] = useState('');
   const start = () => run(async () => setSetup(await api.post<{ secret: string; qr: string }>('/me/two-step/setup', {})));
   const enable = () => run(async () => {
-    const r = await api.post<{ recovery_codes: string[] }>('/me/two-step/enable', { code });
+    // the password too (0.19.9): a session left open on a shared computer isn't enough to change how you sign in
+    const r = await api.post<{ recovery_codes: string[] }>('/me/two-step/enable', { code, password: pw }).catch((e: Error) => {
+      throw new Error(t(e.message));
+    });
     setCodes(r.recovery_codes);
     setSetup(null);
     setCode('');
+    setPw('');
     // on the "set it up first" screen, Canon opens once the codes are saved (refreshing now would hide them)
     if (!forced) await refresh();
   }, t('Two-step sign-in is on.'));
   const disable = () => run(async () => {
-    await api.post('/me/two-step/disable', { password: pw });
+    await api.post('/me/two-step/disable', { password: pw }).catch((e: Error) => {
+      throw new Error(t(e.message));
+    });
     setPw('');
     await refresh();
   }, t('Two-step sign-in is off.'));
+  // new recovery codes replace all the old ones (when they run low, or the shorter kind made before 0.19.9)
+  const newCodes = () => run(async () => {
+    const r = await api.post<{ recovery_codes: string[] }>('/me/two-step/recovery-codes', { password: pw }).catch((e: Error) => {
+      throw new Error(t(e.message));
+    });
+    setCodes(r.recovery_codes);
+    setPw('');
+    await refresh();
+  }, t('New recovery codes made. The old ones no longer work.'));
+  const left = user.two_step?.recovery_left ?? 0;
   return (
     <div className="stack tight">
       <h3 className="sect" style={{ marginBottom: 0 }}>{t('Two-step sign-in')} <InfoTip text={t('After your password, Canon asks for a 6-digit code from an authenticator app on your phone (Google or Microsoft Authenticator, 1Password …), so a stolen password alone can’t sign in.')} /></h3>
@@ -135,19 +151,30 @@ export function TwoStepCard({ forced }: { forced?: boolean }) {
         </div>
       )}
       {codes && forced ? null : user.totp_enabled ? (
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="badge ok">{t('On')}</span>
-          <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t('Your password')} autoComplete="current-password" style={{ maxWidth: 200 }} />
-          <button className="btn sm" onClick={disable} disabled={busy || !pw}>{t('Turn off')}</button>
+        <div className="stack tight">
+          {!codes && user.two_step?.recovery_old && (
+            <div className="callout warn small">{t('Your recovery codes are of an older, shorter kind. Make new ones (with your password): they replace all the old ones.')}</div>
+          )}
+          {!codes && !user.two_step?.recovery_old && left <= 2 && (
+            <div className="callout warn small">{left === 0 ? t('You have no recovery codes left. Make new ones (with your password).') : t('{n} recovery codes left. Make new ones (with your password).').replace('{n}', String(left))}</div>
+          )}
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="badge ok">{t('On')}</span>
+            <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t('Your password')} autoComplete="current-password" style={{ maxWidth: 200 }} />
+            <button className="btn sm" onClick={newCodes} disabled={busy || !pw}>{t('New recovery codes')}</button>
+            <button className="btn sm" onClick={disable} disabled={busy || !pw}>{t('Turn off')}</button>
+          </div>
+          {!codes && left > 2 && !user.two_step?.recovery_old && <div className="small muted">{t('{n} recovery codes left.').replace('{n}', String(left))}</div>}
         </div>
       ) : setup ? (
         <div className="stack tight">
           <p className="small" style={{ margin: 0 }}>{t('Scan this with your authenticator app (or type the key), then enter the code it shows.')}</p>
           <img src={setup.qr} alt="" width={180} height={180} />
           <code className="small">{setup.secret}</code>
-          <div className="row" style={{ gap: 8 }}>
-            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" style={{ width: 120 }} />
-            <button className="btn primary sm" onClick={enable} disabled={busy || code.trim().length < 6}>{t('Turn on')}</button>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" style={{ width: 120 }} aria-label={t('Code from your authenticator app')} />
+            <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t('Your password')} autoComplete="current-password" style={{ maxWidth: 200 }} aria-label={t('Your password')} />
+            <button className="btn primary sm" onClick={enable} disabled={busy || code.trim().length < 6 || !pw}>{t('Turn on')}</button>
           </div>
         </div>
       ) : (

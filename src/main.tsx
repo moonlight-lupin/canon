@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard.tsx'));
 const SelfService = lazy(() => import('./pages/self/SelfService.tsx'));
 const ClaimsSelf = lazy(() => import('./pages/self/Claims.tsx'));
 const TwoStepRequired = lazy(() => import('./pages/TwoStepRequired.tsx'));
+const PasswordChangeRequired = lazy(() => import('./pages/PasswordChangeRequired.tsx'));
 const Services = lazy(() => import('./pages/Services.tsx'));
 const ServiceEditor = lazy(() => import('./pages/ServiceEditor.tsx'));
 const Members = lazy(() => import('./pages/Members.tsx'));
@@ -125,7 +126,7 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
   const canEdit = isAdmin || (page !== null && page !== 'admin' && can(page, 'edit'));
   if (!settings) return <Loading />;
   // First run: an administrator chooses the church's languages and imports Bibles.
-  if (!settings.onboarded && user.role_def?.admin) {
+  if (!settings.onboarded && user.role_def?.admin && !user.must_change_password) {
     return (
       <Suspense fallback={<Loading />}>
         <Onboarding settings={settings} onDone={reloadSettings} />
@@ -139,7 +140,7 @@ function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => vo
     <SessionCtx.Provider value={{ user, canEdit, isAdmin, can, logout, refresh, settings, reloadSettings }}>
      <ChurchLanguages langs={settings.languages}>
       <Suspense fallback={<Loading />}>
-        {mustSetUpTwoStep ? <TwoStepRequired everyone={!!sec.require_all_2fa} /> : (
+        {user.must_change_password ? <PasswordChangeRequired /> : mustSetUpTwoStep ? <TwoStepRequired everyone={!!sec.require_all_2fa} /> : (
         <Routes>
           {/* Full-screen outputs (no app chrome) */}
           <Route path="/services/:id/bulletin" element={<Bulletin />} />

@@ -284,6 +284,8 @@ const authorizations = makeLimiter(60, 15 * 60_000);
 const badTokenRequests = makeLimiter(30, 15 * 60_000);
 const badBearers = makeLimiter(30, 15 * 60_000);
 const TOO_MANY = 'Too many requests from this address. Please try again in a few minutes.';
+/** Say when to try again (every 429 carries Retry-After: 0.19.9 review). */
+const retryAfter = (res: Response, limiter: { retryAfter(key: string): number }, key: string) => res.setHeader('Retry-After', String(Math.max(1, limiter.retryAfter(key))));
 
 // ---- dynamic client registration (RFC 7591)
 
@@ -292,7 +294,10 @@ const regError = (res: Response, error: string, desc: string, status = 400) =>
 
 oauthRouter.post('/oauth/register', express.json({ limit: '16kb' }), (req, res) => {
   cleanup();
-  if (registrations.limited(addressKey(req.ip))) return regError(res, 'too_many_requests', 'Too many registrations from this address; try again later', 429);
+  if (registrations.limited(addressKey(req.ip))) {
+    retryAfter(res, registrations, addressKey(req.ip));
+    return regError(res, 'too_many_requests', 'Too many registrations from this address; try again later', 429);
+  }
   const b = (req.body && typeof req.body === 'object' ? req.body : {}) as Params;
   const uris = b.redirect_uris;
   if (!Array.isArray(uris) || uris.length < 1 || uris.length > 10) {
@@ -345,7 +350,10 @@ oauthRouter.post('/oauth/register', express.json({ limit: '16kb' }), (req, res) 
 // ---- authorization endpoint
 
 oauthRouter.use('/oauth/authorize', (req, res, next) => {
-  if (authorizations.limited(addressKey(req.ip))) return errorPage(res, 429, TOO_MANY);
+  if (authorizations.limited(addressKey(req.ip))) {
+    retryAfter(res, authorizations, addressKey(req.ip));
+    return errorPage(res, 429, TOO_MANY);
+  }
   next();
 });
 
@@ -360,6 +368,8 @@ oauthRouter.get('/oauth/authorize', (req, res) => {
     return res.redirect(302, `/login?next=${encodeURIComponent(req.originalUrl)}`);
   }
   if (twoStepRequired(user) && !user.totp_enabled) return errorPage(res, 403, 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.');
+  // a password an administrator chose is changed first (Canon asks at sign-in): no AI connection made with it
+  if (user.must_change_password) return errorPage(res, 403, 'Choose a new password in Canon first (an administrator set yours), then connect again.');
   consentPage(res, a, user);
 });
 
@@ -381,6 +391,8 @@ oauthRouter.post('/oauth/authorize', express.urlencoded({ extended: false, limit
   }
   if (!getSettings().mcp.enabled) return disabledPage(res);
   if (twoStepRequired(user) && !user.totp_enabled) return errorPage(res, 403, 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.');
+  // a password an administrator chose is changed first (Canon asks at sign-in): no AI connection made with it
+  if (user.must_change_password) return errorPage(res, 403, 'Choose a new password in Canon first (an administrator set yours), then connect again.');
   const iss = externalBase(req);
   if (p.decision !== 'allow') {
     return redirectWith(res, a.redirect_uri, { error: 'access_denied', error_description: 'The user denied access', state: a.state, iss }, 303);
@@ -511,7 +523,10 @@ oauthRouter.post('/oauth/token', ...tokenParsers, (req, res) => {
   res.setHeader('Pragma', 'no-cache');
   cleanup();
   const key = addressKey(req.ip);
-  if (badTokenRequests.over(key)) return res.status(429).json({ error: 'too_many_requests', error_description: TOO_MANY });
+  if (badTokenRequests.over(key)) {
+    retryAfter(res, badTokenRequests, key);
+    return res.status(429).json({ error: 'too_many_requests', error_description: TOO_MANY });
+  }
   const b = (req.body && typeof req.body === 'object' ? req.body : {}) as Params;
   try {
     const grantType = str(b.grant_type);
@@ -584,7 +599,10 @@ export function bearerAuth(req: Request, res: Response, next: NextFunction) {
   const h = req.get('authorization') ?? '';
   // no token at all is how a connector finds out where to sign in: only tokens Canon never issued count
   const key = addressKey(req.ip);
-  if (h && badBearers.over(key)) return res.status(429).json({ error: 'too_many_requests', error_description: TOO_MANY });
+  if (h && badBearers.over(key)) {
+    retryAfter(res, badBearers, key);
+    return res.status(429).json({ error: 'too_many_requests', error_description: TOO_MANY });
+  }
   const m = /^Bearer\s+([A-Za-z0-9._~+/=-]+)\s*$/i.exec(h);
   const row = m ? get<TokenRow>("SELECT * FROM oauth_tokens WHERE token_hash = ? AND token_type = 'access'", sha256(m[1])) : undefined;
   if (h && !row) badBearers.add(key);

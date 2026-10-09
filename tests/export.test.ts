@@ -55,8 +55,8 @@ function unzip(buf: Buffer): Map<string, Buffer> {
 }
 
 before(async () => {
-  createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-8', role: 'admin' });
-  createUser({ username: 'editor', display_name: 'Test editor', password: 'correct-horse-8', role: 'editor' });
+  await createUser({ username: 'admin', display_name: 'Test admin', password: 'correct-horse-8', role: 'admin' });
+  await createUser({ username: 'editor', display_name: 'Test editor', password: 'correct-horse-8', role: 'editor' });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { db, dbEncrypted, dbKey, migrate, reopenDb, schemaVersion } from '../db.ts';
 import { openDb, rekeyDb, type Db } from '../lib/sqlite.ts';
 import { loadKeys } from '../lib/keys.ts';
+import { resealTotpSecrets, sealTotpSecrets } from '../lib/secret-field.ts';
 import { SCRATCH_RE, isBackupV2, isEncryptedBackupData, isPackage, scratch, unwrapBackupFile, unwrapPackage, writePackage } from '../lib/backup-file.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
@@ -214,6 +215,8 @@ export async function restoreBackup(file: string, password?: string | null): Pro
         const d = openDb(f, { key: u.key });
         try {
           rekeyDb(d, dbKey());
+          // its two-step secrets were sealed with that backup's key: sealed again with this Canon's
+          if (f === u.database) resealTotpSecrets(d, u.key, loadKeys()?.backup ?? null);
         } finally {
           d.close();
         }
@@ -236,6 +239,7 @@ export async function restoreBackup(file: string, password?: string | null): Pro
       const d = openDb(incoming, { key });
       try {
         rekeyDb(d, dbKey());
+        if (key) resealTotpSecrets(d, key, loadKeys()?.backup ?? null);
       } finally {
         d.close();
       }
@@ -292,6 +296,8 @@ async function restoreInto(incoming: string, name: string, archives?: { name: st
   }
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   migrate();
+  // two-step secrets an older backup kept in plain are sealed with this Canon's keys
+  sealTotpSecrets(db);
   clearSettingsCache();
   updateSettings(keep);
   putDriveMeta(drive);

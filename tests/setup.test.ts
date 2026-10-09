@@ -14,6 +14,7 @@ process.env.CANON_DB = path.join(tmp, 'canon.db');
 const { createApp } = await import('../server/app.ts');
 const { seed } = await import('../server/seed/index.ts');
 const { get } = await import('../server/db.ts');
+const { setupCode } = await import('../server/lib/setup-code.ts');
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 let server: Server;
@@ -43,7 +44,8 @@ before(async () => {
 after(() => server.close());
 
 test('the first administrator goes through Getting started, even with a church name', async () => {
-  const r = await call('POST', '/setup', { username: 'pastor', display_name: 'Pastor Lim', password: 'correct-horse-9', church_name: { en: 'Grace Fellowship (test)' }, languages: ['en', 'zh'] });
+  // the setup code Canon printed when it started (0.19.9)
+  const r = await call('POST', '/setup', { setup_code: setupCode(), username: 'pastor', display_name: 'Pastor Lim', password: 'correct-horse-9', church_name: { en: 'Grace Fellowship (test)' }, languages: ['en', 'zh'] });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   csrf = r.body.csrf;
   assert.equal((await call('GET', '/settings')).body.onboarded, false);

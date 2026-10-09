@@ -48,7 +48,7 @@ const codeIn = (to: string) => outbox.filter((m) => m.to === to).at(-1)!.text.ma
 before(async () => {
   await seed();
   updateSettings({ languages: ['en', 'zh'], church_name: { en: 'Grace Fellowship (test)', zh: '恩典团契' }, modules: { ...getSettings().modules, lending: true } });
-  createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-6', role: 'admin' });
+  await createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-6', role: 'admin' });
   ids.ruth = reg.people.insert({ first_name: 'Ruth', last_name: 'Koh', status: 'member', email: 'ruth@example.org' } as never).id;
   reg.people.insert({ first_name: 'Twin', last_name: 'A', status: 'member', email: 'shared@example.org' } as never);
   reg.people.insert({ first_name: 'Twin', last_name: 'B', status: 'member', email: 'shared@example.org' } as never);
@@ -180,4 +180,9 @@ test('too many codes for one address are refused', async () => {
   setMeta('smtp_tested', mailer.smtpFingerprint());
   for (let i = 0; i < 3; i++) assert.equal((await self('POST', '/self/code', { email: 'ruth@example.org' })).status, 200);
   assert.equal((await self('POST', '/self/code', { email: 'ruth@example.org' })).status, 429);
+  // and says when to try again (0.19.9)
+  const r = await fetch(`${base}/api/self/code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'ruth@example.org' }) });
+  assert.equal(r.status, 429);
+  const wait = Number(r.headers.get('retry-after'));
+  assert.ok(wait > 0 && wait <= 15 * 60, `Retry-After ${r.headers.get('retry-after')}`);
 });

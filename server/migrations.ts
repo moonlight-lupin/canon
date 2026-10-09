@@ -1313,4 +1313,22 @@ export const MIGRATIONS: (string | Migration)[] = [
   {
     sql: `ALTER TABLE users ADD COLUMN totp_last_step INTEGER;`,
   },
+  // 40 (0.19.9): an account whose password an administrator chose changes it at its next sign-in; notices to an account
+  // about its own sign-in (two-step sign-in turned on, off or reset, a recovery code used), shown in Canon until read.
+  // (Two-step secrets still in plain are sealed with the keys at start-up: server/lib/secret-field.ts.)
+  {
+    sql: `
+    ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0;
+    CREATE TABLE account_notices (
+      id INTEGER PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      -- JSON: from which address, how many recovery codes are left, which administrator
+      detail TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      seen_at TEXT
+    );
+    CREATE INDEX account_notices_user ON account_notices(user_id, seen_at);
+    `,
+  },
 ];

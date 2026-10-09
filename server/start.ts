@@ -7,6 +7,9 @@ import { startBackupScheduler, sweepScratch } from './repo/backups.ts';
 import http from 'node:http';
 import { handleControl, stop, writeControlFile } from './lib/control.ts';
 import { noteUpdateResult, setUpdateServer, startUpdateChecks } from './lib/updates.ts';
+import { announceSetupCode } from './lib/setup-code.ts';
+import { sealTotpSecrets } from './lib/secret-field.ts';
+import { db } from './db.ts';
 
 // Ctrl+C in the window, closing it (SIGBREAK / SIGHUP on Windows), `docker stop` (SIGTERM): stop properly — also
 // while the first start is still setting up (node as Docker's first process ignores signals nobody listens for)
@@ -15,6 +18,9 @@ for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP'] as const) process.
 
 await seed();
 sweepScratch();
+// two-step secrets kept in plain (before 0.19.9, or before this Canon was encrypted): sealed with its keys
+const sealed = sealTotpSecrets(db);
+if (sealed) console.log(`Two-step sign-in: ${sealed} secret${sealed === 1 ? '' : 's'} now kept encrypted.`);
 startBackupScheduler();
 // an update the launcher has just prepared (or rolled back): noted for About Canon
 noteUpdateResult();
@@ -30,4 +36,6 @@ server.listen(config.port, config.host, () => {
   writeControlFile();
   console.log(`Canon running on http://localhost:${config.port}`);
   if (publicUrl()) console.log(`Public URL (OAuth / MCP): ${publicUrl()}/mcp`);
+  // a new Canon: the code to set it up, where only someone who can see Canon's window or log finds it
+  announceSetupCode();
 });

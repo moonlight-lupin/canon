@@ -36,7 +36,7 @@ On a Synology NAS: **Container Manager → Project → Create**, choose the fold
 
 To stay on one version, use `ghcr.io/moonlight-lupin/canon:0.18.0` (or `CANON_VERSION=0.18.0` with this repository's compose file) instead of `latest`.
 
-Open <http://localhost:3000> (or `http://<server-name>:3000` from the office network). The first screen creates the administrator account and asks for your worship languages. The Bible import runs from the onboarding page, so no command line is needed after this point.
+Open <http://localhost:3000> (or `http://<server-name>:3000` from the office network). The first screen creates the administrator account and asks for your worship languages. It also asks for the **setup code** that a new Canon prints when it starts: `docker compose logs canon` shows it (on a Synology or QNAP NAS, the container's log), and it is in `data/run/setup-code.txt` in the data volume until Canon is set up. Nobody who can't see the log can make themselves the administrator of a new Canon. The Bible import runs from the onboarding page, so no command line is needed after this point.
 
 | Task | Command |
 |---|---|

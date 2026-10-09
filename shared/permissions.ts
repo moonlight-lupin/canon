@@ -37,6 +37,8 @@ export interface RoleDef {
   sort: number;
   /** archived (0.15.2): kept, and kept by the accounts that have it, but not offered for accounts */
   archived?: boolean;
+  /** not a role Canon knows (0.19.9): an account with it has no access until an administrator gives it one */
+  unknown?: boolean;
 }
 
 const all = (a: Access): Record<PermModule, Access> => Object.fromEntries(PERM_MODULES.map((m) => [m, a])) as Record<PermModule, Access>;

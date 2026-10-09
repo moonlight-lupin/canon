@@ -54,8 +54,8 @@ function service(key: string, date: string, extra: Json = {}, songs: number[] = 
 }
 
 before(async () => {
-  createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
-  createUser({ username: 'viewer', display_name: 'Viewer Vic', password: 'correct-horse-2', role: 'viewer' });
+  await createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
+  await createUser({ username: 'viewer', display_name: 'Viewer Vic', password: 'correct-horse-2', role: 'viewer' });
   setMcp({});
 
   const hymnal = lib.hymnals.insert({ name: { en: 'Example Hymnal' }, abbr: 'EH', sort: 0 });

@@ -23,6 +23,17 @@ export function makeLimiter(max: number, windowMs: number, cap = 10_000) {
     },
     /** Is the key over the limit? (Counts nothing.) */
     over: (key: string) => recent(key, Date.now()).length >= max,
+    /**
+     * Seconds until the key is under the limit again (0 when it is): what a "too many" answer gives as Retry-After.
+     * The hits fall out of the window one by one; the one that brings the key under the limit decides.
+     */
+    retryAfter(key: string): number {
+      const now = Date.now();
+      const list = recent(key, now);
+      if (list.length < max) return 0;
+      const t = list[list.length - max].t;
+      return Math.max(1, Math.ceil((t + windowMs - now) / 1000));
+    },
     /** Count a hit (e.g. a failure), optionally labelled so that it can be forgiven later. */
     add(key: string, tag?: string) {
       const now = Date.now();

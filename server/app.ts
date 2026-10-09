@@ -22,6 +22,15 @@ export function createApp() {
   app.set('trust proxy', (addr: string) => trustProxy() && PROXY_NET.test(addr.replace(/^::ffff:/, '')));
 
   app.use((req, res, next) => {
+    // every "too many" says when to try again (0.19.9 review): each limit sets its own Retry-After; one that doesn't
+    // gets a minute
+    const writeHead = res.writeHead;
+    res.writeHead = function (this: typeof res, ...args: Parameters<typeof writeHead>) {
+      if (this.statusCode === 429 || args[0] === 429) {
+        if (!this.getHeader('Retry-After')) this.setHeader('Retry-After', '60');
+      }
+      return writeHead.apply(this, args);
+    } as typeof writeHead;
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
     // the API's answers carry members' data: never kept in a browser's cache on a shared office PC (a route that

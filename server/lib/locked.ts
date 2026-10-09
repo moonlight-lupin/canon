@@ -73,7 +73,7 @@ export function serveLocked(why: string): Promise<void> {
         const site = req.headers['sec-fetch-site'];
         const ownPage = q.get('t') === TOKEN && (!origin || /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) && (!site || site === 'same-origin' || site === 'none');
         if (!ownPage) return send(403, form('Open this page again on this computer and enter the key there.'));
-        if (++tries > 20) return send(429, form('Too many tries. Restart Canon to try again.'));
+        if (++tries > 20) return send(403, form('Too many tries. Restart Canon to try again.'));
         const key = q.get('key') ?? '';
         try {
           unlockWithRecovery(key);

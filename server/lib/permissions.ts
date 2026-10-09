@@ -1,7 +1,7 @@
 // Roles and permissions on the server (0.13): which role an account has, what it allows, and the gate every signed-in
 // request passes (auth.requireUser). The model and the path → module table are in shared/permissions.ts, so the web
 // app and AI agents follow the same rules.
-import { BUILTIN_ROLES, CSV_MODULE, PERM_MODULES, allows, routeAccess, type Access, type PermModule, type RoleDef } from '../../shared/permissions.ts';
+import { CSV_MODULE, PERM_MODULES, allows, routeAccess, type Access, type PermModule, type RoleDef } from '../../shared/permissions.ts';
 import { all, get } from '../db.ts';
 
 type Row = { key: string; name: string; description: string; builtin: number; admin: number; access: string; member_details: number; sensitive_fields: number; reopen_counts: number; sort: number; archived?: number };
@@ -27,11 +27,18 @@ export function listRoles(): RoleDef[] {
   return [...cache.values()];
 }
 
-const READ_ONLY = BUILTIN_ROLES.find((r) => r.key === 'viewer')!;
-/** A role by its key; an unknown key gets read-only access (fail safe). */
+/**
+ * A role by its key. A key Canon doesn't know (a role missing from the database, e.g. in an older copy of the data)
+ * gets no access at all (0.19.9): it used to get read-only access, which reads most of Canon. The account can still
+ * sign in, change its password and read why; an administrator gives it a role (Settings → User accounts).
+ */
 export function roleDef(key: string | null | undefined): RoleDef {
   listRoles();
-  return cache!.get(key ?? '') ?? { ...READ_ONLY, builtin: true };
+  return cache!.get(key ?? '') ?? {
+    key: key ?? '', name: { en: key || '?' }, description: {}, builtin: false, admin: false, unknown: true,
+    access: Object.fromEntries(PERM_MODULES.map((m) => [m, 'none'])) as Record<PermModule, Access>,
+    member_details: false, sensitive_fields: false, reopen_counts: false, sort: 999,
+  };
 }
 
 type WithRole = { role: string } | null | undefined;
@@ -67,6 +74,7 @@ export function gateRequest(u: { role: string }, method: string, path: string): 
   const need = routeAccess(method, path);
   const role = roleDef(u.role);
   if (role.admin || need.kind === 'signed_in') return null;
+  if (role.unknown) return `This account’s role (“${role.key}”) is not one Canon knows, so it has no access. Ask an administrator to choose a role for it in Settings → User accounts.`;
   if (need.kind === 'admin') return 'Administrators only';
   if (need.kind === 'csv') {
     const entity = /^\/csv\/([a-z_]+)/.exec(path)?.[1];

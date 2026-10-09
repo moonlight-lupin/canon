@@ -148,6 +148,10 @@
       "可连到这个 Canon 的公开 https 网址",
       "可連到這個 Canon 的公開 https 網址"
     ],
+    "A recovery code was used to sign in to your account.": [
+      "有人用恢复码登入了你的帐户。",
+      "有人用恢復碼登入了你的帳戶。"
+    ],
     "A ruled page for notes.": [
       "有横线的笔记页。",
       "有橫線的筆記頁。"
@@ -760,6 +764,10 @@
       "所有用户",
       "所有用戶"
     ],
+    "Already set up": [
+      "已经设置好了",
+      "已經設置好了"
+    ],
     "Also add back the ones you deleted": [
       "也加回删除过的项目",
       "也加回刪除過的項目"
@@ -811,6 +819,14 @@
     "An administrator adds them in Settings → Spaces.": [
       "管理员可在 设置 → 场地 加入。",
       "管理員可在 設置 → 場地 加入。"
+    ],
+    "An administrator reset two-step sign-in for your account.": [
+      "管理员重设了你帐户的两步登入。",
+      "管理員重設了你帳戶的兩步登入。"
+    ],
+    "An administrator set the password you signed in with. Choose one of your own to continue: only you should know it.": [
+      "你刚才登入用的密码是管理员设定的。请设定你自己的密码才能继续：只有你本人应该知道它。",
+      "你剛才登入用的密碼是管理員設定的。請設定你自己的密碼才能繼續：只有你本人應該知道它。"
     ],
     "An encrypted backup (.db.enc) is decrypted first: npm run decrypt-backup -- <file> (see docs/ADMINISTRATION.md).": [
       "加密的备份（.db.enc）要先解密：npm run decrypt-backup -- <文件>（见 docs/ADMINISTRATION.md）。",
@@ -1068,9 +1084,13 @@
       "至少 10 个字符。",
       "至少 10 個字符。"
     ],
-    "At least 8 characters. Ask them to change it after signing in.": [
-      "至少 8 个字符。请对方登入后自行更改。",
-      "至少 8 個字符。請對方登入後自行更改。"
+    "At least 8 characters.": [
+      "至少 8 个字符。",
+      "至少 8 個字符。"
+    ],
+    "At least 8 characters. They choose their own when they first sign in.": [
+      "至少 8 个字符。对方第一次登入时会设定自己的密码。",
+      "至少 8 個字符。對方第一次登入時會設定自己的密碼。"
     ],
     "At least {n} people count the cash together and sign the declaration.": [
       "至少 {n} 人一同点算现金并在声明上签名。",
@@ -1624,6 +1644,10 @@
       "Canon 可作为自定义连接器接入 Claude（claude.ai），让 AI 助手协助安排聚会和事奉表。由你决定 AI 能查看或修改教会的哪些资料。每个 AI 代理以批准它的用户身份运作：只读用户只会获得只读权限。",
       "Canon 可作為自定義連接器接入 Claude（claude.ai），讓 AI 助手協助安排聚會和事奉表。由你決定 AI 能查看或修改教會的哪些資料。每個 AI 代理以批准它的用戶身份運作：只讀用戶只會獲得只讀權限。"
     ],
+    "Canon doesn’t know this role: the account has no access until you choose one.": [
+      "Canon 不认得这个角色：在你为它选择角色之前，这个帐户没有任何权限。",
+      "Canon 不認得這個角色：在你為它選擇角色之前，這個帳戶沒有任何權限。"
+    ],
     "Canon drafts a journal with every line the other way round. This journal stays as it is until you post the draft; then the two cancel out. Deleting the draft changes nothing.": [
       "Canon 会起草一笔每一行借贷对调的分录。在你把草稿过账之前，这笔分录保持不变；过账后两笔互相抵销。删除草稿则什么都不会改变。",
       "Canon 會起草一筆每一行借貸對調的分錄。在你把草稿過賬之前，這筆分錄保持不變；過賬後兩筆互相抵銷。刪除草稿則什麼都不會改變。"
@@ -1940,6 +1964,10 @@
       "请选择月份。",
       "請選擇月份。"
     ],
+    "Choose a password of your own, not the one you were given.": [
+      "请设定你自己的密码，不要沿用别人给你的密码。",
+      "請設定你自己的密碼，不要沿用別人給你的密碼。"
+    ],
     "Choose a person.": [
       "请选择一位人员。",
       "請選擇一位人員。"
@@ -1995,6 +2023,10 @@
     "Choose the parts of Canon you use, add Canon’s library, and choose the languages your church worships in and their Bibles. You can change all of this later.": [
       "请选择教会使用的 Canon 功能，加入 Canon 自带资料库，并选择聚会所用的语言及其圣经。这些之后都可以更改。",
       "請選擇教會使用的 Canon 功能，加入 Canon 自帶資料庫，並選擇聚會所用的語言及其聖經。這些之後都可以更改。"
+    ],
+    "Choose your password": [
+      "设定你的密码",
+      "設定你的密碼"
     ],
     "Choose…": [
       "请选择…",
@@ -3296,6 +3328,10 @@
       "录入期初余额",
       "錄入期初餘額"
     ],
+    "Enter the setup code shown where Canon is running (its window or log; on Docker, docker compose logs canon). It is also in data/run/setup-code.txt.": [
+      "请输入运行 Canon 的地方显示的设置代码（它的窗口或日志；Docker：docker compose logs canon）。它也保存在 data/run/setup-code.txt 中。",
+      "請輸入運行 Canon 的地方顯示的設置代碼（它的窗口或日誌；Docker：docker compose logs canon）。它也保存在 data/run/setup-code.txt 中。"
+    ],
     "Enter the statement’s opening and closing balances (for the reconciliation)": [
       "录入对账单的期初和期末余额（用于对账）",
       "錄入對賬單的期初和期末餘額（用於對賬）"
@@ -3844,6 +3880,10 @@
       "Google 客户端已保存。",
       "Google 客戶端已保存。"
     ],
+    "Got it": [
+      "知道了",
+      "知道了"
+    ],
     "Grace and peace": [
       "恩惠平安",
       "恩惠平安"
@@ -4204,6 +4244,10 @@
       "如果这个地址在教会的会友名单中，6 位数验证码正在寄出，10 分钟内有效。",
       "如果這個地址在教會的會友名單中，6 位數驗證碼正在寄出，10 分鐘內有效。"
     ],
+    "If this wasn’t you, change your password (Settings → My profile) and tell your church’s administrator at once.": [
+      "如果这不是你本人，请立即更改密码（设置 → 我的资料），并告知教会的管理员。",
+      "如果這不是你本人，請立即更改密碼（設置 → 我的資料），並告知教會的管理員。"
+    ],
     "Ignore": [
       "忽略",
       "忽略"
@@ -4447,6 +4491,10 @@
     "Items": [
       "项目",
       "項目"
+    ],
+    "Its role (“{role}”) is not one Canon knows. Ask an administrator to choose a role for it in Settings → User accounts.": [
+      "它的角色（“{role}”）不是 Canon 认得的角色。请管理员在“设置 → 用户帐户”中为它选择一个角色。",
+      "它的角色（“{role}”）不是 Canon 認得的角色。請管理員在“設置 → 用戶帳戶”中為它選擇一個角色。"
     ],
     "I’m bringing it back": [
       "我要归还",
@@ -4839,10 +4887,6 @@
     "Locked": [
       "已锁定",
       "已鎖定"
-    ],
-    "Locked after too many wrong passwords; a new password unlocks it": [
-      "因多次输入错误密码而锁定；设定新密码即可解锁",
-      "因多次輸入錯誤密碼而鎖定；設定新密碼即可解鎖"
     ],
     "Logo removed.": [
       "标志已移除。",
@@ -5384,6 +5428,10 @@
       "新密码",
       "新密碼"
     ],
+    "New password due": [
+      "须设新密码",
+      "須設新密碼"
+    ],
     "New person": [
       "新人员",
       "新人員"
@@ -5395,6 +5443,18 @@
     "New project": [
       "新项目",
       "新項目"
+    ],
+    "New recovery codes": [
+      "新的恢复码",
+      "新的恢復碼"
+    ],
+    "New recovery codes made. The old ones no longer work.": [
+      "已产生新的恢复码。旧的恢复码不再有效。",
+      "已產生新的恢復碼。舊的恢復碼不再有效。"
+    ],
+    "New recovery codes were made for your account.": [
+      "你的帐户已产生新的恢复码。",
+      "你的帳戶已產生新的恢復碼。"
     ],
     "New role": [
       "新增角色",
@@ -6664,6 +6724,10 @@
       "密码已更改。你在其他设备上的登入都已结束。",
       "密碼已更改。你在其他設備上的登入都已結束。"
     ],
+    "Password is wrong": [
+      "密码不正确",
+      "密碼不正確"
+    ],
     "Past": [
       "过往",
       "過往"
@@ -7820,6 +7884,10 @@
       "保存 AI 权限",
       "保存 AI 權限"
     ],
+    "Save and open Canon": [
+      "保存并打开 Canon",
+      "保存並打開 Canon"
+    ],
     "Save and post": [
       "保存并过账",
       "保存並過賬"
@@ -8284,6 +8352,10 @@
       "设置 → 新朋友表格",
       "設置 → 新朋友表格"
     ],
+    "Setup code": [
+      "设置代码",
+      "設置代碼"
+    ],
     "Shalom": [
       "平安（Shalom）",
       "平安（Shalom）"
@@ -8427,6 +8499,10 @@
     "Shown together on one slide after this item.": [
       "在此项目之后，一起显示在一张投影片上。",
       "在此項目之後，一起顯示在一張投影片上。"
+    ],
+    "Shown where Canon is running: in its window, or its log (Docker: docker compose logs canon). It is also in the file data/run/setup-code.txt.": [
+      "显示在运行 Canon 的地方：它的窗口或日志（Docker：docker compose logs canon）。也保存在文件 data/run/setup-code.txt 中。",
+      "顯示在運行 Canon 的地方：它的窗口或日誌（Docker：docker compose logs canon）。也保存在文件 data/run/setup-code.txt 中。"
     ],
     "Shown with the church name. For a different message one week, add an item at the end of that service instead.": [
       "与教会名称一起显示。某一周若要不同的话，可在那堂聚会的最后加一个项目。",
@@ -8968,6 +9044,14 @@
       "谢谢！图书管理员会登记归还。",
       "謝謝！圖書管理員會登記歸還。"
     ],
+    "That code is not right, has expired or was just used: wait for the next code. Sign in again if it keeps failing.": [
+      "验证码不正确、已过期或刚刚用过：请等下一个验证码。若一直失败，请重新登入。",
+      "驗證碼不正確、已過期或剛剛用過：請等下一個驗證碼。若一直失敗，請重新登入。"
+    ],
+    "That code is not right. Check the time on your phone and try the newest code.": [
+      "验证码不正确。请检查手机的时间，并输入最新的验证码。",
+      "驗證碼不正確。請檢查手機的時間，並輸入最新的驗證碼。"
+    ],
     "That is fine for a New Testament or partial Bible; readings from missing books will show nothing for this version.": [
       "若是新约或部分圣经，这没有问题；缺少的书卷在此译本中不会显示经文。",
       "若是新約或部分聖經，這沒有問題；缺少的書卷在此譯本中不會顯示經文。"
@@ -9224,6 +9308,10 @@
       "密码至少需要 8 个字符。",
       "密碼至少需要 8 個字符。"
     ],
+    "The password you were given": [
+      "别人给你的密码",
+      "別人給你的密碼"
+    ],
     "The payment journal": [
       "付款分录",
       "付款分錄"
@@ -9379,6 +9467,10 @@
     "These ministries only": [
       "只限这些事工",
       "只限這些事工"
+    ],
+    "They choose their own password at their next sign-in.": [
+      "对方下次登入时会设定自己的密码。",
+      "對方下次登入時會設定自己的密碼。"
     ],
     "They go out automatically once a day.": [
       "提醒每天自动发送一次。",
@@ -9644,6 +9736,14 @@
       "合计为 {amount}。",
       "合計為 {amount}。"
     ],
+    "Too many attempts — try again in a few minutes.": [
+      "尝试次数太多——请几分钟后再试。",
+      "嘗試次數太多——請幾分鐘後再試。"
+    ],
+    "Too many tries — wait a few minutes, then enter the setup code again.": [
+      "尝试次数太多——请等几分钟，再输入设置代码。",
+      "嘗試次數太多——請等幾分鐘，再輸入設置代碼。"
+    ],
     "Tool": [
       "工具",
       "工具"
@@ -9771,6 +9871,14 @@
     "Two-step sign-in is on.": [
       "两步登入已开启。",
       "兩步登入已開啟。"
+    ],
+    "Two-step sign-in was turned off for your account.": [
+      "你的帐户已关闭两步登入。",
+      "你的帳戶已關閉兩步登入。"
+    ],
+    "Two-step sign-in was turned on for your account.": [
+      "你的帐户已开启两步登入。",
+      "你的帳戶已開啟兩步登入。"
     ],
     "Type": [
       "类型",
@@ -10140,6 +10248,10 @@
       "已等候",
       "已等候"
     ],
+    "Waiting after wrong passwords (a little longer each time, up to 15 minutes); a new password ends the wait": [
+      "因输入错误密码而须等待（每次稍长，最多 15 分钟）；设定新密码即可结束等待",
+      "因輸入錯誤密碼而須等待（每次稍長，最多 15 分鐘）；設定新密碼即可結束等待"
+    ],
     "Waiting for approval": [
       "待审批",
       "待審批"
@@ -10468,6 +10580,10 @@
       "希望有人联络",
       "希望有人聯絡"
     ],
+    "Wrong username or password. After several wrong tries an account waits a little (up to 15 minutes).": [
+      "用户名或密码不正确。多次输入错误后，帐户须稍等片刻（最多 15 分钟）。",
+      "用戶名或密碼不正確。多次輸入錯誤後，帳戶須稍等片刻（最多 15 分鐘）。"
+    ],
     "Year": [
       "年份",
       "年份"
@@ -10496,6 +10612,10 @@
       "你可以查看这个模板，但只有编辑者可以修改。",
       "你可以查看這個模板，但只有編輯者可以修改。"
     ],
+    "You have no recovery codes left. Make new ones (with your password).": [
+      "你已没有恢复码。请（用你的密码）产生新的恢复码。",
+      "你已沒有恢復碼。請（用你的密碼）產生新的恢復碼。"
+    ],
     "You have nothing on loan.": [
       "您目前没有借阅。",
       "您目前沒有借閱。"
@@ -10511,6 +10631,10 @@
     "You would need the file to upload it again.": [
       "如要再次使用，需要重新上传文件。",
       "如要再次使用，需要重新上傳文件。"
+    ],
+    "Your account has no access.": [
+      "你的帐户没有任何权限。",
+      "你的帳戶沒有任何權限。"
     ],
     "Your account is not linked to your member record.": [
       "您的帐户尚未连结到您的会友资料。",
@@ -10559,6 +10683,10 @@
     "Your recovery codes": [
       "你的恢复码",
       "你的恢復碼"
+    ],
+    "Your recovery codes are of an older, shorter kind. Make new ones (with your password): they replace all the old ones.": [
+      "你的恢复码是较旧、较短的一种。请（用你的密码）产生新的恢复码：它们会取代所有旧的恢复码。",
+      "你的恢復碼是較舊、較短的一種。請（用你的密碼）產生新的恢復碼：它們會取代所有舊的恢復碼。"
     ],
     "Your role can view the rota. Whoever plans the services changes it.": [
       "你的角色可以查看事奉表；由负责策划聚会的人更改。",
@@ -10619,6 +10747,10 @@
     "books": [
       "卷",
       "卷"
+    ],
+    "by {name}": [
+      "由 {name}",
+      "由 {name}"
     ],
     "chapters": [
       "章",
@@ -10811,6 +10943,10 @@
     "for an event over several days": [
       "适用于持续几天的活动",
       "適用於持續幾天的活動"
+    ],
+    "from the address {ip}": [
+      "来自地址 {ip}",
+      "來自地址 {ip}"
     ],
     "front": [
       "正面",
@@ -11364,6 +11500,14 @@
       "{n} 张收据",
       "{n} 張收據"
     ],
+    "{n} recovery codes left.": [
+      "还剩 {n} 个恢复码。",
+      "還剩 {n} 個恢復碼。"
+    ],
+    "{n} recovery codes left. Make new ones (with your password).": [
+      "还剩 {n} 个恢复码。请（用你的密码）产生新的恢复码。",
+      "還剩 {n} 個恢復碼。請（用你的密碼）產生新的恢復碼。"
+    ],
     "{n} reminder(s) sent.": [
       "已发送 {n} 封提醒。",
       "已發送 {n} 封提醒。"
@@ -11588,6 +11732,10 @@
     ]
   },
   "server": {
+    "A recovery code was used to sign in to your Canon account": [
+      "有人用恢复码登入了你的 Canon 帐户",
+      "有人用恢復碼登入了你的 Canon 帳戶"
+    ],
     "AI access is turned off": [
       "AI 访问已关闭",
       "AI 訪問已關閉"
@@ -11612,6 +11760,10 @@
       "管理员可在“设置 → AI / MCP”中调整以上权限（即时生效），并可随时撤销此授权。",
       "管理員可在“設置 → AI / MCP”中調整以上權限（即時生效），並可隨時撤銷此授權。"
     ],
+    "An administrator reset two-step sign-in for your Canon account": [
+      "管理员重设了你 Canon 帐户的两步登入",
+      "管理員重設了你 Canon 帳戶的兩步登入"
+    ],
     "Asset register": [
       "资产登记",
       "資產登記"
@@ -11624,6 +11776,10 @@
       "账目（只限草稿）",
       "賬目（只限草稿）"
     ],
+    "By: {by}": [
+      "操作者：{by}",
+      "操作者：{by}"
+    ],
     "Canon test e-mail": [
       "Canon 测试邮件",
       "Canon 測試郵件"
@@ -11635,6 +11791,10 @@
     "Chart of accounts": [
       "会计科目表",
       "會計科目表"
+    ],
+    "Choose a new password in Canon first (an administrator set yours), then connect again.": [
+      "请先在 Canon 中设定新密码（您现在的密码是管理员设定的），然后再连接。",
+      "請先在 Canon 中設定新密碼（您現在的密碼是管理員設定的），然後再連接。"
     ],
     "Co-workers register": [
       "同工名册",
@@ -11672,6 +11832,10 @@
       "导出时间：{at}，导出者：{who}",
       "導出時間：{at}，導出者：{who}"
     ],
+    "From the address: {ip}": [
+      "来自地址：{ip}",
+      "來自地址：{ip}"
+    ],
     "Funds": [
       "款项",
       "款項"
@@ -11684,6 +11848,10 @@
       "小组与委员会",
       "小組與委員會"
     ],
+    "Hello {name},": [
+      "{name}，您好：",
+      "{name}，您好："
+    ],
     "Hidden": [
       "隐藏",
       "隱藏"
@@ -11695,6 +11863,14 @@
     "I would like someone from the church to contact me": [
       "我希望教会有人与我联络",
       "我希望教會有人與我聯絡"
+    ],
+    "If it was you, there is nothing more to do.": [
+      "如果是您本人，就不需要再做什么。",
+      "如果是您本人，就不需要再做什麼。"
+    ],
+    "If this wasn’t you, change your password in Canon (Settings → My profile) and tell your church’s administrator at once.": [
+      "如果这不是您本人，请立即在 Canon 中更改密码（设置 → 我的资料），并告知教会的管理员。",
+      "如果這不是您本人，請立即在 Canon 中更改密碼（設置 → 我的資料），並告知教會的管理員。"
     ],
     "If you are no longer able to serve, please let us know as soon as possible.": [
       "如果您无法服事，请尽早通知我们。",
@@ -11759,6 +11935,10 @@
     "Names & follow-up": [
       "姓名与跟进",
       "姓名與跟進"
+    ],
+    "New recovery codes were made for your Canon account": [
+      "你的 Canon 帐户已产生新的恢复码",
+      "你的 Canon 帳戶已產生新的恢復碼"
     ],
     "New visitors": [
       "新朋友",
@@ -11908,6 +12088,14 @@
       "从这个地址发出的请求太多，请几分钟后再试。",
       "從這個地址發出的請求太多，請幾分鐘後再試。"
     ],
+    "Two-step sign-in was turned off for your Canon account": [
+      "你的 Canon 帐户已关闭两步登入",
+      "你的 Canon 帳戶已關閉兩步登入"
+    ],
+    "Two-step sign-in was turned on for your Canon account": [
+      "你的 Canon 帐户已开启两步登入",
+      "你的 Canon 帳戶已開啟兩步登入"
+    ],
     "Unknown application (client_id).": [
       "未知的应用（client_id）。",
       "未知的應用（client_id）。"
@@ -11923,6 +12111,10 @@
     "What you borrowed from the church library is now overdue. Please bring it back as soon as you can:": [
       "您向教会图书馆借阅的物品已经逾期，请尽快归还：",
       "您向教會圖書館借閱的物品已經逾期，請儘快歸還："
+    ],
+    "When: {when}": [
+      "时间：{when}",
+      "時間：{when}"
     ],
     "Which describes you best? (optional)": [
       "哪一项最适合形容您？（可不填）",
@@ -12027,10 +12219,14 @@
     "{claimant} has submitted expense claim {number} for {amount}. Open it to look at the receipts and approve it, send it back or reject it:": [
       "{claimant} 提交了报销申请 {number}，金额 {amount}。请打开查看收据，然后批准、退回或拒绝：",
       "{claimant} 提交了報銷申請 {number}，金額 {amount}。請打開查看收據，然後批准、退回或拒絕："
+    ],
+    "{n} recovery codes are left. Make new ones in Settings → My profile when they run low.": [
+      "还剩 {n} 个恢复码。快用完时，请在“设置 → 我的资料”中产生新的恢复码。",
+      "還剩 {n} 個恢復碼。快用完時，請在“設置 → 我的資料”中產生新的恢復碼。"
     ]
   },
   "guide": [
-    "7c3d97be544cbcb3",
-    "c88140b1a35c315a"
+    "9646ca996a8e6f9e",
+    "6d64e2488f13d5e8"
   ]
 }

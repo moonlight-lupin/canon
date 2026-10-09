@@ -6,7 +6,7 @@ import { useI18n } from '../i18n.tsx';
 import type { Lang } from '../../shared/types.ts';
 import { Icon, ReedMark, type IconName } from './icons.tsx';
 import { ChurchMark, Tagline } from './brand.tsx';
-import { UI_LANGS, langInfo } from '../../shared/languages.ts';
+import { UI_LANGS, dateLocale, langInfo } from '../../shared/languages.ts';
 import { Seg, useSession } from './ui.tsx';
 import type { Settings } from '../types-client.ts';
 import { allows, pageModule } from '../../shared/permissions.ts';
@@ -177,6 +177,8 @@ export function Layout() {
           <EncryptionBanner />
           <TestCopyBanner />
           <MemberLinkReminder />
+          <UnknownRoleNotice />
+          <AccountNotices />
           <Outlet />
         </main>
       </div>
@@ -215,6 +217,59 @@ function MemberLinkReminder() {
       </span>
       <Link className="btn sm primary" to="/settings?tab=users">{t('Link my account')}</Link>
       <button className="btn sm ghost" onClick={hide}>{t('Remind me later')}</button>
+    </div>
+  );
+}
+
+/**
+ * Notices about this account's own sign-in (0.19.9): a recovery code used, two-step sign-in reset by an administrator.
+ * They stay above every page until read; if it wasn't them, the notice says what to do.
+ */
+function AccountNotices() {
+  const { t, lang } = useI18n();
+  const { user, refresh } = useSession();
+  const notices = user.notices ?? [];
+  if (!notices.length) return null;
+  const what = (k: string) => ({
+    recovery_code_used: t('A recovery code was used to sign in to your account.'),
+    two_step_reset: t('An administrator reset two-step sign-in for your account.'),
+    two_step_on: t('Two-step sign-in was turned on for your account.'),
+    two_step_off: t('Two-step sign-in was turned off for your account.'),
+    recovery_codes_new: t('New recovery codes were made for your account.'),
+  } as Record<string, string>)[k] ?? k;
+  const seen = async () => {
+    await api.post('/me/notices/seen', { ids: notices.map((n) => n.id) }).catch(() => {});
+    await refresh();
+  };
+  return (
+    <div className="callout warn no-print" role="status" style={{ marginBottom: 12 }}>
+      {notices.map((n) => (
+        <div key={n.id} className="small">
+          <strong>{what(n.kind)}</strong>{' '}
+          {new Date(n.created_at).toLocaleString(dateLocale(lang), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          {n.detail.ip ? ` · ${t('from the address {ip}').replace('{ip}', n.detail.ip)}` : ''}
+          {n.detail.by ? ` · ${t('by {name}').replace('{name}', n.detail.by)}` : ''}
+          {n.kind === 'recovery_code_used' && n.detail.left !== undefined ? ` · ${t('{n} recovery codes left.').replace('{n}', String(n.detail.left))}` : ''}
+        </div>
+      ))}
+      <div className="row" style={{ marginTop: 6, gap: 8, alignItems: 'center' }}>
+        <span className="grow small">{t('If this wasn’t you, change your password (Settings → My profile) and tell your church’s administrator at once.')}</span>
+        <Link className="btn sm" to="/settings?tab=profile">{t('My profile')}</Link>
+        <button className="btn sm primary" onClick={() => void seen()}>{t('Got it')}</button>
+      </div>
+    </div>
+  );
+}
+
+/** A role Canon doesn't know gives no access (0.19.9): said plainly, so the person knows whom to ask. */
+function UnknownRoleNotice() {
+  const { t } = useI18n();
+  const { user } = useSession();
+  if (!user.role_def?.unknown) return null;
+  return (
+    <div className="callout warn no-print" role="status" style={{ marginBottom: 12 }}>
+      <strong>{t('Your account has no access.')}</strong>{' '}
+      {t('Its role (“{role}”) is not one Canon knows. Ask an administrator to choose a role for it in Settings → User accounts.').replace('{role}', user.role)}
     </div>
   );
 }

@@ -66,7 +66,7 @@ function unzipEntry(zip: Buffer, name: string): string {
 before(async () => {
   await seed();
   await installLibrary(['songs', 'texts', 'templates']);
-  createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-1', role: 'admin' });
+  await createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-1', role: 'admin' });
   updateSettings({ church_name: { en: 'Grace Church', zh: '恩典堂' } });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)

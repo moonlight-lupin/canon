@@ -49,7 +49,7 @@ const user = (username: string, role = 'editor') => createUser({ username, displ
 before(async () => {
   updateSettings({ trust_proxy: true } as never);
   updateSettings({ mcp: { ...getSettings().mcp, enabled: true } });
-  user('boss', 'admin');
+  await user('boss', 'admin');
   server = createApp().listen(0, '127.0.0.1');
   server.keepAliveTimeout = 120_000;
   await new Promise((r) => server.once('listening', r));
@@ -66,8 +66,8 @@ after(async () => {
 
 test('password spraying: signing in to one’s own account between guesses doesn’t forgive guesses at other accounts', async () => {
   const ip = '203.0.113.10';
-  user('sprayer');
-  for (let i = 0; i < 9; i++) user(`target${i}`);
+  await user('sprayer');
+  for (let i = 0; i < 9; i++) await user(`target${i}`);
   // one wrong guess at each of eight accounts (none of them locks), signing in to one's own account in between
   for (let i = 0; i < 8; i++) {
     if (i) await login('sprayer', 'correct-horse-3', ip);
@@ -81,7 +81,7 @@ test('password spraying: signing in to one’s own account between guesses doesn
 
 test('someone who mistypes their own password and then gets it right is forgiven those tries', async () => {
   const ip = '203.0.113.20';
-  user('typo');
+  await user('typo');
   for (let round = 0; round < 3; round++) {
     for (let i = 0; i < 4; i++) assert.equal((await post('/login', { username: 'TYPO', password: 'correct-horse-4' }, ip)).status, 401);
     await login('typo', 'correct-horse-3', ip);
@@ -90,10 +90,10 @@ test('someone who mistypes their own password and then gets it right is forgiven
 
 test('the two-step code step counts towards the address too, and the right code forgives only that account', async () => {
   const ip = '203.0.113.30';
-  user('coder');
+  await user('coder');
   const s = await login('coder', 'correct-horse-3', ip);
   const setup = (await call(s, 'POST', '/me/two-step/setup', {})).body;
-  assert.equal((await call(s, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) })).status, 200);
+  assert.equal((await call(s, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret), password: 'correct-horse-3' })).status, 200);
   for (let i = 0; i < 7; i++) assert.equal((await post('/login', { username: `nobody${i}`, password: 'x' }, ip)).status, 401);
   const t = await post('/login', { username: 'coder', password: 'correct-horse-3' }, ip);
   assert.equal((await post('/login/code', { ticket: t.body.ticket, code: 'abc' }, ip)).status, 401, 'eighth wrong try');
@@ -147,11 +147,11 @@ test('an IPv6 visitor is counted by their /64 network (a home or church gets a w
 });
 
 test('a two-step code works once: the same code can’t sign in again, the next one can', async () => {
-  user('tina');
+  await user('tina');
   const s = await login('tina', 'correct-horse-3', '203.0.113.50');
   const setup = (await call(s, 'POST', '/me/two-step/setup', {})).body;
   const now = Date.now();
-  assert.equal((await call(s, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret, now) })).status, 200);
+  assert.equal((await call(s, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret, now), password: 'correct-horse-3' })).status, 200);
   const ticket = async () => (await post('/login', { username: 'tina', password: 'correct-horse-3' }, '203.0.113.51')).body.ticket as string;
   // the code just used to turn it on can't sign in
   assert.equal((await post('/login/code', { ticket: await ticket(), code: T.totp(setup.secret, now) }, '203.0.113.51')).status, 401, 'used to turn it on');
@@ -164,14 +164,14 @@ test('a two-step code works once: the same code can’t sign in again, the next 
   assert.ok(get<{ totp_last_step: number }>("SELECT totp_last_step FROM users WHERE username = 'tina'")!.totp_last_step > 0);
 });
 
-test('an unknown username costs one password check, like a known one', () => {
-  user('known');
-  const scrypt = mock.method(crypto, 'scryptSync');
+test('an unknown username costs one password check, like a known one', async () => {
+  await user('known');
+  const scrypt = mock.method(crypto, 'scrypt');
   try {
-    authenticate('no-such-person', 'whatever-1');
+    await authenticate('no-such-person', 'whatever-1');
     assert.equal(scrypt.mock.callCount(), 1, 'unknown username');
     scrypt.mock.resetCalls();
-    authenticate('known', 'whatever-1');
+    await authenticate('known', 'whatever-1');
     assert.equal(scrypt.mock.callCount(), 1, 'known username');
   } finally {
     scrypt.mock.restore();
@@ -179,7 +179,7 @@ test('an unknown username costs one password check, like a known one', () => {
 });
 
 test('changing one’s password ends one’s other sessions; this one stays', async () => {
-  user('pat');
+  await user('pat');
   const here = await login('pat', 'correct-horse-3', '203.0.113.60');
   const phone = await login('pat', 'correct-horse-3', '203.0.113.61');
   assert.equal((await call(here, 'PATCH', '/me', { current_password: 'correct-horse-3', new_password: 'correct-horse-9' })).status, 200);
@@ -192,11 +192,11 @@ test('changing one’s password ends one’s other sessions; this one stays', as
 });
 
 test('turning one’s own two-step sign-in on or off ends one’s other sessions', async () => {
-  user('quin');
+  await user('quin');
   const here = await login('quin', 'correct-horse-3', '203.0.113.62');
   const other = await login('quin', 'correct-horse-3', '203.0.113.63');
   const setup = (await call(here, 'POST', '/me/two-step/setup', {})).body;
-  assert.equal((await call(here, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) })).status, 200);
+  assert.equal((await call(here, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret), password: 'correct-horse-3' })).status, 200);
   assert.equal(await signedIn(here), true);
   assert.equal(await signedIn(other), false, 'on');
   const t = await post('/login', { username: 'quin', password: 'correct-horse-3' }, '203.0.113.63');
@@ -211,13 +211,13 @@ test('turning one’s own two-step sign-in on or off ends one’s other sessions
 test('an administrator resetting someone’s password or two-step sign-in ends that person’s sessions (not their own)', async () => {
   const boss = await login('boss', 'correct-horse-3', '203.0.113.70');
   const bossElsewhere = await login('boss', 'correct-horse-3', '203.0.113.71');
-  user('rae');
+  await user('rae');
   const raeId = get<{ id: number }>("SELECT id FROM users WHERE username = 'rae'")!.id;
   const bossId = get<{ id: number }>("SELECT id FROM users WHERE username = 'boss'")!.id;
   // two-step reset (a lost phone — or a stolen one)
   let rae = await login('rae', 'correct-horse-3', '203.0.113.72');
   const setup = (await call(rae, 'POST', '/me/two-step/setup', {})).body;
-  assert.equal((await call(rae, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) })).status, 200);
+  assert.equal((await call(rae, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret), password: 'correct-horse-3' })).status, 200);
   assert.equal((await call(boss, 'PATCH', `/users/${raeId}`, { reset_two_step: true })).status, 200);
   assert.equal(await signedIn(rae), false, 'two-step reset');
   // password reset
@@ -242,8 +242,8 @@ test('expired sessions are cleared away', async () => {
 test('an administrator resetting someone’s password or two-step sign-in also disconnects that person’s AI assistants', async () => {
   const { sha256 } = await import('../server/auth.ts');
   const boss = await login('boss', 'correct-horse-6', '203.0.113.80');
-  user('sam');
-  user('uma');
+  await user('sam');
+  await user('uma');
   const idOf = (u: string) => get<{ id: number }>('SELECT id FROM users WHERE username = ?', u)!.id;
   // a connection (as claude.ai would have after the person approved it): an access token and its refresh token
   const connect = (uid: number) => {

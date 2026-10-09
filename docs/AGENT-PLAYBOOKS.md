@@ -233,3 +233,6 @@ The MCP server offers these as prompts; each is offered only when your access al
 - **"No Bible is set up for language …"**: the church has no Bible for that language; an administrator adds one under Settings → Languages.
 - **A catechism is not in the library**: an administrator imports the Westminster Standards in the Library.
 - **Unauthorised / connection lost**: the token expired or was revoked — under Settings → AI / MCP → Connected agents, or because an administrator reset the account's password or two-step sign-in; reconnect the connector.
+- **Connecting is refused**: the account must first set up two-step sign-in (the church requires it), or choose its own password (an administrator set it, for a new account or a reset). The person does that in Canon, then connects again.
+- **Nothing is available at all**: the account's role is one Canon doesn't know (e.g. after data was copied in from elsewhere), which gives no access; an administrator chooses a role for it in Settings → User accounts.
+- **Too many requests (429)**: too many failed tokens or codes from this address; the answer's `Retry-After` header says how many seconds to wait. Don't retry sooner.

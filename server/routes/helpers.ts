@@ -20,6 +20,8 @@ export const h = (fn: Handler) => async (req: Request, res: Response, next: Next
     next(e);
   }
 };
+/** A "too many" error (429) that says how many seconds to wait: the answer carries it as Retry-After (0.19.9 review). */
+export const tooMany = (message: string, retryAfter: number) => Object.assign(new Error(message), { status: 429, retry_after: Math.max(1, Math.ceil(retryAfter)) });
 /** A route's numeric id parameter (400 if it is not a positive whole number). */
 export const id = (req: Request, name = 'id') => {
   const n = Number(req.params[name]);

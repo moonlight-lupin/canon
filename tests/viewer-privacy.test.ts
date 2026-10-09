@@ -41,7 +41,7 @@ const get = async (who: Session, url: string) => {
 };
 
 before(async () => {
-  for (const role of ['editor', 'viewer'] as const) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-3', role });
+  for (const role of ['editor', 'viewer'] as const) await createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-3', role });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;
@@ -119,7 +119,7 @@ test('roles that see the money but not members’ details (an auditor, a treasur
   asActor({ user_id: null, user_name: 'Test', via: 'web' }, () => R.saveRecord(sid, {
     attendance: 40, visitors: [{ name: 'Vera Visitor', contact: '9123 4567', prayer: 'private prayer request', about: 'Exploring', notes: 'follow-up note', source: 'A friend' }],
   }, { name: 'Test', admin: true, money: true }));
-  for (const role of ['guest', 'treasurer']) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-3', role });
+  for (const role of ['guest', 'treasurer']) await createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-3', role });
   for (const role of ['guest', 'treasurer']) {
     const who = await login(role);
     const rec = await get(who, `/services/${sid}/record`);
@@ -148,7 +148,7 @@ test('0.19.7: the Secretary records visitors (members’ details, no money); a t
     const r = await fetch(`${base}/api/services/${sid}/record`, { method: 'PUT', headers: { Cookie: who.cookie, 'X-CSRF-Token': who.csrf, 'Content-Type': 'application/json', 'X-Base-Version': String(cur.revision ?? 0) }, body: JSON.stringify(body) });
     return { status: r.status, text: await r.text() };
   };
-  createUser({ username: 'secretary', display_name: 'Test secretary', password: 'correct-horse-3', role: 'secretary' });
+  await createUser({ username: 'secretary', display_name: 'Test secretary', password: 'correct-horse-3', role: 'secretary' });
   const sec = await login('secretary');
   const seen = JSON.parse((await get(sec, `/services/${sid}/record`)).text) as Json;
   assert.equal(seen.visitors[0].contact, '9234 5678', 'the Secretary sees what visitors told the church');
@@ -159,7 +159,7 @@ test('0.19.7: the Secretary records visitors (members’ details, no money); a t
   assert.equal(R.recordFor(sid).visitors.length, 2, 'the Secretary added a visitor');
   assert.equal(R.recordFor(sid).offerings[0].amount, 12345, 'the offerings untouched');
   // a treasurer sees the money, not the visitors' details: its save can't replace the visitors with its shortened list
-  createUser({ username: 'treasurer2', display_name: 'Test treasurer', password: 'correct-horse-3', role: 'treasurer' });
+  await createUser({ username: 'treasurer2', display_name: 'Test treasurer', password: 'correct-horse-3', role: 'treasurer' });
   const tr = await login('treasurer2');
   const trSeen = JSON.parse((await get(tr, `/services/${sid}/record`)).text) as Json;
   assert.deepEqual(trSeen.hidden, ['visitor contact']);

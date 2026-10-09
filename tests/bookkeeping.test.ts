@@ -50,7 +50,7 @@ before(async () => {
   await seed();
   updateSettings({ offering: { ...getSettings().offering, currency: 'SGD', funds: ['General', 'Missions'] } });
   for (const [u, role] of [['admin', 'admin'], ['treasurer', 'treasurer'], ['viewer', 'viewer'], ['editor', 'editor']]) {
-    createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-7', role });
+    await createUser({ username: u, display_name: `Test ${u}`, password: 'correct-horse-7', role });
   }
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)

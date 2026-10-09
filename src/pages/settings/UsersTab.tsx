@@ -13,7 +13,7 @@ import { Combo, type ComboOption } from '../../components/Combo.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import '../people.css';
 
-export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null; totp_enabled?: number | boolean; locked?: number | boolean; first_admin?: boolean; needs_member?: boolean };
+export type UserRow = { id: number; username: string; display_name: string; role: Role; lang: Lang; created_at: string; person_id?: number | null; person_name?: string | null; congregation_id?: number | null; totp_enabled?: number | boolean; locked?: number | boolean; first_admin?: boolean; needs_member?: boolean; must_change_password?: number | boolean; unknown_role?: boolean };
 
 /** The external guest role (an auditor, say): read-only, and the only accounts not linked to a member. */
 export const GUEST_ROLE = 'guest';
@@ -66,7 +66,8 @@ export function UsersTab() {
                   <td className="nowrap">
                     {u.display_name}{u.id === me.id && <span className="badge lapis" style={{ marginLeft: 6 }}>{t('You')}</span>}
                     {!!u.totp_enabled && <span className="badge ok" style={{ marginLeft: 6 }} title={t('Two-step sign-in')}>2FA</span>}
-                    {!!u.locked && <span className="badge warn" style={{ marginLeft: 6 }} title={t('Locked after too many wrong passwords; a new password unlocks it')}>{t('Locked')}</span>}
+                    {!!u.locked && <span className="badge warn" style={{ marginLeft: 6 }} title={t('Waiting after wrong passwords (a little longer each time, up to 15 minutes); a new password ends the wait')}>{t('Locked')}</span>}
+                    {!!u.must_change_password && <span className="badge" style={{ marginLeft: 6 }} title={t('They choose their own password at their next sign-in.')}>{t('New password due')}</span>}
                   </td>
                   <td className="nowrap"><span className="code">{u.username}</span></td>
                   <td>
@@ -74,6 +75,7 @@ export function UsersTab() {
                       {(roles.data?.roles ?? []).filter((r) => !r.archived || r.key === u.role).map((r) => <option key={r.key} value={r.key}>{lt(r.name)}</option>)}
                       {!roles.data?.roles.some((r) => r.key === u.role) && <option value={u.role}>{u.role}</option>}
                     </select>
+                    {u.unknown_role && <div className="small" style={{ color: 'var(--warn)', marginTop: 3 }}>{t('Canon doesn’t know this role: the account has no access until you choose one.')}</div>}
                   </td>
                   {congs.length > 0 && (
                     <td>
@@ -148,7 +150,7 @@ export function AddUserModal({ roles, people, onClose, onSaved }: { roles: RoleD
           )}
         <Field label={t('Display name')}><input autoFocus value={d.display_name} onChange={(e) => setD({ ...d, display_name: e.target.value })} /></Field>
         <Field label={t('Username')}><input autoComplete="off" value={d.username} onChange={(e) => setD({ ...d, username: e.target.value })} /></Field>
-        <Field label={t('Password')} hint={t('At least 8 characters. Ask them to change it after signing in.')}>
+        <Field label={t('Password')} hint={t('At least 8 characters. They choose their own when they first sign in.')}>
           <input type="password" autoComplete="new-password" value={d.password} onChange={(e) => setD({ ...d, password: e.target.value })} />
         </Field>
       </div>
@@ -158,6 +160,7 @@ export function AddUserModal({ roles, people, onClose, onSaved }: { roles: RoleD
 
 export function ResetPasswordModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const { t } = useI18n();
+  const { user: me } = useSession();
   const { run, busy } = useAction();
   const [pw, setPw] = useState('');
   const save = async () => {
@@ -170,7 +173,7 @@ export function ResetPasswordModal({ user, onClose }: { user: UserRow; onClose: 
   return (
     <Modal title={`${t('Reset password')} · ${user.display_name}`} onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></>}>
-      <Field label={t('New password')} hint={t('They will be signed out everywhere, and their AI assistants disconnected.')}>
+      <Field label={t('New password')} hint={user.id === me.id ? undefined : `${t('They will be signed out everywhere, and their AI assistants disconnected.')} ${t('They choose their own password at their next sign-in.')}`}>
         <input type="password" autoFocus autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
       </Field>
     </Modal>

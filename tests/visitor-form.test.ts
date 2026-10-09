@@ -51,7 +51,7 @@ async function fill(fields: Record<string, string>, opts: { wait?: boolean; forw
 }
 
 before(async () => {
-  for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-5', role });
+  for (const role of ['admin', 'editor', 'viewer'] as const) await createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-5', role });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;
@@ -178,12 +178,15 @@ test('per-address limit: generous (church Wi-Fi shares one address), then refuse
   const pages = await Promise.all(Array.from({ length: PER_ADDRESS + 1 }, () => fetch(`${base}/v/${token}`).then((r) => r.text())));
   await new Promise((r) => setTimeout(r, 2100));
   const statuses: number[] = [];
+  let retryAfter: string | null = null;
   for (const html of pages) {
     const t = /name="t" value="([^"]+)"/.exec(html)?.[1] ?? '';
     const r = await fetch(`${base}/v/${token}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ t, name: 'Repeat Sender' }).toString() });
     statuses.push(r.status);
+    if (r.status === 429) retryAfter = r.headers.get('retry-after');
   }
   assert.deepEqual(statuses, [...Array(PER_ADDRESS).fill(200), 429]);
+  assert.ok(Number(retryAfter) > 0 && Number(retryAfter) <= 600, `Retry-After ${retryAfter}`);
   assert.ok(PER_ADDRESS >= 30, 'room for a congregation on shared Wi-Fi');
 });
 

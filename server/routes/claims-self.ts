@@ -13,7 +13,7 @@ import { all, get } from '../db.ts';
 import { addressKey, makeLimiter } from '../lib/rate-limit.ts';
 import { publicUrl } from '../lib/public-url.ts';
 import { asActor } from '../lib/actor.ts';
-import { h, id } from './helpers.ts';
+import { h, id, tooMany as tooManyError } from './helpers.ts';
 
 export const claimsSelfRoutes = express.Router();
 
@@ -51,7 +51,7 @@ const codesPerAddress = makeLimiter(20, 15 * 60_000);
 const codesPerEmail = makeLimiter(3, 15 * 60_000);
 const tries = makeLimiter(30, 15 * 60_000);
 export const resetClaimsLimits = () => [codesPerAddress, codesPerEmail, tries].forEach((l) => l.reset());
-const tooMany = () => Object.assign(new Error('Too many tries. Wait a few minutes and try again.'), { status: 429 });
+const tooMany = (seconds: number) => tooManyError('Too many tries. Wait a few minutes and try again.', seconds);
 
 claimsSelfRoutes.get('/self/claims/status', h(async () => {
   const s = getSettings();
@@ -64,12 +64,14 @@ claimsSelfRoutes.get('/self/claims/status', h(async () => {
 claimsSelfRoutes.post('/self/claims/code', h(async (req) => {
   if (!(await claimsSignInStatus()).on) throw Object.assign(new Error('Signing in on a phone is not available: ask the treasurer.'), { status: 503 });
   const { email } = z.object({ email: z.string().email().max(200) }).parse(req.body);
-  if (codesPerAddress.limited(addressKey(req.ip)) || codesPerEmail.limited(email.trim().toLowerCase())) throw tooMany();
+  if (codesPerAddress.limited(addressKey(req.ip)) || codesPerEmail.limited(email.trim().toLowerCase())) {
+    throw tooMany(Math.max(codesPerAddress.retryAfter(addressKey(req.ip)), codesPerEmail.retryAfter(email.trim().toLowerCase())));
+  }
   await requestCode(email, 'claims');
   return { ok: true };
 }));
 claimsSelfRoutes.post('/self/claims/verify', h((req) => {
-  if (tries.limited(addressKey(req.ip))) throw tooMany();
+  if (tries.limited(addressKey(req.ip))) throw tooMany(tries.retryAfter(addressKey(req.ip)));
   const b = z.object({ email: z.string().email().max(200), code: z.string().max(20) }).parse(req.body);
   return verifyCode(b.email, b.code, 'claims');
 }));

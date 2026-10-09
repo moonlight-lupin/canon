@@ -46,9 +46,9 @@ const jsonFactory: import('../server/lib/mailer.ts').TransportFactory = (opts) =
 };
 
 before(async () => {
-  createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-1', role: 'admin' });
-  createUser({ username: 'editor', display_name: 'Ed', password: 'correct-horse-2', role: 'editor' });
-  createUser({ username: 'viewer', display_name: 'Vic', password: 'correct-horse-3', role: 'viewer' });
+  await createUser({ username: 'admin', display_name: 'Admin', password: 'correct-horse-1', role: 'admin' });
+  await createUser({ username: 'editor', display_name: 'Ed', password: 'correct-horse-2', role: 'editor' });
+  await createUser({ username: 'viewer', display_name: 'Vic', password: 'correct-horse-3', role: 'viewer' });
   updateSettings({ languages: ['en', 'zh'], church_name: { en: 'Grace Church', zh: '恩典堂' }, church_contact: '03-1234 5678' });
 
   const team = vol.teams.insert({ name: { en: 'Music', zh: '音乐' }, color: '#123456', sort: 0 } as never);

@@ -38,7 +38,7 @@ async function call(who: Session, method: string, url: string, body?: unknown) {
 }
 
 before(async () => {
-  for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-7', role });
+  for (const role of ['admin', 'editor', 'viewer'] as const) await createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-7', role });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;
@@ -156,8 +156,8 @@ test('a meeting\'s record: the offering when one is taken, none when not; report
 
 test('a read-only account linked to a leader records the meetings they lead — and nothing else', async () => {
   const { createUser: mk } = await import('../server/auth.ts');
-  const leaderUser = mk({ username: 'lead', display_name: 'Test lead', password: 'correct-horse-7', role: 'viewer' });
-  mk({ username: 'plain', display_name: 'Test plain', password: 'correct-horse-7', role: 'viewer' });
+  const leaderUser = await mk({ username: 'lead', display_name: 'Test lead', password: 'correct-horse-7', role: 'viewer' });
+  await mk({ username: 'plain', display_name: 'Test plain', password: 'correct-horse-7', role: 'viewer' });
   // only administrators link accounts to members
   assert.equal((await call(as.editor, 'PATCH', `/users/${leaderUser.id}`, { person_id: ids.leader })).status, 403);
   assert.equal((await call(as.admin, 'PATCH', `/users/${leaderUser.id}`, { person_id: ids.leader })).status, 200);

@@ -21,15 +21,15 @@ const h = (fn: (req: express.Request) => unknown) => async (req: express.Request
 
 encryptionRoutes.get('/security/encryption', requireAdmin, h(() => encryptionStatus()));
 /** The administrator's password again, for what hands out a recovery key (a browser left signed in is not enough). */
-function passwordAgain(req: express.Request) {
+async function passwordAgain(req: express.Request) {
   const { password } = z.object({ password: z.string().max(500) }).parse(req.body ?? {});
   const u = sessionUser(req)!;
   const row = get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', u.id);
-  if (!row || !verifyPassword(password, row.password_hash)) throw Object.assign(new Error('That password is not right.'), { status: 403 });
+  if (!row || !(await verifyPassword(password, row.password_hash))) throw Object.assign(new Error('That password is not right.'), { status: 403 });
 }
 
-encryptionRoutes.post('/security/encryption/encrypt', requireAdmin, h((req) => {
-  passwordAgain(req);
+encryptionRoutes.post('/security/encryption/encrypt', requireAdmin, h(async (req) => {
+  await passwordAgain(req);
   return encryptNow();
 }));
 /** Plain copies left after Encrypt now (a drive unplugged, a file in use), encrypted now. */
@@ -38,7 +38,7 @@ encryptionRoutes.post('/security/encryption/copies', requireAdmin, h(() => {
   logChange({ entity: 'settings', entity_id: null, action: 'update', summary: `Plain copies encrypted or removed: ${r.converted.length}${r.failed.length ? `; ${r.failed.length} could not be` : ''}` });
   return r;
 }));
-encryptionRoutes.post('/security/recovery-key', requireAdmin, h((req) => {
-  if (recoveryInfo()) passwordAgain(req);
+encryptionRoutes.post('/security/recovery-key', requireAdmin, h(async (req) => {
+  if (recoveryInfo()) await passwordAgain(req);
   return newRecoveryKey();
 }));

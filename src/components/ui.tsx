@@ -26,6 +26,18 @@ export interface SessionUser {
   totp_enabled?: boolean | number;
   /** the administrator who set Canon up (the one account that may stay unlinked to a member, with a reminder) */
   first_admin?: boolean;
+  /** an administrator chose the password: the person chooses their own before anything else (0.19.9) */
+  must_change_password?: boolean | number;
+  /** recovery codes left, and whether some are the shorter kind made before 0.19.9 */
+  two_step?: { recovery_left: number; recovery_old: boolean };
+  /** unread notices about the account's own sign-in (a recovery code used, two-step sign-in reset …) */
+  notices?: AccountNotice[];
+}
+export interface AccountNotice {
+  id: number;
+  kind: 'two_step_on' | 'two_step_off' | 'two_step_reset' | 'recovery_codes_new' | 'recovery_code_used';
+  detail: { ip?: string | null; left?: number; by?: string | null };
+  created_at: string;
 }
 interface Session {
   user: SessionUser;

@@ -25,6 +25,8 @@ export default function Login({ needsSetup, onDone }: { needsSetup: boolean; onD
   // two-step sign-in: after the password, the code from the authenticator app (or a recovery code)
   const [ticket, setTicket] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  // a new Canon: the setup code it printed where it runs (0.19.9)
+  const [setupCode, setSetupCode] = useState('');
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function Login({ needsSetup, onDone }: { needsSetup: boolean; onD
       type Reply = { csrf: string; second_step?: boolean; ticket?: string };
       const r: Reply = needsSetup
         ? await api.post<Reply>('/setup', {
-            username, password, display_name: displayName || username, languages: langs, ui_lang: lang,
+            setup_code: setupCode, username, password, display_name: displayName || username, languages: langs, ui_lang: lang,
             church_name: Object.values(church).some((v) => v?.trim()) ? church : undefined,
           })
         : ticket
@@ -54,7 +56,7 @@ export default function Login({ needsSetup, onDone }: { needsSetup: boolean; onD
       if (location.pathname === '/login') history.replaceState(null, '', '/');
       onDone();
     } catch (err) {
-      setError((err as Error).message);
+      setError(t((err as Error).message));
     } finally {
       setBusy(false);
     }
@@ -76,6 +78,9 @@ export default function Login({ needsSetup, onDone }: { needsSetup: boolean; onD
               <h2>{t('Welcome to Canon')}</h2>
               <p className="muted">{t('Set up the first administrator account.')}</p>
             </div>
+            <Field label={t('Setup code')} hint={t('Shown where Canon is running: in its window, or its log (Docker: docker compose logs canon). It is also in the file data/run/setup-code.txt.')}>
+              <input value={setupCode} onChange={(e) => setSetupCode(e.target.value)} autoComplete="off" spellCheck={false} placeholder="XXXX-XXXX-XXXX" required />
+            </Field>
             <Field label={t('Worship languages')} hint={t('Primary language first. You can change this later.')}>
               <LanguagePicker value={langs} onChange={setLangs} />
             </Field>

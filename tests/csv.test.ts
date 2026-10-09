@@ -50,7 +50,7 @@ async function importCsv(entity: string, body: string | Uint8Array, q = 'dry_run
 }
 
 before(async () => {
-  for (const role of ['admin', 'editor', 'viewer'] as const) createUser({ username: role, display_name: role, password: 'correct-horse-1', role });
+  for (const role of ['admin', 'editor', 'viewer'] as const) await createUser({ username: role, display_name: role, password: 'correct-horse-1', role });
   updateSettings({ languages: ['en', 'zh'] });
   await seed();
   await installLibrary(['songs', 'texts', 'templates']);

@@ -43,7 +43,7 @@ async function call(who: Session, method: string, url: string, body?: unknown) {
 }
 
 before(async () => {
-  for (const role of ROLES) createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-5', role });
+  for (const role of ROLES) await createUser({ username: role, display_name: `Test ${role}`, password: 'correct-horse-5', role });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;
@@ -136,7 +136,7 @@ test('a church adds, changes and removes its own roles (administrators)', async 
   const key = made.body.key;
   assert.equal(key, 'worship-leader');
   assert.equal(made.body.access.members, 'none', 'anything not given: no access');
-  createUser({ username: 'wl', display_name: 'Test wl', password: 'correct-horse-5', role: key });
+  await createUser({ username: 'wl', display_name: 'Test wl', password: 'correct-horse-5', role: key });
   const wl = await login('wl');
   assert.equal((await call(wl, 'PATCH', `/services/${ids.service}`, { notes: 'wl' })).status, 200);
   assert.equal((await call(wl, 'GET', '/people')).status, 403, 'no access to members');
@@ -170,7 +170,7 @@ test('an account limited to one congregation sees it and the whole church — no
   const pEn = reg.people.insert({ first_name: 'Ellery', last_name: 'Holt', congregation_id: en }).id;
   const pZh = reg.people.insert({ first_name: 'Zhou', last_name: 'Wen', congregation_id: zh }).id;
   const gZh = (await call(as.admin, 'POST', '/groups', { name: { en: 'Test ZH Cell' }, kind: 'cell_group', congregation_id: zh })).body.id;
-  createUser({ username: 'walled', display_name: 'Test walled', password: 'correct-horse-5', role: 'editor' });
+  await createUser({ username: 'walled', display_name: 'Test walled', password: 'correct-horse-5', role: 'editor' });
   const walledId = (await call(as.admin, 'GET', '/users')).body.find((u: Json) => u.username === 'walled').id;
   assert.equal((await call(as.admin, 'PATCH', `/users/${walledId}`, { congregation_id: en })).status, 200);
   const w = await login('walled');
@@ -201,7 +201,7 @@ test('an account limited to one congregation sees it and the whole church — no
 
 test('approvals from counters\' own accounts are told apart from signatures on one device', async () => {
   assert.equal((await call(as.admin, 'PUT', '/offering-settings', { currency: 'SGD', funds: ['General'], signing: 'screen', min_counters: 2, own_accounts: true })).status, 200);
-  createUser({ username: 'counter2', display_name: 'Test counter two', password: 'correct-horse-5', role: 'treasurer' });
+  await createUser({ username: 'counter2', display_name: 'Test counter two', password: 'correct-horse-5', role: 'treasurer' });
   const c2 = await login('counter2');
   const sid = svc.createService({ date: '2036-04-05' }).service.id;
   const MONEY = { offerings: [{ fund: 'General', method: 'cash', amount: 5000 }], cash: { '5000': 1 } };

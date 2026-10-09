@@ -38,8 +38,8 @@ function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof
 }
 
 before(async () => {
-  createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
-  createUser({ username: 'viewer', display_name: 'Viewer Vic', password: 'correct-horse-2', role: 'viewer' });
+  await createUser({ username: 'admin', display_name: 'Pastor Admin', password: 'correct-horse-1', role: 'admin' });
+  await createUser({ username: 'viewer', display_name: 'Viewer Vic', password: 'correct-horse-2', role: 'viewer' });
   setMcp({ enabled: true, modules: { ...ALL_ON }, expose_member_pii: false });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)

@@ -73,6 +73,10 @@ Only a Canon started by the launcher can update itself (else nothing would start
 - **Starting with the Mac:** add `start-canon.command` to System Settings → General → Login Items.
 - Node.js from nodejs.org or from Homebrew both work.
 
+## The first administrator
+
+A new Canon (no accounts yet) prints a one-time **setup code** when it starts: in its window (`start-canon.bat`, `start-canon.command`), in its log (`data/logs/`; Docker: `docker compose logs canon`), and in `data/run/setup-code.txt`, which only the account Canon runs as can read. The first screen asks for it, so only someone who can see where Canon runs can make the first administrator — not whoever reaches a new Canon first over the network. The code stays the same across restarts until Canon is set up; then the file is removed. Ten wrong codes from one address within 15 minutes, and that address waits.
+
 ## Encryption
 
 From 0.19.0 Canon encrypts the church's data on the computer it runs on (SQLCipher format, AES-256):
@@ -90,6 +94,7 @@ From 0.19.0 Canon encrypts the church's data on the computer it runs on (SQLCiph
 - **`keys.json` is readable by Canon's account only** (on Windows Canon sets its permissions so; elsewhere mode 600).
 - **Keep `keys.json` with `canon.db`.** Copying or moving the data folder, take both. Without `keys.json` the database can't be opened, even with the recovery key — restore the newest backup instead (the backups carry what they need).
 - **A database from before 0.19.0** stays plain until an administrator presses **Encrypt now…** (a red banner on every page) and enters their password again. Canon makes a backup, encrypts the database in place, shows the recovery key, then encrypts the plain copies it holds (backups in the backup folder and its `archives/`, `data/pre-upgrade/`, `data/archives/`) and removes the plain originals. Other database files in those folders are listed and left alone. Copies it couldn't do then (a drive unplugged, a file in use) stay listed under Settings → Security & privacy → Encryption, with **Encrypt them now**. A test copy (`CANON_TEST_COPY=1`) never converts its backup folder, which may be the real Canon's. Scratch files a crash leaves behind are removed when Canon starts.
+- **Two-step sign-in secrets** (0.19.9) are kept sealed in the database with a key made from the backup key, so a decrypted copy of the database alone can't make anyone's codes. A backup restored on another computer has them sealed again with that Canon's key (in Settings → Backups, and by `npm run restore-backup`). A Canon that isn't encrypted keeps them in plain until **Encrypt now**.
 - **Disk encryption** (BitLocker, FileVault) is still worth having: deleted plain files can stay on the disk until overwritten, and it protects everything else on the computer.
 
 ## Backups

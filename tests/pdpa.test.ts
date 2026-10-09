@@ -37,9 +37,9 @@ async function login(username: string): Promise<Session> {
 }
 
 before(async () => {
-  createUser({ username: 'boss', display_name: 'Test Boss', password: 'correct-horse-3', role: 'admin' });
-  createUser({ username: 'ed', display_name: 'Test Editor', password: 'correct-horse-3', role: 'editor' });
-  createUser({ username: 'quill', display_name: 'Quill', password: 'correct-horse-3', role: 'viewer' });
+  await createUser({ username: 'boss', display_name: 'Test Boss', password: 'correct-horse-3', role: 'admin' });
+  await createUser({ username: 'ed', display_name: 'Test Editor', password: 'correct-horse-3', role: 'editor' });
+  await createUser({ username: 'quill', display_name: 'Quill', password: 'correct-horse-3', role: 'viewer' });
   server = createApp().listen(0, '127.0.0.1');
   // a full parallel test run is slow: idle connections stay open for the next request (no reset mid-test)
   server.keepAliveTimeout = 120_000;
