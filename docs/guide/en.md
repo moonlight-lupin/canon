@@ -63,7 +63,7 @@ Choose a role:
 - **Librarian** and **Asset keeper**: the [Lending library](#lending-library) or the [Asset register](#asset-register) only (when the church has switched it on).
 - **External guest (read-only)**: for someone outside the church, such as an auditor. It reads services, the library, service records and offerings, changes nothing and never sees members' contact details or notes. It is not linked to a member. You can let it read more (Roles → **Edit**), but never change anything.
 
-**Settings → Roles & permissions** (administrators) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. Each role's **⋯** menu has **Edit** (adjust a ready-made role to fit your church; the Administrator always keeps everything), **Duplicate** (a new role starting from a copy of this one, e.g. "Secretary (no finance)"), **Archive** (a role no account has: it is kept but no longer offered when you add an account or change its role; archived roles wait under **Archived roles**, where **Restore** brings one back) and, for your own roles that no account has, **Delete**. **New role** adds one from scratch, e.g. a worship leader who edits services and the library. Canon's ready-made roles can be archived but not deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role. A role that doesn't see sensitive fields can't change them either: they aren't on its member form, so saving a member leaves them as they are.
+**Settings → Roles & permissions** (administrators) shows what each role may do in each part of Canon: **No access**, **Read** or **Edit**, and whether it sees members' contact details and notes, fields marked sensitive, and may reopen verified cash counts. Rest the pointer on a role's **?** to read what it is for. **Edit** beside its name adjusts it (a ready-made role too, to fit your church; the Administrator always keeps everything). Its **⋯** menu has **Duplicate** (a new role starting from a copy of this one, e.g. "Secretary (no finance)"), **Archive** (a role no account has: it is kept but no longer offered when you add an account or change its role; archived roles wait under **Archived roles**, where **Restore** brings one back) and, for your own roles that no account has, **Delete**. **New role** adds one from scratch, e.g. a worship leader who edits services and the library. Canon's ready-made roles can be archived but not deleted. Pages a role can't read are left out of the sidebar, and AI assistants acting for a person follow the same role. A role that doesn't see sensitive fields can't change them either: they aren't on its member form, so saving a member leaves them as they are.
 
 **Signing in safely**:
 - Five wrong passwords — or wrong two-step codes — in a row lock an account for 15 minutes (the list shows **Locked**); **Reset password** unlocks it. The sign-in page says the same for a wrong password and a locked account, so nobody can use it to find out which usernames exist.
@@ -102,6 +102,17 @@ The sidebar groups the pages: **Planner** (services, meetings, the library and t
 The [Dashboard](/) is the home page: the next service and its status, open roster roles and clashes for the coming weeks (rest the pointer on a ⚠ or "open roles" badge, or tap it on a phone, to read which), upcoming birthdays, and quick links to the bulletin and slides. Its greeting follows the time of day and the church year (Advent, Christmas, Easter …), with its own on Sundays and the great feasts, and now and then a surprise — Shalom, Soli Deo gloria, Hallelujah (never in Lent). At the bottom, the library: the number of hymns and of liturgical texts, and the Bible versions installed for each language; each card opens that part of the Library.
 
 The [Calendar](/calendar) shows services, meetings and the church's other events together: **Month**, **Week** or **List** (the next eight weeks; phones show a list), for a congregation (with the whole church's items) and a group. Click a service or meeting to open it. **New event** (editors) adds anything else on the church's calendar — a camp, a wedding, a working bee — with its dates (**Until** for several days), times, **Space** (one of the church's spaces, with a warning when it is already booked) or place, congregation and group; click an event to change or delete it. Items show their space.
+
+**A week at a glance:**
+
+```flow
+[Planner] Plan the service: **＋ New service** from a template — hymns, readings, the sermon
+[Planner] Roster and reminders: who serves, and an e-mail to them before Sunday
+Print the bulletin | Project the slides | Share the run sheet with the team
+[Sunday] The service is held
+[Office] The service record: attendance, new visitors, the offering counted
+[Counters] The cash count is signed and verified — its journal is drafted in the books
+```
 
 ### 1. Plan Sunday's service
 
@@ -373,6 +384,14 @@ Visitors can tell you they came by filling in a short form on their phone: **nam
 2. On a service, the **Visitor form** tab switches the form on for that service. Choose where its QR code appears: **Print the QR code on the bulletin's back page**, **Show the QR code on a slide after the Announcements**, or **Print cards** (eight to an A4 page for the welcome desk or the pews) — any or all.
 3. Entries do not go straight into the records: they wait under **Visitor cards to review** (on the service's Visitor form tab and on its service record; the records list shows how many wait). **Accept** adds the visitor to the service's **New visitors** (marked "via visitor form", with any prayer request); **Discard** deletes spam or duplicates.
 
+```flow
+[Administrator] Switches the form on (Settings → Visitor form)
+[Editor] Switches it on for a service: the QR code on the bulletin, on a slide, or on cards
+[Visitor] Scans the code and fills in the form on their phone
+It waits under **Visitor cards to review**
+**Accept**: added to the service's New visitors | **Discard**: deleted
+```
+
 The form is a public page: anyone with the service's link or QR code can open it without signing in, so phones need to reach Canon — set the **Public address** in Settings → AI / MCP. Without one, the link uses this computer's address on the church network, so it works only there (if the computer has no network address, the tab warns you that phones can't open it). The page shows only the church name and the service's title and date, has no scripts, and refuses entries that come too fast, too often from one place, or outside the open days. Contact details, prayer requests and how visitors describe themselves are personal data (PDPA): read-only users never see them, and AI assistants only when **Visitors** is set to **With contact details** in Settings → AI / MCP; the New visitors report shows only how many chose each answer (**Who they are**, for editors and administrators). One place — for example the church's Wi-Fi, where all phones share one internet address — can send up to 40 entries in 10 minutes.
 
 ## Reports {#reports}
@@ -457,6 +476,15 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
   - For an offering journal, the History also shows the cash count's changes (amounts, counts, verifying and reopening) and any earlier drafts for that service that were withdrawn.
 
 **Offerings into the books**
+
+```flow
+[Counters] Count the offering on the service record and sign — on paper or on screen
+[Canon] The verified count drafts its journal: cash and cheques to Offerings not yet banked, PayNow and transfers to the bank
+[Treasurer] **Post the offering drafts**
+[Treasurer] Banks the cash, then imports the bank statement
+[Treasurer] Matches the deposit (and each other line) to the books, and reconciles with the statement's closing balance
+```
+
 - When a cash count is **verified** (Service records), Canon drafts its journal. Each payment method goes to its account: cash and cheques to **Offerings not yet banked**, PayNow and transfers to the bank. Each fund's offerings go to its income account.
 - Reopening the count withdraws the draft. A corrected count drafts only the difference from what was already posted.
 - PayNow or transfer lines added to a record after its count is verified are drafted too (just the new amount).
@@ -520,9 +548,19 @@ The books work on a **cash basis**: money is recorded when it comes in or goes o
 
 Anyone can claim back what they spent for the church, with **several receipts in one claim**: on their phone, or from **My claims** in the sidebar (under **Finance**).
 
+```flow
+[Claimant] Lists what they spent, a photo of each receipt, where to repay them — and signs | [Office] Or enters a paper claim, with the receipts and the signed form
+[Approver] Checks each receipt against its line
+**Approves** (signs; two approvers above the set amount) | **Sends it back**: the claimant changes it and signs again | **Rejects**, with a reason
+[Canon] Drafts the expense: Dr expense / Cr Claims to repay
+[Treasurer] Repays the claimant (e.g. PayNow), then **Pay…**: Canon drafts Dr Claims to repay / Cr bank
+[Treasurer] Posts both in Journals; the bank line is matched on the statement
+```
+
+
 **Making a claim**
 1. **New claim**: what it is for and, if it belongs to one, the ministry.
-2. One line for each receipt: what it was for, the date on the receipt, the amount and the shop. **Add a photo of the receipt** opens the phone's camera; PDFs work too. **Another receipt** adds a line.
+2. One line for each receipt: what it was for, the date on the receipt, the amount and the shop. **Add a photo of the receipt** opens the phone's camera; PDFs work too. **Another receipt** adds a line. A line can have several photos (a long receipt in parts, or a receipt with its invoice). The office can also attach a document that belongs to no line, such as the signed paper form.
 3. **Where to repay you**, e.g. a PayNow number or a bank account. Only the claimant and the treasurer see it. When the office typed it in rather than the claimant (a paper claim, or a change made for them), approvers are told so on the claim — not the details — and should check with the claimant, or on the form they signed, that the money goes to them.
 4. Canon lists what is still missing. When nothing is, **sign** in the box with one finger (a second finger doesn't draw) and **Sign and submit**. The signature carries your name from your member record. The claim gets its number (e.g. C2026-0001), and the approvers who may decide it get an e-mail.
 
@@ -546,7 +584,7 @@ A claim being prepared can be changed or deleted. A submitted claim can be withd
 - **Nobody approves or pays their own claim.** When the person who pays a claim also approved it, Canon allows it but marks the claim **Approver paid**.
 
 **The office (Book-keeping → Claims)**
-- **Waiting for approval or payment** lists every claim (an account limited to one congregation: its congregation's and the whole church's). Click one to see its receipts, signature and approvals. Where to repay shows **typed in by the office** when the office entered it.
+- **Waiting for approval or payment** lists every claim (an account limited to one congregation: its congregation's and the whole church's). Click one to see its receipts, signature and approvals. The receipts open one at a time in a viewer inside the claim — each labelled with its line (**Line 1 · Snacks**), or **Not on a line** for a document such as the signed paper form — with **‹ ›** or the thumbnails to move between them, **Actual size** to read small print (scroll within the frame) and **Open in a new tab**. A PDF opens in a new tab. Where to repay shows **typed in by the office** when the office entered it.
 - **How each line is booked**: the expense account, fund, ministry and project for each line. A line left alone goes to the default expense account (account 5990 unless you choose another). Changing this doesn't change what the claimant signed.
 - **Enter a paper claim** types in a claim handed in on paper for a member. Attach the receipts and the signed form, then **Signed on paper: submit**.
 - **Into the books:**
@@ -631,6 +669,26 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - **Updating from inside Canon** (administrators; Windows PC or Mac): **About Canon** (bottom of the sidebar) has an **Updates** card. Canon asks GitHub once a day whether there is a newer version (**Check once a day**; **Check now** asks at once; nothing about the church is sent), and the sidebar shows **Canon … is available** when there is. **Update now…** makes a backup, gets the new version and restarts Canon: it is unavailable for a minute or two while it installs what it needs and rebuilds, and the page reloads by itself. If the new version can't be prepared, Canon goes back to the version you had and says so on the card. This works when Canon was started with `start-canon.bat` / `start-canon.command` (also in the background); a git copy with changes of its own is left for you to update with git. In Docker, Canon only says that there is a new version: update it on the server with `docker compose pull`, then `docker compose up -d`.
 - **Updating Canon by hand**: make a backup, close the Canon window (in the background: right-click Canon's icon → **Exit**), put the new version's files over the old ones (or `git pull`), then start `start-canon.bat` again (in the background: open **Canon** from the Start menu). It installs and rebuilds what changed. The database is upgraded on the first start, and a copy of it from before the upgrade is kept in `data/pre-upgrade/` (the newest three). If the new version has a problem, that copy lets you go back: see `docs/UPGRADING.md`. An older Canon refuses to open a database that a newer Canon has upgraded, so it cannot damage it. What changed in each version: `CHANGELOG.md`.
 - **Moving to Docker** (a server or NAS): make a backup on the office PC, start Canon on the new machine (`docker compose pull`, then `docker compose up -d`: the image comes ready-made from GitHub), then restore the backup there with **Restore from a file…** (or as described under "Restoring a backup" in `docs/DOCKER.md`). Your IT helper can do this in a few minutes.
+
+**If the computer is lost** (stolen, broken, or a new one):
+
+```flow
+[Every day] Canon makes a backup: one encrypted file with the database and every archived year
+It goes to the backup folder (a USB drive, a synced folder) | And to the church's Google Drive, when connected
+[New computer] Install Canon (or Docker) and start it: it is empty, with keys of its own
+**Copy to this computer** from Google Drive | Or **Restore from a file…** from the USB drive
+**Restore**, typing the **recovery key** the backup names
+The church's data is back — members, records, the books and the archived years
+```
+
+**Updating from inside Canon:**
+
+```flow
+[Administrator] About Canon → **Updates** → **Update now…**
+[Canon] Makes a backup, gets the new version from GitHub, and restarts
+[Canon] Installs what it needs and rebuilds (a minute or two)
+The new version starts and upgrades the database, keeping a copy | It can't be prepared: Canon goes back to the version you had, and says so
+```
 
 ### Backups to Google Drive {#google-drive}
 

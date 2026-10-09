@@ -137,6 +137,13 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 16px 0; }
 
 /* ---------- brand: tagline (1 Cor 14:40), church logo, season chip ---------- */
 .tagline { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 12px; line-height: 1.45; margin: 0; }
+/* flow charts in the guide (0.19.6): steps top to bottom; boxes side by side are the ways a step can go */
+.flow { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 14px 0 18px; }
+.flow-step { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; width: 100%; }
+.flow-box { background: var(--paper-3); border: 1px solid var(--rule-strong); border-radius: 8px; padding: 8px 14px; max-width: 460px; text-align: center; font-size: 13.5px; line-height: 1.45; }
+.flow-branch .flow-box { flex: 1 1 0; min-width: 130px; max-width: 240px; border-style: dashed; }
+.flow-who { display: block; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--reed-ink); margin-bottom: 2px; }
+.flow-arrow { color: var(--reed); font-size: 15px; line-height: 1.1; }
 /* About Canon's last line (0.19.4) */
 .about-sdg { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 15px; letter-spacing: 0.08em; text-align: center; margin: 8px 0 4px; }
 .tagline:lang(zh-Hans), .tagline:lang(zh-Hant) { font-style: normal; letter-spacing: 0.04em; }

@@ -4,6 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.6 — Flowcharts in the guide; a receipt viewer; a compact roles table
+
+- **Flowcharts in the guide**: a week at a glance, the visitor form, offerings into the books, expense claims, recovering after a lost computer, and updating from inside Canon — each step as a box (with who does it), the ways a step can go side by side. In English and Chinese. (The guide's Markdown gains a `flow` block; read as text, e.g. by AI assistants, it is the steps in order.)
+- **A receipt viewer for claims** (Book-keeping → Claims, and the claim page approvers open): one receipt at a time inside a frame that never spills out of the claim, each labelled with its line (or **Not on a line**, e.g. the signed paper form), with ‹ › and thumbnails, **Actual size** to read small print, and **Open in a new tab**. Before, a large photo could run past the dialog's edges.
+- **Settings → Roles & permissions** is compact: each role's description is behind its **?**, and **Edit** sits beside the role's name (the rest stay in the ⋯ menu).
+- Database: no change.
+
 ## 0.19.5 — Recovery through Google Drive, tested; Docker checked on every change
 
 - **Disaster recovery through Google Drive is tested end to end**: the office's Canon sends its backup package to Drive; the office computer is then lost with everything on it; a new computer with a new Canon connects to the same Drive, copies the backup back and restores it with the recovery key — in the app, and by hand with `npm run restore-backup` — and the members and the archived year read back. Without the recovery key the new computer can't open it. Google is played by a stand-in.

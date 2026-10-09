@@ -71,6 +71,18 @@
 .claim-receipt { position: relative; display: flex; align-items: flex-start; gap: 2px; }
 .claim-receipt img { width: 92px; height: 92px; object-fit: cover; border-radius: 6px; border: 1px solid var(--rule); }
 .claim-pdf { display: inline-flex; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; font-size: 13px; }
+/* a claim's receipts (0.19.6): one at a time inside a bounded frame, thumbnails below */
+.rv { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.rv-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rv-stage { border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); height: min(62vh, 560px); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.rv-stage img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; display: block; }
+.rv-stage.actual { overflow: auto; align-items: flex-start; justify-content: flex-start; }
+.rv-stage.actual img { max-width: none; max-height: none; cursor: zoom-out; }
+.rv-thumbs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.rv-thumb { position: relative; flex: none; width: 64px; height: 64px; padding: 0; border: 2px solid var(--rule); border-radius: 6px; background: var(--paper-3); overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.rv-thumb.on { border-color: var(--lapis); }
+.rv-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.rv-thumb span { position: absolute; right: 2px; bottom: 2px; font-size: 10px; line-height: 1; padding: 2px 4px; border-radius: 4px; background: var(--paper-3); color: var(--ink-3); }
 .claim-ink { max-width: 100%; height: 70px; object-fit: contain; align-self: flex-start; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
 
 .self-head select { width: auto; flex: none; max-width: 40%; }

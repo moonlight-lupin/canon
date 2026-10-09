@@ -40,8 +40,8 @@ export function RolesCard({ data, reload }: { data: RolesData | undefined; reloa
   const actions = (r: RoleDef): CardAction[] => {
     if (r.admin) return [];
     const used = data.use[r.key] ?? 0;
+    // Edit is the button beside the role's name; the rest stay in the ⋯ menu
     const out: CardAction[] = [
-      { label: t('Edit'), onClick: () => setEditing({ role: r }) },
       { label: t('Duplicate'), onClick: () => setEditing({ role: null, from: r }), title: t('Start a new role from a copy of this one.') },
     ];
     out.push(r.archived
@@ -52,7 +52,14 @@ export function RolesCard({ data, reload }: { data: RolesData | undefined; reloa
   };
   const row = (r: RoleDef) => (
     <tr key={r.key}>
-      <td><strong>{lt(r.name)}</strong><div className="small muted">{lt(r.description)}</div></td>
+      <td>
+        {/* the description in a tooltip keeps the table compact */}
+        <div className="row nowrap" style={{ gap: 6, flexWrap: 'nowrap' }}>
+          <strong>{lt(r.name)}</strong>
+          {lt(r.description) && <InfoTip text={lt(r.description)} />}
+          {!r.admin && <button className="btn ghost sm" onClick={() => setEditing({ role: r })}>{t('Edit')}</button>}
+        </div>
+      </td>
       {PERM_MODULES.map((m) => <td key={m} className="center"><AccessMark a={r.admin ? 'edit' : r.access[m]} /></td>)}
       <td className="center">{r.member_details ? <Icon name="check" width={14} height={14} /> : '—'}</td>
       <td className="right">{data.use[r.key] ?? 0}</td>

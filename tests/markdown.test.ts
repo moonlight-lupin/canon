@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { parse, renderMarkdown, safeHref, sections, slugify } from '../src/guide/markdown.ts';
+import { parse, renderBlocks, renderMarkdown, safeHref, sections, slugify } from '../src/guide/markdown.ts';
 
 const html = (md: string) => renderToStaticMarkup(createElement('div', null, ...renderMarkdown(md)));
 
@@ -47,4 +47,26 @@ test('an explicit {#anchor} on a heading sets its id and is not shown', async ()
   const { parse } = await import('../src/guide/markdown.ts');
   const [h] = parse('### 投影模板 {#slide-templates}');
   assert.deepEqual(h, { type: 'heading', level: 3, text: '投影模板', id: 'slide-templates' });
+});
+
+test('flow charts (0.19.6): a fenced block marked flow, one step per line, who in brackets, the ways a step can go side by side', () => {
+  const src = ['```flow', '[Claimant] Signs and **submits**', '', '[Approver] Approves | Sends it back | Rejects', 'Paid', '```'].join('\n');
+  const blocks = parse(src);
+  assert.equal(blocks.length, 1);
+  const b = blocks[0];
+  assert.equal(b.type, 'flow');
+  if (b.type !== 'flow') return;
+  assert.equal(b.steps.length, 3, 'blank lines are not steps');
+  assert.deepEqual(b.steps[0].boxes, [{ who: 'Claimant', text: 'Signs and **submits**' }]);
+  assert.deepEqual(b.steps[1].boxes.map((x) => [x.who, x.text]), [['Approver', 'Approves'], [null, 'Sends it back'], [null, 'Rejects']]);
+  assert.deepEqual(b.steps[2].boxes, [{ who: null, text: 'Paid' }]);
+  const html = renderToStaticMarkup(createElement('div', null, ...renderBlocks(blocks)));
+  assert.match(html, /class="flow"/);
+  assert.match(html, /class="flow-step flow-branch"/);
+  assert.equal(html.match(/class="flow-arrow"/g)?.length, 2, 'an arrow between steps');
+  assert.match(html, /<strong>submits<\/strong>/, 'inline markup in the boxes');
+  assert.ok(!html.includes('<pre>'), 'not shown as code');
+  // other fenced blocks stay code; search finds a flow's words
+  assert.equal(parse('```\n[x] a | b\n```')[0].type, 'code');
+  assert.match(sections(blocks)[0].haystack, /approver approves/);
 });

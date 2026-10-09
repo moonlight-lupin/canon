@@ -1,7 +1,8 @@
 // A small, safe Markdown renderer for the in-app Guide.
 //
 // Supports what the guide uses: headings, paragraphs, ordered / unordered lists (one nested level), **bold**,
-// *italic*, `code`, [links](/path), blockquotes (tips), simple pipe tables, horizontal rules and fenced code.
+// *italic*, `code`, [links](/path), blockquotes (tips), simple pipe tables, horizontal rules, fenced code and flow charts
+// (a fenced block marked `flow`, below).
 // Everything is rendered as React elements from plain strings — React escapes all text, raw HTML in the source is
 // shown as text (never interpreted) and nothing uses dangerouslySetInnerHTML. Link targets are limited to app paths,
 // in-page anchors, http(s) and mailto; anything else (e.g. javascript:) is rendered as plain text.
@@ -18,7 +19,23 @@ export type Block =
   | { type: 'quote'; blocks: Block[] }
   | { type: 'table'; head: string[]; rows: string[][] }
   | { type: 'code'; text: string }
+  | { type: 'flow'; steps: FlowStep[] }
   | { type: 'hr' };
+
+/**
+ * A flow chart (0.19.6): a fenced block marked `flow`, one step per line, top to bottom with arrows between.
+ *   [Who] What happens                              a step; "[Who]" (optional) names who does it
+ *   [Approver] Approves | Sends it back | Rejects   boxes side by side: the ways it can go
+ * Inline markup works in the text. Read as plain text (AI assistants reading the guide), it is still the steps in order.
+ */
+export interface FlowStep { boxes: { who: string | null; text: string }[] }
+
+const parseFlow = (body: string[]): FlowStep[] => body.filter((l) => l.trim()).map((l) => ({
+  boxes: l.split(/\s+\|\s+/).map((part) => {
+    const m = /^\s*\[([^\]]{1,40})\]\s*(.*)$/.exec(part);
+    return m ? { who: m[1].trim(), text: m[2].trim() } : { who: null, text: part.trim() };
+  }),
+}));
 
 export interface ListItem {
   text: string;
@@ -82,11 +99,12 @@ function parseLines(lines: string[], uniqueId: (t: string) => string): Block[] {
     }
     // fenced code
     if (/^\s*```/.test(line)) {
+      const info = /^\s*```\s*(\w*)/.exec(line)![1];
       const body: string[] = [];
       i++;
       while (i < lines.length && !/^\s*```/.test(lines[i])) body.push(lines[i++]);
       i++;
-      out.push({ type: 'code', text: body.join('\n') });
+      out.push(info === 'flow' ? { type: 'flow', steps: parseFlow(body) } : { type: 'code', text: body.join('\n') });
       continue;
     }
     const hm = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
@@ -189,6 +207,8 @@ function blockText(b: Block): string {
       return b.blocks.map(blockText).join(' ');
     case 'table':
       return [b.head, ...b.rows].map((r) => r.map(stripInline).join(' ')).join(' ');
+    case 'flow':
+      return b.steps.map((st) => st.boxes.map((x) => [x.who, stripInline(x.text)].filter(Boolean).join(' ')).join(' ')).join(' ');
     case 'hr':
       return '';
   }
@@ -374,6 +394,24 @@ export function renderBlocks(blocks: Block[], opts: RenderOptions = {}, key = 'b
         );
       case 'code':
         return h('pre', { key: k }, h('code', null, b.text));
+      case 'flow':
+        return h(
+          'div',
+          { key: k, className: 'flow', role: 'list' },
+          ...b.steps.flatMap((st, j) => [
+            ...(j ? [h('div', { key: `${k}a${j}`, className: 'flow-arrow', 'aria-hidden': true }, '↓')] : []),
+            h(
+              'div',
+              { key: `${k}s${j}`, className: st.boxes.length > 1 ? 'flow-step flow-branch' : 'flow-step', role: 'listitem' },
+              ...st.boxes.map((x, n) => h(
+                'div',
+                { key: n, className: 'flow-box' },
+                ...(x.who ? [h('span', { key: 'w', className: 'flow-who' }, x.who)] : []),
+                h('span', { key: 't' }, ...inline(x.text, opts, `${k}s${j}.${n}`)),
+              )),
+            ),
+          ]),
+        );
       case 'hr':
         return h('hr', { key: k });
     }

@@ -9,6 +9,7 @@ import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useI18n } from '../../i18n.tsx';
 import { fmtDate, today } from '../../components/ui.tsx';
 import { Icon, ReedMark } from '../../components/icons.tsx';
+import { ReceiptViewer } from '../../components/ReceiptViewer.tsx';
 import { SignaturePad } from '../records/CashCount.tsx';
 import { CLAIM_STATUS_LABEL, type Claim, type ClaimStatus } from '../../../shared/bookkeeping.ts';
 import type { L10n } from '../../../shared/types.ts';
@@ -456,10 +457,13 @@ function ClaimPage({ session, status, onExpired }: { session: Session; status: S
             <div key={l.id ?? i} className="card self-card stack tight">
               <div className="row between"><strong>{l.description}</strong><strong>{money(l.amount)}</strong></div>
               <div className="small muted">{l.date ? fmtDate(l.date, lang) : ''}{l.payee ? ` · ${l.payee}` : ''}</div>
-              <div className="claim-receipts">{l.id ? receiptsOf(l.id).map((f) => <Receipt key={f.id} id={f.id} mime={f.mime} name={f.name} token={session.token} />) : null}</div>
             </div>
           ))}
-          {receiptsOf(null).length > 0 && <div className="card self-card claim-receipts">{receiptsOf(null).map((f) => <Receipt key={f.id} id={f.id} mime={f.mime} name={f.name} token={session.token} />)}</div>}
+          {c.files.length > 0 && (
+            <div className="card self-card">
+              <ReceiptViewer files={c.files} lines={c.lines} load={(f) => fetch(`/api/self/claims/files/${f.id}`, { headers: { 'X-Self-Token': session.token }, credentials: 'omit' }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status))))).then((b) => URL.createObjectURL(b))} />
+            </div>
+          )}
           {c.signature && (
             <div className="card self-card stack tight">
               <span className="small muted">{c.signature.via === 'paper' ? t('Signed on paper') : t('Signed by {name} on {date}').replace('{name}', c.signature.name).replace('{date}', fmtDate(localDay(c.signature.signed_at), lang))}</span>

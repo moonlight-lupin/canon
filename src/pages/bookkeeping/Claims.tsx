@@ -8,6 +8,7 @@ import { api, qs, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
 import { Empty, ErrorBox, Field, Loading, Modal, SearchBox, confirmAction, fmtDate, today, useAction, useDebounced, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
+import { ReceiptViewer } from '../../components/ReceiptViewer.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { CLAIM_STATUS_LABEL, type Claim, type ClaimApprover, type ClaimStatus } from '../../../shared/bookkeeping.ts';
 import { AccountSelect, FundSelect, MoneyInput, TagSelect, fmtMoney, useBooks, useNames } from './common.tsx';
@@ -84,18 +85,9 @@ export function ClaimsTab() {
   );
 }
 
+/** The claim's receipts and other documents, in a viewer that stays inside the dialog. */
 function Receipts({ c }: { c: Claim }) {
-  const { t } = useI18n();
-  if (!c.files.length) return <p className="small muted">{t('No receipts attached.')}</p>;
-  return (
-    <div className="claim-receipts">
-      {c.files.map((f) => (
-        <a key={f.id} href={`/api/bookkeeping/claims/files/${f.id}`} target="_blank" rel="noreferrer" title={f.name}>
-          {f.mime === 'application/pdf' ? <span className="claim-pdf"><Icon name="file" />{f.name}</span> : <img src={`/api/bookkeeping/claims/files/${f.id}`} alt={f.name} />}
-        </a>
-      ))}
-    </div>
-  );
+  return <ReceiptViewer files={c.files} lines={c.lines} load={(f) => Promise.resolve(`/api/bookkeeping/claims/files/${f.id}`)} />;
 }
 
 function ClaimDialog({ id, onClose, onChanged }: { id: number; onClose: () => void; onChanged: () => void }) {
