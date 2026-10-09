@@ -11,6 +11,7 @@ import * as grp from './groups.ts';
 import * as vol from './volunteers.ts';
 import * as svc from './services.ts';
 import { BadRequest } from '../lib/table.ts';
+import { addSampleActivity, noActivity, removeSampleActivity, removeSampleSpaces, type ActivityAdded } from './sample-activity.ts';
 
 export const SAMPLE_NOTE = 'Sample person (fictional) — Settings → Sample data removes it.';
 
@@ -23,6 +24,8 @@ interface Added {
   groups: number[];
   services: number[];
   assignments: number[];
+  /** 0.19.7: what the sample church does — services, meetings, the calendar, the library, assets, the books */
+  activity?: ActivityAdded;
 }
 
 type Area = 'east' | 'west' | 'north' | 'young';
@@ -99,11 +102,31 @@ export function sampleDataStatus() {
     groups: count('groups', a.groups),
     services: count('services', a.services),
     assignments: count('assignments', a.assignments),
+    events: count('events', a.activity?.events ?? []),
+    books: count('lending_books', a.activity?.books ?? []),
+    equipment: count('equipment', a.activity?.equipment ?? []),
+    journals: count('bk_journals', a.activity?.journals ?? []),
+    claims: count('bk_claims', a.activity?.claims ?? []),
   };
 }
 
-/** Add the sample church. `rota`: also put sample people on the next service's rota and a copy of it a week later. */
-export function addSampleData(opts: { rota?: boolean; today?: string } = {}) {
+/**
+ * The sample's services come from Canon's own service templates (with their hymns and liturgy). When the church
+ * hasn't added Canon's library (onboarding offers it), it is added first — public-domain words and Canon's templates,
+ * which stay when the sample is removed. Returns whether it was added.
+ */
+export async function prepareSampleLibrary(): Promise<boolean> {
+  if (get("SELECT 1 FROM templates WHERE key = 'lords-day-morning'")) return false;
+  const { installLibrary } = await import('../seed/index.ts');
+  await installLibrary(['songs', 'texts', 'templates']);
+  return true;
+}
+
+/**
+ * Add the sample church. `rota`: also put sample people on the next service's rota and a copy of it a week later.
+ * `activity` (0.19.7, on unless false): also what the church does, in every part of Canon that is switched on.
+ */
+export function addSampleData(opts: { rota?: boolean; activity?: boolean; today?: string } = {}) {
   if (added()) throw new BadRequest('The sample data is already there. Remove it first to add it again.');
   const today = opts.today ?? new Date().toISOString().slice(0, 10);
   const year = Number(today.slice(0, 4));
@@ -198,6 +221,14 @@ export function addSampleData(opts: { rota?: boolean; today?: string } = {}) {
         }
       }
     }
+    if (opts.activity !== false) {
+      const named = (id: number) => {
+        const p = get<{ first_name: string; last_name: string | null; birth_date: string | null }>('SELECT first_name, last_name, birth_date FROM people WHERE id = ?', id)!;
+        const a = p.birth_date ? age(p.birth_date) : 40;
+        return { id, name: [p.first_name, p.last_name].filter(Boolean).join(' '), adult: a >= 18, age: a };
+      };
+      out.activity = addSampleActivity({ today, batch: out.batch!, people: out.people.map(named), serviceIds: out.services, groupIds: out.groups, assignments: out.assignments, pools, rnd, pick });
+    }
     // every row the sample added carries its batch: removing the sample takes those rows and no others (0.19.2)
     for (const [table, ids] of [['people', out.people], ['households', out.households], ['groups', out.groups], ['services', out.services]] as const) {
       for (const id of ids) run(`UPDATE ${table} SET sample_batch = ? WHERE id = ?`, out.batch!, id);
@@ -224,12 +255,16 @@ function personTies(id: number): string[] {
     has('SELECT 1 FROM bk_claim_approvals WHERE person_id = ?') && 'approved claims',
   ].filter((x): x is string => !!x);
 }
-/** Why the copied sample service must stay: it has a record (attendance, offerings, a cash count) or journals. */
-function serviceTies(id: number): string[] {
+/**
+ * Why a sample service must stay: someone wrote its record (attendance, offerings, a cash count) — a record the
+ * sample wrote itself, unchanged since, doesn't count (0.19.7) — or real journals belong to it.
+ */
+function serviceTies(id: number, own: Record<number, number> = {}): string[] {
   const has = (sql: string) => !!get(sql, id);
+  const rev = get<{ revision: number }>('SELECT revision FROM service_records WHERE service_id = ?', id)?.revision;
   return [
-    has('SELECT 1 FROM service_records WHERE service_id = ?') && 'has a service record',
-    has('SELECT 1 FROM bk_journals WHERE service_id = ?') && 'has journals in the books',
+    rev !== undefined && own[id] !== rev && 'has a service record',
+    has('SELECT 1 FROM bk_journals WHERE service_id = ? AND sample_batch IS NULL') && 'has journals in the books',
   ].filter((x): x is string => !!x);
 }
 
@@ -245,12 +280,13 @@ export function removeSampleData() {
   const a = added();
   if (!a) throw new BadRequest('There is no sample data to remove.');
   const done = { people: 0, households: 0, groups: 0, services: 0 };
-  const kept: { what: 'person' | 'service' | 'household' | 'group'; id: number; name: string; why: string[] }[] = [];
+  const kept: { what: 'person' | 'service' | 'household' | 'group' | 'journal' | 'space' | 'claim'; id: number; name: string; why: string[] }[] = [];
   tx(() => {
+    kept.push(...removeSampleActivity(a.activity ?? noActivity(), a.batch));
     for (const id of a.services) {
       const sv = get<{ date: string }>('SELECT date FROM services WHERE id = ?', id);
       if (!sv || !ofBatch('services', id, a.batch)) continue; // gone, or the number is something else's now
-      const ties = serviceTies(id);
+      const ties = serviceTies(id, a.activity?.records);
       if (ties.length) kept.push({ what: 'service', id, name: sv.date, why: ties });
       else { svc.services.remove(id); done.services++; }
     }
@@ -271,6 +307,7 @@ export function removeSampleData() {
       if (!ofBatch('groups', id, a.batch)) continue;
       if (!get('SELECT 1 FROM group_members WHERE group_id = ?', id)) { grp.deleteGroup(id); done.groups++; }
     }
+    kept.push(...removeSampleSpaces(a.activity ?? noActivity(), a.batch));
     deleteMeta('sample_data');
   });
   return { ...done, kept };

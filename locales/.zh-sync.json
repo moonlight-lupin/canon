@@ -772,6 +772,14 @@
       "也把每份备份传到教会 Google 云端硬盘的“Canon backups”文件夹，并保留最新的几份。Canon 只能看到它放进去的文件。它使用教会自己的 Google 登录客户端——指南说明如何建立（只需一次，约 10 分钟）。",
       "也把每份備份傳到教會 Google 雲端硬盤的“Canon backups”文件夾，並保留最新的幾份。Canon 只能看到它放進去的文件。它使用教會自己的 Google 登錄客戶端——指南說明如何建立（只需一次，約 10 分鐘）。"
     ],
+    "Also what the church does, in every part of Canon that is switched on: the last eight Sundays and the next two from Canon’s service templates, with rotas and service records (offerings counted and verified); cell-group and Sunday school meetings; events and spaces; library books with loans; the asset register; and, if the books aren’t started, the books with offerings, bills, a bank statement and claims in every state": [
+      "也加入教会的活动，涵盖 Canon 已启用的每个部分：用 Canon 的聚会模板建立过去八个和接下来两个主日的聚会，附事奉表和聚会记录（奉献已点算并核实）；小组和主日学的聚会活动；活动和场地；图书馆书籍和借阅；资产登记；以及在账簿尚未开始时，包括奉献、开支、银行对账单和各种状态报销的账簿",
+      "也加入教會的活動，涵蓋 Canon 已啟用的每個部分：用 Canon 的聚會模板建立過去八個和接下來兩個主日的聚會，附事奉表和聚會記錄（奉獻已點算並核實）；小組和主日學的聚會活動；活動和場地；圖書館書籍和借閱；資產登記；以及在賬簿尚未開始時，包括奉獻、開支、銀行對賬單和各種狀態報銷的賬簿"
+    ],
+    "Also {s} services and meetings, {e} events, {b} library books, {q} assets, {j} journals and {c} claims.": [
+      "另有 {s} 个聚会和聚会活动、{e} 个活动、{b} 本图书馆书籍、{q} 项资产、{j} 笔分录和 {c} 份报销。",
+      "另有 {s} 個聚會和聚會活動、{e} 個活動、{b} 本圖書館書籍、{q} 項資產、{j} 筆分錄和 {c} 份報銷。"
+    ],
     "Always printed on the last page. A folded booklet adds its blank pages before it.": [
       "总是印在最后一页。对折小册子的空白页会加在它前面。",
       "總是印在最後一頁。對摺小冊子的空白頁會加在它前面。"
@@ -1703,6 +1711,10 @@
     "Canon’s library": [
       "Canon 自带资料库",
       "Canon 自帶資料庫"
+    ],
+    "Canon’s library (hymns, liturgical texts and service templates) was added first: the sample’s services are made from its templates. It stays when the sample is removed.": [
+      "已先加入 Canon 自带资料库（诗歌、礼仪文和聚会模板）：示例的聚会是用这些模板建立的。移除示例数据时，资料库会保留。",
+      "已先加入 Canon 自帶資料庫（詩歌、禮儀文和聚會模板）：示例的聚會是用這些模板建立的。移除示例數據時，資料庫會保留。"
     ],
     "Canon’s own screens are translated into this language (how much of them: the percentage).": [
       "Canon 本身的画面已译成这种语言（百分比表示翻译了多少）。",
@@ -7400,6 +7412,10 @@
       "移除时只删除当初加入的内容——这些人以及他们在小组、团队和事奉表中的位置、他们的家庭和小组，以及复制的聚会——不会删除任何人输入的资料。",
       "移除時只刪除當初加入的內容——這些人以及他們在小組、團隊和事奉表中的位置、他們的家庭和小組，以及複製的聚會——不會刪除任何人輸入的資料。"
     ],
+    "Removing takes out exactly what was added — the people with their places in groups, teams and rotas, their households and groups, the services and meetings with their records, the events, books, assets, journals, bank statement and claims — and nothing anyone typed. When the sample started the books and nothing real is in them, they go back to not started.": [
+      "移除时只删除当初加入的内容——这些人以及他们在小组、团队和事奉表中的位置、他们的家庭和小组、聚会和聚会活动及其记录、活动、书籍、资产、分录、银行对账单和报销——不会删除任何人输入的资料。如果账簿是由示例开始的，而里面没有真实资料，账簿会回到尚未开始的状态。",
+      "移除時只刪除當初加入的內容——這些人以及他們在小組、團隊和事奉表中的位置、他們的家庭和小組、聚會和聚會活動及其記錄、活動、書籍、資產、分錄、銀行對賬單和報銷——不會刪除任何人輸入的資料。如果賬簿是由示例開始的，而裡面沒有真實資料，賬簿會回到尚未開始的狀態。"
+    ],
     "Rename": [
       "改名",
       "改名"
@@ -8768,6 +8784,10 @@
       "请先为这次聚会开启新朋友表格。",
       "請先為這次聚會開啟新朋友表格。"
     ],
+    "Switched off, so left out: {list}. Switch them on in Settings → Modules first to include them.": [
+      "以下已关闭，所以不会加入：{list}。要包括它们，请先在 设置 → 功能模块 中启用。",
+      "以下已關閉，所以不會加入：{list}。要包括它們，請先在 設置 → 功能模塊 中啟用。"
+    ],
     "Table": [
       "表格",
       "表格"
@@ -8931,6 +8951,10 @@
     "The books": [
       "账簿",
       "賬簿"
+    ],
+    "The books are already started, so the sample leaves them (and claims) alone.": [
+      "账簿已经开始，所以示例不会改动账簿（和报销）。",
+      "賬簿已經開始，所以示例不會改動賬簿（和報銷）。"
     ],
     "The books haven’t been started yet: the treasurer starts them here.": [
       "账簿还没有开始：由司库在这里开始。",
@@ -11350,8 +11374,8 @@
     ]
   },
   "guide": [
-    "64bfc941d2e7f2af",
-    "04d799613ca3d95a"
+    "0d2f59ad41e19211",
+    "c0184c51a70ca413"
   ],
   "outputs": {
     "Advent": [

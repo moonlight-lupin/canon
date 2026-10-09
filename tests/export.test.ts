@@ -288,7 +288,7 @@ test('sample data marks its own rows: a real service, household or person that t
   const reg = await import('../server/repo/registers.ts');
   const svc = await import('../server/repo/services.ts');
   svc.createService({ date: '2038-03-28' });
-  sd.addSampleData({ today: '2038-03-26' });
+  sd.addSampleData({ today: '2038-03-26', activity: false }); // the people and the copied service only (0.19.7 adds much more)
   // the copied sample service is deleted normally, before it has a record; a genuine service then takes its number
   const copy = get<{ id: number }>("SELECT id FROM services WHERE date = '2038-04-04'")!;
   assert.ok(copy, 'the copied sample service');

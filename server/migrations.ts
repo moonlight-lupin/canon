@@ -1276,4 +1276,36 @@ export const MIGRATIONS: (string | Migration)[] = [
     UPDATE bk_claims SET pay_to_by = CASE created_via WHEN 'self' THEN 'claimant' WHEN 'web' THEN 'office' END WHERE pay_to IS NOT NULL;
     `,
   },
+  // 38 (0.19.7): the sample church covers every part of Canon — services with their records, meetings, the
+  // calendar, spaces, the lending library, the asset register, the books and claims. Each row it adds carries its
+  // batch, as in 36, so removing the sample takes exactly those. A posted journal can't be deleted — except one the
+  // sample made (and its lines), and no one can mark a posted journal as the sample's afterwards.
+  {
+    sql: `
+    ALTER TABLE spaces ADD COLUMN sample_batch TEXT;
+    ALTER TABLE events ADD COLUMN sample_batch TEXT;
+    ALTER TABLE lending_books ADD COLUMN sample_batch TEXT;
+    ALTER TABLE equipment ADD COLUMN sample_batch TEXT;
+    ALTER TABLE bk_journals ADD COLUMN sample_batch TEXT;
+    ALTER TABLE bk_statements ADD COLUMN sample_batch TEXT;
+    ALTER TABLE bk_claims ADD COLUMN sample_batch TEXT;
+    ALTER TABLE bk_claim_approvers ADD COLUMN sample_batch TEXT;
+    DROP TRIGGER bk_journals_posted_update;
+    CREATE TRIGGER bk_journals_posted_update BEFORE UPDATE ON bk_journals
+      WHEN OLD.status = 'posted' AND (NEW.status IS NOT OLD.status OR NEW.date IS NOT OLD.date OR NEW.number IS NOT OLD.number
+        OR NEW.memo IS NOT OLD.memo OR NEW.kind IS NOT OLD.kind OR NEW.reverses_id IS NOT OLD.reverses_id
+        OR NEW.posted_by IS NOT OLD.posted_by OR NEW.posted_at IS NOT OLD.posted_at OR NEW.claim_id IS NOT OLD.claim_id
+        OR NEW.sample_batch IS NOT OLD.sample_batch
+        OR (OLD.reversed_by_id IS NOT NULL AND NEW.reversed_by_id IS NOT OLD.reversed_by_id))
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    DROP TRIGGER bk_journals_posted_delete;
+    CREATE TRIGGER bk_journals_posted_delete BEFORE DELETE ON bk_journals WHEN OLD.status = 'posted' AND OLD.sample_batch IS NULL
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be deleted: reverse it instead.'); END;
+    DROP TRIGGER bk_lines_posted_delete;
+    CREATE TRIGGER bk_lines_posted_delete BEFORE DELETE ON bk_lines
+      WHEN (SELECT status FROM bk_journals WHERE id = OLD.journal_id) = 'posted'
+        AND (SELECT sample_batch FROM bk_journals WHERE id = OLD.journal_id) IS NULL
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    `,
+  },
 ];

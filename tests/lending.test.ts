@@ -293,3 +293,10 @@ test('congregation walls: another congregation’s borrower or custodian is not 
   // the whole church still sees everyone
   assert.ok(txt(await call(as.admin, 'GET', '/lending/loans?status=open')).includes('Faraway'));
 });
+
+test('the dashboard’s next service is the soonest, not the furthest, when several are planned (0.19.7)', async () => {
+  const day = (n: number) => new Date(Date.now() + n * 86400_000).toISOString().slice(0, 10);
+  for (const n of [20, 6, 13]) await call(as.admin, 'POST', '/services', { date: day(n) });
+  const up = (await call(as.admin, 'GET', '/dashboard')).body.upcoming as { date: string }[];
+  assert.deepEqual(up.map((s) => s.date).slice(0, 3), [day(6), day(13), day(20)]);
+});

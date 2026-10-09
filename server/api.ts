@@ -348,7 +348,10 @@ api.get('/dashboard', h((req) => {
   const on = getSettings().modules;
   const role = roleDef(req.user!.role);
   const in8w = new Date(Date.now() + 56 * 86400_000).toISOString().slice(0, 10);
-  const upcoming = svc.listServices({ from: today, to: in8w });
+  // soonest first (a list with both ends comes newest first: with several services ahead the dashboard showed the
+  // furthest as "Next service" — found with the 0.19.7 sample church)
+  const upcoming = svc.listServices({ from: today, to: in8w })
+    .sort((a, b) => `${a.date} ${a.start_time ?? ''}`.localeCompare(`${b.date} ${b.start_time ?? ''}`));
   return {
     upcoming: upcoming.slice(0, 6).map((s) => ({ ...s, warnings: vol.rosterWarnings(s.id) })),
     members: reg.memberStats(),

@@ -4,6 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.7 — A sample church that does everything
+
+- **Settings → Sample data** now also fills every part of Canon that is switched on, so you can see them working together: the last eight Sundays and the next two, made from Canon's service templates (Canon's library is added first if it isn't there), with rotas and service records — attendance, visitors, offerings counted and verified; cell-group and Sunday school meetings with their records; events on the calendar and spaces; library books with loans (two overdue); the asset register with custodians and maintenance; and, when the books haven't been started, the books — opening balances, offerings posted, cash banked, the monthly bills, a bank statement matched (one line left to match), and expense claims being prepared, waiting, sent back, approved and paid. The screen says which modules are off and so left out.
+- **Removing it takes out exactly that** (database version 38: each row marks the sample as its own): services and meetings with their records, events, spaces, books and loans, assets, journals, the bank statement, claims and approvers. A posted journal still can't be deleted — only the sample's own, when the sample is removed — and none can be marked as the sample's after it was posted. What real records now depend on stays and is listed. When the sample started the books and nothing real is in them, they go back to not started.
+- **Fixed: the dashboard's "Next service"** showed the furthest planned service, not the soonest, when several were planned ahead (found with the sample church).
+- Database: version 38 (the sample's mark on the rows it adds).
+
 ## 0.19.6 — Flowcharts in the guide; a receipt viewer; a compact roles table
 
 - **Flowcharts in the guide**: a week at a glance, the visitor form, offerings into the books, expense claims, recovering after a lost computer, and updating from inside Canon — each step as a box (with who does it), the ways a step can go side by side. In English and Chinese. (The guide's Markdown gains a `flow` block; read as text, e.g. by AI assistants, it is the steps in order.)

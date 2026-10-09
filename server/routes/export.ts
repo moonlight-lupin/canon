@@ -14,7 +14,7 @@ import { logMemberView } from '../repo/security.ts';
 import { zip } from '../lib/zip.ts';
 import { h } from './helpers.ts';
 import { uiLang } from './csv.ts';
-import { addSampleData, removeSampleData, sampleDataStatus } from '../repo/sample-data.ts';
+import { addSampleData, prepareSampleLibrary, removeSampleData, sampleDataStatus } from '../repo/sample-data.ts';
 import { accountsCsv, fundsCsv, journalsCsv } from '../repo/bk-export.ts';
 import { toCsv } from '../../shared/reports.ts';
 
@@ -145,5 +145,10 @@ exportRoutes.post('/export/library/import', express.raw({ type: () => true, limi
 // Settings → Sample data (0.15.8): a fictional church to try Canon with, and taking it out again
 exportRoutes.use('/sample-data', requireAdmin);
 exportRoutes.get('/sample-data', h(() => sampleDataStatus()));
-exportRoutes.post('/sample-data', h((req) => addSampleData({ rota: (req.body as { rota?: boolean } | undefined)?.rota !== false })));
+exportRoutes.post('/sample-data', h(async (req) => {
+  const b = (req.body ?? {}) as { rota?: boolean; activity?: boolean };
+  // what the church does (0.19.7) needs Canon's service templates: added first when they aren't there
+  const library = b.activity !== false ? await prepareSampleLibrary() : false;
+  return { ...addSampleData({ rota: b.rota !== false, activity: b.activity !== false }), library_added: library };
+}));
 exportRoutes.delete('/sample-data', h(() => removeSampleData()));

@@ -29,6 +29,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.19.4 | Updates from inside Canon (Windows and Mac; Docker checks only), a new launcher; claims follow congregations and approvers are told when the office typed in where to repay — done |
 | 0.19.5 | Disaster recovery through Google Drive tested end to end; the Docker image built and started for every change — done |
 | 0.19.6 | Flowcharts in the guide; a receipt viewer for claims; a compact roles table — done |
+| 0.19.7 | A sample church that does everything (services, records, meetings, calendar, library, assets, books, claims), removed exactly — done |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
