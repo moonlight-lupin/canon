@@ -6,7 +6,7 @@ import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import { legacyExport, legacyImport, rawBody, uiLang } from './csv.ts';
 import { requireAdmin } from '../auth.ts';
-import { all, run } from '../db.ts';
+import { all, run, tx } from '../db.ts';
 import { logChange } from '../repo/changelog.ts';
 import * as reg from '../repo/registers.ts';
 import * as vol from '../repo/volunteers.ts';
@@ -127,6 +127,18 @@ peopleRoutes.put('/people/:id/roles', h((req) => {
 
 peopleRoutes.get('/households', h(() => reg.householdsWithMembers()));
 peopleRoutes.post('/households', h((req) => reg.households.insert(S.HouseholdInput.parse(req.body))));
+/** A family new to the church (0.19.7): the household and its people, saved together (all or nothing). */
+peopleRoutes.post('/households/family', h((req) => {
+  const b = z.object({ household: S.HouseholdInput, people: z.array(S.PersonInput.omit({ household_id: true })).min(1).max(20) }).parse(req.body);
+  return tx(() => {
+    const household = reg.households.insert(b.household) as { id: number };
+    const people = b.people.map((p) => reg.people.insert(inWall({
+      ...p, household_id: household.id, household_role: p.household_role ?? 'other',
+      custom: reg.customFor({}, p.custom, seesSensitiveFields(req.user)) ?? {},
+    })));
+    return { household, people };
+  });
+}));
 peopleRoutes.patch('/households/:id', h((req) => reg.households.update(id(req), S.HouseholdInput.partial().parse(req.body))));
 peopleRoutes.delete('/households/:id', h((req) => reg.households.remove(id(req))));
 

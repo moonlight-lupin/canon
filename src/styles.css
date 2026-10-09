@@ -144,6 +144,11 @@ hr { border: 0; border-top: 1px solid var(--rule); margin: 16px 0; }
 .flow-branch .flow-box { flex: 1 1 0; min-width: 130px; max-width: 240px; border-style: dashed; }
 .flow-who { display: block; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--reed-ink); margin-bottom: 2px; }
 .flow-arrow { color: var(--reed); font-size: 15px; line-height: 1.1; }
+/* Members → New family (0.19.7): one row per person, each field wide enough to read */
+.family-rows input { min-width: 96px; }
+.family-rows select { min-width: 92px; }
+.family-rows input[type='date'] { min-width: 132px; }
+
 /* About Canon's last line (0.19.4) */
 .about-sdg { font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 15px; letter-spacing: 0.08em; text-align: center; margin: 8px 0 4px; }
 .tagline:lang(zh-Hans), .tagline:lang(zh-Hant) { font-style: normal; letter-spacing: 0.04em; }

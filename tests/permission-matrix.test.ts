@@ -27,7 +27,7 @@ const grp = await import('../server/repo/groups.ts');
 const vol = await import('../server/repo/volunteers.ts');
 const { saveCongregation } = await import('../server/repo/congregations.ts');
 const C = await import('../server/lib/backup-crypto.ts');
-const { db, get, run } = await import('../server/db.ts');
+const { db, get, run, all } = await import('../server/db.ts');
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Session = { cookie: string; csrf: string };
@@ -328,4 +328,28 @@ test('sensitive fields — CSV: export, preview and import follow the role (secr
   assert.ok(adminExp.text.includes('custom_health') && adminExp.text.includes('fictional note A'));
   assert.equal((await csv(web.admin, 'POST', '/csv/members/import', `id,custom_health\n${ids.pA},Updated by admin\n`)).status, 200);
   assert.equal(JSON.parse(person(ids.pA).custom).health, 'Updated by admin');
+});
+
+test('0.19.7: a new family in one go — the household and its people together, behind the wall, all or nothing', async () => {
+  const fam = {
+    household: { name: 'Test Wee family', address: '1 Example Lane (fictional)' },
+    people: [
+      { first_name: 'Ronald', last_name: 'Wee', household_role: 'head', gender: 'M', status: 'member' },
+      { first_name: 'Rosa', last_name: 'Wee', native_name: '黄玫瑰', household_role: 'spouse', gender: 'F', birth_date: '1980-02-03', status: 'member' },
+      { first_name: 'Remy', last_name: 'Wee', household_role: 'child', status: 'regular' },
+    ],
+  };
+  const r = await call(web.walled, 'POST', '/households/family', fam);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const hid = r.body.household.id as number;
+  const made = all<{ first_name: string; household_id: number; household_role: string; congregation_id: number | null }>('SELECT first_name, household_id, household_role, congregation_id FROM people WHERE household_id = ? ORDER BY id', hid);
+  assert.deepEqual(made.map((p) => [p.first_name, p.household_role]), [['Ronald', 'head'], ['Rosa', 'spouse'], ['Remy', 'child']]);
+  assert.ok(made.every((p) => p.congregation_id === ids.A), 'a walled account’s new family belongs to its congregation');
+  // one bad row: nothing is saved, not even the household
+  const before = get<{ n: number }>('SELECT COUNT(*) n FROM households')!.n;
+  const bad = await call(web.walled, 'POST', '/households/family', { household: { name: 'Test half family' }, people: [{ first_name: 'Ok' }, { first_name: '' }] });
+  assert.equal(bad.status, 400);
+  assert.equal(get<{ n: number }>('SELECT COUNT(*) n FROM households')!.n, before, 'all or nothing');
+  // a role that can't edit the register can't add a family
+  assert.equal((await call(web.planner, 'POST', '/households/family', fam)).status, 403);
 });

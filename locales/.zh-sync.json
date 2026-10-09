@@ -412,6 +412,10 @@
       "加入选项",
       "加入選項"
     ],
+    "Add at least one person with a first name.": [
+      "请至少加入一位填了名字的人。",
+      "請至少加入一位填了名字的人。"
+    ],
     "Add background…": [
       "新增背景…",
       "新增背景…"
@@ -827,6 +831,10 @@
     "Announcements": [
       "报告",
       "報告"
+    ],
+    "Another person": [
+      "再加一人",
+      "再加一人"
     ],
     "Another receipt": [
       "再加一张收据",
@@ -3792,6 +3800,10 @@
       "开始设置",
       "開始設置"
     ],
+    "Give the household a name.": [
+      "请为家庭命名。",
+      "請為家庭命名。"
+    ],
     "Glory to God in the highest": [
       "在至高之处荣耀归与神",
       "在至高之處榮耀歸與神"
@@ -3980,6 +3992,10 @@
       "修改记录",
       "修改記錄"
     ],
+    "Home phone": [
+      "住家电话",
+      "住家電話"
+    ],
     "Honorific title": [
       "称谓",
       "稱謂"
@@ -3995,6 +4011,10 @@
     "Household": [
       "家庭",
       "家庭"
+    ],
+    "Household name": [
+      "家庭名称",
+      "家庭名稱"
     ],
     "Household role": [
       "家庭角色",
@@ -4323,6 +4343,10 @@
     "In the church’s currency. Offerings in other currencies are listed separately and never converted.": [
       "以教会的货币计算。其他货币的奉献分开列出，不作兑换。",
       "以教會的貨幣計算。其他貨幣的奉獻分開列出，不作兌換。"
+    ],
+    "In the household": [
+      "在家庭中的身份",
+      "在家庭中的身份"
     ],
     "In the library": [
       "在馆",
@@ -5316,6 +5340,10 @@
       "新增活动",
       "新增活動"
     ],
+    "New family": [
+      "加入一家人",
+      "加入一家人"
+    ],
     "New fund": [
       "新款项",
       "新款項"
@@ -5325,8 +5353,8 @@
       "新建家庭"
     ],
     "New household…": [
-      "新家庭……",
-      "新家庭……"
+      "新建家庭……",
+      "新建家庭……"
     ],
     "New hymnal": [
       "新增诗本",
@@ -6287,6 +6315,10 @@
     "One printable page per month: totals by fund and method, each service with its cash count, other currencies, and lines to sign.": [
       "每月一页可打印的汇总：按奉献项目和方式的总额、每次聚会及其现金点算、其他货币，以及签名栏。",
       "每月一頁可打印的彙總：按奉獻項目和方式的總額、每次聚會及其現金點算、其他貨幣，以及簽名欄。"
+    ],
+    "One row for each person. Contact details, baptism and the rest can be added afterwards on each person.": [
+      "每人一行。联络资料、受洗等其他资料，之后可在每个人的资料中补上。",
+      "每人一行。聯絡資料、受洗等其他資料，之後可在每個人的資料中補上。"
     ],
     "One row per line; the rows of a journal share its reference in the Journal column. Accounts and funds by their code. Journals come in as drafts: nothing is posted until you post it.": [
       "每行是分录的一项；同一笔分录的各行在“Journal”栏用同一个编号。科目和款项用代号。分录会以草稿导入：在你过账之前，不会过账任何分录。",
@@ -7799,6 +7831,10 @@
     "Save draft": [
       "保存草稿",
       "保存草稿"
+    ],
+    "Save family ({n})": [
+      "保存家庭（{n} 人）",
+      "保存家庭（{n} 人）"
     ],
     "Save first, then add the photo": [
       "先保存，再加入照片",
@@ -11410,8 +11446,8 @@
     ]
   },
   "guide": [
-    "d5fd4808b75b6581",
-    "8c2b9f0a8e6aac6a"
+    "20791f18e2708bc5",
+    "3b40c3dc7133c8ad"
   ],
   "outputs": {
     "Advent": [
