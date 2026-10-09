@@ -51,10 +51,11 @@ export function RecordEditor() {
   if (svc.error || rec.error) return <div className="page"><ErrorBox error={(svc.error ?? rec.error)!} /></div>;
   if (!svc.data || !d) return <div className="page"><Loading /></div>;
   const s = svc.data;
-  const restricted = !!d.hidden?.length;
+  // what this role doesn't see (0.19.7: each on its own): what visitors told the church, and the money
+  const restricted = !!d.hidden?.includes('visitor contact');
   // a meeting may take no offering: then its record is headcount, visitors and notes only
   const takesOffering = s.offering !== false;
-  const noMoney = restricted || !takesOffering;
+  const noMoney = !!d.hidden?.includes('offerings') || !takesOffering;
   const isMeeting = s.kind === 'meeting';
   // editors, or the leader of this meeting (lib/leaders.ts on the server)
   const canEdit = editor || canRecord(s);
@@ -72,17 +73,17 @@ export function RecordEditor() {
   const approvedAccounts = new Set(sigs.filter((g) => g.via === 'account' && g.account_id).map((g) => g.account_id)).size;
   const setForeign = (c: string, p: Partial<ForeignCash>) => set({ foreign_cash: { ...d.foreign_cash, [c]: { ...d.foreign_cash?.[c], ...p } } });
 
-  const body = () => restricted
-    ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes }
-    : !takesOffering
-      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors }
-    : locked
-      ? { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings }
-      : {
-        attendance: d.attendance, children: d.children, online: d.online, notes: d.notes, visitors: d.visitors, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency, counted_on: d.counted_on ?? null,
-        // counts of currencies no longer in the offerings are dropped
-        foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
-      };
+  const body = () => {
+    const b: Partial<Rec> = { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes };
+    if (!restricted) b.visitors = d.visitors;
+    if (noMoney) return b;
+    if (locked) return { ...b, offerings: d.offerings };
+    return {
+      ...b, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency, counted_on: d.counted_on ?? null,
+      // counts of currencies no longer in the offerings are dropped
+      foreign_cash: Object.fromEntries(Object.entries(d.foreign_cash ?? {}).filter(([c]) => foreign.includes(c))),
+    };
+  };
   // the revision this screen started from (0: no record yet), sent with every save so nobody's work is overwritten
   const base = () => String(rec.data?.saved ? rec.data.revision ?? 0 : 0);
   const put = () => api.put<Rec>(`/services/${sid}/record`, body(), base());
@@ -188,7 +189,7 @@ export function RecordEditor() {
             <h3>{t('New visitors')} <span className="badge">{d.visitors.length}</span></h3>
             {!restricted && <button className="btn sm" onClick={() => set({ visitors: [...d.visitors, { name: '' }] })}><Icon name="plus" />{t('Add visitor')}</button>}
           </div>
-          {restricted && <div className="small muted">{t('Contact details are only shown to editors and administrators.')}</div>}
+          {restricted && <div className="small muted">{t('Visitors’ contact details and notes are shown to roles that see members’ details.')}</div>}
           {d.visitors.length === 0 ? <div className="small muted">{t('No new visitors recorded.')}</div> : (
             <div className="table-wrap">
               <table className="t rec-visitors">

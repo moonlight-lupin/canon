@@ -134,3 +134,40 @@ test('roles that see the money but not members’ details (an auditor, a treasur
   const ed = await get(as.editor, `/services/${sid}/record`);
   assert.ok(ed.text.includes('9123 4567') && ed.text.includes('private prayer request'));
 });
+
+test('0.19.7: the Secretary records visitors (members’ details, no money); a treasurer’s save keeps visitors’ contact details', async () => {
+  const R = await import('../server/repo/records.ts');
+  const { asActor } = await import('../server/lib/actor.ts');
+  const sid = svc.createService({ date: '2031-04-06' }).service.id;
+  asActor({ user_id: null, user_name: 'Test', via: 'web' }, () => R.saveRecord(sid, {
+    attendance: 50, visitors: [{ name: 'Wanda Visitor', contact: '9234 5678', prayer: 'a private request', notes: 'call on Tuesday' }],
+    offerings: [{ fund: 'General', method: 'paynow', amount: 12345 }],
+  }, { name: 'Test', admin: true, money: true }));
+  const put = async (who: Session, body: unknown) => {
+    const cur = JSON.parse((await get(who, `/services/${sid}/record`)).text) as Json;
+    const r = await fetch(`${base}/api/services/${sid}/record`, { method: 'PUT', headers: { Cookie: who.cookie, 'X-CSRF-Token': who.csrf, 'Content-Type': 'application/json', 'X-Base-Version': String(cur.revision ?? 0) }, body: JSON.stringify(body) });
+    return { status: r.status, text: await r.text() };
+  };
+  createUser({ username: 'secretary', display_name: 'Test secretary', password: 'correct-horse-3', role: 'secretary' });
+  const sec = await login('secretary');
+  const seen = JSON.parse((await get(sec, `/services/${sid}/record`)).text) as Json;
+  assert.equal(seen.visitors[0].contact, '9234 5678', 'the Secretary sees what visitors told the church');
+  assert.deepEqual(seen.offerings, [], 'but not the money');
+  assert.deepEqual(seen.hidden, ['offerings', 'cash', 'counters']);
+  const added = await put(sec, { attendance: 51, visitors: [...seen.visitors, { name: 'Walter Newcomer', contact: '9345 6789' }] });
+  assert.equal(added.status, 200, added.text);
+  assert.equal(R.recordFor(sid).visitors.length, 2, 'the Secretary added a visitor');
+  assert.equal(R.recordFor(sid).offerings[0].amount, 12345, 'the offerings untouched');
+  // a treasurer sees the money, not the visitors' details: its save can't replace the visitors with its shortened list
+  createUser({ username: 'treasurer2', display_name: 'Test treasurer', password: 'correct-horse-3', role: 'treasurer' });
+  const tr = await login('treasurer2');
+  const trSeen = JSON.parse((await get(tr, `/services/${sid}/record`)).text) as Json;
+  assert.deepEqual(trSeen.hidden, ['visitor contact']);
+  const saved = await put(tr, { attendance: 52, visitors: trSeen.visitors });
+  assert.equal(saved.status, 200, saved.text);
+  const after = R.recordFor(sid);
+  assert.equal(after.attendance, 52);
+  assert.equal(after.visitors[0].contact, '9234 5678', 'contact details kept');
+  assert.equal(after.visitors[0].prayer, 'a private request');
+  assert.equal(after.visitors[1].contact, '9345 6789');
+});

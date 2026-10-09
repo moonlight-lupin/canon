@@ -185,15 +185,22 @@ export function addSampleActivity(o: {
   });
   // rotas: the sample's people in the empty places (served and confirmed in the past)
   const roles = vol.teamsWithRoles().flatMap((t) => t.roles);
+  // people take turns: whoever did a role last week isn't picked for it again when someone else can (0.19.7, UX test)
+  const lastWeek = new Map<number, Set<number>>();
   for (const s of sampleServices) {
     const busy = new Set<number>();
     for (const r of roles) {
-      const pool = (o.pools.get(r.id) ?? []).filter((pid) => !busy.has(pid));
+      const free = (o.pools.get(r.id) ?? []).filter((pid) => !busy.has(pid));
+      const rested = free.filter((pid) => !lastWeek.get(r.id)?.has(pid));
+      const pool = rested.length >= r.needed ? rested : free;
+      const chosen = new Set<number>();
       for (const pid of pick(pool, Math.max(0, r.needed))) {
         if (get('SELECT 1 FROM assignments WHERE service_id = ? AND person_id = ?', s.id, pid)) continue;
         o.assignments.push((vol.assign(s.id, r.id, pid, s.date < today ? 'confirmed' : 'scheduled') as { id: number }).id);
         busy.add(pid);
+        chosen.add(pid);
       }
+      lastWeek.set(r.id, chosen);
     }
   }
 
@@ -253,8 +260,10 @@ export function addSampleActivity(o: {
         ? [-5, -3, -1, 1].map((k) => day(lastSunday, 5 + k * 7))   // Fridays, every other week
         : [-3, -2, -1, 0, 1].map((k) => day(lastSunday, k * 7));    // Sundays
       for (const date of dates) {
+        // led by the group's leader (the one marked as leading it)
+        const leader = get<{ person_id: number }>('SELECT person_id FROM group_members WHERE group_id = ? AND leads = 1 ORDER BY id LIMIT 1', g.id)?.person_id ?? null;
         const m = svc.createMeeting({
-          group_id: g.id, date, start_time: g.kind === 'cell_group' ? '20:00' : '09:30',
+          group_id: g.id, date, start_time: g.kind === 'cell_group' ? '20:00' : '09:30', leader_id: leader,
           place: g.kind === 'cell_group' ? 'A member’s home (sample)' : null, space_id: g.kind === 'sunday_school' ? room : null,
         } as never);
         o.serviceIds.push(m.id);

@@ -73,6 +73,17 @@ export function PersonEditor({ id, households, onClose, onSaved }: { id: number 
   }, [detail.data]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }));
+  // a family that is new to the church: its household made here, without leaving the form (0.19.7, from a UX test)
+  const [madeHouseholds, setMadeHouseholds] = useState<{ id: number; name: string }[]>([]);
+  const newHousehold = async () => {
+    const name = window.prompt(t('Name of the new household'), draft.last_name.trim() ? t('{name} family').replace('{name}', draft.last_name.trim()) : '');
+    if (!name?.trim()) return;
+    const h = await run(() => api.post<{ id: number; name: string }>('/households', { name: name.trim() }));
+    if (h) {
+      setMadeHouseholds((x) => [...x, h]);
+      set('household_id', String(h.id));
+    }
+  };
   const inp = (k: keyof Draft, type = 'text', extra: Record<string, unknown> = {}) => (
     <input type={type} value={draft[k]} onChange={(e) => set(k, e.target.value as never)} {...extra} />
   );
@@ -214,7 +225,16 @@ ${t('Their name is still typed on {n} services or records (kept as church record
                 <Field label={t('Profession of faith')}>{inp('profession_date', 'date')}</Field>
                 <Field label={t('Household')}>
                   <Combo value={draft.household_id} noneLabel="—" ariaLabel={t('Household')}
-                    options={households.map((h) => ({ value: String(h.id), label: h.name, search: h.members.map((m) => [m.first_name, m.last_name, m.native_name].filter(Boolean).join(' ')).join(' ') }))}
+                    options={[
+                      // who is in it, so that two households of the same name can be told apart
+                      ...households.map((h) => ({
+                        value: String(h.id), label: h.name,
+                        hint: h.members.length ? h.members.slice(0, 3).map((m) => m.first_name).join(', ') + (h.members.length > 3 ? '…' : '') : t('nobody yet'),
+                        search: h.members.map((m) => [m.first_name, m.last_name, m.native_name].filter(Boolean).join(' ')).join(' '),
+                      })),
+                      ...madeHouseholds.map((h) => ({ value: String(h.id), label: h.name, hint: t('just added') })),
+                    ]}
+                    footer={<button type="button" className="btn ghost sm" onClick={newHousehold}><Icon name="plus" />{t('New household…')}</button>}
                     onChange={(v) => set('household_id', v)} />
                 </Field>
                 {draft.household_id && (

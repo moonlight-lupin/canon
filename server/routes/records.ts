@@ -48,9 +48,11 @@ const canSeeMoney = (req: Request) => can(req.user, 'contributions', 'read');
  * What visitors told the church (contact details, prayer requests, notes): roles that see members' details too — not
  * every role that sees the money (an external auditor, a treasurer).
  */
-const seesVisitors = (req: Request) => canSeeMoney(req) && seesMemberDetails(req.user);
+// 0.19.7: by members' details alone (it was tied to seeing the money, so the Secretary — registers and records, no
+// offerings — couldn't record a visitor)
+const seesVisitors = (req: Request) => seesMemberDetails(req.user);
 /** The visitor form of a service and its entries: editors and administrators, or the leader of that meeting. */
-const mayHandleForm = (req: Request, serviceId: number) => seesVisitors(req) || leadsMeeting(req.user?.person_id, serviceId);
+const mayHandleForm = (req: Request, serviceId: number) => (seesVisitors(req) && can(req.user, 'records', 'edit')) || leadsMeeting(req.user?.person_id, serviceId);
 // which years are in archive files (reports cover the live database only, and say so)
 recordRoutes.get('/reports/archived-years', h(() => ({ years: arc.archiveYears() })));
 recordRoutes.get('/reports/attendance', h((req) => reports.attendanceReport(reportPeriod(req))));
@@ -70,8 +72,14 @@ recordRoutes.get('/services/:id/record', h((req) => {
   const r = rec.recordFor(id(req));
   // editors and administrators, and the leader of this meeting, see the whole record; roles that see the money but
   // not members' details see it without what visitors told the church
-  if (leadsMeeting(req.user?.person_id, id(req)) || seesVisitors(req)) return r;
-  return canSeeMoney(req) ? rec.withoutVisitorDetails(r) : rec.forViewer(r);
+  // each permission on its own (0.19.7): members' details decide the visitors, Offerings the money
+  const lead = leadsMeeting(req.user?.person_id, id(req));
+  const details = lead || seesVisitors(req);
+  const money = lead || canSeeMoney(req);
+  if (details && money) return r;
+  if (details) return rec.withoutMoney(r);
+  if (money) return { ...rec.withoutVisitorDetails(r), hidden: ['visitor contact'] };
+  return rec.forViewer(r);
 }));
 // visitor form: settings (administrators), a service's form (editors), the review queue (editors)
 const origin = (req: Request) => `${req.protocol}://${req.get('host')}`;
@@ -104,7 +112,11 @@ recordRoutes.put('/services/:id/record', h((req) => {
   const cur = rec.recordFor(id(req));
   // a screen that saw no record yet sends 0: a record someone else created meanwhile is a conflict too
   assertFresh(req, cur.saved ? cur : { revision: 0 }, 'service_records', cur.id);
-  return rec.saveRecord(id(req), RecordInput.parse(req.body) as Partial<ServiceRecord>, recWho(req));
+  const patch = RecordInput.parse(req.body) as Partial<ServiceRecord>;
+  // a role that doesn't see what visitors told the church gets them shortened, so its list can't replace the full one
+  // (0.19.7: a treasurer saving a record wiped the visitors' contact details)
+  if (!leadsMeeting(req.user?.person_id, id(req)) && !seesVisitors(req)) delete patch.visitors;
+  return rec.saveRecord(id(req), patch, recWho(req));
 }));
 recordRoutes.post('/services/:id/record/sign', h((req) => rec.sign(id(req), z.object({ name: z.string().max(120), image: z.string().max(400_000) }).parse(req.body), recWho(req))));
 recordRoutes.post('/services/:id/record/approve', h((req) => rec.approve(id(req), { ...recWho(req), user_id: req.user!.id })));

@@ -271,7 +271,7 @@ export function BulletinPages({
       ) : (
         <>{plan.pages.length} {t('pages')}</>
       )}
-      {booklet && variant === 'print' && <> · {plan.pages.length / 4} {t(plan.pages.length === 4 ? 'sheet' : 'sheets')} · {t('Print double-sided, flip on short edge, then fold.')}</>}
+      {booklet && variant === 'print' && <> · {plan.pages.length / 4} {t(plan.pages.length === 4 ? 'sheet' : 'sheets')} · {t('In the print window choose double-sided, “flip on short edge”, then fold the sheets in half.')}</>}
       {plan.oversize && <span className="badge warn" style={{ marginLeft: 8 }}>{t('Some content is taller than a page — reduce the font size.')}</span>}
     </div>
   );

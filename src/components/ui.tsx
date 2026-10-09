@@ -109,20 +109,27 @@ export function Modal({
   title, onClose, children, footer, size,
 }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'lg' }) {
   const { t } = useI18n();
+  // something was typed or chosen here: Escape, a click outside or ✕ ask before it is lost (0.19.7, from a UX test —
+  // Escape had thrown away a new member's details without a word). Cancel and Save close as they always did.
+  const touched = useRef(false);
+  const tryClose = useCallback(() => {
+    if (touched.current && !window.confirm(t('Close without saving? What you typed here will be lost.'))) return;
+    onClose();
+  }, [onClose, t]);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && tryClose();
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+  }, [tryClose]);
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal${size ? ' ' + size : ''}`} role="dialog" aria-modal="true">
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && tryClose()}>
+      <div className={`modal${size ? ' ' + size : ''}`} role="dialog" aria-modal="true" onInput={() => { touched.current = true; }} onChange={() => { touched.current = true; }}>
         <L10nEditScope>
           <div className="modal-head">
             <h2>{title}</h2>
             <div className="row" style={{ gap: 8, flexWrap: 'nowrap' }}>
               <L10nSwitcher />
-              <button className="btn ghost icon" onClick={onClose} aria-label={t('Close')}><Icon name="x" /></button>
+              <button className="btn ghost icon" onClick={tryClose} aria-label={t('Close')}><Icon name="x" /></button>
             </div>
           </div>
           <div className="modal-body">{children}</div>

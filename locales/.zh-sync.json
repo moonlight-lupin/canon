@@ -2112,6 +2112,10 @@
       "不确认就关闭？Canon 不会再显示这个恢复密钥。若尚未打印或抄下，请在“设置 → 安全与隐私”另做新的恢复密钥。",
       "不確認就關閉？Canon 不會再顯示這個恢復密鑰。若尚未打印或抄下，請在“設置 → 安全與隱私”另做新的恢復密鑰。"
     ],
+    "Close without saving? What you typed here will be lost.": [
+      "不保存就关闭吗？在这里输入的内容会丢失。",
+      "不保存就關閉嗎？在這裡輸入的內容會丟失。"
+    ],
     "Closed up to": [
       "已关账至",
       "已關賬至"
@@ -4324,6 +4328,10 @@
       "在馆",
       "在館"
     ],
+    "In the print window choose double-sided, “flip on short edge”, then fold the sheets in half.": [
+      "在打印窗口中选择双面打印、“短边翻页”，然后把纸对折。",
+      "在打印窗口中選擇雙面打印、“短邊翻頁”，然後把紙對摺。"
+    ],
     "In the service planner each item can still be set to “Full text” or “Title only”, whatever the template says.": [
       "在聚会程序编辑中，每个项目仍可单独设为「完整内容」或「只印标题」，不受模板限制。",
       "在聚會程序編輯中，每個項目仍可單獨設為「完整內容」或「只印標題」，不受模板限制。"
@@ -5212,6 +5220,10 @@
       "请填写名称。",
       "請填寫名稱。"
     ],
+    "Name of the new household": [
+      "新家庭的名称",
+      "新家庭的名稱"
+    ],
     "Name, number, serial number or place": [
       "名称、编号、序号或地点",
       "名稱、編號、序號或地點"
@@ -5311,6 +5323,10 @@
     "New household": [
       "新建家庭",
       "新建家庭"
+    ],
+    "New household…": [
+      "新家庭……",
+      "新家庭……"
     ],
     "New hymnal": [
       "新增诗本",
@@ -10044,6 +10060,10 @@
       "新朋友联络资料",
       "新朋友聯絡資料"
     ],
+    "Visitors’ contact details and notes are shown to roles that see members’ details.": [
+      "新朋友的联络资料和备注，只显示给可查看会友资料的角色。",
+      "新朋友的聯絡資料和備註，只顯示給可查看會友資料的角色。"
+    ],
     "Visitors’ details are personal data: keep exports safe and delete them when done (PDPA).": [
       "新朋友的资料属个人资料：请妥善保管导出的文件，用完即删除（PDPA）。",
       "新朋友的資料屬個人資料：請妥善保管導出的文件，用完即刪除（PDPA）。"
@@ -10500,6 +10520,10 @@
       "你的恢复码",
       "你的恢復碼"
     ],
+    "Your role can view the rota. Whoever plans the services changes it.": [
+      "你的角色可以查看事奉表；由负责策划聚会的人更改。",
+      "你的角色可以查看事奉表；由負責策劃聚會的人更改。"
+    ],
     "a Google account": [
       "一个 Google 帐户",
       "一個 Google 帳戶"
@@ -10760,6 +10784,10 @@
       "次（本堂聚会之前 12 个月内）",
       "次（本堂聚會之前 12 個月內）"
     ],
+    "just added": [
+      "刚加入",
+      "剛加入"
+    ],
     "keep them somewhere safe: each signs you in once if you lose your phone. They are shown only now.": [
       "请妥善保存：手机遗失时，每个恢复码可用来登入一次。恢复码只会在现在显示。",
       "請妥善保存：手機遺失時，每個恢復碼可用來登入一次。恢復碼只會在現在顯示。"
@@ -10815,6 +10843,10 @@
     "no sheet music": [
       "没有乐谱",
       "沒有樂譜"
+    ],
+    "nobody yet": [
+      "还没有成员",
+      "還沒有成員"
     ],
     "nobody yet: add an approver (Approvers and settings)": [
       "还没有人：请加入审批人（审批人与设置）",
@@ -11140,6 +11172,10 @@
       "资料库中已有 {m}／{n}",
       "資料庫中已有 {m}／{n}"
     ],
+    "{name} family": [
+      "{name}家",
+      "{name}家"
+    ],
     "{name} is qualified for {roles} in this team. Remove them from the team and drop those qualifications?": [
       "{name} 在此团队中可担任 {roles}。确定移出团队并取消这些岗位资格？",
       "{name} 在此團隊中可擔任 {roles}。確定移出團隊並取消這些崗位資格？"
@@ -11374,8 +11410,8 @@
     ]
   },
   "guide": [
-    "0d2f59ad41e19211",
-    "c0184c51a70ca413"
+    "d5fd4808b75b6581",
+    "8c2b9f0a8e6aac6a"
   ],
   "outputs": {
     "Advent": [

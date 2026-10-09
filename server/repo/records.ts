@@ -325,6 +325,17 @@ export function forViewer(r: ServiceRecord & { saved?: boolean }) {
 }
 
 /**
+ * A record for a role that sees members' details but not the money (the Secretary, 0.19.7): everything but the
+ * offerings and the cash count — visitors in full, as the people who keep the registers need them.
+ */
+export function withoutMoney(r: ServiceRecord & { saved?: boolean }) {
+  return {
+    ...r, offerings: [], cash: {}, counters: [], foreign_cash: {}, signatures: [], verified_at: null, verified_by: null,
+    hidden: ['offerings', 'cash', 'counters'],
+  };
+}
+
+/**
  * A record for a role that sees the money but not members' details (an external auditor, a treasurer): everything
  * but what visitors told the church — their contact details, prayer request, how they describe themselves and the
  * follow-up notes (review, 0.19.0: these went to those roles before).

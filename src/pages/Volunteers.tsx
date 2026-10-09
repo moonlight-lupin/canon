@@ -140,6 +140,8 @@ function RotaTab({ people }: { people: PersonRow[] }) {
         <span className="chip declined">{t('Declined')}</span>
         <span className="chip away">{t('Away')}</span>
         {canEdit && <span>{t('Click a name to change its status.')}</span>}
+        {/* a role that only reads the rota is told why there's nothing to click (0.19.7, from a UX test) */}
+        {!canEdit && <span>{t('Your role can view the rota. Whoever plans the services changes it.')}</span>}
       </div>
       {error && <ErrorBox error={error} />}
       {loading && !data ? <Loading /> : !data ? null : !data.services.length ? (
