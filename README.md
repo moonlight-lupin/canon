@@ -9,9 +9,9 @@ It was designed with a bilingual (English / 中文) Reformed and Presbyterian co
 
 [![CI](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml/badge.svg)](https://github.com/moonlight-lupin/canon/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![Node 24+](https://img.shields.io/badge/node-%E2%89%A524-417e38)
 
-https://github.com/user-attachments/assets/5eec1588-ded9-4e3b-8b11-6cb5f0d54fa7
+https://github.com/user-attachments/assets/b7a61902-bf0a-46b3-9207-0d46c07c2f66
 
-*Canon in 47 seconds, filmed on the built-in sample church (Settings → Sample data).*
+*Canon in 51 seconds, filmed on the built-in sample church (Settings → Sample data).*
 
 ## Features
 
