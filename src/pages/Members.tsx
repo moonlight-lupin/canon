@@ -12,6 +12,7 @@ import { PersonName, STATUSES, STATUS_LABEL, StatusBadge } from './people-common
 import { BirthdaysTab } from './members/BirthdaysTab.tsx';
 import { HouseholdsTab } from './members/HouseholdsTab.tsx';
 import { PersonEditor } from './members/PersonEditor.tsx';
+import { FamilyEditor } from './members/FamilyEditor.tsx';
 import type { HouseholdWithMembers } from './members/common.ts';
 
 type Tab = 'people' | 'households' | 'birthdays';
@@ -22,6 +23,7 @@ export default function Members() {
   const allPeople = useApi<{ total: number; rows: PersonRow[] }>('/people?limit=5000');
   const households = useApi<HouseholdWithMembers[]>('/households');
   const [editing, setEditing] = useState<number | 'new' | null>(null);
+  const [family, setFamily] = useState(false);
   const [version, setVersion] = useState(0);
 
   const refreshAll = () => {
@@ -33,7 +35,7 @@ export default function Members() {
   return (
     <div className="page people-page">
       <PageHead eyebrow={t('Congregation')} title={t('Member register')} sub={allPeople.data ? `${allPeople.data.total} ${t('people')}` : undefined}>
-        <MembersActions onAdd={() => setEditing('new')} onImported={refreshAll} />
+        <MembersActions onAdd={() => setEditing('new')} onFamily={() => setFamily(true)} onImported={refreshAll} />
       </PageHead>
       <div className="tabs" role="tablist">
         {(['people', 'households', 'birthdays'] as Tab[]).map((k) => (
@@ -46,10 +48,11 @@ export default function Members() {
       {tab === 'households' && (
         <HouseholdsTab
           households={households.data} error={households.error} people={allPeople.data?.rows ?? []}
-          onChanged={refreshAll} onOpen={setEditing}
+          onChanged={refreshAll} onOpen={setEditing} onFamily={() => setFamily(true)}
         />
       )}
       {tab === 'birthdays' && <BirthdaysTab people={allPeople.data?.rows} onOpen={setEditing} />}
+      {family && <FamilyEditor onClose={() => setFamily(false)} onSaved={refreshAll} />}
       {editing !== null && (
         <PersonEditor
           id={editing === 'new' ? null : editing}
@@ -64,12 +67,13 @@ export default function Members() {
 
 // ---------------------------------------------------------------- header actions: add, export, import
 
-function MembersActions({ onAdd, onImported }: { onAdd: () => void; onImported: () => void }) {
+function MembersActions({ onAdd, onFamily, onImported }: { onAdd: () => void; onFamily: () => void; onImported: () => void }) {
   const { t } = useI18n();
   const { canEdit } = useSession();
   return (
     <>
       <CsvTools entity="members" label={t('Member register')} onImported={onImported} />
+      {canEdit && <button className="btn" onClick={onFamily}><Icon name="plus" />{t('New family')}</button>}
       {canEdit && <button className="btn primary" onClick={onAdd}><Icon name="plus" />{t('Add person')}</button>}
     </>
   );

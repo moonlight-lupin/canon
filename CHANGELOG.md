@@ -26,6 +26,7 @@ From a read-only study of Canon's sign-in code (0.19.7). Each fix has its test (
   - **Fixed: a treasurer (or anyone seeing the money but not members' details) saving a service record wiped its visitors' contact details**, prayer requests and notes — the shortened list it was shown replaced the full one. Such a save now leaves the visitors as they are.
   - **A dialog with something typed in asks before it closes** with Escape, a click outside or ✕ (Escape had thrown away a new member's details without a word). Cancel and Save are unchanged.
   - **The household list shows who is in each household** (two "Lim family" households can be told apart), and **New household…** makes one without leaving the member form.
+  - **New family** (Members, next to Add person, and on the Households tab): a whole family in one form — a row for each person (names, Chinese name, place in the household, gender, birthday, status) and the household (its name follows the first person's surname), saved together. It had taken a household and then one form per person.
   - A role that can only view the rota is told so, instead of finding nothing to click; the bulletin's printing hint says where to choose double-sided printing.
   - The sample's people take turns on the rota, and its meetings have their group's leader.
 - Database: version 38 (the sample's mark on the rows it adds).

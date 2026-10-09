@@ -14,8 +14,8 @@ export const sortMembers = (ms: Person[]) =>
   [...ms].sort((a, b) => (ROLE_ORDER[a.household_role ?? ''] ?? 4) - (ROLE_ORDER[b.household_role ?? ''] ?? 4) || (a.birth_date ?? '9').localeCompare(b.birth_date ?? '9'));
 
 export function HouseholdsTab({
-  households, error, people, onChanged, onOpen,
-}: { households?: HouseholdWithMembers[]; error: string | null; people: PersonRow[]; onChanged: () => void; onOpen: (id: number) => void }) {
+  households, error, people, onChanged, onOpen, onFamily,
+}: { households?: HouseholdWithMembers[]; error: string | null; people: PersonRow[]; onChanged: () => void; onOpen: (id: number) => void; onFamily: () => void }) {
   const { t } = useI18n();
   const { canEdit } = useSession();
   const { run, busy } = useAction();
@@ -41,7 +41,12 @@ export function HouseholdsTab({
     <div className="stack">
       <div className="row between">
         <div style={{ minWidth: 220, maxWidth: 380 }} className="grow"><SearchBox value={q} onChange={setQ} /></div>
-        {canEdit && <button className="btn primary" onClick={() => setEdit('new')}><Icon name="plus" />{t('New household')}</button>}
+        {canEdit && (
+          <div className="row">
+            <button className="btn" onClick={() => setEdit('new')}><Icon name="plus" />{t('New household')}</button>
+            <button className="btn primary" onClick={onFamily}><Icon name="plus" />{t('New family')}</button>
+          </div>
+        )}
       </div>
       {!shown.length ? (
         <div className="card"><Empty title={s ? t('No matches.') : t('No households yet')}>{!s && <p>{t('Group family members together to see who lives with whom.')}</p>}</Empty></div>
