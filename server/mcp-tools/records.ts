@@ -17,7 +17,8 @@ import { getSettings } from '../repo/settings.ts';
 /** May this connection see meetings at all (Meetings switched on, and the role reads them or the person leads one)? */
 function meetingsVisible(ctx: Ctx) {
   if (getSettings().modules.meetings === false) return false;
-  if (!ctx.auth) return true; // called directly (tests), not through a connection
+  // no connection to check (a handler called directly): no meetings — every check here fails closed
+  if (!ctx.auth) return false;
   const role = roleDef(ctx.auth.user.role);
   return role.admin || (role.access.meetings ?? 'none') !== 'none' || !!dbGet("SELECT 1 FROM group_members WHERE person_id = ? AND leads = 1", ctx.auth.user.person_id ?? 0);
 }
@@ -40,7 +41,7 @@ const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kin
 const money = (ctx: Ctx) => canRead(ctx, 'contributions');
 
 /** Visitors on this connection (Settings → AI / MCP → Service records → Visitors). */
-const visitorLevel = (ctx: Ctx) => ctx.visitors ?? (ctx.pii ? 'contact' : 'names');
+const visitorLevel = (ctx: Ctx) => ctx.visitors ?? 'off';
 const visitorOut = (v: Visitor, i: number, ctx: Ctx) => ({
   index: i, name: v.name, source: v.source ?? null, follow_up_by: v.follow_up_by ?? null, status: v.status ?? 'new',
   ...(visitorLevel(ctx) === 'contact' ? { contact: v.contact ?? null, notes: v.notes ?? null, prayer: v.prayer ?? null, about: v.about ?? null } : {}),

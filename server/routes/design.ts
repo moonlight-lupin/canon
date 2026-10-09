@@ -1,12 +1,10 @@
 // REST routes for design assets: the church logo (upload / serve / remove).
 // Season colours and cover options are plain settings and service fields (PATCH /settings, /services/:id).
 //
-// Logo formats: PNG, JPEG and WebP are checked by their magic bytes. SVG is accepted only when it is
-// plainly static: anything that can run script or load other resources (script, foreignObject, event
-// handler attributes, external href/src, javascript:/data:text URLs, DOCTYPE/ENTITY, CSS @import / url()
-// to other files, iframes/embeds) is rejected rather than "cleaned". As defence in depth the logo is
-// always served with a sandboxing Content-Security-Policy, and the app only ever shows it through <img>,
-// where SVG cannot run script anyway.
+// Logo formats: PNG, JPEG and WebP, checked by their magic bytes. SVG is no longer taken (0.19.11, Daedalus Workshop
+// study of 0.19.10): it can carry script, and the pattern check that let "plainly static" SVGs through was no parser.
+// An SVG logo uploaded before keeps showing (the app only shows the logo through <img>, where SVG can't run script);
+// it is served as an attachment with a sandboxing Content-Security-Policy, so opened on its own it runs nothing.
 import crypto from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { get, run } from '../db.ts';
@@ -19,7 +17,7 @@ export const publicDesignRoutes = express.Router();
 export const designRoutes = express.Router();
 
 const MAX_BYTES = 2 * 1024 * 1024;
-const TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'] as const;
+const TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 type ImageType = (typeof TYPES)[number];
 
 interface Asset { mime: string; data: Uint8Array; updated_at: string }
@@ -34,34 +32,18 @@ function logo() {
   return cached;
 }
 
+/** Forget the cached logo (tests that put one in the database directly). */
+export const forgetLogo = () => {
+  cached = undefined;
+};
+
 const fail = (status: number, message: string) => Object.assign(new Error(message), { status });
 
 /** Does the file really look like the declared raster format? (also used for bulletin block pictures) */
 export function magicOk(type: ImageType, b: Buffer): boolean {
   if (type === 'image/png') return b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
   if (type === 'image/jpeg') return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
-  if (type === 'image/webp') return b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP';
-  return true;
-}
-
-/** Why an SVG is not acceptable as a static logo (null = fine). */
-export function svgProblem(text: string): string | null {
-  const s = text.replace(/^﻿/, '');
-  if (!/^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(s)) return 'not an SVG document';
-  if (/<!DOCTYPE|<!ENTITY/i.test(s)) return 'DOCTYPE/ENTITY declarations are not allowed';
-  if (/<\s*(script|foreignObject|iframe|embed|object|handler|listener|set\b|animate\w*)/i.test(s)) return 'scripts, animations and embedded content are not allowed';
-  if (/\son[a-z]+\s*=/i.test(s)) return 'event handler attributes are not allowed';
-  if (/(javascript|vbscript)\s*:/i.test(s) || /data:\s*(text|application)\//i.test(s)) return 'script URLs are not allowed';
-  // Only same-document references (#id) and inline raster images may be linked.
-  for (const m of s.matchAll(/\b(?:xlink:)?href\s*=\s*(["'])(.*?)\1/gis)) {
-    const v = m[2].trim();
-    if (!v.startsWith('#') && !/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(v)) return 'external links are not allowed';
-  }
-  if (/@import/i.test(s)) return 'CSS imports are not allowed';
-  for (const m of s.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/gi)) {
-    if (!m[2].trim().startsWith('#')) return 'external resources are not allowed';
-  }
-  return null;
+  return b.length > 12 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP';
 }
 
 // ---------------------------------------------------------------- public
@@ -82,8 +64,11 @@ publicDesignRoutes.get('/assets/logo', (req, res) => {
   res.setHeader('ETag', etag);
   // A versioned URL (?v=<hash>) never changes; the plain URL is revalidated each time.
   res.setHeader('Cache-Control', req.query.v === l.version ? 'public, max-age=31536000, immutable' : 'no-cache');
-  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox");
+  res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // an SVG from before 0.19.11: shown through <img> as before, but never opened as a page of its own
+  if (l.mime === 'image/svg+xml') res.setHeader('Content-Disposition', 'attachment; filename="logo.svg"');
   if (req.headers['if-none-match'] === etag) {
     res.status(304).end();
     return;
@@ -108,14 +93,10 @@ function readImage(req: Request, res: Response, next: NextFunction) {
 designRoutes.put('/assets/logo', requireAdmin, readImage, (req, res, next) => {
   try {
     const type = (req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase() as ImageType;
-    if (!TYPES.includes(type) || !Buffer.isBuffer(req.body)) throw fail(415, 'Upload a PNG, JPEG, WebP or SVG image');
+    if (!TYPES.includes(type) || !Buffer.isBuffer(req.body)) throw fail(415, 'Upload a PNG, JPEG or WebP image');
     const data = req.body as Buffer;
     if (!data.length) throw fail(400, 'The file is empty');
     if (!magicOk(type, data)) throw fail(415, 'The file does not match its image type');
-    if (type === 'image/svg+xml') {
-      const problem = svgProblem(data.toString('utf8'));
-      if (problem) throw fail(415, `This SVG can't be used as a logo: ${problem}. Export it as PNG instead.`);
-    }
     run(
       `INSERT INTO assets (key, mime, data, updated_at) VALUES ('logo', ?, ?, datetime('now'))
        ON CONFLICT(key) DO UPDATE SET mime = excluded.mime, data = excluded.data, updated_at = excluded.updated_at`,

@@ -4,6 +4,20 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.11 — AI connections, from a code study
+
+From the Daedalus Workshop's read-only study of Canon 0.19.10: the high-priority findings, and those in the same code. Each fix has its test (`tests/agent-connections.test.ts`, `tests/agent-data.test.ts`, `tests/church-logo.test.ts`).
+
+- **A busy assistant no longer shuts out everyone else's.** The token endpoint counted every refused request towards its address's limit (30 in 15 minutes), including a refresh token that had run out or lost a race with its own renewal. Every church's claude.ai connector arrives from claude.ai's few addresses, so one assistant left unused for a month could make every other user's assistant wait. Now only made-up codes, clients and tokens (and wrong client secrets) count.
+- **Every connection is bound to this Canon's `/mcp`**, also when the assistant didn't name it (RFC 8707): before, such a token was stored with no audience and taken at any address Canon answered at. Tokens issued before 0.19.11 without one are refused at `/mcp`; the assistant renews its connection by itself, and what it gets is bound.
+- **The account's restrictions hold on every call.** A password an administrator chose (to be changed first) or two-step sign-in the church requires and the account hasn't set up stopped an assistant only when connecting; now also when it renews its connection and on every call (403 `password_change_required` or `two_step_required`).
+- **Renewing a connection ends the access token it replaces** (it stayed valid until it ran out, up to an hour). **Applications that register but never connect anyone are forgotten after 30 days.**
+- **The AI activity log keeps no personal data.** It kept every argument's value for every module but members, co-workers and groups, so a visitor's name and contact details added by an assistant, team notes, claim lines and away reasons were stored in full. Now, for every tool alike, it keeps which fields a call used and the values only of ids, dates, numbers and fixed words (kinds, formats, op types); the rest shows as "…". Calls refused before any tool runs (an unknown tool, wrong arguments) are still logged, and a test now fails if an update of the MCP library stops that.
+- **Checks in the AI tools fail closed.** A report's "may this connection see meetings?" answered yes when it had no connection to check, and "may it read offerings?" when it had no module levels. Only a tool called directly (in tests) could reach this, but it now answers no.
+- **New church logos are PNG, JPEG or WebP.** An SVG can carry script, and the pattern check that let "plainly static" SVGs through was no parser. An SVG logo uploaded before still shows (always through a picture, where SVG can't run script); it is now served as an attachment with a sandboxing Content-Security-Policy, and Settings → Church suggests replacing it with a PNG.
+- Checked, not reproduced: "any signed-in user can download any stored asset by its key". `/api/assets/…` serves only the slide and bulletin pictures every signed-in role may see (0.19.10); receipts, equipment files, sheet music and book covers each have their own address, open only to roles with that module and, for claims, inside the account's congregation.
+- Database: version 42 (`oauth_clients.used_at`).
+
 ## 0.19.10 — Images on slides; the lending library walked through
 
 ### Library → Images

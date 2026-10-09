@@ -15,18 +15,18 @@ export interface Ctx {
   pii: boolean;
   /** the church's member fields marked sensitive may be returned and changed (absent = as pii) */
   sensitive?: boolean;
-  /** new visitors on service records: none, names & follow-up, or with contact details (absent = as pii) */
+  /** new visitors on service records: none, names & follow-up, or with contact details (absent = none) */
   visitors?: 'off' | 'names' | 'contact';
   /** songs' sheet music may be listed and its pictures returned */
   scores?: boolean;
-  /** effective access per module on this connection (absent = assume every module readable) */
+  /** effective access per module on this connection (absent = none: checks fail closed) */
   levels?: Record<ModuleKey, ModuleAccess>;
   /** the address this client reached Canon at (for links in results), without a trailing slash */
   base?: string;
 }
 
 /** May this request read `module`? Used where one tool adds data from another module (e.g. song usage from services). */
-export const canRead = (ctx: Ctx, module: ModuleKey) => !ctx.levels || ctx.levels[module] !== 'off';
+export const canRead = (ctx: Ctx, module: ModuleKey) => !!ctx.levels && ctx.levels[module] !== 'off';
 // Handlers receive arguments already validated against `input` by the MCP SDK.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Args = Record<string, any>;

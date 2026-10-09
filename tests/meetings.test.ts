@@ -274,7 +274,9 @@ test('agents: canon_get_calendar lists services, meetings and events; reports ta
   const out = await tool.handler({ from: '2035-03-01', to: '2035-03-31' }, {} as never) as { items: Json[] };
   assert.ok(out.items.some((i) => i.type === 'service') && out.items.some((i) => i.type === 'meeting'));
   const rep = TOOLS.find((x) => x.name === 'canon_attendance_report')!;
-  const r = await rep.handler({ from: '2035-01-01', to: '2035-12-31', kind: 'meeting', group_id: ids.group }, {} as never) as Json;
+  // as an administrator's connection (a handler with no connection to check is refused meetings)
+  const admin = { auth: { user: { id: 1, display_name: 'Admin', role: 'admin', person_id: null }, scopes: new Set(['canon:read']) }, pii: false } as never;
+  const r = await rep.handler({ from: '2035-01-01', to: '2035-12-31', kind: 'meeting', group_id: ids.group }, admin) as Json;
   assert.equal(r.period.kind, 'meeting');
   assert.equal(r.period.group_id, ids.group);
 });

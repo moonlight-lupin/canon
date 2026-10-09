@@ -6692,6 +6692,10 @@
       "PNG、JPEG 或 WebP，最大 2 MB。印刷宽约 3 厘米；在投影片上放大显示。",
       "PNG、JPEG 或 WebP，最大 2 MB。印刷寬約 3 釐米；在投影片上放大顯示。"
     ],
+    "PNG, JPEG or WebP, up to 2 MB. Shown in the sidebar, on the sign-in page, share page, slides and the “Church logo” bulletin cover.": [
+      "PNG、JPEG 或 WebP，最大 2 MB。显示于侧栏、登录页、分享页、投影及“教会标志”次序单封面。",
+      "PNG、JPEG 或 WebP，最大 2 MB。顯示於側欄、登錄頁、分享頁、投影及“教會標誌”次序單封面。"
+    ],
     "PNG, JPEG or WebP, up to 5 MB. A wide picture (1920 × 1080) looks best.": [
       "PNG、JPEG 或 WebP，最大 5 MB。宽幅图片（1920 × 1080）效果最好。",
       "PNG、JPEG 或 WebP，最大 5 MB。寬幅圖片（1920 × 1080）效果最好。"
@@ -9652,6 +9656,10 @@
       "这次借阅不能再续借，请归还或找图书管理员。",
       "這次借閱不能再續借，請歸還或找圖書管理員。"
     ],
+    "This logo is an SVG, which Canon no longer takes (it can carry script). It still shows; replace it with a PNG when you can.": [
+      "此标志是 SVG 文件，Canon 已不再接受（SVG 可能夹带脚本）。它仍会显示；请尽快换成 PNG。",
+      "此標誌是 SVG 文件，Canon 已不再接受（SVG 可能夾帶腳本）。它仍會顯示；請儘快換成 PNG。"
+    ],
     "This meeting’s record already has offerings. They stay in the record but are not counted in the offerings reports while no offering is taken.": [
       "这次聚会的记录中已有奉献。这些奉献会保留在记录中，但在不收奉献期间，不会计入奉献报表。",
       "這次聚會的記錄中已有奉獻。這些奉獻會保留在記錄中，但在不收奉獻期間，不會計入奉獻報表。"
@@ -10115,6 +10123,10 @@
     "Updates": [
       "更新",
       "更新"
+    ],
+    "Upload a PNG, JPEG or WebP image": [
+      "请上传 PNG、JPEG 或 WebP 图片",
+      "請上傳 PNG、JPEG 或 WebP 圖片"
     ],
     "Upload a PNG, JPEG or WebP picture": [
       "请上传 PNG、JPEG 或 WebP 图片",
@@ -12334,7 +12346,7 @@
     ]
   },
   "guide": [
-    "3fbb5c9f17713c27",
-    "2ea6c1a62c10056f"
+    "c4f75708fcc16dce",
+    "7304a0f8c6ed558f"
   ]
 }

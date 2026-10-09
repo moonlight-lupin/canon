@@ -5,7 +5,7 @@
 //  - Authorization code + PKCE S256 only, consent page rendered server-side (bilingual)
 //  - Opaque tokens, only SHA-256 hashes stored; access 1 h, refresh 30 d rotated on use
 //  - Code replay / refresh-token reuse revoke the whole grant family
-//  - RFC 8707 resource binding (audience = <base>/mcp), RFC 7009 revocation
+//  - RFC 8707 resource binding: every token's audience is <base>/mcp (also when the client named none), RFC 7009 revocation
 import crypto from 'node:crypto';
 import { publicUrl, trustProxy } from './lib/public-url.ts';
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -137,13 +137,33 @@ function issueTokens(p: { clientId: string; userId: number; scope: string; resou
 
 let lastCleanup = 0;
 
+/** A registered client that never connected anyone is forgotten after this (an abandoned or scripted registration). */
+const UNUSED_CLIENT_MS = 30 * 86400_000;
+
+/** Old codes and tokens, and clients never used. Exported for tests (`now` in the future). */
+export function oauthCleanup(now = Date.now()) {
+  run('DELETE FROM oauth_codes WHERE expires_at < ?', now - 86400_000);
+  // keep expired/revoked tokens a while so refresh-token reuse is still detected
+  run('DELETE FROM oauth_tokens WHERE expires_at < ?', now - 7 * 86400_000);
+  // registration is open to anyone (rate limited): one that never led to a connection doesn't stay for ever
+  run('DELETE FROM oauth_clients WHERE used_at IS NULL AND created_at < ?', now - UNUSED_CLIENT_MS);
+}
+
 function cleanup() {
   const now = Date.now();
   if (now - lastCleanup < 3600_000) return;
   lastCleanup = now;
-  run('DELETE FROM oauth_codes WHERE expires_at < ?', now - 86400_000);
-  // keep expired/revoked tokens a while so refresh-token reuse is still detected
-  run('DELETE FROM oauth_tokens WHERE expires_at < ?', now - 7 * 86400_000);
+  oauthCleanup(now);
+}
+
+/**
+ * Why this account may not use an AI connection now (null: it may). The same rules when connecting, refreshing and on
+ * every call: a password an administrator chose is changed first, and two-step sign-in the church requires is set up.
+ */
+function aiRefusal(user: User): { error: string; text: string } | null {
+  if (twoStepRequired(user) && !user.totp_enabled) return { error: 'two_step_required', text: 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.' };
+  if (user.must_change_password) return { error: 'password_change_required', text: 'Choose a new password in Canon first (an administrator set yours), then connect again.' };
+  return null;
 }
 
 // ---------------------------------------------------------------- redirect URI validation
@@ -175,7 +195,7 @@ export interface ValidAuthz {
   state: string | null;
   scopes: string[];
   code_challenge: string;
-  resource: string | null;
+  resource: string;
 }
 
 type Params = Record<string, unknown>;
@@ -217,14 +237,12 @@ function validateAuthz(req: Request, res: Response, p: Params, role: Role | null
   if (!challenge) return fail('invalid_request', 'code_challenge is required (PKCE)');
   if (str(p.code_challenge_method) !== 'S256') return fail('invalid_request', 'code_challenge_method must be S256');
   if (!/^[A-Za-z0-9._~-]{43,128}$/.test(challenge)) return fail('invalid_request', 'malformed code_challenge');
-  let resource = str(p.resource) || null;
-  if (resource) {
-    if (!sameResource(resource, resourceUrl(req))) return fail('invalid_target', `resource must be ${resourceUrl(req)}`);
-    resource = resourceUrl(req);
-  }
+  // the audience is always this Canon's /mcp: a client that names none gets it too, so no token is taken anywhere
+  const resource = str(p.resource);
+  if (resource && !sameResource(resource, resourceUrl(req))) return fail('invalid_target', `resource must be ${resourceUrl(req)}`);
   const scopes = grantScopes(str(p.scope), role ?? 'admin');
   if (!scopes) return fail('invalid_scope', `supported scopes: ${SCOPES.join(' ')}`);
-  return { client, redirect_uri, state, scopes, code_challenge: challenge, resource };
+  return { client, redirect_uri, state, scopes, code_challenge: challenge, resource: resourceUrl(req) };
 }
 
 export const oauthRouter = express.Router();
@@ -367,9 +385,8 @@ oauthRouter.get('/oauth/authorize', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     return res.redirect(302, `/login?next=${encodeURIComponent(req.originalUrl)}`);
   }
-  if (twoStepRequired(user) && !user.totp_enabled) return errorPage(res, 403, 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.');
-  // a password an administrator chose is changed first (Canon asks at sign-in): no AI connection made with it
-  if (user.must_change_password) return errorPage(res, 403, 'Choose a new password in Canon first (an administrator set yours), then connect again.');
+  const refusal = aiRefusal(user);
+  if (refusal) return errorPage(res, 403, refusal.text);
   consentPage(res, a, user);
 });
 
@@ -390,9 +407,8 @@ oauthRouter.post('/oauth/authorize', express.urlencoded({ extended: false, limit
     return errorPage(res, 403, 'The form has expired or was not submitted from Canon. Please start again.');
   }
   if (!getSettings().mcp.enabled) return disabledPage(res);
-  if (twoStepRequired(user) && !user.totp_enabled) return errorPage(res, 403, 'This church requires two-step sign-in for your account. Set it up in Canon (Settings → My profile) first, then connect again.');
-  // a password an administrator chose is changed first (Canon asks at sign-in): no AI connection made with it
-  if (user.must_change_password) return errorPage(res, 403, 'Choose a new password in Canon first (an administrator set yours), then connect again.');
+  const refusal = aiRefusal(user);
+  if (refusal) return errorPage(res, 403, refusal.text);
   const iss = externalBase(req);
   if (p.decision !== 'allow') {
     return redirectWith(res, a.redirect_uri, { error: 'access_denied', error_description: 'The user denied access', state: a.state, iss }, 303);
@@ -404,6 +420,7 @@ oauthRouter.post('/oauth/authorize', express.urlencoded({ extended: false, limit
     sha256(code), a.client.client_id, user.id, a.redirect_uri, a.scopes.join(' '), a.code_challenge, a.resource,
     crypto.randomUUID(), Date.now() + CODE_TTL_MS,
   );
+  run('UPDATE oauth_clients SET used_at = ? WHERE client_id = ? AND used_at IS NULL', Date.now(), a.client.client_id);
   redirectWith(res, a.redirect_uri, { code, state: a.state, iss }, 303);
 });
 
@@ -412,12 +429,20 @@ oauthRouter.post('/oauth/authorize', express.urlencoded({ extended: false, limit
 class OAuthError extends Error {
   error: string;
   status: number;
+  /** a made-up or unknown code, client or token: counts towards the address's limit */
+  guess = false;
   constructor(error: string, description: string, status = 400) {
     super(description);
     this.error = error;
     this.status = status;
   }
 }
+/**
+ * A failure that looks like guessing. Only these count towards an address's limit: every claude.ai connector arrives
+ * from claude.ai's few addresses, so a refresh token that ran out or lost a rotation race (a real token, refused)
+ * mustn't hold up every other church's assistant (Daedalus Workshop study of 0.19.10).
+ */
+const guessed = (e: OAuthError) => Object.assign(e, { guess: true });
 
 /** Authenticate the client from Basic auth or form fields. Throws invalid_client. */
 function authClient(req: Request, b: Params): ClientRow {
@@ -429,23 +454,23 @@ function authClient(req: Request, b: Params): ClientRow {
     basic = true;
     const raw = Buffer.from(h.slice(6).trim(), 'base64').toString('utf8');
     const i = raw.indexOf(':');
-    if (i < 0) throw new OAuthError('invalid_client', 'Malformed Basic credentials', 401);
+    if (i < 0) throw guessed(new OAuthError('invalid_client', 'Malformed Basic credentials', 401));
     let bid: string;
     try {
       bid = decodeURIComponent(raw.slice(0, i));
       secret = decodeURIComponent(raw.slice(i + 1));
     } catch {
-      throw new OAuthError('invalid_client', 'Malformed Basic credentials', 401);
+      throw guessed(new OAuthError('invalid_client', 'Malformed Basic credentials', 401));
     }
     if (id && id !== bid) throw new OAuthError('invalid_request', 'client_id mismatch');
     id = bid;
   }
   if (!id) throw new OAuthError('invalid_client', 'client_id is required', 401);
   const c = getClient(id);
-  if (!c) throw new OAuthError('invalid_client', 'Unknown client', 401);
+  if (!c) throw guessed(new OAuthError('invalid_client', 'Unknown client', 401));
   if (c.token_endpoint_auth_method !== 'none') {
     if (!secret || !c.client_secret_hash || !safeEqual(sha256(secret), c.client_secret_hash)) {
-      const e = new OAuthError('invalid_client', 'Client authentication failed', 401);
+      const e = guessed(new OAuthError('invalid_client', 'Client authentication failed', 401));
       if (basic) (e as OAuthError & { basic?: boolean }).basic = true;
       throw e;
     }
@@ -462,7 +487,7 @@ function tokenFromCode(req: Request, b: Params, client: ClientRow) {
   const verifier = str(b.code_verifier);
   if (!code || !verifier) throw new OAuthError('invalid_request', 'code and code_verifier are required');
   const row = get<CodeRow>('SELECT * FROM oauth_codes WHERE code_hash = ?', sha256(code));
-  if (!row) throw new OAuthError('invalid_grant', 'Invalid authorization code');
+  if (!row) throw guessed(new OAuthError('invalid_grant', 'Invalid authorization code'));
   // Single use: claim the code atomically; a second use is a replay -> revoke everything issued from it.
   const claimed = run('UPDATE oauth_codes SET used = 1 WHERE code_hash = ? AND used = 0', row.code_hash).changes;
   if (!claimed) {
@@ -480,15 +505,19 @@ function tokenFromCode(req: Request, b: Params, client: ClientRow) {
   if (resource && !sameResource(resource, row.resource ?? resourceUrl(req))) {
     throw new OAuthError('invalid_target', 'resource does not match the authorization request');
   }
-  if (!getUser(row.user_id)) throw new OAuthError('invalid_grant', 'User no longer exists');
-  return issueTokens({ clientId: client.client_id, userId: row.user_id, scope: row.scope, resource: row.resource, grantId: row.grant_id });
+  const user = getUser(row.user_id);
+  if (!user) throw new OAuthError('invalid_grant', 'User no longer exists');
+  const refusal = aiRefusal(user);
+  if (refusal) throw new OAuthError('invalid_grant', refusal.text);
+  // a code from before every token was bound (no resource) gets this Canon's /mcp
+  return issueTokens({ clientId: client.client_id, userId: row.user_id, scope: row.scope, resource: row.resource ?? resourceUrl(req), grantId: row.grant_id });
 }
 
-function tokenFromRefresh(b: Params, client: ClientRow) {
+function tokenFromRefresh(req: Request, b: Params, client: ClientRow) {
   const rt = str(b.refresh_token);
   if (!rt) throw new OAuthError('invalid_request', 'refresh_token is required');
   const row = get<TokenRow>("SELECT * FROM oauth_tokens WHERE token_hash = ? AND token_type = 'refresh'", sha256(rt));
-  if (!row) throw new OAuthError('invalid_grant', 'Invalid refresh token');
+  if (!row) throw guessed(new OAuthError('invalid_grant', 'Invalid refresh token'));
   if (row.client_id !== client.client_id) throw new OAuthError('invalid_grant', 'Refresh token was issued to another client');
   if (row.revoked) {
     revokeFamily(row.grant_id); // reuse of a rotated token: assume theft, kill the family
@@ -497,6 +526,10 @@ function tokenFromRefresh(b: Params, client: ClientRow) {
   if (row.expires_at < Date.now()) throw new OAuthError('invalid_grant', 'Refresh token expired');
   const user = getUser(row.user_id);
   if (!user) throw new OAuthError('invalid_grant', 'User no longer exists');
+  // the account's restrictions hold here too: a password to change, two-step sign-in to set up (not only at consent)
+  const refusal = aiRefusal(user);
+  if (refusal) throw new OAuthError('invalid_grant', refusal.text);
+  if (row.resource && !sameResource(row.resource, resourceUrl(req))) throw new OAuthError('invalid_target', 'Refresh token was issued for a different resource');
   let scopes = row.scope.split(' ').filter(Boolean);
   const narrow = str(b.scope);
   if (narrow) {
@@ -512,7 +545,10 @@ function tokenFromRefresh(b: Params, client: ClientRow) {
       revokeFamily(row.grant_id);
       throw new OAuthError('invalid_grant', 'Refresh token has been revoked');
     }
-    return issueTokens({ clientId: client.client_id, userId: row.user_id, scope: scopes.join(' '), resource: row.resource, grantId: row.grant_id });
+    // the access tokens it replaces end now, not when they run out
+    run("UPDATE oauth_tokens SET revoked = 1 WHERE grant_id = ? AND token_type = 'access' AND revoked = 0", row.grant_id);
+    // a grant from before every token was bound (no resource) is bound to this Canon's /mcp from here on
+    return issueTokens({ clientId: client.client_id, userId: row.user_id, scope: scopes.join(' '), resource: row.resource ?? resourceUrl(req), grantId: row.grant_id });
   });
 }
 
@@ -535,11 +571,11 @@ oauthRouter.post('/oauth/token', ...tokenParsers, (req, res) => {
       throw new OAuthError('unsupported_grant_type', `Unsupported grant_type: ${grantType.slice(0, 80)}`);
     }
     const client = authClient(req, b);
-    const out = grantType === 'authorization_code' ? tokenFromCode(req, b, client) : tokenFromRefresh(b, client);
+    const out = grantType === 'authorization_code' ? tokenFromCode(req, b, client) : tokenFromRefresh(req, b, client);
     res.json(out);
   } catch (e) {
     if (e instanceof OAuthError) {
-      badTokenRequests.add(key);
+      if (e.guess) badTokenRequests.add(key);
       if ((e as OAuthError & { basic?: boolean }).basic) res.setHeader('WWW-Authenticate', 'Basic realm="canon"');
       return res.status(e.status).json({ error: e.error, error_description: e.message });
     }
@@ -608,15 +644,15 @@ export function bearerAuth(req: Request, res: Response, next: NextFunction) {
   if (h && !row) badBearers.add(key);
   if (!m) return unauthorized(req, res, !!h, 'Missing bearer token');
   if (!row || row.revoked || row.expires_at < Date.now()) return unauthorized(req, res, true, 'Token is invalid, expired or revoked');
-  if (row.resource && !sameResource(row.resource, resourceUrl(req))) {
+  // always checked: a token with no audience (stored before every token was bound) is not taken anywhere
+  if (!row.resource || !sameResource(row.resource, resourceUrl(req))) {
     return unauthorized(req, res, true, 'Token was issued for a different resource');
   }
   const user = getUser(row.user_id);
   if (!user) return unauthorized(req, res, true, 'User no longer exists');
-  // the church requires two-step sign-in for this account and it isn't set up: no AI access either (0.19.0 review)
-  if (twoStepRequired(user) && !user.totp_enabled) {
-    return res.status(403).json({ error: 'two_step_required', error_description: 'Set up two-step sign-in in Canon (Settings → My profile) first: this church requires it.' });
-  }
+  // two-step sign-in the church requires and isn't set up, or a password to change: no AI access (0.19.0 review)
+  const refusal = aiRefusal(user);
+  if (refusal) return res.status(403).json({ error: refusal.error, error_description: refusal.text });
   const scopes = new Set(row.scope.split(' ').filter((s) => (SCOPES as readonly string[]).includes(s)));
   if (!editsAnything(user)) scopes.delete('canon:write'); // re-cap by the user's current role
   run('UPDATE oauth_tokens SET last_used_at = ? WHERE token_hash = ?', Date.now(), row.token_hash);

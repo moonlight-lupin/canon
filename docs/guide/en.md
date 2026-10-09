@@ -36,7 +36,7 @@ Then:
 
 ### Church details and logo
 
-Open [Settings](/settings) → **Church**: the church name, **Church logo** (**Upload logo**: PNG, JPEG, WebP or SVG, up to 2 MB), address, **Contact line** (printed on the bulletin), **CCLI licence number** and **Default start time**. Press **Save**.
+Open [Settings](/settings) → **Church**: the church name, **Church logo** (**Upload logo**: PNG, JPEG or WebP, up to 2 MB; an SVG logo uploaded before 0.19.11 still shows, but Canon no longer takes SVG, which can carry script: replace it with a PNG), address, **Contact line** (printed on the bulletin), **CCLI licence number** and **Default start time**. Press **Save**.
 
 ### Several congregations {#congregations}
 
@@ -667,7 +667,9 @@ Claude looks at your past services first: the same Sunday last year, the same se
 - It cannot send e-mail or delete people. It asks before changing things.
 - **Book-keeping** (off by default): Claude reads the books, the reports and the imported bank statements, and can **draft** journals for the treasurer to post — also for a statement line the books lack. With **Read & write** it still only drafts: it can never post, reverse or change a posted journal, import a statement or match lines.
 - **Administration** (off by default; only for a connection approved by an administrator): **Read only** lets Claude read the security checklist, backups, accounts (never passwords), the change log, who viewed member records and a settings overview — ask "anything I should fix this week?" or "who changed Sunday's order?". **Read & write** adds two actions: back up now, and run the checks (public address, backup folder, e-mail). Accounts, roles and settings are only ever changed in Canon. The change log shows old and new values only when members' contact details are shared.
-- **Connected agents** lists connections (**Revoke** to cut one off; resetting an account's password or two-step sign-in in User accounts cuts off all of that account's); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export (Excel)** (every entry matching the filters) and its own **Keep** period.
+- **Connected agents** lists connections (**Revoke** to cut one off; resetting an account's password or two-step sign-in in User accounts cuts off all of that account's); **Activity log** shows every action, newest first, with filters (module, user, client, tool, OK or errors, dates, words in the arguments), pages, **Export (Excel)** (every entry matching the filters) and its own **Keep** period. The log keeps which fields each action used, with the values only of ids, dates, numbers and kinds: names, contact details, notes and other text show as **…** (from 0.19.11, for every module).
+- **An assistant stops working while its account must choose a new password, or must set up two-step sign-in** that the church requires: on every call and when it renews its connection, not only when it connects. Once the person has done it in Canon, connect the assistant again if it asks.
+- A connection belongs to this Canon's address: the same Canon reached by another address (or a token from before 0.19.11 that named none) asks the assistant to renew it, which it does by itself. Applications that register with Canon but never connect anyone are forgotten after 30 days.
 
 ## Backups and moving to Docker
 

@@ -3,8 +3,8 @@
 // Exposure control: every tool belongs to a module and needs 'read' or 'write'. For each request the effective level
 // per module is min(admin setting in Settings → AI / MCP, token scope, user's current role). Only tools allowed for
 // this request are registered, so hidden tools never show up in tools/list and calls to them fail as unknown tools.
-// Every tools/call is written to mcp_audit once (argument keys only for the members / co-workers / groups registers;
-// batch tools also record their op types).
+// Every tools/call is written to mcp_audit once: which fields it used, with values only for fields marked safe (ids,
+// dates, counts, kinds and op types), for every tool alike.
 //
 // The tools themselves live in ./mcp-tools/*.ts. They are deliberately few and capable (find / get / save / batch
 // edit) to keep tools/list small: a read tool and a write tool never merge, and every tool that can remove
@@ -257,15 +257,30 @@ function argKeys(v: unknown, prefix = ''): string[] {
 
 const MAX_AUDIT_ARGS = 2000;
 
-const SENSITIVE_MODULES = new Set<ModuleKey>(['members', 'coworkers', 'groups']);
+/**
+ * Argument fields whose values the activity log keeps: ids, dates of services and periods, counts, and words from a
+ * fixed list (kinds, formats, op types). Everything else — names, contact details, notes, search words, amounts with
+ * a description — is kept as the field's name only, whatever the tool or module (Daedalus Workshop study of 0.19.10:
+ * values used to be kept for every module but members, co-workers and groups, so visitors' contact details were).
+ */
+const SAFE_ARG = /^(id|ids|ref|.+_id|.+_ids|op|kind|type|format|view|status|action|scope|sort|access|module|lang|langs|files|date|from|to|as_of|years|year|days|hours|limit|offset|page|size|brief|usage|all_books|open_only|include_[a-z_]+|attendance|children|online|by|position|stanzas)$/;
+/** A value that is plainly not personal: a number, true/false, or a short word, date or reference. */
+const plainValue = (v: unknown) => typeof v === 'number' || typeof v === 'boolean' || (typeof v === 'string' && /^[A-Za-z0-9_.:+-]{0,40}$/.test(v));
+const WITHHELD = '…';
+
+/** The arguments with every value withheld except those of safe fields (the shape, and so the field names, kept). */
+export function auditArgs(v: unknown, safe = false): unknown {
+  if (Array.isArray(v)) return v.map((x) => auditArgs(x, safe));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, auditArgs(x, SAFE_ARG.test(k))]));
+  if (v === null || v === undefined) return v ?? null;
+  return safe && plainValue(v) ? v : WITHHELD;
+}
 
 function audit(auth: McpAuth, name: unknown, args: unknown, okFlag: boolean, error: string | null, level: ModuleAccess | null) {
   try {
     const tool = typeof name === 'string' ? name.slice(0, 100) : '(invalid)';
     const def = TOOL_BY_NAME.get(tool);
-    // Unknown tools are treated as sensitive too: we can't tell what the arguments contain.
-    const sensitive = !def || SENSITIVE_MODULES.has(def.module);
-    let argText = sensitive ? JSON.stringify(argKeys(args)) : JSON.stringify(args ?? {});
+    let argText = JSON.stringify(auditArgs(args ?? {}));
     // Too long to keep whole (big batches): keep the key / op-type summary rather than a cut-off fragment.
     if (argText.length > MAX_AUDIT_ARGS) argText = JSON.stringify(argKeys(args)).slice(0, MAX_AUDIT_ARGS);
     run(

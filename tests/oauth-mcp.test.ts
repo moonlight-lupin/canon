@@ -1062,11 +1062,11 @@ test('member PII redaction and audit log without member values', async () => {
   const blob = JSON.stringify(rows);
   for (const leak of ['9123', 'minghua', 'Lim"']) assert.ok(!blob.includes(leak), `audit leaked ${leak}`);
   const getRow = rows.find((r) => r.tool === 'canon_get_person')!;
-  assert.equal(getRow.args, '["id"]');
+  assert.equal(getRow.args, JSON.stringify({ id: p.id }));
   assert.equal(getRow.module, 'members');
   assert.equal(getRow.ok, 1);
   const svcRow = rows.find((r) => r.tool === 'canon_create_service' && r.ok === 1)!;
-  assert.match(svcRow.args, /2026-10-11/, 'non-member modules store argument values');
+  assert.match(svcRow.args, /2026-10-11/, 'dates are kept');
   assert.ok(rows.some((r) => r.ok === 0 && r.tool === 'canon_find_people'), 'failed (hidden) call audited');
   assert.ok(rows.every((r) => r.user_id && r.client_id === client.client_id));
 });

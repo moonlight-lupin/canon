@@ -1350,4 +1350,13 @@ export const MIGRATIONS: (string | Migration)[] = [
     ALTER TABLE service_items ADD COLUMN slide_images TEXT NOT NULL DEFAULT '[]';
     `,
   },
+  // 42 (0.19.11): when a registered OAuth client first connected someone (one that never does is forgotten after 30
+  // days). Clients that have codes, tokens or AI activity already count as used.
+  {
+    sql: `
+    ALTER TABLE oauth_clients ADD COLUMN used_at INTEGER;
+    UPDATE oauth_clients SET used_at = created_at
+      WHERE client_id IN (SELECT client_id FROM oauth_codes UNION SELECT client_id FROM oauth_tokens UNION SELECT client_id FROM mcp_audit);
+    `,
+  },
 ];
