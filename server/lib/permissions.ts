@@ -3,6 +3,7 @@
 // app and AI agents follow the same rules.
 import { CSV_MODULE, PERM_MODULES, allows, routeAccess, type Access, type PermModule, type RoleDef } from '../../shared/permissions.ts';
 import { all, get } from '../db.ts';
+import { leadsMeeting } from './leaders.ts';
 
 type Row = { key: string; name: string; description: string; builtin: number; admin: number; access: string; member_details: number; sensitive_fields: number; reopen_counts: number; sort: number; archived?: number };
 
@@ -50,6 +51,17 @@ export const can = (u: WithRole, m: PermModule, need: Access) => allows(roleOf(u
 export const seesMemberDetails = (u: WithRole) => !!roleOf(u)?.member_details;
 export const seesSensitiveFields = (u: WithRole) => !!roleOf(u)?.sensitive_fields;
 export const mayReopenCounts = (u: WithRole) => !!roleOf(u)?.reopen_counts;
+/**
+ * The money of a service (its offerings and cash count), or of the records in general (no service): one rule for the
+ * record page, the records list, saving, the reports and AI agents (0.20.0, Daedalus Workshop study of 0.19.10: three
+ * places had three rules). Offerings access in the role decides; the leader of a meeting also reads and records its
+ * own meeting's money.
+ */
+export function moneyAccess(u: (WithRole & { person_id?: number | null }) | undefined, serviceId?: number | null): 'none' | 'read' | 'edit' {
+  if (can(u, 'contributions', 'edit')) return 'edit';
+  if (serviceId != null && leadsMeeting(u?.person_id, serviceId)) return 'edit';
+  return can(u, 'contributions', 'read') ? 'read' : 'none';
+}
 /** Can this account change anything at all (else it is read-only, e.g. for AI connections)? */
 export const editsAnything = (u: WithRole) => { const r = roleOf(u); return !!r && (r.admin || PERM_MODULES.some((m) => r.access[m] === 'edit')); };
 

@@ -191,3 +191,44 @@ test('edit conflicts: a save based on an older revision is refused, even within 
   assert.equal((await withVersion(as.admin, 'PATCH', `/people/${pid}`, { phone: '9000 0201' }, '1')).status, 200);
   assert.equal((await withVersion(as.editor, 'PATCH', `/people/${pid}`, { phone: '9000 0202' }, '1')).status, 409);
 });
+
+test('30. the change log and AI activity exports say they hold personal data (every export now has to decide)', async () => {
+  const { readXlsx } = await import('../server/lib/xlsx-read.ts');
+  for (const url of ['/change-log.xlsx', '/mcp/audit.xlsx']) {
+    const r = await fetch(`${base}/api${url}`, { headers: { Cookie: as.admin.cookie } });
+    const rows = readXlsx(new Uint8Array(await r.arrayBuffer()));
+    assert.ok(rows.some((row) => /Contains personal data/.test(row[0] ?? '')), `${url} carries the note`);
+  }
+});
+
+test('18. one rule for the money: the record says what this account may do with it, and the list, the record and AI agents agree', async () => {
+  const ar = await import('../server/repo/access-roles.ts');
+  const { run, get } = await import('../server/db.ts');
+  // a church's own role: records it may edit, offerings only read (an assistant to the treasurer)
+  const role = ar.createRole({ name: { en: 'Record keeper (fictional)' }, access: { services: 'read', records: 'edit', contributions: 'read' } } as never);
+  await createUser({ username: 'keeper18', display_name: 'Record Keeper', password: 'correct-horse-9', role: role.key });
+  const keeper = await login('keeper18');
+  const rec = await call(keeper, 'GET', `/services/${sid}/record`);
+  assert.equal(rec.status, 200);
+  assert.equal(rec.body.money_access, 'read', 'the page shows the money read-only, instead of letting it be typed and refused');
+  assert.equal((await call(as.editor, 'GET', `/services/${sid}/record`)).body.money_access, 'edit');
+  assert.equal((await call(keeper, 'PUT', `/services/${sid}/record`, { attendance: 70, offerings: [{ fund: 'General', method: 'cash', amount: 1 }] })).status, 403);
+
+  // the leader of a meeting, on a read-only account: their meeting's money, in the list as in the record, and for AI
+  const pid = Number(run("INSERT INTO people (first_name, last_name) VALUES ('Leah', 'Leader')").lastInsertRowid);
+  await createUser({ username: 'leader18', display_name: 'Leah Leader', password: 'correct-horse-9', role: 'viewer' });
+  run("UPDATE users SET person_id = ? WHERE username = 'leader18'", pid);
+  const meeting = Number(run("INSERT INTO services (date, kind, leader_id, offering) VALUES ('2034-02-07', 'meeting', ?, 1)", pid).lastInsertRowid);
+  run('INSERT INTO service_records (service_id, attendance, offerings) VALUES (?, 12, ?)', meeting, JSON.stringify([{ fund: 'General', method: 'cash', amount: 3300 }]));
+  const leader = await login('leader18');
+  assert.equal((await call(leader, 'GET', `/services/${meeting}/record`)).body.money_access, 'edit');
+  const row = ((await call(leader, 'GET', '/records?from=2034-02-01&to=2034-02-28&kind=meeting')).body as Json[]).find((r) => r.service_id === meeting)!;
+  assert.equal(row.offering_total, 3300, 'the list shows the leader their own meeting’s offering, as the record does');
+  const { RECORD_TOOLS } = await import('../server/mcp-tools/records.ts');
+  const { updateSettings, getSettings } = await import('../server/repo/settings.ts');
+  updateSettings({ mcp: { ...getSettings().mcp, enabled: true, modules: { ...getSettings().mcp.modules, records: 'read', contributions: 'read' } } });
+  const user = get<Json>("SELECT * FROM users WHERE username = 'leader18'")!;
+  const ctx = { auth: { user: { ...user, role: 'viewer' }, scopes: new Set(['canon:read']) }, pii: false, levels: { records: 'read', contributions: 'off' } } as never;
+  const out = (await RECORD_TOOLS.find((t) => t.name === 'canon_get_service_record')!.handler({ service_id: meeting }, ctx)) as Json;
+  assert.deepEqual(out.offerings, [{ fund: 'General', method: 'cash', amount: 3300 }], 'an AI assistant sees what its person sees');
+});

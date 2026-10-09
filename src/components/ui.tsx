@@ -1,12 +1,13 @@
 // Shared UI primitives: modal, toast, fields, bilingual input, page header, confirm.
 import { HoverTip } from './InfoTip.tsx';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import type { L10n, Lang, Role } from '../../shared/types.ts';
 import type { Settings } from '../types-client.ts';
 import { pickL10n, useContentLangs, useI18n } from '../i18n.tsx';
 import { isChinese, langInfo, dateLocale } from '../../shared/languages.ts';
 import { Icon } from './icons.tsx';
 import type { Access, PermModule, RoleDef } from '../../shared/permissions.ts';
+import { dayIn } from '../../shared/dates.ts';
 
 // ---------------------------------------------------------------- session
 
@@ -102,6 +103,8 @@ export function useAction() {
       try {
         const r = await fn();
         if (ok) toast(ok);
+        // what was typed has been used: a dialog that stays open no longer asks before closing (Modal)
+        window.dispatchEvent(new Event(SAVED_EVENT));
         return r;
       } catch (e) {
         toast((e as Error).message, true);
@@ -117,13 +120,27 @@ export function useAction() {
 
 // ---------------------------------------------------------------- modal
 
+/** Sent when an action succeeds (useAction): an open dialog's input has been saved or used. */
+const SAVED_EVENT = 'canon:saved';
+/** Input that changes how a dialog shows, not what it holds (the editing language): no prompt for it. */
+const notInput = (e: SyntheticEvent) => !!(e.target as HTMLElement | null)?.closest?.('[data-view-only]');
+
 export function Modal({
   title, onClose, children, footer, size,
 }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'lg' }) {
   const { t } = useI18n();
   // something was typed or chosen here: Escape, a click outside or ✕ ask before it is lost (0.19.7, from a UX test —
   // Escape had thrown away a new member's details without a word). Cancel and Save close as they always did.
+  // … and stops asking once it has been saved, for a dialog that stays open afterwards (0.20.0, Daedalus Workshop study
+  // of 0.19.10: Send reminders asked "close without saving?" after sending)
   const touched = useRef(false);
+  useEffect(() => {
+    const saved = () => {
+      touched.current = false;
+    };
+    window.addEventListener(SAVED_EVENT, saved);
+    return () => window.removeEventListener(SAVED_EVENT, saved);
+  }, []);
   const tryClose = useCallback(() => {
     if (touched.current && !window.confirm(t('Close without saving? What you typed here will be lost.'))) return;
     onClose();
@@ -135,7 +152,7 @@ export function Modal({
   }, [tryClose]);
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && tryClose()}>
-      <div className={`modal${size ? ' ' + size : ''}`} role="dialog" aria-modal="true" onInput={() => { touched.current = true; }} onChange={() => { touched.current = true; }}>
+      <div className={`modal${size ? ' ' + size : ''}`} role="dialog" aria-modal="true" onInput={(e) => { if (!notInput(e)) touched.current = true; }} onChange={(e) => { if (!notInput(e)) touched.current = true; }}>
         <L10nEditScope>
           <div className="modal-head">
             <h2>{title}</h2>
@@ -277,7 +294,7 @@ export function L10nSwitcher({ min = 1 }: { min?: number }) {
   // a gap = a field that has text in some language but not this one
   const gaps = (l: Lang) => fields.filter((have) => have.length > 0 && !covered(have, l)).length;
   return (
-    <div className="l10n-switch row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+    <div className="l10n-switch row" data-view-only style={{ gap: 6, flexWrap: 'nowrap' }}>
       {ctx.mode === 'single' && (ctx.langs.length > 4 ? (
         <select value={ctx.lang} onChange={(e) => ctx.setLang(e.target.value)} aria-label={t('Editing language')} style={{ width: 'auto', minHeight: 30 }}>
           {ctx.langs.map((l) => <option key={l} value={l}>{langInfo(l).native}{gaps(l) ? ` (${gaps(l)} ${t('missing')})` : ''}</option>)}
@@ -461,10 +478,13 @@ export function fmtDate(d: string | null | undefined, lang: Lang, opts: Intl.Dat
   return dt.toLocaleDateString(locale, opts);
 }
 
-export const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+let churchZone: string | null = null;
+/** The church's time zone (Settings → Church), set when the settings load: "today" is the church's date. */
+export const setChurchZone = (zone: string | null | undefined) => {
+  churchZone = zone || null;
 };
+/** Today in the church's time zone (this browser's while the church has none set). */
+export const today = () => dayIn(churchZone);
 
 export const addDays = (d: string, n: number) => {
   const dt = new Date(d + 'T00:00:00');

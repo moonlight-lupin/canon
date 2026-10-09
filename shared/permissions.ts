@@ -126,7 +126,7 @@ const RULES: Rule[] = [
   [/^\/services\/\d+\/(assignments|reminders|warnings)(\/|$)/, 'volunteers'],
   [/^\/(services|items|meetings-of)(\/|$)/, 'services'],
   [/^\/(meetings|events)(\/|$)/, 'meetings'],
-  [/^\/groups\/\d+\/meetings-ahead$/, 'meetings'],
+  [/^\/groups\/\d+\/(meetings-ahead$|meeting-skips(\/|$))/, 'meetings'],
   [/^\/(templates|templates-default|slide-themes|bulletin-templates|bulletin-blocks|backgrounds|template-files)(\/|$)/, 'templates'],
   [/^\/(songs|texts|hymnals|library|bible|images)(\/|$)/, 'library'],
   [/^\/(rota|roles|teams|unavailability|assignments|email\/log)(\/|$)/, 'volunteers'],

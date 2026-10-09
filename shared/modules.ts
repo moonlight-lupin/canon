@@ -20,7 +20,7 @@ export const OPTIONAL_LABEL: Record<OptionalModule, { name: string; description:
 
 /** The API paths (relative to /api) of each part. Reading the rota's teams and roles stays open: other pages use them. */
 const API: Record<OptionalModule, RegExp> = {
-  meetings: /^\/(meetings|events|calendar)(\/|$)|^\/groups\/\d+\/meetings-ahead$/,
+  meetings: /^\/(meetings|events|calendar)(\/|$)|^\/groups\/\d+\/(meetings-ahead$|meeting-skips(\/|$))/,
   volunteers: /^\/(rota|unavailability|assignments|email\/log)(\/|$)|^\/(teams|roles)\/|^\/services\/\d+\/(assignments|reminders|warnings)(\/|$)|^\/reports\/serving$/,
   visitor_form: /^\/(visitor-cards|visitor-form-settings)(\/|$)|^\/services\/\d+\/(visitor-form|visitor-cards)(\/|$)/,
   lending: /^\/lending(\/|$)|^\/csv\/books(\/|$)/,

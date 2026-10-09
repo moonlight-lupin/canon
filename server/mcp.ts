@@ -15,7 +15,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess, DRAFT_ONLY_MODULES } from '../shared/types.ts';
-import type { McpConfig, ModuleAccess, ModuleKey, Role, VisitorAccess } from '../shared/types.ts';
+import type { McpConfig, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
 import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
 import { asActor } from './lib/actor.ts';
@@ -39,10 +39,13 @@ import { CLAIMS_TOOLS } from './mcp-tools/claims.ts';
 import { SCORE_TOOLS } from './mcp-tools/scores.ts';
 import { ADMIN_TOOLS } from './mcp-tools/admin.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
+import { effectiveAccess, piiFor, roleAccess, scoresFor, sensitiveFor, switchedOff, visitorsFor } from './lib/mcp-access.ts';
+import { toolOffered } from '../shared/mcp-exposure.ts';
+export { effectiveAccess, piiFor, scoresFor, sensitiveFor, switchedOff, visitorsFor };
 import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
-import type { PermModule } from '../shared/permissions.ts';
 import { wallOf } from './auth.ts';
 import { leadsMeeting } from './lib/leaders.ts';
+import { churchToday } from './lib/dates.ts';
 export type { ToolDef } from './mcp-tools/common.ts';
 
 const VERSION = '0.1.0';
@@ -60,6 +63,7 @@ const MODULE_TEXT: Record<ModuleKey, string> = {
 
 /** Why a module is at this level on this connection (admin setting ∩ connection scope ∩ the person's role). */
 function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role): string {
+  if (switchedOff(module)) return 'the church has switched this part of Canon off (Settings → Modules)';
   const setting = configuredAccess(module, cfg.modules);
   const parent = MODULE_PARENT[module];
   if (parent && configuredAccess(parent, cfg.modules) === 'off') return `it is part of ${parent}, which is not shared with AI agents`;
@@ -126,6 +130,9 @@ const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
 /** The whole MCP surface for the settings UI: which tools each module exposes and at what level. */
 export function toolCatalog() {
+  // exposed: offered to an administrator's read & write connection with the settings as saved (the screen works out
+  // its unsaved changes with the same rule, shared/mcp-exposure.ts)
+  const offered = new Set(allowedTools(getSettings().mcp, new Set(['canon:read', 'canon:write']), 'admin').map((t) => t.name));
   return TOOLS.map((t) => ({
     name: t.name,
     module: t.module,
@@ -134,24 +141,13 @@ export function toolCatalog() {
     description: t.description,
     requires_pii: !!t.requiresPii,
     requires_scores: !!t.requiresScores,
+    ...(t.always ? { always: true } : {}),
+    ...(t.switch ? { switch: t.switch } : {}),
+    exposed: offered.has(t.name),
   }));
 }
 
 // ---------------------------------------------------------------- exposure control
-
-/** Effective access to a module for this request = min(admin setting, token scope, user role). */
-/** Members' personal data on this connection: the administrator shares it, and the person's role sees members' details. */
-export const piiFor = (cfg: McpConfig, role: Role) => cfg.expose_member_pii && configuredAccess('members', cfg.modules) !== 'off' && roleDef(role).member_details;
-/** New visitors on service records: off with Service records, names only unless contact details are shared (and the role sees members' details). */
-export function visitorsFor(cfg: McpConfig, role: Role): VisitorAccess {
-  if (configuredAccess('records', cfg.modules) === 'off') return 'off';
-  const v = cfg.visitors ?? 'names';
-  return v === 'contact' && !roleDef(role).member_details ? 'names' : v;
-}
-/** Songs' sheet music: shared by the administrator, while the Library is shared. */
-export const scoresFor = (cfg: McpConfig) => !!cfg.sheet_music && configuredAccess('library', cfg.modules) !== 'off';
-/** The church's member fields marked sensitive: personal data is shared, and the role sees sensitive fields too. */
-export const sensitiveFor = (cfg: McpConfig, role: Role) => piiFor(cfg, role) && roleDef(role).sensitive_fields;
 
 /**
  * Meetings through the generic service and record tools: the same rules as the web app. Meetings switched off
@@ -169,34 +165,12 @@ export function meetingGate(user: { role: Role; person_id?: number | null }) {
     if (mode === 'write' && access !== 'edit' && !leads) throw Object.assign(new Error('Your role can only read meetings.'), { status: 403 });
   };
 }
-/** What the person's role allows in a module (administrators: everything). */
-const roleAccess = (module: ModuleKey, role: Role) => (roleDef(role).admin ? 'edit' : roleDef(role).access[module as PermModule] ?? 'none');
-
-export function effectiveAccess(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, role: Role, own = false): ModuleAccess {
-  const setting = configuredAccess(module, cfg.modules);
-  if (!cfg.enabled || setting === 'off') return 'off';
-  // as in the web app: the role decides (e.g. read-only accounts never see offerings) — except for a person's own
-  // records, such as their expense claims, which anyone may make
-  const ra = own ? 'edit' : roleAccess(module, role);
-  if (ra === 'none') return 'off';
-  if (!scopes.has('canon:read') && !scopes.has('canon:write')) return 'off';
-  if (setting === 'write' && scopes.has('canon:write') && ra === 'edit') return 'write';
-  return 'read';
-}
-
 export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): ToolDef[] {
-  const on = getSettings().modules;
-  return TOOLS.filter((t) => {
-    if (t.always) return cfg.enabled;
-    // switched-off parts of Canon (Settings → Modules) have no tools
-    if (on.volunteers === false && (t.module === 'volunteers' || t.name === 'canon_serving_report')) return false;
-    if (on.meetings === false && t.name === 'canon_get_calendar') return false;
-    if ((t.module === 'lending' && on.lending === false) || (t.module === 'equipment' && on.equipment === false) || (t.module === 'bookkeeping' && on.bookkeeping === false)) return false;
-    const lvl = effectiveAccess(t.module, cfg, scopes, role, t.own);
-    if (lvl === 'off' || (t.access === 'write' && lvl !== 'write')) return false;
-    if (t.requiresScores && !scoresFor(cfg)) return false;
-    return !t.requiresPii || piiFor(cfg, role);
-  });
+  const switches = getSettings().modules;
+  return TOOLS.filter((t) => toolOffered(
+    { access: t.access, always: t.always, switch: t.switch, requires_pii: t.requiresPii, requires_scores: t.requiresScores },
+    effectiveAccess(t.module, cfg, scopes, role, t.own), piiFor(cfg, role), scoresFor(cfg), cfg.enabled, switches,
+  ));
 }
 
 const LEVEL_TEXT: Record<ModuleAccess, string> = { off: 'not available', read: 'read only', write: 'read & write' };
@@ -207,9 +181,9 @@ function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, lan
   return [
     'Canon is a local-first church management system for a Reformed / Presbyterian congregation.',
     `Localised fields are L10n objects {"<lang>": "..."}; the church's languages are ${langs} (primary first) — fill each of them when you can.`,
-    'Tools: find_* / get_* / search_* read (find and search return summaries, get returns detail); save_* create (no id) or update (id + fields); edit_order, update_rota, update_team_members and update_group_members apply a batch of ops all-or-nothing and return per-op errors if any op fails.',
+    'Tools: find_* / get_* / search_* read (find and search return summaries, get returns detail); save_* create (no id) or update (id + fields); edit_order and the update_* batch tools apply a batch of ops all-or-nothing and return per-op errors if any op fails.',
     levels.services !== 'off' && 'PRECEDENT FIRST: before proposing or writing any plan, ALWAYS look at similar past services (canon_find_services {similar_to: <service id>} or {like: {date, sermon_ref}}, or canon_get_service {include_similar: true}) and at hymn history (canon_search_library returns last_used / times_12m per song). Treat them as the church\'s practice: its order, typical hymns, durations and who serves. Avoid a hymn sung in the last ~4 weeks unless the church clearly repeats it; continue a catechism series from the last question used (canon_get_library_item gives next_suggested_label). Say which past services you based a proposal on.',
-    'Typical service workflow: canon_find_services (or canon_get_templates → canon_create_service with template_id or copy_from) → canon_get_service → canon_search_library for songs / liturgy / hymnal numbers → canon_edit_order with add / update / move / remove ops → canon_update_service {status: "final"} → canon_update_rota to staff it (canon_get_rota shows teams, roles and who is free).',
+    `Typical service workflow: canon_find_services (or canon_get_templates → canon_create_service with template_id or copy_from) → canon_get_service → canon_search_library for songs / liturgy / hymnal numbers → canon_edit_order with add / update / move / remove ops → canon_update_service {status: "final"}${levels.volunteers === 'write' ? ' → canon_update_rota to staff it (canon_get_rota shows teams, roles and who is free)' : ''}.`,
     'Item kinds: section, song, scripture, text, sermon, prayer, sacrament, offering, announcements, music, other. A song item has ref_id = song id and optional stanzas ("1","3","R"); a text item has ref_id = liturgical text id (catechism / confession parts go in stanzas, e.g. ["1","2","3"]); a scripture item has scripture_ref such as "Romans 8:28-39" and the Bible text is filled in automatically.',
     'A typical Reformed order: Call to Worship, Invocation, Hymn, Reading of the Law / Confession of Sin, Assurance of Pardon, Creed, Pastoral Prayer, Scripture Reading, Sermon, Hymn, Offering, Doxology, Benediction.',
     'Dates are YYYY-MM-DD, times HH:MM (24h). Results are JSON {"ok":true,"data":...} or {"ok":false,"error":"...","errors":[per-op]}.',
@@ -227,11 +201,28 @@ function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, lan
 
 /** Compact JSON: drop null / undefined object properties. */
 const dropNulls = (_k: string, v: unknown) => (v === null ? undefined : v);
-const ok = (data: unknown): CallToolResult => data instanceof WithImages
-  ? { content: [{ type: 'text', text: JSON.stringify({ ok: true, data: data.data }, dropNulls) }, ...data.images.map((i) => ({ type: 'image' as const, data: i.base64, mimeType: i.mime }))] }
-  : { content: [{ type: 'text', text: JSON.stringify({ ok: true, data }, dropNulls) }] };
 const fail = (error: string, errors?: unknown): CallToolResult =>
   ({ content: [{ type: 'text', text: JSON.stringify({ ok: false, error, errors }) }], isError: true });
+
+/**
+ * The most a tool's answer may hold: its JSON, and its pictures (sheet music) together. A bigger answer fills the
+ * assistant's context and is cut off there anyway, so it is refused with what to narrow (Daedalus Workshop study of
+ * 0.19.10: reports over 20 years, every meeting, had no limit).
+ */
+export const MAX_RESULT_BYTES = 500_000;
+const MAX_IMAGE_BYTES = 12_000_000;
+const tooLarge = (what: string, bytes: number) => fail(`The result is too large (${Math.round(bytes / 1000)} KB of ${what}). Narrow it: a shorter period, one congregation, a smaller limit or the next page, or fewer pictures.`);
+
+/** A tool's answer: {"ok":true,"data":…} (pictures after it), or an error when it is too large. */
+export function toolResult(data: unknown): CallToolResult {
+  const text = JSON.stringify({ ok: true, data: data instanceof WithImages ? data.data : data }, dropNulls);
+  if (text.length > MAX_RESULT_BYTES) return tooLarge('text', text.length);
+  if (!(data instanceof WithImages)) return { content: [{ type: 'text', text }] };
+  const pictures = data.images.reduce((n, i) => n + i.base64.length, 0);
+  if (pictures > MAX_IMAGE_BYTES) return tooLarge('pictures', pictures);
+  return { content: [{ type: 'text', text }, ...data.images.map((i) => ({ type: 'image' as const, data: i.base64, mimeType: i.mime }))] };
+}
+const ok = toolResult;
 
 /**
  * Argument key paths only (no values), e.g. ["id", "fields.phone"]. Arrays of batch operations are summarised
@@ -421,7 +412,7 @@ export function buildServer(auth: McpAuth, base = '') {
     server.registerTool('canon_placeholder', { description: 'placeholder', inputSchema: {} }, async () => ok(null)).remove();
   }
   // Playbooks (prompts) are filtered by the same effective access; the handbook and user guide are always readable.
-  registerPrompts(server, { levels, pii, languages: settings.languages, today: new Date().toISOString().slice(0, 10) });
+  registerPrompts(server, { levels, pii, languages: settings.languages, today: churchToday() });
   registerResources(server);
   auditInHandlers = !wrapToolsCall(server, auth);
   compactToolsList(server);

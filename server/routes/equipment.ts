@@ -10,6 +10,7 @@ import { h, id, str } from './helpers.ts';
 import { sendXlsx } from '../lib/xlsx-export.ts';
 import { uiLang } from './csv.ts';
 import { addressForOthers } from '../lib/lan.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const equipmentRoutes = express.Router();
 
@@ -104,7 +105,7 @@ equipmentRoutes.get('/equipment/labels', h(async (req) => {
 equipmentRoutes.get('/equipment/maintenance-due.xlsx', h((req, res) => {
   const rows = E.listItems({ due: true });
   sendXlsx(req, res, uiLang(req), {
-    file: `maintenance-due-${new Date().toISOString().slice(0, 10)}`, title: 'Maintenance due',
+    file: `maintenance-due-${churchToday()}`, title: 'Maintenance due', pii: true, // who looks after each item
     header: ['number', 'name', 'location', 'looked_after_by', 'next_maintenance_on', 'every_months'],
     rows: rows.map((r) => [r.number, r.name, r.location, r.custodian, r.next_maintenance_on, r.maintenance_every_months]),
   });

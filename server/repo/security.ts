@@ -19,6 +19,7 @@ import { formSettings } from './visitor-form.ts';
 import { archivableYears, logArchiveYears } from './archive.ts';
 import { isAdmin } from '../lib/permissions.ts';
 import { backupKeyState } from '../lib/backup-crypto.ts';
+import { churchToday } from '../lib/dates.ts';
 
 // ---------------------------------------------------------------- member record views
 
@@ -103,7 +104,7 @@ const TABLE_LABEL: Record<string, string> = {
 };
 
 /** Keep one size reading a day (for the growth estimate); the last 400 days. */
-export function recordSizeSnapshot(today = new Date().toISOString().slice(0, 10)) {
+export function recordSizeSnapshot(today = churchToday()) {
   const hist = sizeHistory();
   if (hist.at(-1)?.date === today) return;
   hist.push({ date: today, bytes: fileSize(config.dbPath) + fileSize(`${config.dbPath}-wal`) });
@@ -253,6 +254,25 @@ export function securityChecklist(): CheckItem[] {
     items.push(broken.length
       ? { key: 'self_service', status: 'warn', title: 'Lending library self-service', detail: `Switched on but paused: ${broken.join(', ')} not ready. Members are asked to see the librarian until it is fixed.`, link: '/lending?tab=rules' }
       : { key: 'self_service', status: 'info', title: 'Lending library self-service', detail: `On: members borrow, renew and return on their phones from the internet (${publicUrl()}), signing in with a code e-mailed to their address on the register. This week: ${week.codes} sign-in code(s) sent, ${week.self_loans} self-service loan(s).`, link: '/lending?tab=rules' });
+  }
+  // the daily tidy: a duty that failed (above all the privacy erasure) is a warning until it works again
+  const tidy = (() => {
+    try {
+      return JSON.parse(getMeta('tidy_status') ?? 'null') as { at: string; failed: Record<string, { what: string; error: string }> } | null;
+    } catch {
+      return null;
+    }
+  })();
+  const failed = Object.entries(tidy?.failed ?? {});
+  if (tidy && failed.length) {
+    const erase = tidy.failed.erase;
+    const day = tidy.at.slice(0, 10);
+    items.push({
+      key: 'tidy', status: 'warn', title: 'Daily housekeeping',
+      detail: erase
+        ? `Visitors’ contact details are not being erased as Settings says: the daily tidy of ${day} could not (${erase.error}). Canon tries again every day; if this stays, look at Canon’s log or ask whoever looks after the computer.`
+        : `The daily tidy of ${day}: ${failed.map(([, f]) => `${f.what} failed (${f.error})`).join('; ')}. Canon tries again every day; if this stays, look at Canon’s log.`,
+    });
   }
   items.push({ key: 'retention', status: 'info', title: 'How long logs are kept', detail: `Change log and member record views: ${s.retention.change_log_months || 'all'} months; AI activity: ${s.retention.mcp_audit_months || 'all'} months.`, link: '/settings?tab=changelog' });
   items.push(s.retention.visitor_contact_months

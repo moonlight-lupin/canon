@@ -144,14 +144,20 @@ export function CardMenu({ label, actions, trigger, down, fixed }: { label: stri
   }, [open, fixed]);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    // Escape closes this first, not the dialog around it: heard before the dialog (capture) and marked handled
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      setOpen(false);
     };
     window.addEventListener('mousedown', close);
-    window.addEventListener('keydown', close);
+    window.addEventListener('keydown', esc, true);
     return () => {
       window.removeEventListener('mousedown', close);
-      window.removeEventListener('keydown', close);
+      window.removeEventListener('keydown', esc, true);
     };
   }, [open]);
   return (

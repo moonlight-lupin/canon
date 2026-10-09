@@ -153,7 +153,7 @@ test('sheet music: pages in order, checked by content, library edit to change; l
   const song = lib.songs.insert({ title: { en: 'A Morning Hymn' }, stanzas: [{ label: '1', text: { en: 'Line' } }, { label: 'R', text: { en: 'Refrain' } }, { label: '2', text: { en: 'Line' } }], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
   const up = (who: Session, name: string, type: string, data: Buffer) => call(who, 'POST', `/songs/${song.id}/scores?name=${encodeURIComponent(name)}`, undefined, { type, data });
   assert.equal((await up(as.viewer, 'p1.png', 'image/png', PNG)).status, 403);
-  assert.equal((await up(as.editor, 'fake.png', 'image/png', PDF)).status, 400, 'not what its name says');
+  assert.equal((await up(as.editor, 'fake.png', 'image/png', Buffer.from('<html>not a picture</html>'))).status, 400, 'judged by its bytes, not its name or type');
   assert.equal((await up(as.editor, 'notes.txt', 'text/plain', Buffer.from('hello'))).status, 400);
   let r = await up(as.editor, 'page 1.png', 'image/png', PNG);
   assert.equal(r.status, 200);
@@ -206,7 +206,7 @@ test('upload links (0.15.5): an editor makes one; anyone with it adds pages to t
   assert.equal(info.body.pages, 0);
   const up = (type: string, data: Buffer, name = 'p.png') => call(null, 'POST', `/upload/${token}?name=${name}`, undefined, { type, data });
   assert.equal((await up('image/png', PNG)).status, 200);
-  assert.equal((await up('image/png', PDF)).status, 400, 'checked by content');
+  assert.equal((await up('image/png', Buffer.from('<html>not a page of music</html>'))).status, 400, 'checked by content: a page sent as a picture');
   assert.equal((await up('application/pdf', PDF, 'p2.pdf')).body.pages, 2);
   assert.deepEqual((await call(as.viewer, 'GET', `/songs/${song.id}/scores`)).body.map((s: Json) => s.name), ['p.png', 'p2.pdf']);
   // expired: gone
@@ -214,4 +214,11 @@ test('upload links (0.15.5): an editor makes one; anyone with it adds pages to t
   assert.equal((await call(null, 'GET', `/upload/${token}`)).status, 404);
   assert.equal((await up('image/png', PNG)).status, 404);
   assert.equal((await call(null, 'GET', '/upload/not-a-real-token-123')).status, 404);
+});
+
+test('sheet music: a PDF sent as a PNG is kept as the PDF it is (0.20.0: the bytes decide, not what the browser says)', async () => {
+  const song = lib.songs.insert({ title: { en: 'A Typed Hymn' }, stanzas: [{ label: '1', text: { en: 'Line' } }], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  const r = await call(as.editor, 'POST', `/songs/${song.id}/scores?name=scan.png`, undefined, { type: 'image/png', data: PDF });
+  assert.equal(r.status, 200);
+  assert.equal(r.body[0].mime, 'application/pdf');
 });

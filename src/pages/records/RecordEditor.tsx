@@ -56,6 +56,8 @@ export function RecordEditor() {
   // a meeting may take no offering: then its record is headcount, visitors and notes only
   const takesOffering = s.offering !== false;
   const noMoney = !!d.hidden?.includes('offerings') || !takesOffering;
+  // the server's one rule (lib/permissions.ts moneyAccess): 'read' shows the money without letting it be changed
+  const moneyEdit = (d as Rec & { money_access?: string }).money_access !== 'read';
   const isMeeting = s.kind === 'meeting';
   // editors, or the leader of this meeting (lib/leaders.ts on the server)
   const canEdit = editor || canRecord(s);
@@ -76,7 +78,7 @@ export function RecordEditor() {
   const body = () => {
     const b: Partial<Rec> = { attendance: d.attendance, children: d.children, online: d.online, notes: d.notes };
     if (!restricted) b.visitors = d.visitors;
-    if (noMoney) return b;
+    if (noMoney || !moneyEdit) return b;
     if (locked) return { ...b, offerings: d.offerings };
     return {
       ...b, offerings: d.offerings, cash: d.cash, counters: d.counters, currency: d.currency, counted_on: d.counted_on ?? null,
@@ -233,6 +235,8 @@ export function RecordEditor() {
         </section>
 
         {!noMoney && (
+          <fieldset disabled={!moneyEdit} className="bare stack">
+          {!moneyEdit && <div className="small muted">{t('Your role can read the offerings here, not change them.')}</div>}
           <div className="stack">
             <section className="card stack">
               <div className="row between rec-off-head">
@@ -317,6 +321,7 @@ export function RecordEditor() {
             </section>
             </fieldset>
           </div>
+          </fieldset>
         )}
       </fieldset>
 

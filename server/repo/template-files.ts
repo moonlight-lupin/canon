@@ -7,6 +7,7 @@ import type { SlideTheme } from '../../shared/slide-theme.ts';
 import { blockImageKey } from '../../shared/presentation.ts';
 import { themeBgKey } from '../../shared/slide-theme.ts';
 import { BadRequest } from '../lib/table.ts';
+import { sniffType } from '../lib/image.ts';
 import {
   assetRow, createBlock, createTemplate, createTheme, getTemplate, getTheme, listBlocks, setBlockImage, setThemeBackground,
 } from './presentation.ts';
@@ -68,7 +69,9 @@ function readPicture(p: unknown): { mime: string; data: Buffer } | null {
   const { mime, data } = p as Picture;
   if (!PICTURE_TYPES.includes(mime) || typeof data !== 'string') return null;
   const buf = Buffer.from(data, 'base64');
-  return buf.length && buf.length <= MAX_PICTURE ? { mime, data: buf } : null;
+  // a picture only if its bytes are one (a file's own word for it doesn't count): else the template comes without it
+  const real = sniffType(buf);
+  return buf.length && buf.length <= MAX_PICTURE && real && PICTURE_TYPES.includes(real) ? { mime: real, data: buf } : null;
 }
 
 /** Make a new template from a file's contents. Returns which kind was made and its id. */

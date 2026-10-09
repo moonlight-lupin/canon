@@ -25,7 +25,8 @@ export const congregationLabel = (id: number | null | undefined) => {
   return c ? { id: c.id, code: c.code, name: c.name } : undefined;
 };
 import { DOWNLOAD_KINDS, MAX_LINK_HOURS, createLinks, type DownloadKind } from '../repo/downloads.ts';
-import { DESTRUCTIVE, DateStr, Id, InputError, RO, WRITE, mergeL10n, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
+import { DESTRUCTIVE, DateStr, Id, InputError, RO, WRITE, canRead, mergeL10n, mergeL10nFields, need, runBatch, type Ctx, type ToolDef } from './common.ts';
+import { churchToday } from '../lib/dates.ts';
 
 // ---------------------------------------------------------------- output shaping
 
@@ -183,6 +184,11 @@ const Like = z.object({
 type Like = z.infer<typeof Like>;
 
 /** Top 3 similar earlier services with one-line outline entries ("song: Hymn — HP 12 Holy, Holy, Holy"). */
+/** Similar past services without who served, when this connection doesn't read the rota. */
+function withoutRota<T extends { roster_summary?: string }>(rows: T[], ctx: Ctx): T[] {
+  return canRead(ctx, 'volunteers') ? rows : rows.map(({ roster_summary: _r, ...s }) => s as T);
+}
+
 function shortSimilar(id: number) {
   return similarServices(id, { limit: 3 }).map(({ outline, ...s }) => ({
     ...s,
@@ -287,11 +293,11 @@ export const SERVICE_TOOLS: ToolDef[] = [
       congregation: z.union([Id, z.string().max(40)]).optional().describe('congregation id, code or name (churches with several congregations)'),
       limit: z.number().int().min(1).max(200).optional().describe('default 30 (5 with similar_to / like, max 20)'),
     },
-    handler: (a) => {
+    handler: (a, ctx) => {
       if (a.similar_to && a.like) throw new InputError('give similar_to or like, not both');
       if (a.similar_to || a.like) {
         const target = a.similar_to ?? (a.like as Like);
-        return { similar: similarServices(target, { limit: Math.min(a.limit ?? 5, 20) }) };
+        return { similar: withoutRota(similarServices(target, { limit: Math.min(a.limit ?? 5, 20) }), ctx) };
       }
       const limit = a.limit ?? 30;
       const q = a.q?.trim().toLowerCase();
@@ -317,13 +323,16 @@ export const SERVICE_TOOLS: ToolDef[] = [
     handler: (a, ctx) => {
       a = { ...a, id: resolveRef('service', a.id) };
       if (a.format === 'downloads') return downloads(a.id, ctx.base ?? '', ctx.auth.user.id, a.files ?? ['slides_pptx', 'bulletin_docx'], a.hours ?? 24, a.langs);
-      const warnings = vol.rosterWarnings(a.id);
+      // the rota only while this connection reads it (Volunteers may be switched off, or not shared)
+      const rota = canRead(ctx, 'volunteers');
+      const warnings = rota ? vol.rosterWarnings(a.id) : undefined;
       const similar_past = a.include_similar ? shortSimilar(a.id) : undefined;
       if (a.format === 'text') {
         const lang = (a.lang ?? getSettings().languages[0] ?? 'en') as Lang;
         return { format: 'text', text: serviceAsText(renderService(a.id), lang), warnings, similar_past };
       }
-      return { ...serviceDetail(a.id, a.include_text), warnings, similar_past };
+      const { roster, ...detail } = serviceDetail(a.id, a.include_text);
+      return { ...detail, ...(rota ? { roster } : {}), warnings, similar_past: similar_past && withoutRota(similar_past, ctx) };
     },
   },
   {
@@ -338,8 +347,9 @@ export const SERVICE_TOOLS: ToolDef[] = [
       copy_from: IdOrRef.optional().describe('service id or reference to duplicate'),
       with_roster: z.boolean().optional(),
     },
-    handler: (a) => {
+    handler: (a, ctx) => {
       const { template: tplRef, template_id: tplId, slide_template, bulletin_template, copy_from: copyRef, with_roster, ...input } = a;
+      if (with_roster && ctx.levels?.volunteers !== 'write') throw new InputError('Copying the rota needs write access to Volunteers on this connection (it may be switched off in Settings → Modules, or not shared).');
       const template_id = tplRef != null ? resolveRef('service_template', tplRef) : tplId;
       const copy_from = copyRef != null ? resolveRef('service', copyRef) : undefined;
       if (slide_template != null) input.slide_theme_id = resolveRef('slide_template', slide_template);
@@ -409,11 +419,11 @@ export const SERVICE_TOOLS: ToolDef[] = [
     handler: (a) => templateSummary(svc.saveAsTemplate(a.service_id, a.name)),
   },
   {
-    name: 'canon_get_calendar', module: 'services', access: 'read', title: 'The church calendar', annotations: RO,
+    name: 'canon_get_calendar', module: 'services', access: 'read', title: 'The church calendar', annotations: RO, switch: 'meetings',
     description: 'Everything on the church calendar between two dates (default: the next 4 weeks): services, meetings of groups (fellowships, cell groups, Sunday school classes, one-off meetings) and the church\'s other events (camps, weddings …, possibly over several days), in date order, with type, time, title, place, congregation and group. A congregation\'s calendar includes the whole church\'s items. Read only. Example: {"from":"2026-10-01","to":"2026-10-31"}.',
     input: { from: DateStr.optional(), to: DateStr.optional(), congregation_id: Id.optional(), group_id: Id.optional().describe('one group (ids from canon_find_groups)') },
     handler: (a) => {
-      const from = a.from ?? new Date().toISOString().slice(0, 10);
+      const from = a.from ?? churchToday();
       const to = a.to ?? new Date(Date.parse(`${from}T12:00:00Z`) + 27 * 86_400_000).toISOString().slice(0, 10);
       return { from, to, items: calendarItems({ from, to, congregation_id: a.congregation_id, group_id: a.group_id }) };
     },

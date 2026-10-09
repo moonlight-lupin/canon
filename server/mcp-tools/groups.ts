@@ -101,7 +101,7 @@ export const GROUP_TOOLS: ToolDef[] = [
       : grp.listGroups({ kind: a.kind as GroupKind | undefined, inactive: !!a.include_inactive, congregation_id: a.congregation != null ? findCongregation(a.congregation)?.id ?? -1 : undefined }).map(groupSummary)),
   },
   {
-    name: 'canon_save_group', module: 'groups', access: 'write', title: 'Save a group', annotations: { ...WRITE, idempotentHint: true },
+    name: 'canon_save_group', module: 'groups', access: 'write', title: 'Save a group', annotations: WRITE,
     description: `Create a group (no id; fields.name and kind required) or update one (id; only the given fields change; active=false retires a group without deleting it). name is L10n {"en":"Session","zh":"堂会"} (${L10N_MERGE_NOTE}); ${KIND_TEXT}; meeting is free text such as "Fridays 8pm, church hall". Returns the group.`,
     input: { id: Id.optional(), fields: S.GroupInput.partial().default({}) },
     handler: (a) => (a.id ? grp.updateGroup(a.id, mergeL10nFields(grp.groups.get(a.id), a.fields, ['name'])) : grp.createGroup(S.GroupInput.parse(a.fields))),

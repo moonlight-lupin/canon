@@ -12,6 +12,7 @@ import { publicUrl } from '../lib/public-url.ts';
 import { getSettings, updateSettings } from './settings.ts';
 import { recordFor, saveRecord } from './records.ts';
 import { services } from './services.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const formSettings = (): VisitorFormSettings => ({ ...DEFAULT_VISITOR_FORM, ...getSettings().visitor_form });
 
@@ -101,7 +102,7 @@ const addDays = (d: string, n: number) => {
 };
 
 /** Whether entries are accepted today: from the day before the service until the set number of days after it. */
-export function formOpen(serviceDate: string, today = new Date().toISOString().slice(0, 10)): boolean {
+export function formOpen(serviceDate: string, today = churchToday()): boolean {
   return today >= addDays(serviceDate, -1) && today <= addDays(serviceDate, formSettings().days_after);
 }
 

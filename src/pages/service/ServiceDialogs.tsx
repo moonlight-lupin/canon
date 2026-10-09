@@ -4,7 +4,7 @@ import { hasAnyText } from '../../../shared/labels.ts';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Field, L10nInput, Loading, ErrorBox, Modal, Seg, useAction, useDebounced, useSession } from '../../components/ui.tsx';
+import { Field, L10nInput, Loading, ErrorBox, Modal, Seg, addDays, useAction, useDebounced, useSession } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { langInfo, dateLocale } from '../../../shared/languages.ts';
 import type { L10n, Lang, ServiceFull } from '../../types-client.ts';
@@ -13,9 +13,8 @@ export function DuplicateDialog({ svc, onClose }: { svc: ServiceFull; onClose: (
   const { t } = useI18n();
   const nav = useNavigate();
   const { run, busy } = useAction();
-  const next = new Date(svc.date + 'T00:00:00');
-  next.setDate(next.getDate() + 7);
-  const [date, setDate] = useState(next.toISOString().slice(0, 10));
+  // a week later, counted on the calendar (local midnight read back as UTC made it a day early east of Greenwich)
+  const [date, setDate] = useState(addDays(svc.date, 7));
   const [roster, setRoster] = useState(false);
   return (
     <Modal title={t('Duplicate')} onClose={onClose} footer={

@@ -4,6 +4,7 @@ import type { ItemKind, L10n, MeetingPattern, Service, ServiceFull, ServiceItem,
 import { meetingDates, patternReady } from '../../shared/meeting-pattern.ts';
 import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
+import { logChange } from './changelog.ts';
 import { SEED_TEMPLATES } from '../seed/templates.ts';
 import { songs, texts } from './library.ts';
 import { roleByName, roles, serviceAssignments } from './volunteers.ts';
@@ -13,6 +14,7 @@ import { listCongregations } from './congregations.ts';
 import { backgroundByName } from './backgrounds.ts';
 import { checkImageIds, imageIdsByName } from './images.ts';
 import { inWall, wallSql } from '../lib/walls.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const services = table<Service>({
   name: 'services',
@@ -370,7 +372,7 @@ export function createMeeting(input: Partial<Service> & { date: string }) {
  * setting, else 4) that has no meeting of the group yet. Each copies the group's previous meeting, with the time and
  * place of the pattern when it gives them. Returns the meetings made.
  */
-export function createMeetingsAhead(groupId: number, weeks?: number, today = new Date().toISOString().slice(0, 10)) {
+export function createMeetingsAhead(groupId: number, weeks?: number, today = churchToday()) {
   const g = get<{ id: number; active: number; pattern: string }>('SELECT id, active, pattern FROM groups WHERE id = ?', groupId);
   if (!g) throw new NotFound('That group does not exist.');
   const pattern = JSON.parse(g.pattern || '{}') as MeetingPattern;
@@ -379,13 +381,29 @@ export function createMeetingsAhead(groupId: number, weeks?: number, today = new
   const to = new Date(`${today}T12:00:00Z`);
   to.setUTCDate(to.getUTCDate() + span * 7);
   const last = get<{ date: string }>("SELECT MAX(date) AS date FROM services WHERE kind = 'meeting' AND group_id = ?", g.id)?.date ?? null;
-  const have = new Set(all<{ date: string }>("SELECT date FROM services WHERE kind = 'meeting' AND group_id = ? AND date >= ?", g.id, today).map((r) => r.date));
+  // dates it has a meeting on, and dates a meeting was cancelled or moved from (meeting_skips: kept so)
+  const have = new Set(all<{ date: string }>(
+    "SELECT date FROM services WHERE kind = 'meeting' AND group_id = ? AND date >= ? UNION SELECT date FROM meeting_skips WHERE group_id = ? AND date >= ?",
+    g.id, today, g.id, today,
+  ).map((r) => r.date));
   const made: ServiceFull[] = [];
   for (const date of meetingDates(pattern, today, to.toISOString().slice(0, 10), last)) {
     if (have.has(date)) continue;
     made.push(createMeeting({ group_id: g.id, date, ...(pattern.time ? { start_time: pattern.time } : {}), ...(pattern.place ? { place: pattern.place } : {}) }));
   }
   return made;
+}
+
+/** A group's coming meetings that were cancelled or moved (not made again from its pattern), soonest first. */
+export const meetingSkips = (groupId: number) =>
+  all<{ date: string; created_at: string }>('SELECT date, created_at FROM meeting_skips WHERE group_id = ? AND date >= ? ORDER BY date', groupId, churchToday());
+
+/** Make a cancelled meeting's date a meeting date again (the next run, or Create meetings ahead, makes it). */
+export function restoreMeetingDate(groupId: number, date: string) {
+  const r = run('DELETE FROM meeting_skips WHERE group_id = ? AND date = ?', groupId, date);
+  if (!r.changes) throw new NotFound('That date is not cancelled.');
+  logChange({ entity: 'groups', entity_id: groupId, action: 'update', summary: `Meeting on ${date} restored to the pattern` });
+  return meetingSkips(groupId);
 }
 
 /** Every active group that creates its meetings ahead (daily). Returns how many meetings were made. */

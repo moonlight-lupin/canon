@@ -56,8 +56,32 @@ export const ENTITY_LABEL: Record<string, { en: string; zh: string }> = {
   bk_claims: { en: 'Expense claim', zh: '报销申请' },
 };
 
-/** Columns never written to the log. */
-const SKIP = new Set(['updated_at', 'created_at', 'password_hash', 'share_token', 'position', 'sort', 'revision']);
+/** Columns never written to the log: the row's own bookkeeping and sort orders. */
+const SKIP = new Set(['updated_at', 'created_at', 'sort', 'revision']);
+/** `position` is a sort order, except where it is a co-worker's job title. */
+const POSITION_LOGGED = new Set(['coworkers']);
+/**
+ * A secret, by what it is called: never written to the log, as a column or as a key inside a JSON value (a service's
+ * attendee and visitor-form links keep a token). Judged by the name, not a list of columns, so a new secret column is
+ * kept out too (Daedalus Workshop study of 0.19.10).
+ */
+const SECRET = /(^|_)(token|secret|password|passcode|hash|salt|recovery)s?(_|$)|(^|_)(api|private|access|refresh|signing)_?key$/i;
+const HIDDEN = '(secret)';
+/** A value with the secrets inside it hidden (JSON objects, also kept as text). */
+function withoutSecrets(v: unknown): unknown {
+  if (typeof v === 'string' && /^\s*[[{]/.test(v)) {
+    try {
+      const parsed = JSON.parse(v) as unknown;
+      const clean = withoutSecrets(parsed);
+      return JSON.stringify(clean) === JSON.stringify(parsed) ? v : JSON.stringify(clean);
+    } catch {
+      return v;
+    }
+  }
+  if (Array.isArray(v)) return v.map(withoutSecrets);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, SECRET.test(k) ? HIDDEN : withoutSecrets(x)]));
+  return v;
+}
 const MAX_VALUE = 400;
 
 type Row = Record<string, unknown>;
@@ -110,9 +134,9 @@ export function diff(before: Row | null, after: Row | null, entity?: string): Re
   const out: Record<string, [unknown, unknown]> = {};
   const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
   for (const k of keys) {
-    if (SKIP.has(k) || k === 'id') continue;
-    const a = before?.[k] ?? null;
-    const b = after?.[k] ?? null;
+    if (SKIP.has(k) || k === 'id' || SECRET.test(k) || (k === 'position' && !POSITION_LOGGED.has(entity ?? ''))) continue;
+    const a = withoutSecrets(before?.[k] ?? null);
+    const b = withoutSecrets(after?.[k] ?? null);
     if (JSON.stringify(a) === JSON.stringify(b)) continue;
     out[k] = full?.has(k) ? [fullValue(k, a), fullValue(k, b)] : [short(a), short(b)];
   }
@@ -157,6 +181,8 @@ export interface LogQuery {
   from?: string; // YYYY-MM-DD
   to?: string;
   q?: string;
+  /** false: words are looked for in names and summaries, not in old and new values (an agent without personal data) */
+  values?: boolean;
   page?: number;
   size?: number;
 }
@@ -232,9 +258,11 @@ export function listChanges(q: LogQuery): { rows: ChangeRow[]; total: number; pa
   where.push(...d.where);
   params.push(...d.params);
   if (q.q?.trim()) {
-    where.push("(name LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\' OR changes LIKE ? ESCAPE '\\')");
     const t = likeTerm(q.q.trim());
-    params.push(t, t, t);
+    // values: false (an agent without personal data) — not in the old and new values
+    const cols = q.values === false ? ['name', 'summary'] : ['name', 'summary', 'changes'];
+    where.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(' OR ')})`);
+    params.push(...cols.map(() => t));
   }
   const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const { size, page, offset } = paging(q);

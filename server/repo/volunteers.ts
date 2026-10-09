@@ -4,6 +4,7 @@ import { all, get, run, tx } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { ensureOnRoleTeam, isLeaderRole, teamGroupId } from './groups.ts';
 import { checkRef, wallSql } from '../lib/walls.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const teams = table<Team>({ name: 'teams', cols: ['name', 'description', 'color', 'sort'], json: ['name'] });
 export const roles = table<ServiceRole>({ name: 'roles', cols: ['team_id', 'name', 'needed', 'sort'], json: ['name'] });
@@ -198,7 +199,7 @@ export function autofill(serviceIds: number[]) {
 }
 
 /** Upcoming assignments for one person (their personal schedule). */
-export function personSchedule(personId: number, from = new Date().toISOString().slice(0, 10)) {
+export function personSchedule(personId: number, from = churchToday()) {
   return all<{ service_id: number; date: string; start_time: string; title: string; role_name: string; status: string }>(
     `SELECT a.service_id, s.date, s.start_time, s.title, r.name AS role_name, a.status
      FROM assignments a JOIN services s ON s.id = a.service_id JOIN roles r ON r.id = a.role_id

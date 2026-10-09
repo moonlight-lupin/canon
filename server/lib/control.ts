@@ -64,10 +64,22 @@ export function handleControl(server: Server, req: IncomingMessage, res: ServerR
  * Stop Canon: no new requests, a few seconds for running ones, then the database is closed and Canon exits — with 0
  * (stopped on purpose), or with RESTART_FOR_UPDATE (75) for the launcher to install an update and start Canon again.
  */
+/** What else stops with Canon: its timers (backups, the daily tidy, update checks), registered at start. */
+const onStopHooks: (() => unknown)[] = [];
+export const onStop = (fn: () => unknown) => {
+  onStopHooks.push(fn);
+};
+
 export function stop(server: Server, why: string, code = 0) {
   if (stopping) return;
   stopping = true;
   console.log(`Canon is stopping (${why}).`);
+  // no new timed work starts while the database is being closed
+  for (const fn of onStopHooks) {
+    try {
+      fn();
+    } catch { /* stopping anyway */ }
+  }
   server.close();
   server.closeIdleConnections();
   const finish = () => {

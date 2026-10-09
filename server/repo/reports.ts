@@ -11,9 +11,10 @@ import { all, type SqlValue } from '../db.ts';
 import { BadRequest } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
 import { currentWall, visiblePeople } from '../lib/walls.ts';
+import { churchToday } from '../lib/dates.ts';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => churchToday();
 
 /** A checked period: defaults to the last 12 months; at most 20 years. */
 export function period(q: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }): Period {
@@ -371,6 +372,8 @@ export function serviceYears(congregationId?: number): number[] {
  */
 export function scriptureReport(q: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number; years?: number[] }): ScriptureReport {
   const years = [...new Set((q.years ?? []).filter((y) => Number.isInteger(y) && y >= 1900 && y <= 2200))].sort((a, b) => a - b).slice(0, 50);
+  // chosen years span at most 20, as a period does
+  if (years.length && years[years.length - 1] - years[0] > 20) throw new BadRequest('Choose years at most 20 apart.');
   let svcs: SvcRow[];
   let p: Period;
   if (years.length) {
@@ -434,7 +437,8 @@ export function scriptureReport(q: { from?: string; to?: string; congregation_id
 
 export function membershipReport(q: Period): MembershipReport {
   const p = period(q);
-  const where = p.congregation_id ? (currentWall() ? 'WHERE (congregation_id = ? OR congregation_id IS NULL)' : 'WHERE congregation_id = ?') : '';
+  // an erased member (PDPA) stays only as an anonymous placeholder for past rotas: not a person to count
+  const where = `WHERE erased_at IS NULL${p.congregation_id ? (currentWall() ? ' AND (congregation_id = ? OR congregation_id IS NULL)' : ' AND congregation_id = ?') : ''}`;
   const params: SqlValue[] = p.congregation_id ? [p.congregation_id] : [];
   const rows = all<PersonRow & { status: string; gender: string | null; birth_date: string | null; congregation_id: number | null; membership_date: string | null; baptism_date: string | null; created_at: string }>(
     `SELECT id, first_name, last_name, preferred_name, native_name, status, gender, birth_date, congregation_id, membership_date, baptism_date, created_at FROM people ${where}`, ...params,

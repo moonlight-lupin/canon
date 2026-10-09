@@ -3,10 +3,11 @@ import { config } from './config.ts';
 import { createApp } from './app.ts';
 import { seed } from './seed/index.ts';
 import { publicUrl } from './lib/public-url.ts';
-import { startBackupScheduler, sweepScratch } from './repo/backups.ts';
+import { startBackupScheduler, stopSchedulers, sweepScratch } from './repo/backups.ts';
 import http from 'node:http';
-import { handleControl, stop, writeControlFile } from './lib/control.ts';
-import { noteUpdateResult, setUpdateServer, startUpdateChecks } from './lib/updates.ts';
+import { handleControl, onStop, stop, writeControlFile } from './lib/control.ts';
+import { noteUpdateResult, setUpdateServer, startUpdateChecks, stopUpdateChecks } from './lib/updates.ts';
+import { asSystem } from './lib/actor.ts';
 import { announceSetupCode } from './lib/setup-code.ts';
 import { sealTotpSecrets } from './lib/secret-field.ts';
 import { db } from './db.ts';
@@ -22,9 +23,11 @@ sweepScratch();
 const sealed = sealTotpSecrets(db);
 if (sealed) console.log(`Two-step sign-in: ${sealed} secret${sealed === 1 ? '' : 's'} now kept encrypted.`);
 startBackupScheduler();
-// an update the launcher has just prepared (or rolled back): noted for About Canon
-noteUpdateResult();
+// an update the launcher has just prepared (or rolled back): noted for About Canon, and in the change log by "Canon"
+asSystem(noteUpdateResult);
 startUpdateChecks();
+onStop(stopSchedulers);
+onStop(stopUpdateChecks);
 
 const app = createApp();
 // the tray icon's Exit (POST /control/stop from this computer, with the token) is answered before the app sees it

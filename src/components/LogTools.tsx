@@ -34,7 +34,7 @@ export function useLogQuery<T, F extends Record<string, string>>(path: string, i
   return { ...res, filters, set, clear, active, page, setPage, exportQuery };
 }
 
-export function Pager({ page, size, total, onPage }: { page: number; size: number; total: number; onPage: (p: number) => void }) {
+export function Pager({ page, size, total, onPage, prev = 'Newer', next = 'Older' }: { page: number; size: number; total: number; onPage: (p: number) => void; prev?: string; next?: string }) {
   const { t } = useI18n();
   const pages = Math.max(1, Math.ceil(total / size));
   const from = total ? (page - 1) * size + 1 : 0;
@@ -44,9 +44,9 @@ export function Pager({ page, size, total, onPage }: { page: number; size: numbe
       <span className="small muted">{t('{from}–{to} of {total}').replace('{from}', String(from)).replace('{to}', String(to)).replace('{total}', String(total))}</span>
       <div className="row" style={{ gap: 4 }}>
         <button className="btn sm ghost" disabled={page <= 1} onClick={() => onPage(1)} aria-label={t('First page')}>«</button>
-        <button className="btn sm" disabled={page <= 1} onClick={() => onPage(page - 1)}><Icon name="chevronLeft" />{t('Newer')}</button>
+        <button className="btn sm" disabled={page <= 1} onClick={() => onPage(page - 1)}><Icon name="chevronLeft" />{t(prev)}</button>
         <span className="small">{page} / {pages}</span>
-        <button className="btn sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t('Older')}<Icon name="chevronRight" /></button>
+        <button className="btn sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t(next)}<Icon name="chevronRight" /></button>
       </div>
     </div>
   );

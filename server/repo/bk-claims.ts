@@ -21,6 +21,7 @@ import { publicUrl } from '../lib/public-url.ts';
 import { addressForOthers } from '../lib/lan.ts';
 import type { BkLine, BookkeepingSettings, Claim, ClaimApproval, ClaimApprover, ClaimFile, ClaimLine, ClaimSignature, ClaimStatus } from '../../shared/bookkeeping.ts';
 import type { Lang } from '../../shared/types.ts';
+import { churchToday } from '../lib/dates.ts';
 
 /** Who is acting on a claim. */
 export interface Party {
@@ -32,7 +33,7 @@ export interface Party {
 
 type Row = Omit<Claim, 'lines' | 'files' | 'approvals' | 'total' | 'signature' | 'approver_paid'> & { signature: string | null; approver_paid: number };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => churchToday();
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // ---------------------------------------------------------------- reading
@@ -251,12 +252,12 @@ export function deleteClaim(id: number, by: Party) {
 export function addClaimFile(id: number, f: { name: string; mime: string; data: Buffer; line_id?: number | null }, by: Party): Claim {
   const c = getClaim(id);
   mayEdit(c, by);
-  const name = checkUpload(f.mime, f.data, f.name);
+  const { name, mime } = checkUpload(f.mime, f.data, f.name);
   if (c.files.length >= 30) throw new BadRequest('At most 30 receipts in a claim.');
   if (f.line_id && !c.lines.some((l) => l.id === f.line_id)) throw new BadRequest('That line is not in this claim.');
   return tx(() => {
-    const fid = Number(run('INSERT INTO bk_claim_files (claim_id, line_id, name, mime, size) VALUES (?,?,?,?,?)', id, f.line_id ?? null, name, f.mime, f.data.length).lastInsertRowid);
-    run("INSERT INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))", `claim-file-${fid}`, f.mime, f.data);
+    const fid = Number(run('INSERT INTO bk_claim_files (claim_id, line_id, name, mime, size) VALUES (?,?,?,?,?)', id, f.line_id ?? null, name, mime, f.data.length).lastInsertRowid);
+    run("INSERT INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))", `claim-file-${fid}`, mime, f.data);
     logChange({ entity: 'bk_claims', entity_id: id, action: 'update', summary: `Receipt added: ${name}` });
     return getClaim(id);
   });
@@ -341,7 +342,7 @@ export function submitClaim(id: number, s: { name?: string; image?: string; pape
   };
   const out = tx(() => {
     run(`UPDATE bk_claims SET status = 'submitted', number = COALESCE(number, ?), signature = ?, submitted_at = datetime('now'), note = NULL, updated_at = datetime('now'), revision = revision + 1 WHERE id = ?`,
-      c.number ?? nextNumber(), JSON.stringify(sig), id);
+      c.number ?? nextClaimNumber(), JSON.stringify(sig), id);
     const after = getClaim(id);
     logClaim('update', c, after, s.paper ? 'Submitted (signed on paper)' : 'Signed and submitted');
     return after;
@@ -350,10 +351,15 @@ export function submitClaim(id: number, s: { name?: string; image?: string; pape
   return out;
 }
 
-function nextNumber(): string {
-  const y = today().slice(0, 4);
-  const last = get<{ n: string }>('SELECT number AS n FROM bk_claims WHERE number LIKE ? ORDER BY number DESC LIMIT 1', `C${y}-%`)?.n;
-  return `C${y}-${String(last ? Number(last.split('-')[1]) + 1 : 1).padStart(4, '0')}`;
+/** The year a claim submitted now is numbered in. */
+export const claimYear = () => today().slice(0, 4);
+
+/** The next claim number this year: C2026-0001 … C2026-9999, C2026-10000 (the highest as a number, as journals' are). */
+export function nextClaimNumber(): string {
+  const y = claimYear();
+  // "C2026-10000" comes after "C2026-9999", which a text sort gets wrong: every submission after it collided
+  const last = get<{ n: number | null }>('SELECT MAX(CAST(substr(number, ?) AS INTEGER)) AS n FROM bk_claims WHERE number LIKE ?', y.length + 3, `C${y}-%`)?.n;
+  return `C${y}-${String((last ?? 0) + 1).padStart(4, '0')}`;
 }
 
 /** The claimant takes a claim back (before it is approved). */

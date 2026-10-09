@@ -59,6 +59,25 @@ export interface Person {
   erased_at?: string | null;
 }
 
+/**
+ * Each register field, marked where it is defined: 'shared' fields reach AI agents, 'personal' ones (contact details,
+ * address, birth date, notes) only where members' personal data is shared. The maps are keyed by the interfaces, so a
+ * new field fails the typecheck until it is marked; a column that isn't in them (one added to the database only) is
+ * never sent to an agent (Daedalus Workshop study of 0.19.10: a hand-kept list of field names to withhold let a new
+ * personal field out by default).
+ */
+export type FieldPrivacy = 'shared' | 'personal';
+export const HOUSEHOLD_FIELDS: Record<keyof Household, FieldPrivacy> = { id: 'shared', name: 'shared', address: 'personal', phone: 'personal', notes: 'personal' };
+export const PERSON_FIELDS: Record<keyof Person, FieldPrivacy> = {
+  congregation_id: 'shared', id: 'shared', first_name: 'shared', last_name: 'shared', native_name: 'shared', preferred_name: 'shared', gender: 'shared',
+  birth_date: 'personal', phone: 'personal', email: 'personal', address: 'personal',
+  household_id: 'shared', household_role: 'shared', status: 'shared', membership_date: 'shared', baptism_date: 'shared', baptism_type: 'shared',
+  profession_date: 'shared', preferred_lang: 'shared', honorific: 'shared', notes: 'personal',
+  // the church's own fields: each marked sensitive or not in Settings → Member fields (shared/member-fields.ts)
+  custom: 'shared',
+  created_at: 'shared', updated_at: 'shared', revision: 'shared', erased_at: 'shared',
+};
+
 export type CoworkerCategory = 'pastor' | 'elder' | 'deacon' | 'ministry_staff' | 'admin_staff' | 'lay_leader';
 
 export interface Coworker {
@@ -73,6 +92,10 @@ export interface Coworker {
   end_date: string | null;
   notes: string | null;
 }
+export const COWORKER_FIELDS: Record<keyof Coworker, FieldPrivacy> = {
+  id: 'shared', person_id: 'shared', position: 'shared', category: 'shared', employment: 'shared', ministry_area: 'shared', ordained: 'shared',
+  start_date: 'shared', end_date: 'shared', notes: 'personal',
+};
 
 // ---------------------------------------------------------------- volunteers
 
@@ -443,8 +466,6 @@ export type ModuleKey = 'members' | 'coworkers' | 'groups' | 'volunteers' | 'ser
 export type ModuleAccess = 'off' | 'read' | 'write';
 export type VisitorAccess = 'off' | 'names' | 'contact';
 export const MODULES: ModuleKey[] = ['members', 'coworkers', 'groups', 'volunteers', 'services', 'library', 'templates', 'records', 'contributions', 'lending', 'equipment', 'bookkeeping', 'admin'];
-/** Modules only administrators' connections ever get (0.15.3: Administration). */
-export const ADMIN_MODULES: ModuleKey[] = ['admin'];
 /** Modules that live inside another: they are off whenever their parent is off. */
 export const MODULE_PARENT: Partial<Record<ModuleKey, ModuleKey>> = { contributions: 'records' };
 /** Modules agents may only ever read (offerings: agents never change money). */

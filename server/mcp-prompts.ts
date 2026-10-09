@@ -72,7 +72,7 @@ const ETIQUETTE = [
   '',
   '## Ground rules',
   '- Summarise what you intend to change and wait for a clear "yes" before any write. Never bulk-delete; never remove items or people unless the user asked for that specific removal.',
-  '- Batch tools (canon_edit_order, canon_update_rota, canon_update_team_members, canon_update_group_members) are all-or-nothing: if one op fails, nothing is applied and you get per-op errors — fix them and resend the whole batch.',
+  '- Batch tools (canon_edit_order, and the update tools for the rota, teams and groups) are all-or-nothing: if one op fails, nothing is applied and you get per-op errors — fix them and resend the whole batch.',
   '- Never invent hymn words, Bible text or personal data. Say so when something is missing from the library.',
 ];
 
@@ -108,7 +108,7 @@ export const PROMPTS: PromptDef[] = [
         a.template ? `- Template: ${q(a.template)}` : '- Template: the church\'s usual Lord\'s Day template (ask if there are several).',
         a.sermon_ref ? `- Sermon text: ${q(a.sermon_ref)}` : '- Sermon text: not given — ask the user, or check whether the service already has one.',
         a.sermon_title ? `- Sermon title: ${q(a.sermon_title)}` : null,
-        a.preacher ? `- Preacher: ${q(a.preacher)} — Canon takes the preacher from the rota (the sermon item's role): put them on it with canon_update_rota; it cannot be typed.` : null,
+        a.preacher ? `- Preacher: ${q(a.preacher)} — Canon takes the preacher from the rota (the sermon item's role)${can(c, 'volunteers', 'write') ? ': put them on it with canon_update_rota' : ': ask the user to put them on it in Canon'}; it cannot be typed.` : null,
         '',
         '## Steps',
         `1. Find the service: canon_find_services {"from":"${date}","to":"${date}"}. If it exists, read it with canon_get_service {"id":…}.`,
@@ -129,7 +129,7 @@ export const PROMPTS: PromptDef[] = [
         write
           ? lines(
               '9. After a clear yes:',
-              `   - if the service does not exist: canon_create_service {"date":"${date}","template_id":…,"preacher":…,"sermon_title":{…},"sermon_ref":…} (or {"date":"${date}","copy_from":<the closest past service>} when it is a better starting point);`,
+              `   - if the service does not exist: canon_create_service {"date":"${date}","template_id":…,"sermon_title":{…},"sermon_ref":…} (or {"date":"${date}","copy_from":<the closest past service>} when it is a better starting point);`,
               '   - otherwise canon_update_service {"id":…,"patch":{…}} for the details;',
               '   - announcements (家讯) or a pastor’s note the user gives go in the weekly bulletin sections: canon_update_service {"id":…,"patch":{"bulletin_content":{"announcements":{…},"pastor_note":{…}}}} — keys come from the page layout of the bulletin template; sections and languages merge, so send only what changes;',
               '   - then ONE canon_edit_order batch: "update" ops for existing slots (ref_id, stanzas, hymnal_id, scripture_ref) and "add" ops only for missing items. If the batch fails nothing was applied — fix the listed ops and resend the whole batch.',
@@ -505,7 +505,7 @@ export const PROMPTS: PromptDef[] = [
           : null,
         can(c, 'volunteers', 'read') ? step(`canon_serving_report ${period}: roles that were short of people, people serving very often, and team members not rostered.`) : null,
         can(c, 'services', 'read') ? step(`canon_scripture_report ${period}: chapters read and preached; canon_song_report ${period}: how many songs under copyright were sung (for the licence report).`) : null,
-        can(c, 'members', 'read') ? step(`canon_membership_stats ${period}: who joined or was baptised this month.`) : null,
+        can(c, 'members', 'read') ? step(`canon_membership_stats ${period}: how many joined or were baptised this month (numbers only; canon_find_people if the user wants names).`) : null,
         step('Write the report: a few headline numbers, then one short section per topic, then 2–4 points for the leaders to pray about or act on (e.g. visitors waiting for follow-up, a role that keeps being short). Plain language; no charts unless asked.'),
         step('Offer the user the report to copy. Staff can print the full figures from Records → Reports (and the treasurer the monthly offerings summary).'),
         '',

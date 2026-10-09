@@ -57,7 +57,8 @@ export function QuickAdd({ at, time, date, songs, texts, onAdd, onClose }: {
   const [ref, setRef] = useState('');
   const ql = q.trim().toLowerCase();
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // a dialog opened from the panel closes first (its own Escape): the panel only when nothing else took the key
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && onClose();
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   }, [onClose]);

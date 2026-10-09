@@ -11,7 +11,8 @@ import * as reports from '../repo/reports.ts';
 import { DateStr, Id, RO, WRITE, addDays, canRead, today, type Ctx, type ToolDef } from './common.ts';
 import { get as dbGet } from '../db.ts';
 import { checkRef } from '../lib/walls.ts';
-import { roleDef } from '../lib/permissions.ts';
+import { moneyAccess, roleDef } from '../lib/permissions.ts';
+import { churchLevel } from '../../shared/mcp-exposure.ts';
 import { getSettings } from '../repo/settings.ts';
 
 /** May this connection see meetings at all (Meetings switched on, and the role reads them or the person leads one)? */
@@ -37,8 +38,15 @@ const PeriodInput = {
   group_id: Id.optional().describe('with kind "meeting": one group\'s meetings (ids from canon_find_groups)'),
 };
 const periodOf = (a: { from?: string; to?: string; congregation_id?: number; kind?: string; group_id?: number }, ctx: Ctx) => reports.period(kindFor(a, ctx));
-// the connection's access already follows the person's role (no offerings for roles without them)
-const money = (ctx: Ctx) => canRead(ctx, 'contributions');
+/**
+ * Offerings on this connection: the role's (the connection's level follows it) — and, for one meeting, its leader's
+ * too, while the church shares offerings with AI agents: what the person sees in Canon (lib/permissions.ts moneyAccess).
+ */
+const money = (ctx: Ctx, serviceId?: number) => {
+  if (canRead(ctx, 'contributions')) return true;
+  if (serviceId == null || !ctx.auth || !ctx.levels) return false;
+  return churchLevel('contributions', getSettings().mcp, getSettings().modules) !== 'off' && moneyAccess(ctx.auth.user, serviceId) !== 'none';
+};
 
 /** Visitors on this connection (Settings → AI / MCP → Service records → Visitors). */
 const visitorLevel = (ctx: Ctx) => ctx.visitors ?? 'off';
@@ -62,7 +70,7 @@ function recordOut(serviceId: number, ctx: Ctx) {
   if (s?.kind === 'meeting') Object.assign(out, { kind: 'meeting', group_id: s.group_id, offering_taken: !!s.offering });
   // moved to an archive file: read-only, and not in the reports (an administrator can bring it back in Canon)
   if (r.archived_year) Object.assign(out, { archived_year: r.archived_year, read_only: `in the ${r.archived_year} archive` });
-  if (money(ctx)) {
+  if (money(ctx, serviceId)) {
     Object.assign(out, {
       currency: r.currency, offerings: r.offerings, cash_count: r.cash, foreign_cash: r.foreign_cash,
       counters: r.counters, verified_at: r.verified_at, verified_by: r.verified_by,
@@ -155,7 +163,8 @@ export const RECORD_TOOLS: ToolDef[] = [
       return {
         ...att,
         rows: att.rows.filter((r) => r.recorded).map((r) => ({ service_id: r.service_id, date: r.date, title: r.title, congregation_id: r.congregation_id, attendance: r.attendance, children: r.children, online: r.online, visitors: r.visitors })),
-        visitors: { funnel: vis.funnel, sources: vis.sources, months: vis.months, ...(visitorLevel(ctx) === 'off' ? {} : { people: vis.visitors.map((v) => ({ date: v.date, service_id: v.service_id, name: v.name, source: v.source, status: v.status })) }) },
+        // how visitors came is free text ("invited by …"): only while visitors are shared
+        visitors: { funnel: vis.funnel, months: vis.months, ...(visitorLevel(ctx) === 'off' ? {} : { sources: vis.sources, people: vis.visitors.map((v) => ({ date: v.date, service_id: v.service_id, name: v.name, source: v.source, status: v.status })) }) },
       };
     },
   },
@@ -195,8 +204,12 @@ export const RECORD_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_membership_stats', module: 'members', access: 'read', title: 'Membership statistics', annotations: RO,
-    description: 'Counts from the member register: people by status, members and regulars by congregation, gender and age band (no birth dates), and who joined (membership date) or was baptised in a period, plus how many were added to the register. Example: {"from":"2026-01-01","to":"2026-12-31"}.',
+    description: 'Counts from the member register: people by status, members and regulars by congregation, gender and age band (no birth dates), and how many joined (membership date) or were baptised in a period, and were added to the register — numbers only, no names (canon_find_people for who). Example: {"from":"2026-01-01","to":"2026-12-31"}.',
     input: PeriodInput,
-    handler: (a, ctx) => reports.membershipReport(periodOf(a, ctx)),
+    // an aggregate: counts only (names of who joined or was baptised are in canon_find_people / canon_get_person)
+    handler: (a, ctx) => {
+      const r = reports.membershipReport(periodOf(a, ctx));
+      return { ...r, joined: r.joined.length, baptised: r.baptised.length };
+    },
   },
 ];

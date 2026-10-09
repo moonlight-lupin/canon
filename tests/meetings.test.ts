@@ -280,3 +280,23 @@ test('agents: canon_get_calendar lists services, meetings and events; reports ta
   assert.equal(r.period.kind, 'meeting');
   assert.equal(r.period.group_id, ids.group);
 });
+
+test('21. a recurring meeting that was cancelled or moved stays so: the next run doesn’t bring it back; Restore does', async () => {
+  const g = await call(as.editor, 'POST', '/groups', { name: { en: 'Test Tuesday Prayer' }, kind: 'cell_group', pattern: { every: 'week', weekday: 2, time: '19:30', ahead_weeks: 3 } });
+  const gid = g.body.id as number;
+  svc.createMeetingsAhead(gid, undefined, '2037-03-01');
+  const dates = async () => ((await call(as.editor, 'GET', `/meetings?from=2037-03-01&group=${gid}`)).body as Json[]).map((m) => m.date).sort();
+  assert.deepEqual(await dates(), ['2037-03-03', '2037-03-10', '2037-03-17']);
+  const list = (await call(as.editor, 'GET', `/meetings?from=2037-03-01&group=${gid}`)).body as Json[];
+  // cancelled: the 10th; moved: the 17th to the 18th (a Wednesday this once)
+  assert.equal((await call(as.editor, 'DELETE', `/services/${list.find((m) => m.date === '2037-03-10')!.id}`)).status, 200);
+  assert.equal((await call(as.editor, 'PATCH', `/services/${list.find((m) => m.date === '2037-03-17')!.id}`, { date: '2037-03-18' })).status, 200);
+  svc.createMeetingsAhead(gid, undefined, '2037-03-01');
+  assert.deepEqual(await dates(), ['2037-03-03', '2037-03-18'], 'neither the cancelled one nor the moved one’s old date came back');
+  const skips = await call(as.editor, 'GET', `/groups/${gid}/meeting-skips`);
+  assert.deepEqual((skips.body as Json[]).map((s) => s.date), ['2037-03-10', '2037-03-17']);
+  assert.equal((await call(as.viewer, 'DELETE', `/groups/${gid}/meeting-skips/2037-03-10`)).status, 403, 'editors only');
+  assert.equal((await call(as.editor, 'DELETE', `/groups/${gid}/meeting-skips/2037-03-10`)).status, 200);
+  svc.createMeetingsAhead(gid, undefined, '2037-03-01');
+  assert.deepEqual(await dates(), ['2037-03-03', '2037-03-10', '2037-03-18'], 'restored: made again');
+});

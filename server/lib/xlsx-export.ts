@@ -17,8 +17,11 @@ export interface TableExport {
   rows: XCell[][];
   period?: string | null;
   filters?: (string | null | undefined)[];
-  /** holds members' or visitors' personal data */
-  pii?: boolean;
+  /**
+   * holds anyone's personal data (names included): the file says so. Required, so every export decides (0.20.0: it was
+   * opt-in, and the change log, AI activity and maintenance exports left it out)
+   */
+  pii: boolean;
   money?: number[];
   /** the tab's name (default: the title) */
   sheet?: string;

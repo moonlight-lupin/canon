@@ -1359,4 +1359,46 @@ export const MIGRATIONS: (string | Migration)[] = [
       WHERE client_id IN (SELECT client_id FROM oauth_codes UNION SELECT client_id FROM oauth_tokens UNION SELECT client_id FROM mcp_audit);
     `,
   },
+  // 43 (0.20.0): cancelled or moved meetings are remembered (meeting_skips, below); and a posted journal is frozen whole (Daedalus Workshop study of 0.19.10: the trigger listed the columns to
+  // freeze, and service_id, created_by and created_via weren't among them; a draft's line could be moved into a posted
+  // journal). Every column is frozen except: updated_at and revision (bookkeeping of the row), reversed_by_id (set once,
+  // when it is reversed) and service_id (cleared when its service is deleted; never pointed at another).
+  // tests/data-care.test.ts fails when a column is added to bk_journals without being frozen here or declared exempt.
+  {
+    sql: `
+    DROP TRIGGER bk_journals_posted_update;
+    CREATE TRIGGER bk_journals_posted_update BEFORE UPDATE ON bk_journals
+      WHEN OLD.status = 'posted' AND (NEW.id IS NOT OLD.id OR NEW.status IS NOT OLD.status OR NEW.date IS NOT OLD.date
+        OR NEW.number IS NOT OLD.number OR NEW.memo IS NOT OLD.memo OR NEW.kind IS NOT OLD.kind
+        OR NEW.reverses_id IS NOT OLD.reverses_id OR NEW.created_via IS NOT OLD.created_via OR NEW.created_by IS NOT OLD.created_by
+        OR NEW.posted_by IS NOT OLD.posted_by OR NEW.posted_at IS NOT OLD.posted_at OR NEW.created_at IS NOT OLD.created_at
+        OR NEW.claim_id IS NOT OLD.claim_id OR NEW.sample_batch IS NOT OLD.sample_batch
+        OR (OLD.reversed_by_id IS NOT NULL AND NEW.reversed_by_id IS NOT OLD.reversed_by_id)
+        OR (NEW.service_id IS NOT OLD.service_id AND NEW.service_id IS NOT NULL))
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+    DROP TRIGGER bk_lines_posted_update;
+    CREATE TRIGGER bk_lines_posted_update BEFORE UPDATE ON bk_lines
+      WHEN (SELECT status FROM bk_journals WHERE id = OLD.journal_id) = 'posted'
+        OR (SELECT status FROM bk_journals WHERE id = NEW.journal_id) = 'posted'
+      BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
+
+    -- a group's meeting deleted or moved stays so: its date is skipped when meetings are made ahead from the pattern
+    -- (they were made again by the next daily run). Recorded by the database, whoever deletes or moves it.
+    CREATE TABLE meeting_skips (
+      group_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (group_id, date)
+    ) WITHOUT ROWID;
+    CREATE TRIGGER meeting_skip_deleted AFTER DELETE ON services WHEN OLD.kind = 'meeting' AND OLD.group_id IS NOT NULL
+      BEGIN INSERT OR IGNORE INTO meeting_skips (group_id, date) VALUES (OLD.group_id, OLD.date); END;
+    CREATE TRIGGER meeting_skip_moved AFTER UPDATE OF date ON services
+      WHEN NEW.kind = 'meeting' AND NEW.group_id IS NOT NULL AND NEW.date IS NOT OLD.date
+      BEGIN
+        INSERT OR IGNORE INTO meeting_skips (group_id, date) VALUES (OLD.group_id, OLD.date);
+        DELETE FROM meeting_skips WHERE group_id = NEW.group_id AND date = NEW.date;
+      END;
+    CREATE TRIGGER meeting_skips_group_gone AFTER DELETE ON groups BEGIN DELETE FROM meeting_skips WHERE group_id = OLD.id; END;
+    `,
+  },
 ];

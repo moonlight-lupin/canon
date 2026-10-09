@@ -13,6 +13,7 @@ import {
   type FundRestriction, type JournalKind,
 } from '../../shared/bookkeeping.ts';
 import type { L10n } from '../../shared/types.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const accounts = table<BkAccount>({
   name: 'bk_accounts', cols: ['code', 'name', 'type', 'kind', 'active', 'description', 'sort', 'bank_csv'],
@@ -382,7 +383,7 @@ export function reverseJournal(id: number, date?: string, memo?: string): BkJour
     if (j.kind === 'reversal') throw new BadRequest('This journal is itself a reversal: post a new journal instead.');
     const waiting = reversalDraftOf(id);
     if (waiting) throw new Conflict(`A draft reversing ${j.number} is waiting already (journal ${waiting}): post or delete it.`);
-    const on = date && DATE.test(date) ? date : new Date().toISOString().slice(0, 10);
+    const on = date && DATE.test(date) ? date : churchToday();
     const lines = j.lines.map((l) => ({ ...l, id: undefined, debit: l.credit, credit: l.debit }));
     const r = journals.insert({
       date: on, memo: memo?.trim() || `Reverses ${j.number}${j.memo ? ` (${j.memo})` : ''}`, status: 'draft', kind: 'reversal', reverses_id: id,

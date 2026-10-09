@@ -12,9 +12,10 @@ import { BadRequest } from '../lib/table.ts';
 import { displayName, people } from './registers.ts';
 import { logChange } from './changelog.ts';
 import { forEachArchive } from './archive.ts';
+import { churchToday } from '../lib/dates.ts';
 
 const ERASED = '(erased member)';
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => churchToday();
 const parse = (s: string | null) => {
   try {
     return s ? JSON.parse(s) : null;
@@ -124,6 +125,12 @@ function scrubLogs(schema: string, pid: number, names: string[], ids: { unavaila
   ).changes);
   for (const [entity, list] of Object.entries(ids)) {
     for (const id of list) n += Number(run(`UPDATE ${schema}.change_log SET changes = '{}', name = ? WHERE entity = ? AND entity_id = ?`, ERASED, entity, id).changes);
+    // and every entry about the person in that table by who it is about, also rows deleted before (their ids are gone):
+    // an away date's reason, a co-worker's notes
+    n += Number(run(
+      `UPDATE ${schema}.change_log SET changes = '{}', name = ? WHERE entity = ? AND changes <> '{}' AND json_valid(changes)
+         AND (json_extract(changes, '$.person_id[0]') = ? OR json_extract(changes, '$.person_id[1]') = ?)`, ERASED, entity, pid, pid,
+    ).changes);
   }
   n += scrubNames(schema, 'change_log', ['name', 'summary', 'changes'], names);
   if (has('mcp_audit')) n += scrubNames(schema, 'mcp_audit', ['args'], names);
@@ -142,6 +149,9 @@ export function erasePerson(pid: number, confirm: string) {
   if (get('SELECT 1 FROM lending_loans WHERE person_id = ? AND returned_on IS NULL', pid)) throw new BadRequest('This member has items from the lending library on loan: take them back first.');
   const names = nameVariants(p);
   const kept = mentions(names);
+  // their contact details wherever an entry quotes them (an approver's e-mail, a note), in the case they were written
+  // and in lower case (e-mail addresses are often typed either way)
+  const contact = [p.email, p.email?.toLowerCase(), p.phone, p.address].map((x) => x?.trim() ?? '').filter((x) => x.length >= 5);
   const ids = {
     unavailability: all<{ id: number }>('SELECT id FROM unavailability WHERE person_id = ?', pid).map((r) => r.id),
     coworkers: all<{ id: number }>('SELECT id FROM coworkers WHERE person_id = ?', pid).map((r) => r.id),
@@ -167,11 +177,11 @@ export function erasePerson(pid: number, confirm: string) {
     );
     // a household left with no one: its address and phone go too
     if (p.household_id && !get('SELECT 1 FROM people WHERE household_id = ?', p.household_id)) run('DELETE FROM households WHERE id = ?', p.household_id);
-    const log = scrubLogs('main', pid, names, ids);
+    const log = scrubLogs('main', pid, [...new Set([...names, ...contact])], ids);
     return { future_duties_removed: future, log_entries_cleaned: log };
   });
   forEachArchive(() => {
-    done.log_entries_cleaned += tx(() => scrubLogs('arc', pid, names, ids));
+    done.log_entries_cleaned += tx(() => scrubLogs('arc', pid, [...new Set([...names, ...contact])], ids));
   });
   // no name in the entry: it is about someone whose name is gone
   logChange({ entity: 'people', entity_id: pid, action: 'update', summary: 'Personal data erased (PDPA request)' });

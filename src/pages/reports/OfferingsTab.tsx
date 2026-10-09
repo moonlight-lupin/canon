@@ -42,7 +42,7 @@ export function OfferingsTab({ q, to, cong, congs }: Ctx) {
       </div>
       {!r.services.length ? <div className="card"><Empty title={t('No offerings recorded in this period')} /></div> : (
         <>
-          <Section title={t('By fund and month')} tip={t('In the church’s currency. Offerings in other currencies are listed separately and never converted.')}
+          <Section pii={false} title={t('By fund and month')} tip={t('In the church’s currency. Offerings in other currencies are listed separately and never converted.')}
             csv={() => download(`offerings-${r.period.from}-${r.period.to}.csv`, [['Month', ...r.funds, 'Total'], ...r.months.map((mo) => [mo, ...r.funds.map((f) => cell(mo, f) / 100), monthTotal(mo) / 100]), ['Total', ...r.by_fund.map((f) => f.total / 100), r.total / 100]])}>
             <div className="table-wrap">
               <table className="t">

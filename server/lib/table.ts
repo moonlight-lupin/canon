@@ -75,7 +75,21 @@ export function table<T extends { id: number }>(spec: Spec) {
     decode,
     list(where = '', params: SqlValue[] = [], order = 'id'): T[] {
       const sql = `SELECT * FROM ${spec.name} ${where ? 'WHERE ' + where : ''} ORDER BY ${order}`;
-      return (db.prepare(sql).all(...params) as Record<string, unknown>[]).map((r) => decode(r)!);
+      const rows = (db.prepare(sql).all(...params) as Record<string, unknown>[]).map((r) => decode(r)!);
+      // the wall and the request's gate, as for one row: rows the request may not see are left out (callers filter
+      // already; this is the floor under them — Daedalus Workshop study of 0.19.10)
+      const actor = currentActor();
+      if (!guard || !actor || (!actor.congregation_id && !actor.gate)) return rows;
+      return rows.filter((r) => {
+        try {
+          checkGuard(r as Record<string, unknown>, 'read');
+          return true;
+        } catch (e) {
+          const status = (e as { status?: number }).status;
+          if (status === 404 || status === 403) return false;
+          throw e;
+        }
+      });
     },
     get(id: number): T {
       const r = raw(id);

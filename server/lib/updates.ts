@@ -191,6 +191,12 @@ export function startUpdateChecks() {
     if (last && Date.now() - Date.parse(last.checked_at) < DAY - 60_000) return;
     void checkNow();
   };
-  setTimeout(tick, 60_000).unref();
-  setInterval(tick, 3600_000).unref();
+  checks.push(setTimeout(tick, 60_000), setInterval(tick, 3600_000));
+  for (const t of checks) t.unref();
+}
+
+const checks: NodeJS.Timeout[] = [];
+/** Stop checking for updates (Canon is stopping). */
+export function stopUpdateChecks() {
+  for (const t of checks.splice(0)) clearTimeout(t);
 }

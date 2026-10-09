@@ -619,7 +619,7 @@ test('an item can have its own slide background (Library → Slide backgrounds)'
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000020000000108020000007b40e8dd0000000c4944415478da63f8cfc0f01f00050001ff5c1e3a1d0000000049454e44ae426082', 'hex');
   const pic = bgRepo.saveBackground(null, 'Bread Wqz', 'image/png', png);
   assert.equal(pic.width, 2);
-  assert.throws(() => bgRepo.saveBackground(null, 'Bad', 'image/png', Buffer.from('not a picture')), /does not look like/);
+  assert.throws(() => bgRepo.saveBackground(null, 'Bad', 'image/png', Buffer.from('not a picture')), /PNG, JPEG or WebP/, 'judged by its bytes');
   const bad = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_background_id: 999999 } }] });
   assert.equal(bad.isError, true, 'unknown background refused');
   const ok = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_background_id: pic.id } }] });

@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, NotFound, table } from '../lib/table.ts';
-import { imageSize } from '../lib/image.ts';
+import { PICTURE_TYPES, imageSize, realType } from '../lib/image.ts';
 
 export type ImageFit = 'contain' | 'cover';
 export interface LibraryImage {
@@ -46,9 +46,10 @@ export function listImages(q = '') {
 }
 
 /** Add a picture (or replace the picture of an existing one). */
-export function saveImage(id: number | null, name: string | undefined, mime: string, data: Buffer): LibraryImage {
-  if (!['image/png', 'image/jpeg', 'image/webp'].includes(mime)) throw new BadRequest('Upload a PNG, JPEG or WebP picture');
+export function saveImage(id: number | null, name: string | undefined, _declared: string, data: Buffer): LibraryImage {
   if (!Buffer.isBuffer(data) || !data.length) throw new BadRequest('Choose a picture');
+  // stored as what its bytes are (a JPEG sent as a PNG is a JPEG)
+  const mime = realType(data, PICTURE_TYPES, 'Upload a PNG, JPEG or WebP picture');
   if (data.length > MAX_IMAGE_BYTES) throw new BadRequest('The picture must be 10 MB or smaller');
   const size = imageSize(data);
   if (!size) throw new BadRequest('This file does not look like a PNG, JPEG or WebP picture');

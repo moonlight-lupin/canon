@@ -12,6 +12,7 @@ import * as vol from './volunteers.ts';
 import * as svc from './services.ts';
 import { BadRequest } from '../lib/table.ts';
 import { addSampleActivity, noActivity, removeSampleActivity, removeSampleSpaces, type ActivityAdded } from './sample-activity.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const SAMPLE_NOTE = 'Sample person (fictional) — Settings → Sample data removes it.';
 
@@ -128,7 +129,7 @@ export async function prepareSampleLibrary(): Promise<boolean> {
  */
 export function addSampleData(opts: { rota?: boolean; activity?: boolean; today?: string } = {}) {
   if (added()) throw new BadRequest('The sample data is already there. Remove it first to add it again.');
-  const today = opts.today ?? new Date().toISOString().slice(0, 10);
+  const today = opts.today ?? churchToday();
   const year = Number(today.slice(0, 4));
   const age = (born: string) => year - Number(born.slice(0, 4));
   // a fixed seed: the same "random" choices every time

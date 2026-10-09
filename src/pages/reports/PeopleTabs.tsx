@@ -89,13 +89,13 @@ export function ServingTab({ q }: Ctx) {
           </table>
         </Section>
       )}
-      <Section title={t('How often each person served')} csv={() => download(`serving-${r.period.from}-${r.period.to}.csv`, [['Name', 'Teams', 'Served', 'Confirmed', 'Declined', 'Last served'], ...r.people.map((p) => [p.name, p.teams.join('; '), p.served, p.confirmed, p.declined, p.last_served])])}>
+      <Section pii title={t('How often each person served')} csv={() => download(`serving-${r.period.from}-${r.period.to}.csv`, [['Name', 'Teams', 'Served', 'Confirmed', 'Declined', 'Last served'], ...r.people.map((p) => [p.name, p.teams.join('; '), p.served, p.confirmed, p.declined, p.last_served])])}>
         {!r.people.length ? <div className="small muted">{t('Nobody was on the rota in this period.')}</div> : (
           <Bars items={r.people.slice(0, 40).map((p) => ({ key: String(p.person_id), label: p.name, value: p.served, note: p.declined ? `(${t('declined')} ${p.declined})` : undefined }))} />
         )}
       </Section>
       {r.idle.length > 0 && (
-        <Section title={t('Team members not rostered')} csv={() => download(`not-rostered-${r.period.to}.csv`, [['Name', 'Teams', 'Last served'], ...r.idle.map((p) => [p.name, p.teams.join('; '), p.last_served])])}>
+        <Section pii title={t('Team members not rostered')} csv={() => download(`not-rostered-${r.period.to}.csv`, [['Name', 'Teams', 'Last served'], ...r.idle.map((p) => [p.name, p.teams.join('; '), p.last_served])])}>
           <table className="t">
             <thead><tr><th>{t('Name')}</th><th>{t('Teams')}</th><th>{t('Last served')}</th></tr></thead>
             <tbody>{r.idle.map((p) => <tr key={p.person_id}><td>{p.name}</td><td className="small">{p.teams.join(', ')}</td><td>{p.last_served ? fmtDate(p.last_served, lang) : <span className="muted">{t('Never')}</span>}</td></tr>)}</tbody>
@@ -125,10 +125,10 @@ export function MembershipTab({ q, congs }: Ctx) {
         <Stat label={t('Added to the register')} value={r.added} />
       </div>
       <div className="rep-grid">
-        <Section title={t('By status')} csv={() => download('membership-status.csv', [['Status', 'People'], ...r.by_status.map((s) => [s.status, s.count])])}>
+        <Section pii={false} title={t('By status')} csv={() => download('membership-status.csv', [['Status', 'People'], ...r.by_status.map((s) => [s.status, s.count])])}>
           <Bars items={r.by_status.map((s) => ({ key: s.status, label: t(STATUS_LABEL[s.status as MemberStatus] ?? s.status), value: s.count }))} />
         </Section>
-        <Section title={t('By age')} tip={t('Members and regulars, by age at the end of the period.')} csv={() => download('membership-age.csv', [['Age', 'People'], ...r.age_bands.map((b) => [b.band, b.count])])}>
+        <Section pii={false} title={t('By age')} tip={t('Members and regulars, by age at the end of the period.')} csv={() => download('membership-age.csv', [['Age', 'People'], ...r.age_bands.map((b) => [b.band, b.count])])}>
           <Bars items={r.age_bands.map((b) => ({ key: b.band, label: b.band === 'unknown' ? t('No birth date') : b.band, value: b.count }))} />
         </Section>
         <Section title={t('By gender')}>

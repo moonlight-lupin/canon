@@ -16,6 +16,7 @@ import {
 import { editsAnything, seesMemberDetails } from '../lib/permissions.ts';
 import { wallOf } from '../auth.ts';
 import { seesSensitiveFields } from '../lib/permissions.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const csvRoutes = express.Router();
 
@@ -86,7 +87,7 @@ csvRoutes.get('/csv/:entity/template.xlsx', h((req, res) => {
   const e = entity(req);
   const lang = uiLang(req);
   const [header, ...rows] = templateRows(e, makeCtx(lang, query(req)));
-  sendXlsx(req, res, lang, { file: `${stem(e, req)}-template`, title: `${say(e.label, lang)}: ${st('template', lang)}`, header, rows });
+  sendXlsx(req, res, lang, { file: `${stem(e, req)}-template`, title: `${say(e.label, lang)}: ${st('template', lang)}`, header, rows, pii: false });
 }));
 /** Everything as an Excel file, with a title block (it imports back as it is). */
 csvRoutes.get('/csv/:entity/export.xlsx', h((req, res) => {
@@ -95,14 +96,14 @@ csvRoutes.get('/csv/:entity/export.xlsx', h((req, res) => {
   const lang = uiLang(req);
   if (e.pii) logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: null, via: 'export', detail: `${e.key} Excel` });
   const [header, ...rows] = exportRows(e, makeCtx(lang, query(req)));
-  sendXlsx(req, res, lang, { file: `${stem(e, req)}-${new Date().toISOString().slice(0, 10)}`, title: say(e.label, lang), header, rows, pii: !!e.pii });
+  sendXlsx(req, res, lang, { file: `${stem(e, req)}-${churchToday()}`, title: say(e.label, lang), header, rows, pii: !!e.pii });
 }));
 
 csvRoutes.get('/csv/:entity/export.csv', h((req, res) => {
   const e = entity(req);
   mayExport(req, e);
   if (e.pii) logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: null, via: 'export', detail: `${e.key} CSV` });
-  sendCsv(res, `${stem(e, req)}-${new Date().toISOString().slice(0, 10)}.csv`, exportCsv(e, makeCtx(uiLang(req), query(req))));
+  sendCsv(res, `${stem(e, req)}-${churchToday()}.csv`, exportCsv(e, makeCtx(uiLang(req), query(req))));
 }));
 
 /** The raw file body (any content type: Excel uploads arrive as text/csv, application/vnd.ms-excel, octet-stream …). */
@@ -143,5 +144,5 @@ export function legacyImport(entityKey: string, req: Request, extraQuery: Record
 export function legacyExport(entityKey: string, req: Request, res: Response) {
   const e = CSV_ENTITIES[entityKey];
   mayExport(req, e);
-  sendCsv(res, `${stem(e, req)}-${new Date().toISOString().slice(0, 10)}.csv`, exportCsv(e, makeCtx(uiLang(req), query(req))));
+  sendCsv(res, `${stem(e, req)}-${churchToday()}.csv`, exportCsv(e, makeCtx(uiLang(req), query(req))));
 }

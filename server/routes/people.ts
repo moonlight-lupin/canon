@@ -20,6 +20,8 @@ import { h, id, str } from './helpers.ts';
 import { localTime, sendXlsx } from '../lib/xlsx-export.ts';
 import { seesMemberDetails, seesSensitiveFields } from '../lib/permissions.ts';
 import { inWall } from '../lib/walls.ts';
+import { BadRequest } from '../lib/table.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const peopleRoutes = express.Router();
 
@@ -31,8 +33,18 @@ peopleRoutes.get('/people', h((req) => reg.listPeople({
   names_only: !seesMemberDetails(req.user),
   household_id: Number(req.query.household_id) || undefined,
   congregation_id: Number(req.query.congregation) || undefined,
+  custom: fieldFilter(req),
   limit: Number(req.query.limit) || undefined, offset: Number(req.query.offset) || undefined,
 })));
+/** ?field=key=value: one of the church's own fields, and one this account may see (a sensitive one only if it sees those). */
+function fieldFilter(req: express.Request): { key: string; value: string } | undefined {
+  const f = str(req.query.field);
+  if (!f) return undefined;
+  const [key, ...rest] = f.split('=');
+  const def = (getSettings().member_fields ?? []).find((d) => d.key === key);
+  if (!def || (def.sensitive && !seesSensitiveFields(req.user))) throw new BadRequest('Not a member field you can filter by.');
+  return { key, value: rest.join('=') };
+}
 // CSV import/export now goes through the CSV framework (server/routes/csv.ts); these older URLs remain as aliases.
 peopleRoutes.get('/people/export.csv', h((req, res) => legacyExport('members', req, res)));
 peopleRoutes.post('/people/import', rawBody, h((req) => legacyImport('members', req)));
@@ -78,7 +90,7 @@ peopleRoutes.get('/member-views.xlsx', requireAdmin, h((req, res) => {
   const r = sec.listMemberViews({ ...viewQuery(q), all: true });
   const HOW: Record<string, string> = { web: 'Member page', mcp: 'AI agent', export: 'Export' };
   sendXlsx(req, res, uiLang(req), {
-    file: `canon-member-views-${new Date().toISOString().slice(0, 10)}`, title: 'Who viewed member records', pii: true,
+    file: `canon-member-views-${churchToday()}`, title: 'Who viewed member records', pii: true,
     period: q.from || q.to ? `${q.from ?? '…'} – ${q.to ?? '…'}` : null,
     header: ['Time', 'Who', 'How', 'Member', 'Detail'],
     rows: r.rows.map((v) => [localTime(v.at), v.user_name, HOW[v.via] ?? v.via, v.person_name, v.detail]),
@@ -91,7 +103,19 @@ peopleRoutes.put('/member-fields', requireAdmin, h((req) => {
     key: z.string().max(40).optional(), label: S.L10nSchema, type: z.enum(['text', 'date', 'yesno', 'choice']),
     options: z.array(S.L10nSchema).max(30).optional(), sensitive: z.boolean().optional(),
   })).max(30).parse(req.body);
-  return updateSettings({ member_fields: cleanFieldDefs(b as MemberField[], getSettings().member_fields ?? []) }).member_fields;
+  const current = getSettings().member_fields ?? [];
+  const retired = getSettings().member_fields_retired ?? [];
+  const next = cleanFieldDefs(b as MemberField[], current, retired, reg.storedCustomKeys());
+  // a field with values keeps its type: the values wouldn't fit another (a member then couldn't be saved)
+  for (const f of next.fields) {
+    const was = [...current, ...retired].find((c) => c.key === f.key);
+    const n = was && was.type !== f.type ? reg.customValueCount(f.key) : 0;
+    if (n) {
+      const name = f.label.en || Object.values(f.label).find(Boolean) || f.key;
+      throw Object.assign(new Error(`${n} member${n === 1 ? ' has' : 's have'} a value in “${name}”, so its type can’t change. Add a new field instead (and remove this one), or clear those values first.`), { status: 409 });
+    }
+  }
+  return updateSettings({ member_fields: next.fields, member_fields_retired: next.retired }).member_fields;
 }));
 peopleRoutes.delete('/people/:id', h((req) => {
   const n = openLoanCount(id(req));
@@ -104,7 +128,7 @@ peopleRoutes.get('/people/:id/personal-data', requireAdmin, h((req, res) => {
   const data = pdpa.personalData(pid);
   sec.logMemberView({ user_id: req.user?.id ?? null, user_name: req.user?.display_name ?? null, person_id: pid, via: 'export', detail: 'Personal data export (PDPA)' });
   res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Content-Disposition', `attachment; filename="canon-personal-data-${pid}-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="canon-personal-data-${pid}-${churchToday()}.json"`);
   return data;
 }));
 peopleRoutes.post('/people/:id/erase', requireAdmin, h((req) => pdpa.erasePerson(id(req), z.object({ confirm: z.string().max(300) }).parse(req.body).confirm)));

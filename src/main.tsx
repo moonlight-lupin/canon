@@ -6,7 +6,7 @@ import { api, onUnauthorised, setCsrf, useApi } from './api.ts';
 import { ChurchLanguages, I18nProvider, useI18n, initialLang, loadLocale } from './i18n.tsx';
 import type { Settings } from './types-client.ts';
 import { allows, pageModule, type Access, type PermModule } from '../shared/permissions.ts';
-import { Loading, SessionCtx, ToastProvider, type SessionUser } from './components/ui.tsx';
+import { Loading, SessionCtx, ToastProvider, setChurchZone, type SessionUser } from './components/ui.tsx';
 import { Layout } from './components/Layout.tsx';
 import Login from './pages/Login.tsx';
 
@@ -117,6 +117,8 @@ function App() {
 
 function Authed({ user, logout, refresh }: { user: SessionUser; logout: () => void; refresh: () => Promise<void> }) {
   const { data: settings, reload: reloadSettings } = useApi<Settings>('/settings');
+  // "today" everywhere in the app is the church's date (Settings → Church → Time zone)
+  setChurchZone(settings?.time_zone);
   // the role decides what each page may change: the page's module (shared/permissions.ts), as on the server
   const loc = useLocation();
   const role = user.role_def;
