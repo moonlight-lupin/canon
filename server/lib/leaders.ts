@@ -7,8 +7,9 @@
 // new meeting of a group they lead. The meeting's record is then returned in full to them (offerings, visitors'
 // contact details for the follow-up).
 import { all, get } from '../db.ts';
+import { churchToday } from './dates.ts';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => churchToday();
 
 /** The groups a member leads now. */
 export function ledGroups(personId: number | null | undefined): number[] {

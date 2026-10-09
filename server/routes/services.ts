@@ -63,6 +63,9 @@ serviceRoutes.get('/meetings', h((req) => svc.listServices({ kind: 'meeting', fr
 serviceRoutes.post('/meetings', h((req) => svc.createMeeting(S.MeetingInput.parse(req.body))));
 // a group's meetings for the coming weeks, from its meeting pattern (editors; also done daily for groups that ask)
 serviceRoutes.post('/groups/:id/meetings-ahead', h((req) => ({ created: svc.createMeetingsAhead(id(req), z.object({ weeks: z.number().int().min(1).max(26).optional() }).parse(req.body ?? {}).weeks).length })));
+// coming meetings of the group that were cancelled or moved, and putting one back
+serviceRoutes.get('/groups/:id/meeting-skips', h((req) => svc.meetingSkips(id(req))));
+serviceRoutes.delete('/groups/:id/meeting-skips/:date', h((req) => svc.restoreMeetingDate(id(req), z.string().regex(/^\d{4}-\d{2}-\d{2}$/).parse(req.params.date))));
 serviceRoutes.post('/services', h((req) => {
   const b = S.ServiceInput.extend({ template_id: z.number().int().nullable().optional() }).parse(req.body);
   const { template_id, ...input } = b;

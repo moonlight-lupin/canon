@@ -6,6 +6,7 @@ import * as S from '../../shared/schemas.ts';
 import { requireAdmin } from '../auth.ts';
 import * as sp from '../repo/spaces.ts';
 import { h, id, str } from './helpers.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const spaceRoutes = express.Router();
 
@@ -26,7 +27,7 @@ spaceRoutes.get('/spaces/clashes', h((req) => {
   return sp.clashesFor(type, Number(req.query.id));
 }));
 spaceRoutes.get('/spaces/report', h((req) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = churchToday();
   const from = str(req.query.from) ?? today;
   const to = str(req.query.to) ?? new Date(Date.parse(`${from}T00:00:00Z`) + 27 * 86400_000).toISOString().slice(0, 10);
   return sp.spacesReport(from, to);

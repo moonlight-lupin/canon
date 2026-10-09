@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { setTranslationRights } from '../repo/bible.ts';
 import { BIBLE_USES } from '../../shared/bible-rights.ts';
 import { logChange } from '../repo/changelog.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const bibleRoutes = express.Router();
 
@@ -73,5 +74,5 @@ bibleRoutes.patch('/bible/translations/:code', requireAdmin, h((req) => {
 
 bibleRoutes.get('/bible/translations/:code/export.csv', requireAdmin, h((req, res) => {
   const c = code(req);
-  sendCsv(res, `canon-bible-${c}-${new Date().toISOString().slice(0, 10)}.csv`, exportTranslationCsv(c, uiLang(req)));
+  sendCsv(res, `canon-bible-${c}-${churchToday()}.csv`, exportTranslationCsv(c, uiLang(req)));
 }));

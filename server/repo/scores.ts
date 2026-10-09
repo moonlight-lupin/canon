@@ -5,33 +5,26 @@ import crypto from 'node:crypto';
 import type { L10n } from '../../shared/types.ts';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
+import { PICTURE_OR_PDF, realType } from '../lib/image.ts';
 import { renderService } from './render.ts';
 
 export interface SongScore { id: number; song_id: number; name: string; mime: string; size: number; sort: number; created_at: string }
 
 export const MAX_SCORE_BYTES = 10 * 1024 * 1024;
-/** Files are taken for what their first bytes say, whatever their name. */
-const MIME: Record<string, (b: Buffer) => boolean> = {
-  'image/png': (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
-  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8,
-  'image/webp': (b) => b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP',
-  'application/pdf': (b) => b.subarray(0, 5).toString() === '%PDF-',
-};
 
 export const scoresFor = (songId: number) =>
   all<SongScore>('SELECT * FROM song_scores WHERE song_id = ? ORDER BY sort, id', songId);
 
 export function addScore(songId: number, f: { name: string; mime: string; data: Buffer }): SongScore[] {
   if (!get('SELECT 1 FROM songs WHERE id = ?', songId)) throw new NotFound('That song does not exist.');
-  const check = MIME[f.mime];
-  if (!check) throw new BadRequest('Scans and photos (PNG, JPEG, WebP) and PDF files only.');
   if (f.data.length > MAX_SCORE_BYTES) throw Object.assign(new Error('The file is larger than 10 MB.'), { status: 413 });
-  if (!check(f.data)) throw new BadRequest('The file is not what its name says.');
+  // files are taken for what their first bytes say, whatever their name or what the browser said
+  const mime = realType(f.data, PICTURE_OR_PDF, 'Scans and photos (PNG, JPEG, WebP) and PDF files only.');
   const name = (f.name || 'sheet music').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120);
   tx(() => {
     const sort = (get<{ n: number | null }>('SELECT MAX(sort) AS n FROM song_scores WHERE song_id = ?', songId)?.n ?? -1) + 1;
-    const r = get<{ id: number }>('INSERT INTO song_scores (song_id, name, mime, size, sort) VALUES (?, ?, ?, ?, ?) RETURNING id', songId, name, f.mime, f.data.length, sort)!;
-    run("INSERT INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))", `score-${r.id}`, f.mime, f.data);
+    const r = get<{ id: number }>('INSERT INTO song_scores (song_id, name, mime, size, sort) VALUES (?, ?, ?, ?, ?) RETURNING id', songId, name, mime, f.data.length, sort)!;
+    run("INSERT INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))", `score-${r.id}`, mime, f.data);
   });
   return scoresFor(songId);
 }

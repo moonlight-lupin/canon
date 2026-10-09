@@ -37,7 +37,7 @@ export function AttendanceTab({ q, congs }: Ctx) {
             <LineChart label={t('Attendance per service')} points={recorded.map((x) => ({ x: x.date, y: x.attendance }))} />
           </Section>
           <div className="rep-grid">
-            <Section title={t('By month')} csv={() => download(`attendance-months-${r.period.from}.csv`, [['Month', 'Services', 'Average attendance', 'New visitors'], ...r.months.map((m) => [m.month, m.services, m.average, m.visitors])])}>
+            <Section pii={false} title={t('By month')} csv={() => download(`attendance-months-${r.period.from}.csv`, [['Month', 'Services', 'Average attendance', 'New visitors'], ...r.months.map((m) => [m.month, m.services, m.average, m.visitors])])}>
               <table className="t">
                 <thead><tr><th>{t('Month')}</th><th className="right">{t('Services')}</th><th className="right">{t('Average')}</th><th className="right">{t('New visitors')}</th></tr></thead>
                 <tbody>{r.months.map((m) => <tr key={m.month}><td>{m.month}</td><td className="right">{m.services}</td><td className="right">{m.average != null ? Math.round(m.average) : '—'}</td><td className="right">{m.visitors || ''}</td></tr>)}</tbody>
@@ -49,7 +49,7 @@ export function AttendanceTab({ q, congs }: Ctx) {
               </Section>
             )}
           </div>
-          <Section title={t('Services')} csv={() => download(`attendance-${r.period.from}-${r.period.to}.csv`, [['Date', 'Time', 'Service', 'Attendance', 'Children', 'Online', 'New visitors'], ...r.rows.map((x) => [x.date, x.start_time, both(x.title), x.attendance, x.children, x.online, x.visitors])])}>
+          <Section pii={false} title={t('Services')} csv={() => download(`attendance-${r.period.from}-${r.period.to}.csv`, [['Date', 'Time', 'Service', 'Attendance', 'Children', 'Online', 'New visitors'], ...r.rows.map((x) => [x.date, x.start_time, both(x.title), x.attendance, x.children, x.online, x.visitors])])}>
             <div className="table-wrap">
               <table className="t">
                 <thead><tr><th>{t('Date')}</th><th>{t('Service')}</th><th className="right">{t('Attendance')}</th><th className="right">{t('of whom children')}</th><th className="right">{t('Online')}</th><th className="right">{t('New visitors')}</th></tr></thead>
@@ -88,7 +88,7 @@ export function SongsTab({ q }: Ctx) {
         <Stat label={t('Under copyright')} value={licensed.length} tip={t('Songs not marked public domain in the library: report their use to your licence (e.g. CCLI).')} />
         <Stat label={t('Not sung in this period')} value={r.unused.length} />
       </div>
-      <Section title={t('Songs sung')} csv={() => download(`songs-${r.period.from}-${r.period.to}.csv`, [['Song', 'Times', 'First', 'Last', 'Public domain', 'Copyright', 'CCLI song number'], ...r.songs.map((s) => [both(s.title), s.times, s.first_used, s.last_used, s.public_domain ? 'yes' : 'no', s.copyright, s.ccli])])}>
+      <Section pii={false} title={t('Songs sung')} csv={() => download(`songs-${r.period.from}-${r.period.to}.csv`, [['Song', 'Times', 'First', 'Last', 'Public domain', 'Copyright', 'CCLI song number'], ...r.songs.map((s) => [both(s.title), s.times, s.first_used, s.last_used, s.public_domain ? 'yes' : 'no', s.copyright, s.ccli])])}>
         {!r.songs.length ? <div className="small muted">{t('No songs in the services of this period.')}</div> : (
           <div className="table-wrap">
             <table className="t">
@@ -98,7 +98,7 @@ export function SongsTab({ q }: Ctx) {
           </div>
         )}
       </Section>
-      <Section title={t('Not sung in this period')} csv={() => download(`songs-not-sung-${r.period.to}.csv`, [['Song', 'Category', 'Last sung'], ...r.unused.map((s) => [both(s.title), s.category, s.last_used])])}>
+      <Section pii={false} title={t('Not sung in this period')} csv={() => download(`songs-not-sung-${r.period.to}.csv`, [['Song', 'Category', 'Last sung'], ...r.unused.map((s) => [both(s.title), s.category, s.last_used])])}>
         <button className="btn sm ghost no-print" onClick={() => setShowUnused(!showUnused)}><Icon name={showUnused ? 'chevronDown' : 'chevronRight'} />{t('{n} songs').replace('{n}', String(r.unused.length))}</button>
         {showUnused && (
           <table className="t">
@@ -152,7 +152,7 @@ export function ScriptureTab({ q, cong }: Ctx) {
         <Stat label={t('New Testament')} value={pct(tot.nt_covered, 260) || '0%'} sub={`${tot.nt_covered} / 260`} />
         <Stat label={t('Books')} value={`${tot.books_covered} / 66`} />
       </div>
-      <Section title={t('Chapters read and preached')} tip={t('Readings are the Scripture items of each service; sermons are the sermon passage. A darker square was read or preached more often. Click a square to see when.')}
+      <Section pii={false} title={t('Chapters read and preached')} tip={t('Readings are the Scripture items of each service; sermons are the sermon passage. A darker square was read or preached more often. Click a square to see when.')}
         csv={() => download(`scripture-chapters-${r.period.from}-${r.period.to}.csv`, [['Book', 'Chapter', 'Read', 'Preached'], ...r.books.flatMap((b) => b.read.map((n, i) => [b.en, i + 1, n, b.preached[i]]).filter((x) => x[2] || x[3]))])}>
         <div className="heat-legend small">
           <span><i className="heat-cell read l3" />{t('Read')}</span>
@@ -197,7 +197,7 @@ export function ScriptureTab({ q, cong }: Ctx) {
           )}
         </Section>
       )}
-      <Section title={t('Readings and sermons')} csv={() => download(`scripture-${r.period.from}-${r.period.to}.csv`, [['Date', 'Kind', 'Passage'], ...r.passages.map((p) => [p.date, p.kind, p.ref])])}>
+      <Section pii={false} title={t('Readings and sermons')} csv={() => download(`scripture-${r.period.from}-${r.period.to}.csv`, [['Date', 'Kind', 'Passage'], ...r.passages.map((p) => [p.date, p.kind, p.ref])])}>
         {!r.passages.length ? <div className="small muted">{t('No readings or sermon passages in this period.')}</div> : (
           <details>
             <summary className="small">{t('{n} passages').replace('{n}', String(r.passages.length))}{unread.length ? ` · ${t('{n} not recognised as Bible references').replace('{n}', String(unread.length))}` : ''}</summary>

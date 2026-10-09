@@ -218,7 +218,7 @@ export const LIBRARY_TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'canon_save_song', module: 'library', access: 'write', title: 'Save a song', annotations: { ...WRITE, idempotentHint: true },
+    name: 'canon_save_song', module: 'library', access: 'write', title: 'Save a song', annotations: WRITE,
     description: 'Create a song (no id; fields.title required) or update one (id; only the given fields change, L10n merges by language). Stanzas merge by label ("1", "2", "R" = refrain) unless replace_stanzas; hymnal_numbers replaces all its numbers. Copyrighted songs: public_domain=false with copyright and ccli; never invent copyrighted lyrics. Details: handbook "Writing services and songs". Returns the summary. Example: {"fields":{"title":{"en":"Doxology"},"category":"doxology"},"hymnal_numbers":[{"hymnal_id":1,"number":"512"}]}.',
     input: {
       id: Id.optional(),
@@ -233,7 +233,7 @@ export const LIBRARY_TOOLS: ToolDef[] = [
     }),
   },
   {
-    name: 'canon_save_text', module: 'library', access: 'write', title: 'Save a liturgical text', annotations: { ...WRITE, idempotentHint: true },
+    name: 'canon_save_text', module: 'library', access: 'write', title: 'Save a liturgical text', annotations: WRITE,
     description: 'Create a liturgical text (no id; fields.category, title, body required) or update one (id; only the given fields change; ' + L10N_MERGE_NOTE + ' parts merge by label the same way, replace_parts=true replaces the whole list, parts=null removes them). body is L10n; use "L: ", "C: ", "A: " line prefixes for responsive readings, blank lines between paragraphs. Long documents may carry parts [{label, title?, body}]. category: call_to_worship|invocation|confession|assurance|creed|catechism|prayer|sacrament|benediction|liturgy|other. Returns the summary.',
     input: {
       id: Id.optional(),

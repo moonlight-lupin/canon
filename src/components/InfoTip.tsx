@@ -33,14 +33,19 @@ export function InfoTip({ text }: { text: string }) {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    // Escape closes this first, not the dialog around it: heard before the dialog (capture) and marked handled
+    const close = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      setOpen(false);
+    };
     window.addEventListener('scroll', place, true);
     window.addEventListener('resize', place);
-    window.addEventListener('keydown', close);
+    window.addEventListener('keydown', close, true);
     return () => {
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
-      window.removeEventListener('keydown', close);
+      window.removeEventListener('keydown', close, true);
     };
   }, [open, place]);
 
@@ -120,19 +125,24 @@ export function HoverTip({ content, children, lang, tap }: {
   }, [open, place, content]);
   useEffect(() => {
     if (!open) return;
-    const close = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    // Escape closes this first, not the dialog around it: heard before the dialog (capture) and marked handled
+    const close = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      setOpen(false);
+    };
     // a tap anywhere else closes a tapped-open panel
     const away = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node) && !box.current?.contains(e.target as Node)) later(false, 0);
     };
     window.addEventListener('scroll', place, true);
     window.addEventListener('resize', place);
-    window.addEventListener('keydown', close);
+    window.addEventListener('keydown', close, true);
     if (tap) window.addEventListener('pointerdown', away);
     return () => {
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
-      window.removeEventListener('keydown', close);
+      window.removeEventListener('keydown', close, true);
       window.removeEventListener('pointerdown', away);
     };
   }, [open, place, tap]);

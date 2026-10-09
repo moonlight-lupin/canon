@@ -1656,6 +1656,10 @@
       "取消",
       "取消"
     ],
+    "Cancelled or moved, so not made from the pattern:": [
+      "已取消或改期，因此不会按固定时间建立：",
+      "已取消或改期，因此不會按固定時間建立："
+    ],
     "Canon": [
       "Canon",
       "Canon"
@@ -5584,6 +5588,10 @@
       "已建立下一次聚会。",
       "已建立下一次聚會。"
     ],
+    "Next page": [
+      "下一页",
+      "下一頁"
+    ],
     "Next service": [
       "下一堂聚会",
       "下一堂聚會"
@@ -6692,6 +6700,10 @@
       "PNG、JPEG 或 WebP，最大 2 MB。印刷宽约 3 厘米；在投影片上放大显示。",
       "PNG、JPEG 或 WebP，最大 2 MB。印刷寬約 3 釐米；在投影片上放大顯示。"
     ],
+    "PNG, JPEG or WebP, up to 2 MB. Shown in the sidebar, on the sign-in page, share page, slides and the “Church logo” bulletin cover.": [
+      "PNG、JPEG 或 WebP，最大 2 MB。显示于侧栏、登录页、分享页、投影及“教会标志”次序单封面。",
+      "PNG、JPEG 或 WebP，最大 2 MB。顯示於側欄、登錄頁、分享頁、投影及“教會標誌”次序單封面。"
+    ],
     "PNG, JPEG or WebP, up to 5 MB. A wide picture (1920 × 1080) looks best.": [
       "PNG、JPEG 或 WebP，最大 5 MB。宽幅图片（1920 × 1080）效果最好。",
       "PNG、JPEG 或 WebP，最大 5 MB。寬幅圖片（1920 × 1080）效果最好。"
@@ -7104,6 +7116,10 @@
       "按上方备份旁的「还原」，或还原这台电脑上的备份文件（例如 U 盘或另一台 Canon 的备份）。Canon 会先保存目前资料的副本，所以还原可以撤销。",
       "按上方備份旁的「還原」，或還原這臺電腦上的備份文件（例如 U 盤或另一臺 Canon 的備份）。Canon 會先保存目前資料的副本，所以還原可以撤銷。"
     ],
+    "Press Save after restoring.": [
+      "还原后请按“保存”。",
+      "還原後請按“保存”。"
+    ],
     "Preview": [
       "预览",
       "預覽"
@@ -7115,6 +7131,10 @@
     "Previous block": [
       "上一组",
       "上一組"
+    ],
+    "Previous page": [
+      "上一页",
+      "上一頁"
     ],
     "Previous slide": [
       "上一张",
@@ -7588,9 +7608,17 @@
       "确定把 {name} 移出此团队？",
       "確定把 {name} 移出此團隊？"
     ],
+    "Removed fields": [
+      "已移除的栏位",
+      "已移除的欄位"
+    ],
     "Removed.": [
       "已移除。",
       "已移除。"
+    ],
+    "Removing a field hides it everywhere; its values are kept, and Restore (under Removed fields) brings it back with them. A new field never takes a removed field’s place, even with the same name.": [
+      "移除栏位后，它在各处都会隐藏；已填的值会保留，在“已移除的栏位”中按“还原”即可连同这些值一起恢复。新栏位即使名称相同，也绝不会取代已移除的栏位。",
+      "移除欄位後，它在各處都會隱藏；已填的值會保留，在“已移除的欄位”中按“還原”即可連同這些值一起恢復。新欄位即使名稱相同，也絕不會取代已移除的欄位。"
     ],
     "Removing a field hides it everywhere; values already entered are kept and come back if a field with the same name is added again.": [
       "删除栏位后它会在各处隐藏；已填写的资料会保留，若再加入同名栏位就会重新出现。",
@@ -7759,6 +7787,10 @@
     "Restored.": [
       "已恢复。",
       "已恢復。"
+    ],
+    "Restored: it is made with the next meetings ahead.": [
+      "已还原：会在下次建立未来聚会时一并建立。",
+      "已還原：會在下次建立未來聚會時一併建立。"
     ],
     "Restoring a backup": [
       "还原备份",
@@ -9272,6 +9304,10 @@
       "接下来的聚会已经建立了。",
       "接下來的聚會已經建立了。"
     ],
+    "The computer Canon runs on ({zone})": [
+      "运行 Canon 的电脑（{zone}）",
+      "運行 Canon 的電腦（{zone}）"
+    ],
     "The cover shows the item’s title and who leads it, e.g. just “Threefold Amen” instead of the three amens.": [
       "封面显示项目名称和负责人，例如只显示“三叠阿们”而不是三次阿们。",
       "封面顯示項目名稱和負責人，例如只顯示“三疊阿們”而不是三次阿們。"
@@ -9652,6 +9688,10 @@
       "这次借阅不能再续借，请归还或找图书管理员。",
       "這次借閱不能再續借，請歸還或找圖書管理員。"
     ],
+    "This logo is an SVG, which Canon no longer takes (it can carry script). It still shows; replace it with a PNG when you can.": [
+      "此标志是 SVG 文件，Canon 已不再接受（SVG 可能夹带脚本）。它仍会显示；请尽快换成 PNG。",
+      "此標誌是 SVG 文件，Canon 已不再接受（SVG 可能夾帶腳本）。它仍會顯示；請儘快換成 PNG。"
+    ],
     "This meeting’s record already has offerings. They stay in the record but are not counted in the offerings reports while no offering is taken.": [
       "这次聚会的记录中已有奉献。这些奉献会保留在记录中，但在不收奉献期间，不会计入奉献报表。",
       "這次聚會的記錄中已有奉獻。這些奉獻會保留在記錄中，但在不收奉獻期間，不會計入奉獻報表。"
@@ -9719,6 +9759,10 @@
     "Time of each item": [
       "各项目的时间",
       "各項目的時間"
+    ],
+    "Time zone": [
+      "时区",
+      "時區"
     ],
     "Times": [
       "次数",
@@ -10115,6 +10159,10 @@
     "Updates": [
       "更新",
       "更新"
+    ],
+    "Upload a PNG, JPEG or WebP image": [
+      "请上传 PNG、JPEG 或 WebP 图片",
+      "請上傳 PNG、JPEG 或 WebP 圖片"
     ],
     "Upload a PNG, JPEG or WebP picture": [
       "请上传 PNG、JPEG 或 WebP 图片",
@@ -10520,6 +10568,10 @@
       "做得好的地方、下次要改进的地方、代祷事项…",
       "做得好的地方、下次要改進的地方、代禱事項…"
     ],
+    "What “today” is: the date of claims and journals, reports up to today, the rota and meetings ahead, when the visitor form opens.": [
+      "决定“今天”是哪一天：报销与日记账的日期、截至今天的报表、未来的事奉表和聚会、新朋友表格何时开放。",
+      "決定“今天”是哪一天：報銷與日記賬的日期、截至今天的報表、未來的事奉表和聚會、新朋友表格何時開放。"
+    ],
     "WhatsApp": [
       "WhatsApp",
       "WhatsApp"
@@ -10791,6 +10843,10 @@
     "Your recovery codes are of an older, shorter kind. Make new ones (with your password): they replace all the old ones.": [
       "你的恢复码是较旧、较短的一种。请（用你的密码）产生新的恢复码：它们会取代所有旧的恢复码。",
       "你的恢復碼是較舊、較短的一種。請（用你的密碼）產生新的恢復碼：它們會取代所有舊的恢復碼。"
+    ],
+    "Your role can read the offerings here, not change them.": [
+      "你的角色在这里只能查看奉献，不能更改。",
+      "你的角色在這裡只能查看奉獻，不能更改。"
     ],
     "Your role can view the rota. Whoever plans the services changes it.": [
       "你的角色可以查看事奉表；由负责策划聚会的人更改。",
@@ -12334,7 +12390,7 @@
     ]
   },
   "guide": [
-    "3fbb5c9f17713c27",
-    "2ea6c1a62c10056f"
+    "a4850303d5b9fe0b",
+    "fc9c7dcdf1f78c14"
   ]
 }

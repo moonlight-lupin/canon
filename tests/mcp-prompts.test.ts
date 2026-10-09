@@ -224,3 +224,98 @@ test('resources/list and resources/read serve the handbook and the user guide', 
   const missing = await mcp(adminToken, 'resources/read', { uri: 'canon://guide/nope' });
   assert.ok(missing.error);
 });
+
+// ---------------------------------------------------------------- argument names (Daedalus Workshop study of 0.19.10)
+
+type Zod = { _zod?: { def?: Record<string, unknown> }; shape?: Record<string, Zod> };
+/** A field whose value is a record (its keys are the church's own, e.g. bulletin sections): any key inside it is fine. */
+function isRecord(s: Zod | undefined): boolean {
+  for (let z = s; z?._zod?.def; z = (z._zod.def.innerType ?? z._zod.def.in) as Zod | undefined) if (z._zod.def.type === 'record') return true;
+  return false;
+}
+/** Every argument name a tool takes, at any depth, and the names of its record-valued fields. */
+function argNames(s: unknown, out = { keys: new Set<string>(), records: new Set<string>() }, seen = new Set<unknown>()) {
+  if (!s || typeof s !== 'object' || seen.has(s)) return out;
+  seen.add(s);
+  const z = s as Zod;
+  if (z.shape && typeof z.shape === 'object') {
+    for (const [k, v] of Object.entries(z.shape)) {
+      out.keys.add(k);
+      if (isRecord(v)) out.records.add(k);
+      argNames(v, out, seen);
+    }
+  }
+  for (const v of Object.values(z._zod?.def ?? {})) {
+    if (Array.isArray(v)) v.forEach((x) => argNames(x, out, seen));
+    else if (v && typeof v === 'object' && '_zod' in v) argNames(v, out, seen);
+  }
+  return out;
+}
+/** The {…} starting at text[i] (braces balanced), or null. */
+function objectAt(text: string, i: number): string | null {
+  if (text[i] !== '{') return null;
+  let depth = 0;
+  for (let j = i; j < text.length; j++) {
+    if (text[j] === '{') depth++;
+    else if (text[j] === '}' && --depth === 0) return text.slice(i, j + 1);
+  }
+  return null;
+}
+const LANG_KEY = /^(en|zh|zh-Hant|[a-z]{2})$/;
+/**
+ * Argument names in a text that the tool they're given to doesn't take: a JSON object right after a tool's name
+ * (canon_x {"a":…}), and the Example objects in a tool's own description. Keys inside a record-valued field (bulletin
+ * sections) and language codes are the church's own.
+ */
+function wrongArgs(where: string, text: string, own?: string): string[] {
+  const bad: string[] = [];
+  const check = (tool: string, obj: string) => {
+    const t = TOOLS.find((x) => x.name === tool);
+    if (!t) return;
+    const { keys, records } = argNames({ shape: t.input });
+    let open = obj;
+    for (const r of records) {
+      const at = open.indexOf(`"${r}":`);
+      const inner = at >= 0 ? objectAt(open, open.indexOf('{', at)) : null;
+      if (inner) open = open.replace(inner, '{}');
+    }
+    for (const k of open.matchAll(/"([A-Za-z_][\w-]*)"\s*:/g)) if (!keys.has(k[1]) && !LANG_KEY.test(k[1])) bad.push(`${where}: ${tool} has no argument "${k[1]}" (in ${obj.slice(0, 100)})`);
+  };
+  for (const m of text.matchAll(/(canon_\w+)`?\s*`?(?=\{)/g)) {
+    const obj = objectAt(text, m.index! + m[0].length);
+    if (obj) check(m[1], obj);
+  }
+  if (own) {
+    for (const m of text.matchAll(/Examples?:\s*/g)) {
+      let i = m.index! + m[0].length;
+      for (let obj = objectAt(text, i); obj; obj = objectAt(text, i)) {
+        check(own, obj);
+        i += obj.length;
+        while (/[;\s]/.test(text[i] ?? '')) i++;
+      }
+    }
+  }
+  return bad;
+}
+
+test('every argument named for a tool in the playbooks, handbook, skill, tool examples and instructions is one it takes', async () => {
+  // the check itself finds a wrong name (0.19.10's playbook gave canon_create_service a "preacher" it silently dropped)
+  assert.equal(wrongArgs('sample', 'canon_create_service {"date":"2026-10-11","preacher":"Rev. Example"}').length, 1);
+  assert.equal(wrongArgs('sample', 'canon_update_service {"id":1,"patch":{"bulletin_content":{"announcements":{"en":"…"}}}}').length, 0);
+  const root = path.resolve(import.meta.dirname, '..');
+  const texts: [string, string, string?][] = [];
+  for (const f of ['docs/AGENT-PLAYBOOKS.md', 'skills/canon/SKILL.md', ...fs.readdirSync(path.join(root, 'skills/canon/references')).map((x) => `skills/canon/references/${x}`)]) texts.push([f, fs.readFileSync(path.join(root, f), 'utf8')]);
+  for (const t of TOOLS) texts.push([`${t.name} description`, t.description, t.name]);
+  // every playbook as read only and as read & write, with and without personal data (the steps differ)
+  const { MODULES } = await import('../shared/types.ts');
+  const args = { date: '2026-10-11', sermon_ref: 'Romans 8:28-39', preacher: 'Rev. Example', theme_or_ref: 'Psalm 23', weeks: '4', type: 'texts', lang: 'zh', source: 'both', as_template: 'yes', focus: 'songs', days: '30', kind: 'committee', standard: 'wsc', start_q: '4', month: '2026-09' };
+  for (const p of PROMPTS) for (const level of ['read', 'write']) for (const pii of [false, true]) {
+    const levels = Object.fromEntries(MODULES.map((m) => [m, level]));
+    texts.push([`playbook ${p.name} (${level}${pii ? ', personal data' : ''})`, p.build(args, { levels, pii, languages: ['en', 'zh'], today: '2026-10-09' } as never)]);
+  }
+  setMcp({ ...ALL_WRITE }, true);
+  const init = await mcp(adminToken, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } });
+  texts.push(['server instructions', init.result.instructions as string]);
+  const bad = texts.flatMap(([where, text, own]) => wrongArgs(where, text, own));
+  assert.deepEqual(bad, []);
+});

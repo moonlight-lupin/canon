@@ -33,6 +33,8 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.19.8 | Sign-in hardening from a code study: limits that one's own sign-in can't reset, limits on the AI connection endpoints, one-time two-step codes, sessions ended on a password or two-step change — done |
 | 0.19.9 | Account security from the same study: stronger password hashing, a setup code for a new Canon, encrypted two-step secrets, longer recovery codes, notices of recovery codes used, a growing wait that doesn't shut the owner out, no access for an unknown role, "change your password" after an administrator chose it — done |
 | 0.19.10 | Library → Images, shown on slides of their own; the lending library walked through as a librarian and two members, and fixed — done |
+| 0.19.11 | AI connections from a code study (Daedalus Workshop): the token limit counts only guesses, every token bound to this Canon, an account's restrictions on every call, the AI activity log without personal data; no new SVG logos — done |
+| 0.20.0 | The rest of the code study: the church's time zone, cancelled meetings that stay cancelled, archived member fields, the members list paged, one rule for offerings; personal fields marked where defined, the daily tidy's duties apart, uploads by their bytes, journals frozen whole — done |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 

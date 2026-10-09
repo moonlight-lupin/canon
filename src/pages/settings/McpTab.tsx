@@ -9,13 +9,15 @@ import { FilterBar, Pager, useLogQuery, type Paged } from '../../components/LogT
 import type { McpConfig, ModuleAccess, ModuleKey } from '../../types-client.ts';
 import type { VisitorAccess } from '../../../shared/types.ts';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../../types-client.ts';
+import { churchLevel, piiShared, scoresShared, toolOffered, type ToolShape } from '../../../shared/mcp-exposure.ts';
+import type { ModuleSwitches } from '../../../shared/modules.ts';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { fmtStamp, PublicUrlField } from './common.tsx';
 import { DateRange, KeepMonths } from './ChangeLogTab.tsx';
 import '../people.css';
 import '../presentation.css';
 
-export type Tool = { name: string; module: ModuleKey; access: 'read' | 'write'; title: string; description: string; requires_pii: boolean; requires_scores?: boolean };
+export type Tool = ToolShape & { name: string; module: ModuleKey; title: string; description: string; requires_pii: boolean; exposed?: boolean };
 
 export type Grant = {
   grant_id: string; client_id: string; client_name: string; user_id: number; user_name: string; scope: string;
@@ -52,8 +54,6 @@ export const MOD_TIP: Partial<Record<ModuleKey, string>> = {
   contributions: 'Offerings and cash counts, and the offerings report. Part of Service records: needs it switched on. Always read only: agents never change money, sign or verify a count. Read-only accounts never see offerings.',
 };
 
-export const toolExposed = (tool: Tool, level: ModuleAccess, pii: boolean, scores = false) =>
-  level !== 'off' && (tool.access === 'read' || level === 'write') && (!tool.requires_pii || pii) && (!tool.requires_scores || scores);
 
 export function McpTab() {
   const { t } = useI18n();
@@ -61,6 +61,8 @@ export function McpTab() {
   const cfg = useApi<McpConfig>('/mcp/config');
   const endpoint = useApi<EndpointInfo>('/mcp/endpoint');
   const tools = useApi<Tool[]>('/mcp/tools');
+  // Settings → Modules: a part of Canon switched off has no tools (the same rule as the server's)
+  const switches = useApi<{ modules: ModuleSwitches }>('/settings').data?.modules;
   const [d, setD] = useState<McpConfig | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const { run, busy } = useAction();
@@ -94,9 +96,10 @@ export function McpTab() {
       window.prompt(t('Copy'), s);
     }
   };
-  const pii = d.expose_member_pii && configuredAccess('members', d.modules) !== 'off';
-  const scores = !!d.sheet_music && configuredAccess('library', d.modules) !== 'off';
-  const visible = (tools.data ?? []).filter((x) => toolExposed(x, d.enabled ? configuredAccess(x.module, d.modules) : 'off', pii, scores)).length;
+  const pii = piiShared(d);
+  const scores = scoresShared(d);
+  const exposed = (x: Tool, level: ModuleAccess) => toolOffered(x, level, pii, scores, d.enabled, switches);
+  const visible = (tools.data ?? []).filter((x) => exposed(x, churchLevel(x.module, d, switches))).length;
 
   return (
     <div className="stack">
@@ -140,9 +143,9 @@ export function McpTab() {
           const parent = MODULE_PARENT[m];
           const parentOff = !!parent && configuredAccess(parent, d.modules) === 'off';
           const readOnly = READ_ONLY_MODULES.includes(m);
-          const level = configuredAccess(m, d.modules);
+          const level = churchLevel(m, { ...d, enabled: true }, switches);
           const mt = (tools.data ?? []).filter((x) => x.module === m);
-          const on = mt.filter((x) => toolExposed(x, level, pii, scores)).length;
+          const on = mt.filter((x) => exposed(x, level)).length;
           return (
             <div key={m} className={`mod-row${parent ? ' nested' : ''}`}>
               <div className="row between">
@@ -205,7 +208,7 @@ export function McpTab() {
               {open[m] && (
                 <div className="tool-list">
                   {mt.map((x) => {
-                    const ex = toolExposed(x, level, pii, scores);
+                    const ex = exposed(x, level);
                     return (
                       <div key={x.name} className={`tool${ex ? '' : ' off'}`}>
                         <Icon name={ex ? 'check' : 'x'} style={{ color: ex ? 'var(--ok)' : 'var(--ink-3)' }} />

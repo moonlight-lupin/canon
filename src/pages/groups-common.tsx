@@ -283,6 +283,11 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
     const r = await run(() => api.post<{ created: number }>(`/groups/${groupId}/meetings-ahead`, {}));
     if (r) toast(r.created ? t('{n} meetings created.').replace('{n}', String(r.created)) : t('The coming meetings already exist.'));
   };
+  // coming meetings that were cancelled or moved: not made again from the pattern until restored
+  const skips = useApi<{ date: string }[]>(meetingsOn && data?.pattern?.every ? `/groups/${groupId}/meeting-skips` : null);
+  const restoreDate = async (date: string) => {
+    if (await run(() => api.del(`/groups/${groupId}/meeting-skips/${date}`), t('Restored: it is made with the next meetings ahead.'))) skips.reload();
+  };
   const delGroup = async () => {
     if (!data || !confirmAction(t('Delete this group and all its memberships? To keep the history, mark it inactive instead.'))) return;
     if (await run(() => api.del(`/groups/${groupId}`), t('Deleted.'))) {
@@ -327,6 +332,17 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
               {canEdit && <button className="btn sm" onClick={() => setEditing(true)}><Icon name="edit" />{t('Edit group')}</button>}
             </div>
           </div>
+          {!!skips.data?.length && (
+            <div className="small stack tight">
+              <span className="muted">{t('Cancelled or moved, so not made from the pattern:')}</span>
+              {skips.data.map((s) => (
+                <span key={s.date} className="row" style={{ gap: 6, alignItems: 'center' }}>
+                  {fmtDate(s.date, lang)}
+                  {canEdit && <button className="btn sm ghost" onClick={() => void restoreDate(s.date)} disabled={busy}>{t('Restore')}</button>}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div>
             <div className="row between" style={{ marginBottom: 6 }}>

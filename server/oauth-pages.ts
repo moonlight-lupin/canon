@@ -2,8 +2,10 @@
 // The consent page is in the signed-in person's own language (English underneath); the error pages in the church's
 // languages. The wording is in locales/<code>/server.json (server/lib/server-text.ts).
 import type { Response } from 'express';
-import type { ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
+import type { ModuleAccess, ModuleKey } from '../shared/types.ts';
 import { MODULES, configuredAccess } from '../shared/types.ts';
+import { effectiveAccess, piiFor, visitorsFor } from './lib/mcp-access.ts';
+import { roleDef } from './lib/permissions.ts';
 import type { User } from './auth.ts';
 import { getSettings } from './repo/settings.ts';
 import type { ValidAuthz } from './oauth.ts';
@@ -90,8 +92,6 @@ export const SCOPE_LABEL: Record<string, string> = {
   'canon:write': 'Create and change data in modules set to “Read & edit”',
 };
 
-export const ROLE_LABEL: Record<Role, string> = { admin: 'administrator', editor: 'editor', viewer: 'viewer' };
-
 export function consentPage(res: Response, a: ValidAuthz, user: User & { csrf: string }) {
   const s = getSettings().mcp;
   const L = pageLangs([user.lang ?? 'en']);
@@ -104,14 +104,17 @@ export function consentPage(res: Response, a: ValidAuthz, user: User & { csrf: s
     }
   })();
   const canWrite = a.scopes.includes('canon:write');
+  // what this connection will really reach: the administrator's levels, Settings → Modules, the scope asked for and
+  // this person's role — the same rule the MCP server applies on every call (0.20.0: the page showed the
+  // administrator's levels only, so a read-only account was shown "Read & edit")
+  const scopes = new Set(a.scopes);
   const rows = MODULES.map((m) => {
-    let lvl = configuredAccess(m, s.modules);
-    const capped = lvl === 'write' && !canWrite;
-    if (capped) lvl = 'read';
+    const lvl = effectiveAccess(m, s, scopes, user.role);
+    const capped = lvl === 'read' && !canWrite && configuredAccess(m, s.modules) === 'write' && effectiveAccess(m, s, new Set(['canon:read', 'canon:write']), user.role) === 'write';
     return `<tr><td>${bi(MODULE_LABEL[m], L)}</td><td class="l ${lvl}">${bi(ACCESS_LABEL[lvl], L)}${capped ? ' *' : ''}</td></tr>`;
   }).join('');
-  const piiOn = s.expose_member_pii && configuredAccess('members', s.modules) !== 'off';
-  const vis = configuredAccess('records', s.modules) === 'off' ? 'off' : s.visitors ?? 'names';
+  const piiOn = piiFor(s, user.role);
+  const vis = visitorsFor(s, user.role);
   const VIS: Record<string, [string, string]> = { off: ['Hidden', 'off'], names: ['Names & follow-up', 'read'], contact: ['With contact details', 'write'] };
   const piiRow = `<tr><td>${bi('Member contact details, addresses & birthdays', L)}</td>` +
     `<td class="l ${piiOn ? 'write' : 'off'}">${bi(piiOn ? 'Shared' : 'Hidden', L)}</td></tr>` +
@@ -134,7 +137,7 @@ export function consentPage(res: Response, a: ValidAuthz, user: User & { csrf: s
 <table>${rows}${piiRow}</table>
 ${!canWrite ? `<p class="muted">* ${bi('Limited to read only for this connection.', L)}</p>` : ''}
 <p class="muted">${bi('An administrator controls these levels in Settings → AI / MCP; changes apply immediately, and access can be revoked there at any time.', L, '<br>')}</p>
-<p class="muted">${bi('Signed in as', L)}: <b>${esc(user.display_name)}</b> (${bi(ROLE_LABEL[user.role], L)})</p>
+<p class="muted">${bi('Signed in as', L)}: <b>${esc(user.display_name)}</b> (${esc(roleName(user.role, L))})</p>
 <form method="post" action="/oauth/authorize">
 ${hidden('client_id', a.client.client_id)}${hidden('redirect_uri', a.redirect_uri)}${hidden('state', a.state)}
 ${hidden('scope', a.scopes.join(' '))}${hidden('code_challenge', a.code_challenge)}${hidden('code_challenge_method', 'S256')}
@@ -145,6 +148,12 @@ ${hidden('resource', a.resource)}${hidden('response_type', 'code')}${hidden('csr
     L[0],
   );
 }
+
+/** A role's name in the page's first language (the church's own roles too), else in English. */
+const roleName = (role: string, L: string[]) => {
+  const n = roleDef(role).name as Record<string, string | undefined>;
+  return L.map((l) => n[l]).find(Boolean) ?? n.en ?? role;
+};
 
 export function disabledPage(res: Response) {
   const L = pageLangs(getSettings().languages);

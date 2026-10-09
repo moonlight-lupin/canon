@@ -48,7 +48,8 @@ const bookLine = (b: L.BookSummary) => ({
 
 export const RESOURCE_TOOLS: ToolDef[] = [
   {
-    name: 'canon_lending', module: 'lending', access: 'read', title: 'Lending library', annotations: RO,
+    // open world: {isbn} looks the book up on the internet (Open Library, Google Books)
+    name: 'canon_lending', module: 'lending', access: 'read', title: 'Lending library', annotations: { ...RO, openWorldHint: true },
     description: 'The church\'s lending library (books, DVDs, curricula lent to members). Without id: the catalogue — search q (title, author, ISBN or copy number), kind, category, available=true for titles with a copy in now; each with copies, available and on_loan. With id: one title with its copies (number, status, current loan: borrower and due date) and recent loans. loans "open" | "overdue" | "returned" lists loans instead (copy number, title, borrower name, lent / due / returned dates, overdue_days), optionally for one person_id. isbn looks a book up online (Open Library, Google Books) before adding it. Example: {"loans":"overdue"}.',
     input: {
       id: Id.optional(), q: z.string().max(200).optional(), kind: z.enum(['book', 'dvd', 'curriculum', 'other']).optional(), category: z.string().max(100).optional(),

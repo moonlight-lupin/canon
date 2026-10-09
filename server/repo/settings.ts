@@ -39,6 +39,8 @@ export interface Settings {
   paper: PaperSize;
   slide_theme: 'dark' | 'light';
   default_start_time: string;
+  /** the church's time zone (IANA, e.g. "Asia/Singapore") for "today" and every date boundary; "" = this computer's */
+  time_zone: string;
   /** show liturgical season colours on services, bulletins and slides */
   season_colours: boolean;
   bulletin_cover: CoverStyle;
@@ -72,6 +74,8 @@ export interface Settings {
   };
   /** Settings → Member fields: the church's own fields on the member register (shared/member-fields.ts) */
   member_fields: MemberField[];
+  /** fields removed from it: their keys are never used again, their values are kept, and Restore brings one back */
+  member_fields_retired: MemberField[];
   /** Settings → Security & privacy: what an administrator confirmed (Canon cannot see it), e.g. that the disk is encrypted */
   security: { disk_encryption: boolean; /** administrators must use two-step sign-in */ require_admin_2fa?: boolean; /** every account must */ require_all_2fa?: boolean };
   /** how many months the change log and the AI activity log keep (0 = everything) */
@@ -99,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   paper: 'a4-booklet',
   slide_theme: 'dark',
   default_start_time: '10:00',
+  time_zone: '',
   season_colours: true,
   bulletin_cover: 'cross',
   onboarded: false,
@@ -114,6 +119,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lending: { loan_days: 21, max_renewals: 2, remind_days_before: 3, send_reminders: false, self_service: false, rules_saved: false },
   bookkeeping: DEFAULT_BOOKKEEPING,
   member_fields: [],
+  member_fields_retired: [],
   security: { disk_encryption: false, require_admin_2fa: false, require_all_2fa: false },
   trust_proxy: false,
   smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },

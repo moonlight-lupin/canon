@@ -9,11 +9,12 @@ import { partRuns } from '../../shared/parts.ts';
 import { all, get } from '../db.ts';
 import { NotFound } from '../lib/table.ts';
 import { checkRow, wallSql } from '../lib/walls.ts';
+import { churchToday } from '../lib/dates.ts';
 
 const DAY = 86400_000;
 const ts = (d: string) => Date.parse(d + 'T00:00:00Z');
 const isoDay = (t: number) => new Date(t).toISOString().slice(0, 10);
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+export const todayIso = () => churchToday();
 
 /** Seasons whose dates move with Easter: compare them by their offset from Easter, not the calendar date. */
 const EASTER_CYCLE = new Set<Season>(['lent', 'holy_week', 'easter', 'pentecost']);

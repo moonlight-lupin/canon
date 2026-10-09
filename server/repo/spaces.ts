@@ -5,6 +5,7 @@
 import type { L10n } from '../../shared/types.ts';
 import { all, get } from '../db.ts';
 import { BadRequest, Conflict, NotFound, table } from '../lib/table.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export interface Space {
   id: number;
@@ -160,7 +161,7 @@ export function spacesReport(from: string, to: string) {
       hours: Math.round(mine.reduce((n, b) => n + (b.end - b.start) * (b.type === 'event' ? days(b) : 1), 0) / 6) / 10,
     };
   }).filter((r) => !r.archived || r.bookings);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = churchToday();
   return {
     from, to,
     spaces: rows,

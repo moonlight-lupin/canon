@@ -197,8 +197,11 @@ test('the asset register: numbers, maintenance due, photos and receipts, the ass
   const up = await call(as.keeper, 'POST', `/equipment/items/${ids.item}/files?kind=photo&name=front.png`, png, 'image/png');
   assert.equal(up.status, 200, up.text);
   assert.equal(up.body.files.length, 1);
-  const fake = await call(as.keeper, 'POST', `/equipment/items/${ids.item}/files?kind=receipt&name=receipt.pdf`, png, 'application/pdf');
-  assert.equal(fake.status, 400, 'a PNG is not a PDF');
+  const fake = await call(as.keeper, 'POST', `/equipment/items/${ids.item}/files?kind=receipt&name=receipt.pdf`, Buffer.from('<html>not a receipt</html>'), 'application/pdf');
+  assert.equal(fake.status, 400, 'judged by its bytes: a page is not a PDF');
+  // a photo sent as a PDF is kept as the photo it is (0.20.0: the bytes decide, not what the browser says)
+  const photo = await call(as.keeper, 'POST', `/equipment/items/${ids.item}/files?kind=receipt&name=receipt.pdf`, png, 'application/pdf');
+  assert.equal(photo.body.files.find((f: Json) => f.id !== up.body.files[0].id).mime, 'image/png');
   const file = await fetch(`${base}/api/equipment/files/${up.body.files[0].id}`, { headers: { Cookie: as.keeper.cookie } });
   assert.equal(file.headers.get('content-type'), 'image/png');
   assert.equal((await call(as.keeper, 'GET', '/lending/books')).status, 403, 'the asset keeper has no library');

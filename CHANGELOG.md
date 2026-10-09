@@ -4,6 +4,64 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.20.0 — The rest of the code study: data care, dates, meetings and AI data
+
+The medium- and low-priority findings of the Daedalus Workshop's read-only study of Canon 0.19.10 (the high-priority ones are in 0.19.11). Each fix has its test (`tests/agent-data.test.ts`, `tests/data-care.test.ts`, `tests/time-zone.test.ts`, and new tests in the member-field, meeting, record and prompt suites).
+
+### Dates in the church's time zone
+
+- **"Today" is the church's date.** Canon took today from the UTC clock, a day behind in Singapore and Malaysia between midnight and 8 am: a claim submitted at 1 am on 1 January was numbered in the old year, reports ended yesterday, the rota and meetings ahead started a day late, the visitor form opened late. **Settings → Church → Time zone** (by default the time zone of the computer Canon runs on; in Docker, `TZ`) now decides every "today" and date boundary, on the server and in the web app. A test fails if any part of the server works out today from UTC again.
+- Fixed in the web app: **Duplicate** suggested the day before a week later (a Saturday for a Sunday) east of Greenwich; the report presets started a day early; the dashboard's date was UTC's.
+
+### Meetings, members and records
+
+- **A cancelled or moved meeting stays so.** A group's meeting deleted or moved used to come back with the next daily run of **Create meetings ahead**. Canon now remembers the date (whoever deletes or moves it — the web app or an AI assistant); the group's page lists **Cancelled or moved** dates, and **Restore** puts one back.
+- **Member fields: a removed field is archived, and its key is never used again.** A new field with the same label took the old field's key, so the old values reappeared — perhaps as another type, after which that member could no longer be saved. Removed fields are listed under **Removed fields** with **Restore**. **A field that members have values in can't change its type** (Canon says how many). **A stored value that no longer fits never stops a member from being saved** (only what is being changed is checked), and a role that doesn't see a sensitive field is no longer shown its value in an error.
+- **The members list pages through the server**, 100 at a time, with status and field filters and the counts per status worked out there; it loaded up to 5,000 people into the browser. A request can't ask for more than 5,000 at once, and a sensitive field can't be a filter for a role that doesn't see it.
+- **One rule for offerings** (who may see and change a service's money), used by the record page, the records list, saving, the reports and AI assistants. A role that may read offerings but not change them sees them read-only on the record page (it could type them, then got "Your role can't change offerings"); the leader of a meeting now sees its offering in the records list too, as on its record.
+- A dialog that stays open after saving (Send reminders) no longer asks "Close without saving?"; changing a dialog's editing language doesn't count as typing.
+- **Escape closes a tip or a list in a dialog first, not the dialog** (InfoTips inside dialogs closed the dialog as well). Checked, not reproduced as reported: the multi-select is not used inside a dialog today; it is fixed the same way.
+
+### AI assistants
+
+- **Personal fields are marked where they are defined** (`shared/types.ts`: each member, household and co-worker field is shared or personal, and the typecheck fails for a new field until it is marked); agents get only marked fields, so a new column never reaches them by default. A test seeds known personal values through the tools and checks they appear in no read tool's output once personal data isn't shared.
+- Without personal data shared, agents **can't write** contact details, addresses, birth dates or notes they can't read, and the change-log search no longer looks in old and new values (searching a phone number told whose it was).
+- **A part of Canon switched off (Settings → Modules) is off in one rule** for tools, playbooks, `canon_whoami` and the server's instructions. With Volunteers off, the playbooks no longer name rota tools, `canon_get_service` has no roster, similar services no `roster_summary`, and `canon_create_service` refuses `with_roster`.
+- **The consent page shows what the connection will really reach**: each module at the level the person's role allows (a read-only account was shown "Read & edit"), nothing switched off, contact details only for roles that see them, and the role's own name. Settings → AI / MCP counts the tools with the server's own rule (it missed Settings → Modules).
+- The save tools that create something without an id are no longer marked safe to repeat; `canon_lending` says it looks books up on the internet.
+- `canon_membership_stats` gives numbers, not names, and no longer counts erased members (nor does the web report); the attendance report gives how visitors came only while visitors are shared.
+- **A result too large for an assistant** (over about 500 KB of text or 12 MB of pictures) is refused with what to narrow; chosen years for the Scripture report are at most 20 apart, as periods are.
+- `canon_find_people` searches names only in the query (it filtered a page afterwards, so pages came back short while later pages held matches).
+- The docs check also checks argument names: every `"field":` given to a tool in the playbooks (as read only and as read & write), the handbook, the skill, the tools' examples and the server's instructions must be one the tool takes. It found one: the plan_service playbook gave `canon_create_service` a `preacher` that was silently dropped (removed).
+- Reviewed, nothing to change: `own` (expense claims) lets anyone draft their own claim; the handlers keep it to their own. `ADMIN_MODULES` was unused (removed).
+
+### Data care
+
+- **The daily tidy's duties run one by one**, privacy erasure first: one that failed skipped the rest, including erasing visitors' contact details. A failure shows on Settings → Security & privacy as **Daily housekeeping** until it works again.
+- **What Canon does by itself is in the change log, by "Canon"**: the daily tidy (meetings made ahead, visitors' details erased), automatic backups and an update's result (which was always lost).
+- **Secrets are kept out of the change log by what they are called**, also inside a value (a service's attendee and visitor-form links kept their tokens in it). A co-worker's position is logged again (it was skipped with sort orders). **Erasing a member reaches their change-log entries by who they are about** (away dates and co-worker records deleted before were missed) **and their e-mail, phone and address** wherever an entry quotes them, in either case.
+- **Uploads are stored as what their bytes are**: receipts, equipment files, sheet music, pictures, backgrounds, theme and block pictures. Imported template and library files no longer store a picture that isn't one (they stored any type). A PDF sent as a PNG is kept as the PDF it is.
+- **A posted journal is frozen whole**: every column but a declared few (its service, who made it and how could be changed), and no draft line can be moved into it. A test fails when a column is added without being frozen or declared.
+- **Claim numbers go on past 9999 in a year** (after C2026-9999 every submission collided).
+- **"Send now" and the daily library reminders can't e-mail anyone twice** (only one run at a time; each loan marked before its e-mail goes). The background timers stop when Canon stops.
+- Every Excel export now has to say whether it holds personal data; the change log, AI activity, maintenance due, journals and the serving report's people now carry the note. (The asset register's CSV is unchanged: its flag also decides who may export it, and a keeper must be able to.)
+- The record helper's list keeps to the congregation wall like its other operations (every caller filtered already: a floor under them).
+- Database: version 43 (`meeting_skips`; the posted-journal triggers).
+
+## 0.19.11 — AI connections, from a code study
+
+From the Daedalus Workshop's read-only study of Canon 0.19.10: the high-priority findings, and those in the same code. Each fix has its test (`tests/agent-connections.test.ts`, `tests/agent-data.test.ts`, `tests/church-logo.test.ts`).
+
+- **A busy assistant no longer shuts out everyone else's.** The token endpoint counted every refused request towards its address's limit (30 in 15 minutes), including a refresh token that had run out or lost a race with its own renewal. Every church's claude.ai connector arrives from claude.ai's few addresses, so one assistant left unused for a month could make every other user's assistant wait. Now only made-up codes, clients and tokens (and wrong client secrets) count.
+- **Every connection is bound to this Canon's `/mcp`**, also when the assistant didn't name it (RFC 8707): before, such a token was stored with no audience and taken at any address Canon answered at. Tokens issued before 0.19.11 without one are refused at `/mcp`; the assistant renews its connection by itself, and what it gets is bound.
+- **The account's restrictions hold on every call.** A password an administrator chose (to be changed first) or two-step sign-in the church requires and the account hasn't set up stopped an assistant only when connecting; now also when it renews its connection and on every call (403 `password_change_required` or `two_step_required`).
+- **Renewing a connection ends the access token it replaces** (it stayed valid until it ran out, up to an hour). **Applications that register but never connect anyone are forgotten after 30 days.**
+- **The AI activity log keeps no personal data.** It kept every argument's value for every module but members, co-workers and groups, so a visitor's name and contact details added by an assistant, team notes, claim lines and away reasons were stored in full. Now, for every tool alike, it keeps which fields a call used and the values only of ids, dates, numbers and fixed words (kinds, formats, op types); the rest shows as "…". Calls refused before any tool runs (an unknown tool, wrong arguments) are still logged, and a test now fails if an update of the MCP library stops that.
+- **Checks in the AI tools fail closed.** A report's "may this connection see meetings?" answered yes when it had no connection to check, and "may it read offerings?" when it had no module levels. Only a tool called directly (in tests) could reach this, but it now answers no.
+- **New church logos are PNG, JPEG or WebP.** An SVG can carry script, and the pattern check that let "plainly static" SVGs through was no parser. An SVG logo uploaded before still shows (always through a picture, where SVG can't run script); it is now served as an attachment with a sandboxing Content-Security-Policy, and Settings → Church suggests replacing it with a PNG.
+- Checked, not reproduced: "any signed-in user can download any stored asset by its key". `/api/assets/…` serves only the slide and bulletin pictures every signed-in role may see (0.19.10); receipts, equipment files, sheet music and book covers each have their own address, open only to roles with that module and, for claims, inside the account's congregation.
+- Database: version 42 (`oauth_clients.used_at`).
+
 ## 0.19.10 — Images on slides; the lending library walked through
 
 ### Library → Images

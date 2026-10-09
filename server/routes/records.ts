@@ -14,14 +14,14 @@ import * as vf from '../repo/visitor-form.ts';
 import type { ServiceRecord } from '../../shared/records.ts';
 import { getSettings, updateSettings } from '../repo/settings.ts';
 import { h, id, str } from './helpers.ts';
-import { can, mayReopenCounts } from '../lib/permissions.ts';
+import { can, mayReopenCounts, moneyAccess } from '../lib/permissions.ts';
 
 export const recordRoutes = express.Router();
 
 // ---------------------------------------------------------------- service records (attendance, visitors, offerings)
 
 // admin = may reopen verified counts and delete records (Administrator, Treasurer …); money = may change offerings
-const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: mayReopenCounts(req.user), money: can(req.user, 'contributions', 'edit') || leadsMeeting(req.user?.person_id, Number(req.params.id)) });
+const recWho = (req: Request) => ({ name: req.user?.display_name ?? '', admin: mayReopenCounts(req.user), money: moneyAccess(req.user, Number(req.params.id)) === 'edit' });
 const VisitorSchema = z.object({ name: z.string().max(200), contact: z.string().max(300).optional(), source: z.string().max(300).optional(), follow_up_by: z.string().max(200).optional(), notes: z.string().max(2000).optional(), status: z.enum(['new', 'contacted', 'returning', 'joined']).optional(), prayer: z.string().max(1500).optional(), about: z.string().max(200).optional() });
 const RecordInput = z.object({
   attendance: z.number().int().min(0).max(100000).nullable().optional(),
@@ -37,13 +37,13 @@ const RecordInput = z.object({
   currency: z.string().max(5).optional(),
 });
 recordRoutes.get('/records', h((req) => rec.listRecords({ from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined, kind: str(req.query.kind) as rec.RecordsQuery['kind'], group_id: Number(req.query.group) || undefined })
-  .map((r) => (canSeeMoney(req) ? r : rec.listRowForViewer(r)))));
+  .map((r) => (moneyAccess(req.user, r.service_id) !== 'none' ? r : rec.listRowForViewer(r)))));
 // reports (Records → Reports): offerings for editors and administrators only; visitors' contact details likewise
 const reportPeriod = (req: Request) => reports.period({
   from: str(req.query.from), to: str(req.query.to), congregation_id: Number(req.query.congregation) || undefined,
   kind: str(req.query.kind), group_id: Number(req.query.group) || undefined,
 });
-const canSeeMoney = (req: Request) => can(req.user, 'contributions', 'read');
+const canSeeMoney = (req: Request) => moneyAccess(req.user) !== 'none';
 /**
  * What visitors told the church (contact details, prayer requests, notes): roles that see members' details too — not
  * every role that sees the money (an external auditor, a treasurer).
@@ -75,11 +75,13 @@ recordRoutes.get('/services/:id/record', h((req) => {
   // each permission on its own (0.19.7): members' details decide the visitors, Offerings the money
   const lead = leadsMeeting(req.user?.person_id, id(req));
   const details = lead || seesVisitors(req);
-  const money = lead || canSeeMoney(req);
-  if (details && money) return r;
-  if (details) return rec.withoutMoney(r);
-  if (money) return { ...rec.withoutVisitorDetails(r), hidden: ['visitor contact'] };
-  return rec.forViewer(r);
+  // what this account may do with the money, for the page: 'read' shows it without letting it be typed
+  const money_access = moneyAccess(req.user, id(req));
+  const money = money_access !== 'none';
+  if (details && money) return { ...r, money_access };
+  if (details) return { ...rec.withoutMoney(r), money_access };
+  if (money) return { ...rec.withoutVisitorDetails(r), hidden: ['visitor contact'], money_access };
+  return { ...rec.forViewer(r), money_access };
 }));
 // visitor form: settings (administrators), a service's form (editors), the review queue (editors)
 const origin = (req: Request) => `${req.protocol}://${req.get('host')}`;

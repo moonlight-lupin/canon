@@ -6,6 +6,7 @@ import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { table, BadRequest, NotFound } from '../lib/table.ts';
 import { isLeaderRole, roleRank } from '../../shared/group-roles.ts';
 import { checkRef, inWall, wallSql } from '../lib/walls.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export class Conflict extends Error {
   status = 409;
@@ -29,7 +30,7 @@ export const groupMembers = table<GroupMember>({
 const personName = `TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) ||
   CASE WHEN p.native_name IS NOT NULL THEN ' ' || p.native_name ELSE '' END`;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => churchToday();
 
 /** A membership counts as current while its term has not ended. */
 const CURRENT = `(gm.end_date IS NULL OR gm.end_date >= ?)`;

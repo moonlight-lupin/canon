@@ -5,6 +5,7 @@ import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { visiblePeopleIds } from '../lib/walls.ts';
 import { BadRequest, Conflict, NotFound, table } from '../lib/table.ts';
 import { getSettings } from './settings.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export type BookKind = 'book' | 'dvd' | 'curriculum' | 'other';
 export const BOOK_KINDS: BookKind[] = ['book', 'dvd', 'curriculum', 'other'];
@@ -76,11 +77,12 @@ export const loans = table<Loan>({
 });
 
 /** Today on this computer (loans are due on local dates). */
-export const localToday = () => new Date().toLocaleDateString('en-CA');
+/** Today in the church's time zone (0.20.0: this computer's before; the rest of Canon used the UTC date). */
+export const localToday = () => churchToday();
 export const addDays = (date: string, days: number) => {
   const d = new Date(`${date}T12:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toLocaleDateString('en-CA');
+  return d.toLocaleDateString('en-CA'); // date-ok: arithmetic on a date that is already the church's
 };
 
 const PERSON_NAME = `TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) || CASE WHEN p.native_name IS NOT NULL THEN ' ' || p.native_name ELSE '' END`;

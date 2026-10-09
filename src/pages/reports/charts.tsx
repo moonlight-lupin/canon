@@ -38,7 +38,8 @@ export function Stat({ label, value, sub, tip }: { label: string; value: ReactNo
   );
 }
 
-export function Section({ title, tip, csv, pii, children }: { title: string; tip?: string; csv?: () => void; pii?: boolean; children: ReactNode }) {
+/** A report section; with an Excel download it says whether the file holds anyone's personal data (names included). */
+export function Section({ title, tip, csv, pii, children }: { title: string; tip?: string; children: ReactNode } & ({ csv?: undefined; pii?: undefined } | { csv: () => void; pii: boolean })) {
   const { t } = useI18n();
   return (
     <section className="card stack rep-sect">

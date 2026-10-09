@@ -38,6 +38,8 @@ export function Tagline({ lang: only, className }: { lang?: Lang; className?: st
 
 /** Logo version: a content hash string, null = no logo, undefined = not loaded yet. */
 let logoVersion: string | null | undefined;
+/** The logo's type (an SVG from before 0.19.11 is still shown; Settings suggests a PNG). */
+let logoMime: string | null = null;
 let loading: Promise<void> | null = null;
 const listeners = new Set<(v: string | null | undefined) => void>();
 
@@ -45,11 +47,13 @@ function loadLogo(force = false): Promise<void> {
   if (loading && !force) return loading;
   loading = fetch('/api/assets/logo/info', { credentials: 'same-origin' })
     .then((r) => (r.ok ? r.json() : { version: null }))
-    .then((j: { version: string | null }) => {
+    .then((j: { version: string | null; mime?: string | null }) => {
       logoVersion = j.version ?? null;
+      logoMime = j.mime ?? null;
     })
     .catch(() => {
       logoVersion = null;
+      logoMime = null;
     })
     .finally(() => listeners.forEach((f) => f(logoVersion)));
   return loading;
@@ -71,6 +75,9 @@ export function useLogo(): string | null | undefined {
   }, []);
   return v;
 }
+
+/** Is the current logo an SVG (uploaded before Canon took PNG, JPEG and WebP only)? */
+export const logoIsSvg = () => logoMime === 'image/svg+xml';
 
 /** Versioned URL: the server caches it for a year, and a new upload changes the version. */
 export const logoUrl = (version: string) => `/api/assets/logo?v=${encodeURIComponent(version)}`;

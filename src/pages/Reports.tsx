@@ -34,10 +34,11 @@ const TABS: { kind: ReportKind; label: string; money?: boolean }[] = [
 
 type Preset = '3m' | '6m' | '12m' | 'ytd' | 'last' | 'custom';
 
+/** The day after the same date `n` months earlier (counted at noon UTC: a local midnight read back as UTC was a day early). */
 const monthsAgo = (d: string, n: number) => {
-  const dt = new Date(d + 'T00:00:00');
-  dt.setMonth(dt.getMonth() - n);
-  dt.setDate(dt.getDate() + 1);
+  const dt = new Date(d + 'T12:00:00Z');
+  dt.setUTCMonth(dt.getUTCMonth() - n);
+  dt.setUTCDate(dt.getUTCDate() + 1);
   return dt.toISOString().slice(0, 10);
 };
 

@@ -27,5 +27,12 @@ const store = new AsyncLocalStorage<Actor>();
 /** Run `fn` with `actor` as the one making changes. */
 export const asActor = <T>(actor: Actor, fn: () => T): T => store.run(actor, fn);
 
-/** The current actor, or null outside a request (start-up, seeding, migrations: not logged). */
+/** The current actor, or null outside a request (seeding and migrations: not logged). */
 export const currentActor = (): Actor | null => store.getStore() ?? null;
+
+/**
+ * Canon itself: the daily tidy, automatic backups, notes made at start-up. Its changes are logged by "Canon" (0.20.0,
+ * Daedalus Workshop study of 0.19.10: they had no actor, so the change log never showed them).
+ */
+export const SYSTEM: Actor = { user_id: null, user_name: 'Canon', via: 'system' };
+export const asSystem = <T>(fn: () => T): T => asActor(SYSTEM, fn);

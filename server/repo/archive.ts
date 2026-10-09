@@ -21,6 +21,7 @@ import { logChange } from './changelog.ts';
 import { getSettings } from './settings.ts';
 import type { Visitor } from '../../shared/records.ts';
 import { encryptFile, keyForBackup } from '../lib/backup-crypto.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const archiveDir = () => path.join(path.dirname(config.dbPath), 'archives');
 const archiveFile = (year: number) => path.join(archiveDir(), `canon-archive-${year}.db`);
@@ -80,8 +81,9 @@ function eraseIn(d: Db, before: string, schema = 'main'): { visitors: number; lo
  */
 export function eraseVisitorContacts(months: number, today = new Date()): { visitors: number; log: number } {
   if (!months) return { visitors: 0, log: 0 };
-  const cutoff = new Date(today);
-  cutoff.setMonth(cutoff.getMonth() - months);
+  // `months` before the church's today (its time zone), counted on the calendar
+  const cutoff = new Date(`${churchToday(today)}T12:00:00Z`);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - months);
   const before = cutoff.toISOString().slice(0, 10);
   const total = tx(() => eraseIn(db, before));
   // visitor cards nobody reviewed are not kept beyond that either

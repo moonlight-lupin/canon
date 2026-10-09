@@ -24,11 +24,12 @@ import { bodyBytes, rawBody, uiLang } from './csv.ts';
 import { importJournals, journalTemplateRows, readJournalFile } from '../repo/bk-import.ts';
 import { asActor } from '../lib/actor.ts';
 import { checkRef, wallSql } from '../lib/walls.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const bookkeepingRoutes = express.Router();
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => churchToday();
 const num = (v: unknown) => (typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : undefined);
 const filterOf = (q: Record<string, unknown>): R.Filter => ({ fund_id: num(q.fund_id), project_id: num(q.project_id), ministry_id: num(q.ministry_id), congregation_id: num(q.congregation_id) });
 
@@ -221,7 +222,7 @@ bookkeepingRoutes.get('/bookkeeping/export/journals.csv', h((req, res) => {
 bookkeepingRoutes.get('/bookkeeping/export/journals.xlsx', h((req, res) => {
   const p = period(req.query);
   const [header, ...rows] = journalsCsv(p.from, p.to);
-  sendXlsx(req, res, uiLang(req), { file: `journals-${p.from}-to-${p.to}`, title: 'Journals', period: `${p.from} – ${p.to}`, header: header as string[], rows, money: [10, 11, 14] });
+  sendXlsx(req, res, uiLang(req), { file: `journals-${p.from}-to-${p.to}`, title: 'Journals', period: `${p.from} – ${p.to}`, header: header as string[], rows, money: [10, 11, 14], pii: true });
 }));
 
 // ---------------------------------------------------------------- bank statements
@@ -412,7 +413,7 @@ bookkeepingRoutes.get('/bookkeeping/claims-link', h(async (req) => {
 /** The template to fill in (Excel; CSV also accepted when importing). */
 bookkeepingRoutes.get('/bookkeeping/import/journals-template.xlsx', h((req, res) => {
   const [header, ...rows] = journalTemplateRows();
-  sendXlsx(req, res, uiLang(req), { file: 'canon-journals-template', title: 'Journals: template', header, rows, money: [9, 10] });
+  sendXlsx(req, res, uiLang(req), { file: 'canon-journals-template', title: 'Journals: template', header, rows, money: [9, 10], pii: false });
 }));
 /** Preview (?dry_run=1) or import: journals without errors come in as drafts, for the treasurer to post. */
 bookkeepingRoutes.post('/bookkeeping/import/journals', rawBody, h((req) => {
@@ -431,7 +432,7 @@ const chartPart = (v: unknown): ChartPart => {
 bookkeepingRoutes.get('/bookkeeping/import/chart/:part.xlsx', h((req, res) => {
   const part = chartPart(req.params.part);
   const [header, ...rows] = part === 'accounts' ? accountsCsv() : fundsCsv();
-  sendXlsx(req, res, uiLang(req), { file: `canon-${part}`, title: part === 'accounts' ? 'Chart of accounts' : 'Funds', header: header as string[], rows });
+  sendXlsx(req, res, uiLang(req), { file: `canon-${part}`, title: part === 'accounts' ? 'Chart of accounts' : 'Funds', header: header as string[], rows, pii: false });
 }));
 /** Preview (?dry_run=1) or import the chart of accounts or the funds. */
 bookkeepingRoutes.post('/bookkeeping/import/chart/:part', rawBody, h((req) => asActor(

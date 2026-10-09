@@ -38,18 +38,25 @@ export function fieldKey(label: L10n, taken: string[]): string {
 /** An option's stored value: its label in the church's first language. */
 export const optionValue = (o: L10n, firstLang = 'en') => (o[firstLang] || o.en || o.zh || Object.values(o).find(Boolean) || '').trim();
 
-/** Clean field definitions from an administrator (keys kept for existing fields, made for new ones). */
-export function cleanFieldDefs(input: MemberField[], current: MemberField[]): MemberField[] {
+/**
+ * Clean field definitions from an administrator. A field the church has keeps its key, and so does an archived one
+ * brought back (restored, with its values); a new field gets a key never used before — not by a field it has, one it
+ * archived, nor one whose values are still in the register (`taken`). Fields left out are archived, not deleted, so a
+ * new field with the same label never shows an old field's values (0.20.0, Daedalus Workshop study of 0.19.10).
+ */
+export function cleanFieldDefs(input: MemberField[], current: MemberField[], retired: MemberField[] = [], taken: string[] = []): { fields: MemberField[]; retired: MemberField[] } {
   const out: MemberField[] = [];
+  const known = new Set([...current, ...retired].map((c) => c.key));
   for (const f of input.slice(0, MAX_MEMBER_FIELDS)) {
     if (!Object.values(f.label ?? {}).some((v) => v?.trim())) continue;
     const type = MEMBER_FIELD_TYPES.includes(f.type) ? f.type : 'text';
-    const known = f.key && current.some((c) => c.key === f.key) ? f.key : undefined;
-    const key = known ?? fieldKey(f.label, [...current.map((c) => c.key), ...out.map((o) => o.key)]);
+    const key = f.key && known.has(f.key) && !out.some((o) => o.key === f.key) ? f.key : fieldKey(f.label, [...known, ...taken, ...out.map((o) => o.key)]);
     const options = type === 'choice' ? (f.options ?? []).filter((o) => Object.values(o).some((v) => v?.trim())).slice(0, 30) : undefined;
     out.push({ key, label: f.label, type, ...(options ? { options } : {}), ...(f.sensitive ? { sensitive: true } : {}) });
   }
-  return out;
+  const kept = new Set(out.map((o) => o.key));
+  const archived = [...retired, ...current.filter((c) => !retired.some((r) => r.key === c.key))].filter((c) => !kept.has(c.key));
+  return { fields: out, retired: archived };
 }
 
 /**

@@ -3,10 +3,12 @@
 import { isSqliteError } from '../lib/sqlite.ts';
 import { z, ZodError } from 'zod';
 import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
-import type { ModuleAccess, ModuleKey } from '../../shared/types.ts';
+import type { FieldPrivacy, ModuleAccess, ModuleKey } from '../../shared/types.ts';
+import type { OptionalModule } from '../../shared/modules.ts';
 import { RefError } from '../../shared/bible.ts';
 import { db, tx } from '../db.ts';
 import type { McpAuth } from '../oauth.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export type Access = 'read' | 'write';
 export interface Ctx {
@@ -15,18 +17,18 @@ export interface Ctx {
   pii: boolean;
   /** the church's member fields marked sensitive may be returned and changed (absent = as pii) */
   sensitive?: boolean;
-  /** new visitors on service records: none, names & follow-up, or with contact details (absent = as pii) */
+  /** new visitors on service records: none, names & follow-up, or with contact details (absent = none) */
   visitors?: 'off' | 'names' | 'contact';
   /** songs' sheet music may be listed and its pictures returned */
   scores?: boolean;
-  /** effective access per module on this connection (absent = assume every module readable) */
+  /** effective access per module on this connection (absent = none: checks fail closed) */
   levels?: Record<ModuleKey, ModuleAccess>;
   /** the address this client reached Canon at (for links in results), without a trailing slash */
   base?: string;
 }
 
 /** May this request read `module`? Used where one tool adds data from another module (e.g. song usage from services). */
-export const canRead = (ctx: Ctx, module: ModuleKey) => !ctx.levels || ctx.levels[module] !== 'off';
+export const canRead = (ctx: Ctx | undefined, module: ModuleKey) => !!ctx?.levels && ctx.levels[module] !== 'off';
 // Handlers receive arguments already validated against `input` by the MCP SDK.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Args = Record<string, any>;
@@ -47,6 +49,8 @@ export interface ToolDef {
   always?: boolean;
   /** follows the connection's module setting but not the person's role: the person's own records (expense claims) */
   own?: boolean;
+  /** a part of Canon (Settings → Modules) the tool needs besides its own module, e.g. the calendar's meetings */
+  switch?: OptionalModule;
   handler: (args: Args, ctx: Ctx) => unknown;
 }
 
@@ -68,20 +72,27 @@ export const Id = z.number().int().positive();
 export const DateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD');
 export const Limit = (def: number, max: number) => z.number().int().min(1).max(max).default(def).describe(`max ${max}`);
 
-export const today = () => new Date().toISOString().slice(0, 10);
+export const today = () => churchToday();
 export const addDays = (d: string, n: number) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400_000).toISOString().slice(0, 10);
 
-// ---------------------------------------------------------------- PII redaction
+// ---------------------------------------------------------------- personal data
 
-export const PERSON_PII = ['phone', 'email', 'address', 'birth_date', 'notes'] as const;
-export const HOUSEHOLD_PII = ['address', 'phone', 'notes'] as const;
-export const COWORKER_PII = ['phone', 'email', 'notes'] as const;
+/**
+ * A register row as an agent may see it: only the fields marked where they are defined (shared/types.ts
+ * PERSON_FIELDS, HOUSEHOLD_FIELDS, COWORKER_FIELDS), the personal ones only when personal data is shared. A column
+ * that isn't marked is left out (fail closed).
+ */
+export function shareFields<T extends object>(row: T, fields: Record<string, FieldPrivacy>, pii: boolean): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) if (fields[k] === 'shared' || (pii && fields[k] === 'personal')) out[k] = v;
+  return out as Partial<T>;
+}
 
-export function redact<T extends object>(o: T, keys: readonly string[], pii: boolean): T {
-  if (pii) return o;
-  const out = { ...o } as Record<string, unknown>;
-  for (const k of keys) delete out[k];
-  return out as T;
+/** Refuse writing personal fields on a connection that may not read them (an agent overwriting what it can't see). */
+export function refusePersonal(input: object | undefined, fields: Record<string, FieldPrivacy>, pii: boolean) {
+  if (pii || !input) return;
+  const named = Object.keys(input).filter((k) => fields[k] === 'personal' && (input as Record<string, unknown>)[k] !== undefined);
+  if (named.length) throw new InputError(`${named.join(', ')}: members' personal data is not shared with AI agents on this connection, so it can't be changed here either.`);
 }
 
 // ---------------------------------------------------------------- errors

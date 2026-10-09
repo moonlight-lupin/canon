@@ -17,7 +17,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | groups | `canon_find_groups` (kinds include `sunday_school`) | `canon_save_group`, `canon_update_group_members` (batch; `leads` = leads the group) |
 | records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |
 | contributions (inside records, read only) | `canon_offerings_report` (+ offerings in the record tools) | — |
-| reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years`), `canon_membership_stats` (members) | — |
+| reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years` at most 20 apart), `canon_membership_stats` (members; numbers only, no names: who joined is in `canon_find_people`) | — |
 | lending (optional) | `canon_lending` (catalogue; a title's copies; `loans` open / overdue / returned; `isbn` lookup) | `canon_save_book` (titles and copies; not lending / returning) |
 | equipment (optional) | `canon_equipment` (register; `due` maintenance; one item by id or `number`) | `canon_save_equipment` (items; `maintenance` done) |
 | claims (book-keeping; anyone's own) | `canon_claims` (own claims, those to approve; all for book-keepers — within their congregation when the account is limited to one) | `canon_draft_claim` (from receipt photos the user shows; returns the link to attach photos and sign) |
@@ -86,7 +86,9 @@ Call to Worship → Invocation → Hymn of praise (stand) → Reading of the Law
 
 ## Troubleshooting
 
-- Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, the user's role doesn't allow it, or that part of Canon is switched off (Settings → Modules).
+- Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, the user's role doesn't allow it, or that part of Canon is switched off (Settings → Modules; `canon_whoami` says so; with Volunteers off, no roster in `canon_get_service`, no `roster_summary`, and `with_roster` is refused).
+- Result too large (`ok: false`, "The result is too large …", over ~500 KB of text or 12 MB of pictures) → narrow it: a shorter period, one congregation, a smaller `limit` or the next page, fewer pictures.
+- Without personal data shared: `canon_find_people` `q` matches names only; the save tools refuse contact details, address, birth date and notes; `canon_admin_change_log` `q` searches names and summaries only.
 - `member_care` missing → members off, or member details not exposed (the default).
 - "N of M operations failed — nothing was applied" → fix the per-op errors, resend the whole batch.
 - "No Bible is set up for language …" → an administrator adds one in Settings → Languages.

@@ -9,6 +9,15 @@ import { CongregationsCard } from '../../components/Congregations.tsx';
 import type { PaperSize, Settings as SettingsT } from '../../types-client.ts';
 import '../people.css';
 
+/** The time zones this browser knows (IANA names), for Settings → Church → Time zone. */
+const ZONES: string[] = (() => {
+  try {
+    return (Intl as unknown as { supportedValuesOf(k: string): string[] }).supportedValuesOf('timeZone');
+  } catch {
+    return ['Asia/Singapore', 'Asia/Kuala_Lumpur', 'Asia/Jakarta', 'Asia/Hong_Kong', 'Asia/Taipei', 'Australia/Sydney', 'Europe/London', 'America/New_York', 'UTC'];
+  }
+})();
+
 export type Translation = { code: string; lang: string; name: string; license: string; verses: number };
 
 export const COVER_LABEL: Record<SettingsT['bulletin_cover'], string> = { plain: 'Plain', cross: 'Cross', logo: 'Church logo', verse: 'Verse of the week' };
@@ -39,7 +48,7 @@ export function ChurchTab() {
   const save = async () => {
     const patch: Partial<SettingsT> = {
       church_name: d.church_name, church_address: d.church_address, church_contact: d.church_contact, ccli_license: d.ccli_license,
-      default_start_time: d.default_start_time, bilingual_layout: d.bilingual_layout,
+      default_start_time: d.default_start_time, time_zone: d.time_zone ?? '', bilingual_layout: d.bilingual_layout,
       season_colours: d.season_colours, bulletin_cover: d.bulletin_cover,
     };
     const ok = await run(() => api.patch<SettingsT>('/settings', patch), t('Saved.'));
@@ -61,6 +70,12 @@ export function ChurchTab() {
         </Field>
         <Field label={t('CCLI licence number')}><input value={d.ccli_license} onChange={(e) => set('ccli_license', e.target.value)} /></Field>
         <Field label={t('Default start time')}><input type="time" value={d.default_start_time} onChange={(e) => e.target.value && set('default_start_time', e.target.value)} /></Field>
+        <Field label={t('Time zone')} hint={t('What “today” is: the date of claims and journals, reports up to today, the rota and meetings ahead, when the visitor form opens.')}>
+          <select value={d.time_zone ?? ''} onChange={(e) => set('time_zone', e.target.value)}>
+            <option value="">{t('The computer Canon runs on ({zone})').replace('{zone}', (d as SettingsT & { computer_zone?: string }).computer_zone ?? '')}</option>
+            {ZONES.map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+          </select>
+        </Field>
       </div>
       <h3 className="sect mt">{t('Bulletin & slides')}</h3>
       <div className="form-grid">

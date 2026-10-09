@@ -17,12 +17,13 @@ import { uiLang } from './csv.ts';
 import { addSampleData, prepareSampleLibrary, removeSampleData, sampleDataStatus } from '../repo/sample-data.ts';
 import { accountsCsv, fundsCsv, journalsCsv } from '../repo/bk-export.ts';
 import { toCsv } from '../../shared/reports.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const exportRoutes = express.Router();
 const SECTIONS: LibrarySection[] = ['songs', 'texts', 'blocks', 'backgrounds', 'images', 'bibles'];
 exportRoutes.use('/export', requireAdmin);
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => churchToday();
 const flag = (v: unknown, dflt: boolean) => (v === undefined ? dflt : v === '1' || v === 'true');
 const download = (res: Response, name: string, type: string, body: Buffer | string) => {
   res.setHeader('Content-Type', type);
@@ -56,7 +57,7 @@ exportRoutes.get('/export/bookkeeping/:what.xlsx', (req, res, next) => {
     const make = BK_CSV[String(req.params.what)];
     if (!make || bkOff()) return void res.status(404).json({ error: 'Not found' });
     const [header, ...rows] = make();
-    sendXlsx(req, res, uiLang(req), { file: `bookkeeping-${req.params.what}-${today()}`, title: BK_TITLE[String(req.params.what)], header: header as string[], rows, money: BK_MONEY[String(req.params.what)] });
+    sendXlsx(req, res, uiLang(req), { file: `bookkeeping-${req.params.what}-${today()}`, title: BK_TITLE[String(req.params.what)], header: header as string[], rows, money: BK_MONEY[String(req.params.what)], pii: req.params.what === 'journals' });
   } catch (e) {
     next(e);
   }
@@ -110,7 +111,7 @@ exportRoutes.get('/export/all.zip', (req, res, next) => {
     if (!bkOff()) {
       for (const [k, make] of Object.entries(BK_CSV)) {
         const [header, ...rows] = make();
-        files.push({ name: `bookkeeping-${k}.xlsx`, data: Buffer.from(tableXlsx(req, lang, { file: '', title: BK_TITLE[k], header: header as string[], rows, money: BK_MONEY[k] })) });
+        files.push({ name: `bookkeeping-${k}.xlsx`, data: Buffer.from(tableXlsx(req, lang, { file: '', title: BK_TITLE[k], header: header as string[], rows, money: BK_MONEY[k], pii: k === 'journals' })) });
       }
       // and the journals as CSV, for accounting software
       files.push({ name: 'bookkeeping-journals.csv', data: toCsv(journalsCsv()) });

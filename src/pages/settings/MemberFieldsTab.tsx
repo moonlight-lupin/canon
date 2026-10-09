@@ -1,5 +1,7 @@
 // Settings → Member fields (administrators): the church's own fields on the member register — text, a date, yes / no
-// or a choice — each optionally marked sensitive (hidden from read-only accounts and AI agents).
+// or a choice — each optionally marked sensitive (hidden from read-only accounts and AI agents). A removed field is
+// archived (Removed fields, with Restore): its key is never used again, so a new field never shows its values.
+// A field that has values keeps its type (the server says how many members have one).
 import { useEffect, useState } from 'react';
 import { api } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
@@ -11,9 +13,12 @@ import { MAX_MEMBER_FIELDS, MEMBER_FIELD_TYPES, type MemberField, type MemberFie
 const TYPE_LABEL: Record<MemberFieldType, string> = { text: 'Text', date: 'Date', yesno: 'Yes / no', choice: 'Choice from a list' };
 
 export function MemberFieldsTab() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { settings, reloadSettings } = useSession();
+  const labelOf = (f: MemberField) => f.label[lang] || f.label.en || Object.values(f.label).find(Boolean) || f.key;
   const [fields, setFields] = useState<MemberField[]>([]);
+  // removed fields not brought back yet in this edit
+  const retired = (settings?.member_fields_retired ?? []).filter((r) => !fields.some((f) => f.key === r.key));
   const { run, busy } = useAction();
   useEffect(() => {
     setFields(settings?.member_fields ?? []);
@@ -73,8 +78,20 @@ export function MemberFieldsTab() {
       <div className="row" style={{ gap: 8 }}>
         {fields.length < MAX_MEMBER_FIELDS && <button className="btn" onClick={() => setFields([...fields, { key: '', label: {}, type: 'text' }])}><Icon name="plus" />{t('Add field')}</button>}
         <button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button>
-        <InfoTip text={t('Removing a field hides it everywhere; values already entered are kept and come back if a field with the same name is added again.')} />
+        <InfoTip text={t('Removing a field hides it everywhere; its values are kept, and Restore (under Removed fields) brings it back with them. A new field never takes a removed field’s place, even with the same name.')} />
       </div>
+      {retired.length > 0 && (
+        <div className="stack" style={{ gap: 6 }}>
+          <strong>{t('Removed fields')}</strong>
+          {retired.map((r) => (
+            <div key={r.key} className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <span className="grow">{labelOf(r)} <span className="small muted"><code>custom_{r.key}</code></span></span>
+              <button className="btn sm" disabled={fields.length >= MAX_MEMBER_FIELDS} onClick={() => setFields([...fields, r])}><Icon name="refresh" />{t('Restore')}</button>
+            </div>
+          ))}
+          <div className="small muted">{t('Press Save after restoring.')}</div>
+        </div>
+      )}
     </div>
     </L10nEditScope>
   );

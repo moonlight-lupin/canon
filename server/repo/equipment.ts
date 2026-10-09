@@ -3,6 +3,7 @@
 // its maintenance (a log, and the next service due). Items are numbered E0001 … with QR labels.
 import { all, get, run, tx, type SqlValue } from '../db.ts';
 import { BadRequest, Conflict, NotFound, table } from '../lib/table.ts';
+import { PICTURE_OR_PDF, realType, type FileType } from '../lib/image.ts';
 import { addDays, localToday, nextNumber, walledPerson } from './lending.ts';
 
 export type Condition = 'good' | 'fair' | 'poor' | 'broken';
@@ -63,7 +64,7 @@ export const addMonths = (date: string, months: number) => {
   d.setDate(1);
   d.setMonth(d.getMonth() + months);
   d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
-  return d.toLocaleDateString('en-CA');
+  return d.toLocaleDateString('en-CA'); // date-ok: arithmetic on a date that is already the church's
 };
 
 export interface ItemRow extends Item {
@@ -198,29 +199,24 @@ export function removeMaintenance(id: number) {
 // ---------------------------------------------------------------- photos and receipts
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const MIME: Record<string, (b: Buffer) => boolean> = {
-  'image/png': (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
-  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8,
-  'image/webp': (b) => b.subarray(0, 4).toString() === 'RIFF' && b.subarray(8, 12).toString() === 'WEBP',
-  'application/pdf': (b) => b.subarray(0, 5).toString() === '%PDF-',
-};
 
-/** A photo or PDF someone uploaded: the kind it says it is, at most 10 MB. Returns a safe file name. (Also claims' receipts.) */
-export function checkUpload(mime: string, data: Buffer, fileName: string): string {
-  const check = MIME[mime];
-  if (!check) throw new BadRequest('Photos (PNG, JPEG, WebP) and PDF files only.');
+/**
+ * A photo or PDF someone uploaded, at most 10 MB: a safe file name, and its type from its bytes (what the browser
+ * said doesn't count). Also claims' receipts.
+ */
+export function checkUpload(_declared: string, data: Buffer, fileName: string): { name: string; mime: FileType } {
   if (data.length > MAX_FILE_BYTES) throw Object.assign(new Error('The file is larger than 10 MB.'), { status: 413 });
-  if (!check(data)) throw new BadRequest('The file is not what its name says.');
-  return (fileName || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120);
+  const mime = realType(data, PICTURE_OR_PDF, 'Photos (PNG, JPEG, WebP) and PDF files only.');
+  return { name: (fileName || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120), mime };
 }
 
 export function addFile(itemId: number, f: { kind: FileKind; name: string; mime: string; data: Buffer }): ItemFile {
   items.get(itemId);
   if (!FILE_KINDS.includes(f.kind)) throw new BadRequest('Unknown kind of file.');
-  const name = checkUpload(f.mime, f.data, f.name);
+  const { name, mime } = checkUpload(f.mime, f.data, f.name);
   return tx(() => {
-    const row = files.insert({ equipment_id: itemId, kind: f.kind, name, mime: f.mime, size: f.data.length });
-    run("INSERT INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))", `equip-file-${row.id}`, f.mime, f.data);
+    const row = files.insert({ equipment_id: itemId, kind: f.kind, name, mime, size: f.data.length });
+    run("INSERT INTO assets (key, mime, data, updated_at) VALUES (?, ?, ?, datetime('now'))", `equip-file-${row.id}`, mime, f.data);
     return row;
   });
 }

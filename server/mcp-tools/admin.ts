@@ -79,7 +79,9 @@ export const ADMIN_TOOLS: ToolDef[] = [
       size: Limit(30, 100),
     },
     handler: (a, ctx) => {
-      const r = listChanges({ ...a, via: a.via as never });
+      // without personal data, words are looked for in the entry's name and summary only: a search of the old and new
+      // values (a phone number) would tell whose they are without showing them
+      const r = listChanges({ ...a, via: a.via as never, values: ctx.pii });
       return {
         total: r.total, page: r.page, size: r.size,
         entries: r.rows.map((c) => ({

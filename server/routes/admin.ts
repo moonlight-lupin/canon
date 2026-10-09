@@ -18,6 +18,7 @@ import { listRoles } from '../lib/permissions.ts';
 import { PERM_MODULES } from '../../shared/permissions.ts';
 import { OPTIONAL_MODULES } from '../../shared/modules.ts';
 import * as updates from '../lib/updates.ts';
+import { churchToday } from '../lib/dates.ts';
 
 export const adminRoutes = express.Router();
 
@@ -47,7 +48,7 @@ adminRoutes.get('/mcp/audit.xlsx', requireAdmin, h((req, res) => {
   const r = listAudit({ ...auditQuery(q), all: true });
   const rows = r.rows as { at: string; user_name: string | null; client_name: string | null; client_id: string | null; tool: string; module: string | null; access: string | null; ok: number; error: string | null; args: string | null }[];
   sendXlsx(req, res, uiLang(req), {
-    file: `canon-ai-activity-${new Date().toISOString().slice(0, 10)}`, title: 'AI activity log', ...logFilters(q),
+    file: `canon-ai-activity-${churchToday()}`, title: 'AI activity log', ...logFilters(q), pii: true,
     header: ['Time', 'User', 'Client', 'Tool', 'Module', 'Access', 'Result', 'Error', 'Arguments'],
     rows: rows.map((a) => [localTime(a.at), a.user_name, a.client_name ?? a.client_id, a.tool, a.module, a.access, a.ok ? 'OK' : 'Error', a.error, a.args]),
   });
@@ -71,7 +72,7 @@ adminRoutes.get('/change-log.xlsx', requireAdmin, h((req, res) => {
   const VIA: Record<string, string> = { web: 'In Canon', mcp: 'AI agent', import: 'CSV import', system: 'Canon' };
   const ACTION: Record<string, string> = { create: 'Added', update: 'Changed', delete: 'Deleted' };
   sendXlsx(req, res, uiLang(req), {
-    file: `canon-change-log-${new Date().toISOString().slice(0, 10)}`, title: 'Change log', ...logFilters(q),
+    file: `canon-change-log-${churchToday()}`, title: 'Change log', ...logFilters(q), pii: true,
     header: ['Time', 'Who', 'How', 'Client', 'What', 'Record', 'Action', 'Summary', 'Changes'],
     rows: r.rows.map((c) => [
       localTime(c.at), c.user_name, VIA[c.via] ?? c.via, c.client, ENTITY_LABEL[c.entity]?.en ?? c.entity, c.name, ACTION[c.action] ?? c.action, c.summary,

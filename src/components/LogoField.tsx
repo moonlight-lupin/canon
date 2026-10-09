@@ -4,9 +4,10 @@ import { api } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { confirmAction, useAction } from './ui.tsx';
 import { Icon } from './icons.tsx';
-import { logoUrl, refreshLogo, useLogo } from './brand.tsx';
+import { logoIsSvg, logoUrl, refreshLogo, useLogo } from './brand.tsx';
 
-const ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+// no SVG (0.19.11): it can carry script. One uploaded before keeps showing, with a suggestion to replace it.
+const ACCEPT = 'image/png,image/jpeg,image/webp';
 const MAX = 2 * 1024 * 1024;
 
 export function LogoField() {
@@ -18,7 +19,7 @@ export function LogoField() {
   const upload = async (file: File | undefined) => {
     if (!file) return;
     await run(async () => {
-      if (!ACCEPT.split(',').includes(file.type)) throw new Error(t('Upload a PNG, JPEG, WebP or SVG image'));
+      if (!ACCEPT.split(',').includes(file.type)) throw new Error(t('Upload a PNG, JPEG or WebP image'));
       if (file.size > MAX) throw new Error(t('The logo must be 2 MB or smaller'));
       await api.put('/assets/logo', file);
       await refreshLogo();
@@ -47,7 +48,8 @@ export function LogoField() {
           </button>
           {version && <button type="button" className="btn sm ghost danger" disabled={busy} onClick={remove}><Icon name="trash" />{t('Remove')}</button>}
         </div>
-        <span className="field-hint">{t('PNG, JPEG, WebP or SVG, up to 2 MB. Shown in the sidebar, on the sign-in page, share page, slides and the “Church logo” bulletin cover.')}</span>
+        <span className="field-hint">{t('PNG, JPEG or WebP, up to 2 MB. Shown in the sidebar, on the sign-in page, share page, slides and the “Church logo” bulletin cover.')}</span>
+        {version && logoIsSvg() && <span className="field-hint">{t('This logo is an SVG, which Canon no longer takes (it can carry script). It still shows; replace it with a PNG when you can.')}</span>}
         <input ref={input} type="file" accept={ACCEPT} hidden onChange={(e) => upload(e.target.files?.[0])} />
       </div>
     </div>

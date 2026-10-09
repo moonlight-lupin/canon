@@ -130,3 +130,54 @@ test('a removed field keeps its values; CSV export and import carry the fields',
   const bad = await call(as.editor, 'POST', '/csv/members/import?dry_run=1', badFile, 'text/csv');
   assert.equal(bad.json!.counts.error, 1);
 });
+
+// ---------------------------------------------------------------- 0.20.0 (Daedalus Workshop study of 0.19.10)
+
+test('17. a removed field is archived, and a new field with the same label gets a key of its own: old values don’t reappear', async () => {
+  const defs = (await call(as.admin, 'GET', '/settings')).json!.member_fields as Json[];
+  const removed = await call(as.admin, 'PUT', '/member-fields', defs.filter((d) => d.key !== 'dietary_needs'));
+  assert.equal(removed.status, 200, removed.text);
+  const s = (await call(as.admin, 'GET', '/settings')).json!;
+  assert.ok((s.member_fields_retired as Json[]).some((d) => d.key === 'dietary_needs'), 'kept, archived');
+  const added = (await call(as.admin, 'PUT', '/member-fields', [...s.member_fields, { label: { en: 'Dietary needs' }, type: 'date' }])).json as Json[];
+  const fresh = added.find((d) => d.label.en === 'Dietary needs')!;
+  assert.notEqual(fresh.key, 'dietary_needs', 'never the old key');
+  const p = (await call(as.editor, 'GET', `/people/${pid}`)).json!;
+  assert.equal(p.custom[fresh.key], undefined, '“No peanuts” is not a date in the new field');
+  assert.equal(reg.people.get(pid).custom?.dietary_needs, 'No peanuts', 'still kept under the archived field');
+  // a key a field used before 0.20.0 (gone from the definitions, its values still in the register) isn't reused either
+  db.prepare("UPDATE people SET custom = json_set(custom, '$.baptised_abroad', 'yes') WHERE id = ?").run(pid);
+  const again = (await call(as.admin, 'PUT', '/member-fields', [...added, { label: { en: 'Baptised abroad' }, type: 'text' }])).json as Json[];
+  assert.notEqual(again.find((d) => d.label.en === 'Baptised abroad')!.key, 'baptised_abroad');
+});
+
+test('17. a field that has values can’t change its type (the values wouldn’t fit); a stale value never blocks saving a member', async () => {
+  const defs = (await call(as.admin, 'GET', '/settings')).json!.member_fields as Json[];
+  const withValues = defs.find((d) => d.key === 'joined_via')!;
+  const r = await call(as.admin, 'PUT', '/member-fields', defs.map((d) => (d.key === 'joined_via' ? { ...d, type: 'date' } : d)));
+  assert.equal(r.status, 409);
+  assert.ok(r.json!.error.startsWith(`1 member has a value in “${withValues.label.en}”`), r.json!.error);
+  assert.equal(((await call(as.admin, 'GET', '/settings')).json!.member_fields as Json[]).find((d) => d.key === 'joined_via')!.type, withValues.type, 'unchanged');
+  // a value that no longer fits (its choice was renamed): the member can still be saved, and the value stays
+  db.prepare("UPDATE people SET custom = json_set(custom, '$.joined_via', 'An old choice') WHERE id = ?").run(pid);
+  const save = await call(as.editor, 'PATCH', `/people/${pid}`, { notes: 'Saved although a stale value is stored', custom: { cell_group_leader: 'yes' } });
+  assert.equal(save.status, 200, save.text);
+  assert.equal(reg.people.get(pid).custom?.joined_via, 'An old choice');
+});
+
+test('26. the members list pages on the server: status and member-field filters there too, with counts per status', async () => {
+  for (let i = 0; i < 12; i++) reg.people.insert({ first_name: `Pager${i}`, last_name: 'Example', status: i < 4 ? 'visitor' : 'member', custom: i % 2 ? { cell_group_leader: 'yes' } : {} } as never);
+  const page = await call(as.editor, 'GET', '/people?q=Pager&limit=5&offset=5');
+  assert.equal(page.json!.total, 12);
+  assert.equal(page.json!.rows.length, 5);
+  assert.deepEqual(page.json!.by_status, { member: 8, visitor: 4 }, 'the chips’ counts, for everyone matching (not only this page)');
+  const visitors = await call(as.editor, 'GET', '/people?q=Pager&status=visitor&limit=100');
+  assert.equal(visitors.json!.total, 4);
+  const leaders = await call(as.editor, 'GET', '/people?q=Pager&field=cell_group_leader%3Dyes&limit=100');
+  assert.equal(leaders.json!.total, 6);
+  assert.equal((await call(as.editor, 'GET', '/people?field=no_such_field%3Dyes')).status, 400);
+  const huge = await call(as.editor, 'GET', '/people?limit=1000000');
+  assert.ok(huge.json!.rows.length <= 5000, 'a limit can’t ask for the whole register at once');
+  // a sensitive field: not a filter for a role that doesn't see sensitive fields (it would tell who has what)
+  assert.equal((await call(as.viewer, 'GET', '/people?field=dietary_needs%3DNo%20peanuts')).status, 400);
+});

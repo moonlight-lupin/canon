@@ -5,7 +5,7 @@
 import { st } from '../lib/server-text.ts';
 import { renewUrl } from './lending-self.ts';
 import type { L10n, Lang } from '../../shared/types.ts';
-import { all, run } from '../db.ts';
+import { all, get, run } from '../db.ts';
 import { pick } from '../lib/chinese.ts';
 import { isFatal, mapMailError, sendMail, smtpConfigured } from '../lib/mailer.ts';
 import { getSettings } from './settings.ts';
@@ -87,10 +87,24 @@ function render(kind: Kind, list: Due[], langs: Lang[], church: L10n) {
 
 export interface ReminderResult { sent: number; failed: number; skipped_no_email: number; errors: string[] }
 
+/** A run of reminders going out now ("Send now" and the daily run never overlap). */
+let sending = false;
+
 /** Send today's reminders (each borrower once per kind). Stops at the first error that would fail them all. */
 export async function sendLoanReminders(opts: { today?: string; userId?: number | null } = {}): Promise<ReminderResult> {
-  const out: ReminderResult = { sent: 0, failed: 0, skipped_no_email: 0, errors: [] };
   if (!smtpConfigured()) throw Object.assign(new Error('E-mail is not set up yet (Settings → E-mail).'), { status: 400 });
+  // two runs at once (Send now during the daily run, or pressed twice) read the same list and e-mailed everyone twice
+  if (sending) throw Object.assign(new Error('The reminders are being sent already. Look at the e-mail log in a minute.'), { status: 409 });
+  sending = true;
+  try {
+    return await sendNow(opts);
+  } finally {
+    sending = false;
+  }
+}
+
+async function sendNow(opts: { today?: string; userId?: number | null }): Promise<ReminderResult> {
+  const out: ReminderResult = { sent: 0, failed: 0, skipped_no_email: 0, errors: [] };
   const today = opts.today ?? localToday();
   const s = getSettings();
   const { due, overdue } = dueReminders(today);
@@ -107,13 +121,18 @@ export async function sendLoanReminders(opts: { today?: string; userId?: number 
     const p = list[0];
     const langs = messageLangs(p.preferred_lang, s.languages);
     const msg = render(kind, list, langs, s.church_name);
+    // each loan is marked reminded before the e-mail goes (and the mark taken back if it can't be sent): a run that
+    // stops half-way, or another Canon on the same data, never e-mails the same borrower twice
+    const col = kind === 'loan_due' ? 'reminded_on' : 'overdue_reminded_on';
+    const before = new Map(list.map((d) => [d.loan_id, get<Record<string, string | null>>(`SELECT ${col} AS v FROM lending_loans WHERE id = ?`, d.loan_id)?.v ?? null]));
+    const claimed = list.filter((d) => run(`UPDATE lending_loans SET ${col} = ? WHERE id = ? AND ${col} IS NOT ?`, today, d.loan_id, today).changes);
+    if (!claimed.length) continue;
     try {
       await sendMail({ to: p.email, subject: msg.subject, text: msg.text, html: msg.html });
       logEmail({ user_id: opts.userId ?? null, person_id: p.person_id, to_addr: p.email, subject: msg.subject, kind, ok: true });
-      const col = kind === 'loan_due' ? 'reminded_on' : 'overdue_reminded_on';
-      for (const d of list) run(`UPDATE lending_loans SET ${col} = ? WHERE id = ?`, today, d.loan_id);
       out.sent++;
     } catch (e) {
+      for (const d of claimed) run(`UPDATE lending_loans SET ${col} = ? WHERE id = ?`, before.get(d.loan_id) ?? null, d.loan_id);
       const err = mapMailError(e);
       logEmail({ user_id: opts.userId ?? null, person_id: p.person_id, to_addr: p.email, subject: msg.subject, kind, ok: false, error: err.message });
       out.failed++;
@@ -129,6 +148,8 @@ export async function sendLoanReminders(opts: { today?: string; userId?: number 
 export async function dailyLoanReminders() {
   const s = getSettings();
   if (s.modules.lending === false || !s.lending.send_reminders || !smtpConfigured()) return null;
+  // someone pressed Send now just before: today's are going out already
+  if (sending) return null;
   return sendLoanReminders();
 }
 

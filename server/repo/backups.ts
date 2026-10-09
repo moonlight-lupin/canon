@@ -9,6 +9,7 @@ import { resealTotpSecrets, sealTotpSecrets } from '../lib/secret-field.ts';
 import { SCRATCH_RE, isBackupV2, isEncryptedBackupData, isPackage, scratch, unwrapBackupFile, unwrapPackage, writePackage } from '../lib/backup-file.ts';
 import { config } from '../config.ts';
 import { logChange, pruneAudit, pruneChanges } from './changelog.ts';
+import { asSystem } from '../lib/actor.ts';
 import { pruneMemberViews, recordSizeSnapshot } from './security.ts';
 import { archiveDir, copyArchivesTo, eraseVisitorContacts, syncArchiveIndex } from './archive.ts';
 import { createAllMeetingsAhead } from './services.ts';
@@ -343,7 +344,107 @@ export function nextDue(): string | null {
   return new Date(last ? Date.parse(last) + period : Date.now()).toISOString();
 }
 
+export interface TidyDuty {
+  key: string;
+  /** what it does, for the log and the Security checklist */
+  what: string;
+  run: (log: (s: string) => void) => unknown;
+}
+
+/**
+ * The daily tidy's duties, each on its own: one that fails no longer skips the rest (Daedalus Workshop study of
+ * 0.19.10: they ran in one try, so a log that couldn't be pruned stopped the privacy erasure). The erasure goes first.
+ */
+export const TIDY_DUTIES: TidyDuty[] = [
+  {
+    key: 'erase', what: 'Erasing visitors’ contact details',
+    run: (log) => {
+      const months = getSettings().retention.visitor_contact_months;
+      const v = eraseVisitorContacts(months);
+      if (v.visitors || v.log) {
+        log(`records: erased the details of ${v.visitors} visitors (and ${v.log} change-log copies) past the keep period`);
+        logChange({ entity: 'service_records', entity_id: null, action: 'update', summary: `Visitors’ contact details erased after ${months} months: ${v.visitors} visitors, ${v.log} change-log copies` });
+      }
+    },
+  },
+  {
+    // the change log and AI activity log keep only as many months as Settings says
+    key: 'logs', what: 'Pruning the logs',
+    run: (log) => {
+      const { change_log_months, mcp_audit_months } = getSettings().retention;
+      const a = pruneChanges(change_log_months);
+      const b = pruneAudit(mcp_audit_months);
+      const c = pruneMemberViews(change_log_months);
+      if (a || b || c) log(`logs: removed ${a} change-log, ${b} AI-activity and ${c} member-view entries past the keep period`);
+    },
+  },
+  {
+    key: 'meetings', what: 'Creating meetings ahead',
+    run: (log) => {
+      const m = createAllMeetingsAhead();
+      if (m) log(`meetings: created ${m} meetings ahead from the groups' meeting patterns`);
+    },
+  },
+  {
+    // lending self-service: check the public address again (a gate), drop old sign-in codes
+    key: 'self_service', what: 'Checking the lending library’s self-service',
+    run: async () => {
+      const s = await import('./lending-self.ts');
+      s.pruneCodes();
+      await s.checkPublicAddress(true);
+    },
+  },
+  {
+    // the lending library's due-date and overdue e-mails (when it is on and its rules say so)
+    key: 'reminders', what: 'Sending the library’s reminders',
+    run: async (log) => {
+      const r = await (await import('./lending-reminders.ts')).dailyLoanReminders();
+      if (r && (r.sent || r.failed)) log(`library: sent ${r.sent} loan reminders${r.failed ? `, ${r.failed} failed` : ''}`);
+    },
+  },
+  { key: 'size', what: 'Recording the storage size', run: () => recordSizeSnapshot() },
+];
+
+export interface TidyStatus { at: string; failed: Record<string, { what: string; error: string }> }
+
+/** Run the daily tidy as Canon: every duty, whatever happens to the others; what failed is kept for the checklist. */
+export async function dailyTidy(log: (s: string) => void = console.log, duties: TidyDuty[] = TIDY_DUTIES) {
+  const failed: TidyStatus['failed'] = {};
+  await asSystem(async () => {
+    for (const d of duties) {
+      try {
+        await d.run(log);
+      } catch (e) {
+        const error = (e as Error)?.message ?? String(e);
+        failed[d.key] = { what: d.what, error: error.slice(0, 300) };
+        log(`tidy: ${d.what} failed — ${error}`);
+      }
+    }
+  });
+  const status: TidyStatus = { at: new Date().toISOString(), failed };
+  setMeta('tidy_status', JSON.stringify(status));
+}
+
+/** How the last daily tidy went (Settings → Security & privacy warns when a duty failed). */
+export function tidyStatus(): TidyStatus | null {
+  try {
+    return JSON.parse(getMeta('tidy_status') ?? 'null') as TidyStatus | null;
+  } catch {
+    return null;
+  }
+}
+
 let timer: NodeJS.Timeout | null = null;
+/** Every timer the scheduler started, so Canon can stop them when it stops. */
+const timers: NodeJS.Timeout[] = [];
+
+/** Stop the backup checks and the daily tidy (Canon is stopping). How many timers were stopped. */
+export function stopSchedulers(): number {
+  const n = timers.length;
+  for (const t of timers.splice(0)) clearTimeout(t);
+  timer = null;
+  return n;
+}
 
 /** Check every 30 minutes whether an automatic backup is due (also shortly after start-up). */
 export function startBackupScheduler(log: (s: string) => void = console.log) {
@@ -355,7 +456,7 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
   } catch (e) {
     log(`archives: could not read the archive files — ${(e as Error).message}`);
   }
-  const tick = () => {
+  const tick = () => asSystem(() => {
     try {
       const due = nextDue();
       if (due && Date.parse(due) <= Date.now()) {
@@ -372,33 +473,9 @@ export function startBackupScheduler(log: (s: string) => void = console.log) {
     } catch {
       /* the folder can't be read: reported in Settings → Backups */
     }
-  };
-  // the change log and AI activity log keep only as many months as Settings says
-  const tidy = () => {
-    try {
-      const { change_log_months, mcp_audit_months } = getSettings().retention;
-      const a = pruneChanges(change_log_months);
-      const b = pruneAudit(mcp_audit_months);
-      const c = pruneMemberViews(change_log_months);
-      if (a || b || c) log(`logs: removed ${a} change-log, ${b} AI-activity and ${c} member-view entries past the keep period`);
-      const v = eraseVisitorContacts(getSettings().retention.visitor_contact_months);
-      if (v.visitors || v.log) log(`records: erased the details of ${v.visitors} visitors (and ${v.log} change-log copies) past the keep period`);
-      const m = createAllMeetingsAhead();
-      if (m) log(`meetings: created ${m} meetings ahead from the groups' meeting patterns`);
-      // lending self-service: check the public address again (a gate), drop old sign-in codes
-      void import('./lending-self.ts').then((s) => { s.pruneCodes(); return s.checkPublicAddress(true); }).catch(() => undefined);
-      // the lending library's due-date and overdue e-mails (when it is on and its rules say so)
-      void import('./lending-reminders.ts').then((r) => r.dailyLoanReminders())
-        .then((r) => { if (r && (r.sent || r.failed)) log(`library: sent ${r.sent} loan reminders${r.failed ? `, ${r.failed} failed` : ''}`); })
-        .catch((e) => log(`library: reminders failed — ${(e as Error).message}`));
-      recordSizeSnapshot();
-    } catch (e) {
-      log(`logs: tidy failed — ${(e as Error).message}`);
-    }
-  };
-  setTimeout(tidy, 90_000).unref();
-  setInterval(tidy, 24 * 3600_000).unref();
-  setTimeout(tick, 60_000).unref();
+  });
+  const tidy = () => void dailyTidy(log);
   timer = setInterval(tick, 30 * 60_000);
-  timer.unref();
+  timers.push(setTimeout(tidy, 90_000), setInterval(tidy, 24 * 3600_000), setTimeout(tick, 60_000), timer);
+  for (const t of timers) t.unref();
 }

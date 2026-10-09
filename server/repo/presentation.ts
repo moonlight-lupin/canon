@@ -14,6 +14,7 @@ import {
 } from '../../shared/slide-theme.ts';
 import { all, get, run, tx } from '../db.ts';
 import { BadRequest, NotFound, table } from '../lib/table.ts';
+import { PICTURE_TYPES, realType } from '../lib/image.ts';
 import { getMeta, getSettings, setMeta, updateSettings } from './settings.ts';
 
 export const slideThemes = table<SlideTheme>({
@@ -137,8 +138,10 @@ export function deleteTheme(id: number) {
   if (getSettings().default_slide_theme_id === id) updateSettings({ default_slide_theme_id: null });
 }
 
-export function setThemeBackground(id: number, mime: string, data: Buffer): SlideTheme {
+export function setThemeBackground(id: number, _declared: string, data: Buffer): SlideTheme {
   assertEditableTheme(id);
+  // checked here, whoever calls (the route, an imported template file): stored as what its bytes are
+  const mime = realType(data, PICTURE_TYPES, 'Upload a PNG, JPEG or WebP picture');
   const version = crypto.createHash('sha256').update(data).digest('base64url').slice(0, 12);
   tx(() => {
     run(
@@ -337,9 +340,11 @@ export function deleteBlock(id: number) {
   });
 }
 
-export function setBlockImage(id: number, mime: string, data: Buffer): BulletinBlock {
+export function setBlockImage(id: number, _declared: string, data: Buffer): BulletinBlock {
   const cur = getBlock(id);
   if (cur.kind !== 'image') throw new BadRequest('Only picture blocks take an upload');
+  // checked here, whoever calls (the route, a template or library file): stored as what its bytes are
+  const mime = realType(data, PICTURE_TYPES, 'Upload a PNG, JPEG or WebP picture');
   const version = crypto.createHash('sha256').update(data).digest('base64url').slice(0, 12);
   tx(() => {
     run(

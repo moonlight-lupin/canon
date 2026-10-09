@@ -245,13 +245,14 @@ test('an administrator resetting someone’s password or two-step sign-in also d
   await user('sam');
   await user('uma');
   const idOf = (u: string) => get<{ id: number }>('SELECT id FROM users WHERE username = ?', u)!.id;
-  // a connection (as claude.ai would have after the person approved it): an access token and its refresh token
+  // a connection (as claude.ai would have after the person approved it): an access token and its refresh token, bound
+  // to this Canon’s /mcp as every token is
   const connect = (uid: number) => {
     const access = `access-${crypto.randomUUID()}`;
     const grant = crypto.randomUUID();
     const ins = 'INSERT INTO oauth_tokens (token_hash, token_type, client_id, user_id, scope, resource, grant_id, expires_at, created_at) VALUES (?,?,?,?,?,?,?,?,?)';
-    run(ins, sha256(access), 'access', 'canon-test-client', uid, 'canon:read', null, grant, Date.now() + 3600_000, Date.now());
-    run(ins, sha256(`refresh-${grant}`), 'refresh', 'canon-test-client', uid, 'canon:read', null, grant, Date.now() + 30 * 86400_000, Date.now());
+    run(ins, sha256(access), 'access', 'canon-test-client', uid, 'canon:read', `${base}/mcp`, grant, Date.now() + 3600_000, Date.now());
+    run(ins, sha256(`refresh-${grant}`), 'refresh', 'canon-test-client', uid, 'canon:read', `${base}/mcp`, grant, Date.now() + 30 * 86400_000, Date.now());
     return access;
   };
   const works = async (access: string) => (await fetch(`${base}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', Authorization: `Bearer ${access}`, ...from('203.0.113.81') }, body: '{}' })).status !== 401;

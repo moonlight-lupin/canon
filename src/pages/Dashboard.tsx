@@ -3,7 +3,7 @@ import { HoverTip } from '../components/InfoTip.tsx';
 import { hasAnyText } from '../../shared/labels.ts';
 import { useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
-import { Bi, ErrorBox, Loading, PageHead, fmtDate, useSession } from '../components/ui.tsx';
+import { Bi, ErrorBox, Loading, PageHead, fmtDate, today, useSession } from '../components/ui.tsx';
 import { Icon } from '../components/icons.tsx';
 import { SeasonChip } from '../components/brand.tsx';
 import type { RosterWarning, ServiceListRow } from '../types-client.ts';
@@ -42,7 +42,7 @@ export default function Dashboard() {
 
   return (
     <div className="page">
-      <PageHead eyebrow={fmtDate(new Date().toISOString().slice(0, 10), lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} title={greeting}>
+      <PageHead eyebrow={fmtDate(today(), lang, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} title={greeting}>
         {canEdit && <Link className="btn primary" to="/services?new"><Icon name="plus" />{t('New service')}</Link>}
       </PageHead>
 

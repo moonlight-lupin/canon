@@ -619,7 +619,7 @@ test('an item can have its own slide background (Library → Slide backgrounds)'
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000020000000108020000007b40e8dd0000000c4944415478da63f8cfc0f01f00050001ff5c1e3a1d0000000049454e44ae426082', 'hex');
   const pic = bgRepo.saveBackground(null, 'Bread Wqz', 'image/png', png);
   assert.equal(pic.width, 2);
-  assert.throws(() => bgRepo.saveBackground(null, 'Bad', 'image/png', Buffer.from('not a picture')), /does not look like/);
+  assert.throws(() => bgRepo.saveBackground(null, 'Bad', 'image/png', Buffer.from('not a picture')), /PNG, JPEG or WebP/, 'judged by its bytes');
   const bad = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_background_id: 999999 } }] });
   assert.equal(bad.isError, true, 'unknown background refused');
   const ok = await call(at, 'canon_edit_order', { service_id: sv.id, ops: [{ op: 'update', item_id: item.id, item: { slide_background_id: pic.id } }] });
@@ -1062,11 +1062,11 @@ test('member PII redaction and audit log without member values', async () => {
   const blob = JSON.stringify(rows);
   for (const leak of ['9123', 'minghua', 'Lim"']) assert.ok(!blob.includes(leak), `audit leaked ${leak}`);
   const getRow = rows.find((r) => r.tool === 'canon_get_person')!;
-  assert.equal(getRow.args, '["id"]');
+  assert.equal(getRow.args, JSON.stringify({ id: p.id }));
   assert.equal(getRow.module, 'members');
   assert.equal(getRow.ok, 1);
   const svcRow = rows.find((r) => r.tool === 'canon_create_service' && r.ok === 1)!;
-  assert.match(svcRow.args, /2026-10-11/, 'non-member modules store argument values');
+  assert.match(svcRow.args, /2026-10-11/, 'dates are kept');
   assert.ok(rows.some((r) => r.ok === 0 && r.tool === 'canon_find_people'), 'failed (hidden) call audited');
   assert.ok(rows.every((r) => r.user_id && r.client_id === client.client_id));
 });

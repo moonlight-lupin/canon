@@ -76,6 +76,8 @@ import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
 import { seesSensitiveFields } from './lib/permissions.ts';
 import { allows } from '../shared/permissions.ts';
+import { churchToday } from './lib/dates.ts';
+import { computerZone, validZone } from '../shared/dates.ts';
 
 export const api = express.Router();
 
@@ -399,7 +401,7 @@ api.delete('/users/:id', requireAdmin, h((req) => {
 // ---------------------------------------------------------------- settings & dashboard
 
 api.get('/settings', h((req) => {
-  const s = getSettings();
+  const s = { ...getSettings(), computer_zone: computerZone() };
   // SMTP account details are for administrators only.
   return isAdmin(req.user) ? s : { ...s, smtp: { ...s.smtp, host: '', user: '', reply_to: '' } };
 }));
@@ -419,16 +421,18 @@ api.patch('/settings', requireAdmin, h((req) => {
     paper: z.enum(['a4-booklet', 'a4', 'a5', 'letter-booklet', 'letter']).optional(),
     slide_theme: z.enum(['dark', 'light']).optional(),
     default_start_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    // "" = this computer's own (Docker: the TZ variable)
+    time_zone: z.string().max(60).refine((z) => z === '' || validZone(z), 'Choose a time zone from the list.').optional(),
   }).parse(req.body);
   return updateSettings(b as Partial<Settings>);
 }));
 
 api.get('/dashboard', h((req) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = churchToday();
   // the optional modules' numbers, when they are on and this account may read them
   const on = getSettings().modules;
   const role = roleDef(req.user!.role);
-  const in8w = new Date(Date.now() + 56 * 86400_000).toISOString().slice(0, 10);
+  const in8w = churchToday(new Date(Date.now() + 56 * 86400_000));
   // soonest first (a list with both ends comes newest first: with several services ahead the dashboard showed the
   // furthest as "Next service" — found with the 0.19.7 sample church)
   const upcoming = svc.listServices({ from: today, to: in8w })
@@ -476,7 +480,7 @@ api.post('/unavailability', h((req) => vol.unavailability.insert(S.Unavailabilit
 api.delete('/unavailability/:id', h((req) => vol.unavailability.remove(id(req))));
 
 api.get('/rota', h((req) => {
-  const from = str(req.query.from) ?? new Date().toISOString().slice(0, 10);
+  const from = str(req.query.from) ?? churchToday();
   const to = str(req.query.to) ?? new Date(Date.now() + 56 * 86400_000).toISOString().slice(0, 10);
   return vol.rota(from, to, Number(req.query.congregation) || undefined);
 }));

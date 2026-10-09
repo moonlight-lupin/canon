@@ -42,14 +42,19 @@ export function MultiPick({ value, options, onChange, placeholder, disabled, ari
     const away = (e: MouseEvent) => {
       if (!button.current?.contains(e.target as Node) && !list.current?.contains(e.target as Node)) setOpen(false);
     };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    // Escape closes this first, not the dialog around it: heard before the dialog (capture) and marked handled
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      setOpen(false);
+    };
     window.addEventListener('mousedown', away);
-    window.addEventListener('keydown', esc);
+    window.addEventListener('keydown', esc, true);
     window.addEventListener('scroll', place, true);
     window.addEventListener('resize', place);
     return () => {
       window.removeEventListener('mousedown', away);
-      window.removeEventListener('keydown', esc);
+      window.removeEventListener('keydown', esc, true);
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
     };

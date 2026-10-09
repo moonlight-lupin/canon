@@ -245,7 +245,7 @@ test('team members: auto-join on qualification, cascade, leaders, team without r
   assert.equal(plain.isError, false, plain.text);
 });
 
-test('audit stores argument keys and op types only for groups, values for volunteers', async () => {
+test('audit stores the fields a call used, with values only of safe fields (ids, op types), for groups as for volunteers', async () => {
   const rows = all<Json>('SELECT * FROM mcp_audit');
   const groupRows = rows.filter((r) => r.module === 'groups');
   assert.ok(groupRows.length >= 8);
@@ -253,16 +253,23 @@ test('audit stores argument keys and op types only for groups, values for volunt
   for (const leak of ['Session', '堂会', 'Moderator', 'Clerk', '2025-01-01', 'Monthly']) assert.ok(!blob.includes(leak), `audit leaked ${leak}`);
   const batch = groupRows.filter((r) => r.tool === 'canon_update_group_members');
   assert.equal(batch.length, 5, 'one row per batch call');
-  assert.deepEqual(JSON.parse(batch[0].args), ['group_id', 'ops[add,add]', 'ops[].person_id', 'ops[].role', 'ops[].start_date']);
-  assert.deepEqual(JSON.parse(batch[1].args), ['group_id', 'ops[update,add]', 'ops[].person_id', 'ops[].role']);
+  const first = JSON.parse(batch[0].args);
+  assert.deepEqual(first.ops.map((o: Json) => o.op), ['add', 'add']);
+  assert.deepEqual(Object.keys(first.ops[0]).sort(), ['op', 'person_id', 'role', 'start_date']);
+  assert.equal(typeof first.group_id, 'number');
+  assert.equal(first.ops[0].role, '…', 'a role in a group is withheld');
+  assert.deepEqual(JSON.parse(batch[1].args).ops.map((o: Json) => o.op), ['update', 'add']);
   assert.equal(batch[1].ok, 0);
   const create = groupRows.find((r) => r.tool === 'canon_save_group')!;
-  assert.deepEqual(JSON.parse(create.args).sort(), ['fields.kind', 'fields.meeting', 'fields.name.en', 'fields.name.zh']);
+  const fields = JSON.parse(create.args).fields;
+  assert.deepEqual(Object.keys(fields).sort(), ['kind', 'meeting', 'name']);
+  assert.deepEqual(fields.name, { en: '…', zh: '…' });
   // the hidden call made while the module was off is audited as unknown/sensitive (keys only)
   assert.ok(rows.some((r) => r.tool === 'canon_find_groups' && r.ok === 0));
   const team = rows.filter((r) => r.tool === 'canon_update_team_members');
   assert.equal(team[0].module, 'volunteers');
-  assert.match(team.map((r) => r.args).join(), /"cascade":true/, 'non-register modules keep argument values');
+  assert.match(team.map((r) => r.args).join(), /"team_id":\d+/, 'every module: ids kept');
+  assert.match(team.map((r) => r.args).join(), /"cascade":"…"/, 'every module: other values withheld');
 });
 
 test('serving teams: a team is a group; names stay in step; made and deleted only from Volunteers', async () => {
