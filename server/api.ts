@@ -41,6 +41,7 @@ import { adminRoutes } from './routes/admin.ts';
 import {
   authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginThrottle,
   requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES, MAX_FAILED,
+  endSessionsOf, ticketUsername, useTotpStep,
   firstAdminId, memberLinkProblem, personLinkProblem, twoStepRequired,
 } from './auth.ts';
 import { all, get, run } from './db.ts';
@@ -63,7 +64,7 @@ import { songUsage } from './repo/history.ts';
 import { getSettings, setMeta, updateSettings, type Settings } from './repo/settings.ts';
 import { fileForToken } from './repo/downloads.ts';
 import { isAdmin, roleDef } from './lib/permissions.ts';
-import { hashCode, newRecoveryCodes, newSecret, otpauthUri, verifyTotp } from './lib/totp.ts';
+import { hashCode, newRecoveryCodes, newSecret, otpauthUri, totpStep } from './lib/totp.ts';
 import QRCode from 'qrcode';
 import { withRights } from '../shared/bible-rights.ts';
 import { seesSensitiveFields } from './lib/permissions.ts';
@@ -112,12 +113,12 @@ api.post('/login', h((req, res) => {
   const r = authenticate(b.username, b.password);
   // a locked account answers like a wrong password: the answer never tells which usernames exist (0.19.0 review)
   if (!r || 'locked' in r) {
-    loginFailed(ip);
+    loginFailed(ip, b.username);
     throw Object.assign(new Error(`Wrong username or password. After ${MAX_FAILED} wrong tries an account waits ${LOCK_MINUTES} minutes.`), { status: 401 });
   }
   // two-step sign-in: the code comes next (POST /login/code); this address's tries are forgiven only once it is right
   if ('second_step' in r) return { second_step: true, ticket: secondStepTicket(r.second_step) };
-  loginOk(ip);
+  loginOk(ip, r.user.username);
   const csrf = startSession(req, res, r.user);
   return { user: r.user, csrf };
 }));
@@ -126,12 +127,13 @@ api.post('/login/code', h((req, res) => {
   const ip = req.ip ?? '';
   if (loginThrottle(ip)) throw Object.assign(new Error('Too many attempts — try again in 15 minutes'), { status: 429 });
   const b = z.object({ ticket: z.string().max(100), code: z.string().max(20) }).parse(req.body);
+  const who = ticketUsername(b.ticket);
   const user = secondStep(b.ticket, b.code);
   if (!user) {
-    loginFailed(ip);
-    throw Object.assign(new Error('That code is not right (or has expired). Sign in again if it keeps failing.'), { status: 401 });
+    loginFailed(ip, who);
+    throw Object.assign(new Error('That code is not right, has expired or was just used: wait for the next code. Sign in again if it keeps failing.'), { status: 401 });
   }
-  loginOk(ip);
+  loginOk(ip, user.username);
   const csrf = startSession(req, res, user);
   return { user, csrf };
 }));
@@ -214,6 +216,8 @@ api.patch('/me', h((req) => {
       throw Object.assign(new Error('Current password is wrong'), { status: 400 });
     }
     run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(b.new_password), u.id);
+    // a new password signs the account out everywhere else (someone who knew the old one may be signed in)
+    endSessionsOf(u.id, req);
   }
   if (b.lang) run('UPDATE users SET lang = ? WHERE id = ?', b.lang, u.id);
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, u.id);
@@ -228,7 +232,7 @@ api.post('/me/two-step/setup', h(async (req) => {
     throw Object.assign(new Error('Two-step sign-in is on. To use another phone, turn it off (with your password), then set it up again.'), { status: 409 });
   }
   const secret = newSecret();
-  run('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?', secret, req.user!.id);
+  run('UPDATE users SET totp_secret = ?, totp_enabled = 0, totp_last_step = NULL WHERE id = ?', secret, req.user!.id);
   const issuer = `Canon · ${(getSettings().church_name.en || Object.values(getSettings().church_name).find(Boolean) || 'church').slice(0, 40)}`;
   const uri = otpauthUri(secret, req.user!.username, issuer);
   return { secret, uri, qr: await QRCode.toDataURL(uri, { margin: 1, width: 220 }) };
@@ -236,9 +240,12 @@ api.post('/me/two-step/setup', h(async (req) => {
 api.post('/me/two-step/enable', h((req) => {
   const b = z.object({ code: z.string().max(20) }).parse(req.body);
   const row = get<{ totp_secret: string | null }>('SELECT totp_secret FROM users WHERE id = ?', req.user!.id);
-  if (!row?.totp_secret || !verifyTotp(row.totp_secret, b.code)) throw Object.assign(new Error('That code is not right. Check the time on your phone and try the newest code.'), { status: 400 });
+  const step = row?.totp_secret ? totpStep(row.totp_secret, b.code) : null;
+  // the code that turns it on is used up too: it can't then sign in
+  if (step === null || !useTotpStep(req.user!.id, step)) throw Object.assign(new Error('That code is not right. Check the time on your phone and try the newest code.'), { status: 400 });
   const codes = newRecoveryCodes();
   run('UPDATE users SET totp_enabled = 1, recovery_codes = ? WHERE id = ?', JSON.stringify(codes.map(hashCode)), req.user!.id);
+  endSessionsOf(req.user!.id, req);
   logChange({ entity: 'users', entity_id: req.user!.id, action: 'update', summary: 'Two-step sign-in turned on' });
   return { recovery_codes: codes };
 }));
@@ -247,7 +254,8 @@ api.post('/me/two-step/disable', h((req) => {
   const row = get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = ?', req.user!.id)!;
   if (!verifyPassword(b.password, row.password_hash)) throw Object.assign(new Error('Password is wrong'), { status: 400 });
   if (twoStepRequired(req.user)) throw Object.assign(new Error(getSettings().security.require_all_2fa ? 'This church requires two-step sign-in for every account.' : 'This church requires two-step sign-in for administrators.'), { status: 400 });
-  run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]' WHERE id = ?", req.user!.id);
+  run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]', totp_last_step = NULL WHERE id = ?", req.user!.id);
+  endSessionsOf(req.user!.id, req);
   logChange({ entity: 'users', entity_id: req.user!.id, action: 'update', summary: 'Two-step sign-in turned off' });
   return { ok: true };
 }));
@@ -280,7 +288,6 @@ api.patch('/users/:id', requireAdmin, h((req) => {
     /** a lost phone: turn the account's two-step sign-in off so they can sign in and set it up again */
     reset_two_step: z.literal(true).optional(),
   }).parse(req.body);
-  if (b.reset_two_step) run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]' WHERE id = ?", id(req));
   const uid = id(req);
   if (b.role && !roleDef(b.role).admin && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
   const before = getUser(uid);
@@ -294,11 +301,12 @@ api.patch('/users/:id', requireAdmin, h((req) => {
     if (problem) throw Object.assign(new Error(problem), { status: 400 });
   }
   if (b.role) run('UPDATE users SET role = ? WHERE id = ?', b.role, uid);
-  if (b.password) {
-    // a new password also unlocks the account
-    run('UPDATE users SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?', hashPassword(b.password), uid);
-    run('DELETE FROM sessions WHERE user_id = ?', uid);
-  }
+  if (b.reset_two_step) run("UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes = '[]', totp_last_step = NULL WHERE id = ?", uid);
+  // a new password also unlocks the account
+  if (b.password) run('UPDATE users SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?', hashPassword(b.password), uid);
+  // either signs the account out everywhere (a lost or stolen phone, a password someone else knew); an administrator
+  // doing it to their own account stays signed in where they did it
+  if (b.password || b.reset_two_step) endSessionsOf(uid, uid === req.user!.id ? req : undefined);
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
   if (b.congregation_id !== undefined) run('UPDATE users SET congregation_id = ? WHERE id = ?', b.congregation_id, uid);
   if (b.person_id !== undefined) run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);

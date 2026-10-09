@@ -81,7 +81,9 @@ test('two-step sign-in: set up with an authenticator, then a code (or a recovery
   assert.equal(step1.body.second_step, true);
   assert.equal(step1.body.csrf, undefined);
   assert.equal((await post('/login/code', { ticket: step1.body.ticket, code: '123456' })).status, 401);
-  const done = await post('/login/code', { ticket: step1.body.ticket, code: T.totp(setup.body.secret) });
+  // a code works once (0.19.8): the one that turned it on can't sign in, the next one can
+  assert.equal((await post('/login/code', { ticket: step1.body.ticket, code: T.totp(setup.body.secret) })).status, 401);
+  const done = await post('/login/code', { ticket: step1.body.ticket, code: T.totp(setup.body.secret, Date.now() + 30_000) });
   assert.equal(done.status, 200);
   assert.ok(done.body.csrf);
   // a recovery code works once
@@ -102,7 +104,7 @@ test('a church can require two-step sign-in for administrators; an administrator
   const setup = (await call(boss, 'POST', '/me/two-step/setup', {})).body;
   await call(boss, 'POST', '/me/two-step/enable', { code: T.totp(setup.secret) });
   const step = await post('/login', { username: 'boss', password: 'correct-horse-3' });
-  const r = await post('/login/code', { ticket: step.body.ticket, code: T.totp(setup.secret) });
+  const r = await post('/login/code', { ticket: step.body.ticket, code: T.totp(setup.secret, Date.now() + 30_000) });
   const boss2fa = { cookie: r.cookie, csrf: r.body.csrf };
   assert.equal((await call(boss2fa, 'PUT', '/security', { require_admin_2fa: true })).status, 200);
   // the other administrator can't use administrator functions until they set it up

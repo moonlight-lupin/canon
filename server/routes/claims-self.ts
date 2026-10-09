@@ -10,7 +10,7 @@ import { bkSettings } from '../repo/bookkeeping.ts';
 import { checkPublicAddress, gates, memberToken, personOf, requestCode, verifyCode } from '../repo/lending-self.ts';
 import { getSettings } from '../repo/settings.ts';
 import { all, get } from '../db.ts';
-import { makeLimiter } from '../lib/rate-limit.ts';
+import { addressKey, makeLimiter } from '../lib/rate-limit.ts';
 import { publicUrl } from '../lib/public-url.ts';
 import { asActor } from '../lib/actor.ts';
 import { h, id } from './helpers.ts';
@@ -64,12 +64,12 @@ claimsSelfRoutes.get('/self/claims/status', h(async () => {
 claimsSelfRoutes.post('/self/claims/code', h(async (req) => {
   if (!(await claimsSignInStatus()).on) throw Object.assign(new Error('Signing in on a phone is not available: ask the treasurer.'), { status: 503 });
   const { email } = z.object({ email: z.string().email().max(200) }).parse(req.body);
-  if (codesPerAddress.limited(req.ip ?? '') || codesPerEmail.limited(email.trim().toLowerCase())) throw tooMany();
+  if (codesPerAddress.limited(addressKey(req.ip)) || codesPerEmail.limited(email.trim().toLowerCase())) throw tooMany();
   await requestCode(email, 'claims');
   return { ok: true };
 }));
 claimsSelfRoutes.post('/self/claims/verify', h((req) => {
-  if (tries.limited(req.ip ?? '')) throw tooMany();
+  if (tries.limited(addressKey(req.ip))) throw tooMany();
   const b = z.object({ email: z.string().email().max(200), code: z.string().max(20) }).parse(req.body);
   return verifyCode(b.email, b.code, 'claims');
 }));

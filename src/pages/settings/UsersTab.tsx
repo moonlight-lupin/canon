@@ -41,7 +41,7 @@ export function UsersTab() {
     if (await run(() => api.patch(`/users/${u.id}`, { person_id: personId }), t('Saved.'))) reload();
   };
   const resetTwoStep = async (u: UserRow) => {
-    if (!confirmAction(t('Turn off two-step sign-in for {name}? They sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
+    if (!confirmAction(t('Turn off two-step sign-in for {name}? They are signed out everywhere, sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
     if (await run(() => api.patch(`/users/${u.id}`, { reset_two_step: true }), t('Saved.'))) reload();
   };
   const setRole = async (u: UserRow, role: Role) => {

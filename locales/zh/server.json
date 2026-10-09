@@ -78,6 +78,7 @@
   "This is a test message from Canon. If you can read it, e-mail is set up correctly.": "这是 Canon 发出的测试邮件。若您能读到这封邮件，表示电邮设定正确。",
   "This name was supplied by the application itself and has not been verified. Check where access will be sent below.": "此名称由应用自行提供，未经验证。请核对下方的回传地址。",
   "Too many entries from here just now. Please try again in a few minutes.": "刚才从这里提交的次数太多，请几分钟后再试。",
+  "Too many requests from this address. Please try again in a few minutes.": "从这个地址发出的请求太多，请几分钟后再试。",
   "Unknown application (client_id).": "未知的应用（client_id）。",
   "View Canon data in the modules listed below": "查看以下所列模块中的资料",
   "Volunteer rota": "义工轮值",

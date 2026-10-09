@@ -50,11 +50,15 @@ export function totp(secret: string, at = Date.now(), step = 30): string {
   return String(n % 1_000_000).padStart(6, '0');
 }
 
-/** Does this code match now (allowing one step either side for a phone clock that is a little off)? */
-export function verifyTotp(secret: string, code: string, at = Date.now()): boolean {
+/**
+ * The time step (30-second counter) whose code this is, allowing one step either side for a phone clock that is a
+ * little off; null when it matches none. Remembering the step used lets a code work only once.
+ */
+export function totpStep(secret: string, code: string, at = Date.now()): number | null {
   const c = code.replace(/\s/g, '');
-  if (!/^\d{6}$/.test(c)) return false;
-  return [-1, 0, 1].some((d) => crypto.timingSafeEqual(Buffer.from(totp(secret, at + d * 30_000)), Buffer.from(c)));
+  if (!/^\d{6}$/.test(c)) return null;
+  const off = [-1, 0, 1].find((d) => crypto.timingSafeEqual(Buffer.from(totp(secret, at + d * 30_000)), Buffer.from(c)));
+  return off === undefined ? null : Math.floor(at / 30_000) + off;
 }
 
 /** The address an authenticator app reads from a QR code. */

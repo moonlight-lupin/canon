@@ -12,6 +12,7 @@ import type { L10n } from '../../shared/types.ts';
 import { get } from '../db.ts';
 import { getSettings } from '../repo/settings.ts';
 import { formOpen, formSettings, serviceByFormToken, submitCard } from '../repo/visitor-form.ts';
+import { addressKey, makeLimiter } from '../lib/rate-limit.ts';
 
 export const visitorFormRouter = express.Router();
 
@@ -24,19 +25,11 @@ const MAX_MS = 3 * 3600_000;
 // phone on the church's Wi-Fi shares one address, and many visitors may fill in the form right after the service.
 // (Each service also stops at 500 entries waiting for review.)
 export const PER_ADDRESS = 40;
-const hits = new Map<string, number[]>();
-function limited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < 600_000);
-  if (recent.length >= PER_ADDRESS) return true;
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 5000) for (const [k, v] of hits) if (!v.some((t) => now - t < 600_000)) hits.delete(k);
-  return false;
-}
+const perAddress = makeLimiter(PER_ADDRESS, 600_000);
+const limited = (ip: string) => perAddress.limited(addressKey(ip));
 
 /** For tests: forget the per-address counts. */
-export const resetVisitorFormLimits = () => hits.clear();
+export const resetVisitorFormLimits = () => perAddress.reset();
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 

@@ -7,7 +7,7 @@ import { get } from '../db.ts';
 import { getSettings } from '../repo/settings.ts';
 import * as S from '../repo/lending-self.ts';
 import { pingAnswer } from '../lib/instance.ts';
-import { makeLimiter } from '../lib/rate-limit.ts';
+import { addressKey, makeLimiter } from '../lib/rate-limit.ts';
 import { h, id, str } from './helpers.ts';
 
 export const lendingSelfRoutes = express.Router();
@@ -30,7 +30,7 @@ const running = async (_req: Request, res: Response, next: NextFunction) => {
   if (!(await S.selfServiceReady())) return res.status(503).json({ error: 'Self-service is paused at the moment. Please see the librarian.', paused: true });
   next();
 };
-const ipOf = (req: Request) => req.ip ?? req.socket.remoteAddress ?? '?';
+const ipOf = (req: Request) => addressKey(req.ip ?? req.socket.remoteAddress) || '?';
 const token = (req: Request) => req.get('x-self-token') ?? undefined;
 
 // generous per address (church Wi-Fi shares one), tight per e-mail address

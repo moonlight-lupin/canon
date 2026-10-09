@@ -15,6 +15,7 @@ import { all, get, run, tx } from './db.ts';
 import { getSettings } from './repo/settings.ts';
 import { consentPage, disabledPage, errorPage } from './oauth-pages.ts';
 import { editsAnything } from './lib/permissions.ts';
+import { addressKey, makeLimiter } from './lib/rate-limit.ts';
 
 export const SCOPES = ['canon:read', 'canon:write'] as const;
 
@@ -272,29 +273,26 @@ function asMetadata(req: Request, res: Response) {
 }
 oauthRouter.get(['/.well-known/oauth-authorization-server', '/.well-known/openid-configuration'], asMetadata);
 
+// ---- limits per address (0.19.8 review)
+
+// Client registrations: 10 an hour. The authorization page (a person's browser): 60 views or answers in 15 minutes.
+// The token endpoint and /mcp: 30 failures in 15 minutes (a made-up code, client, refresh token or bearer token), and
+// the address waits — counting failures only, since every claude.ai connector reaches Canon from claude.ai's few
+// addresses, and their good requests mustn't use up the allowance.
+const registrations = makeLimiter(10, 3600_000);
+const authorizations = makeLimiter(60, 15 * 60_000);
+const badTokenRequests = makeLimiter(30, 15 * 60_000);
+const badBearers = makeLimiter(30, 15 * 60_000);
+const TOO_MANY = 'Too many requests from this address. Please try again in a few minutes.';
+
 // ---- dynamic client registration (RFC 7591)
-
-const regLog = new Map<string, number[]>();
-
-function regLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (regLog.get(ip) ?? []).filter((t) => t > now - 3600_000);
-  if (recent.length >= 10) {
-    regLog.set(ip, recent);
-    return true;
-  }
-  recent.push(now);
-  regLog.set(ip, recent);
-  if (regLog.size > 10_000) regLog.clear();
-  return false;
-}
 
 const regError = (res: Response, error: string, desc: string, status = 400) =>
   res.status(status).json({ error, error_description: desc });
 
 oauthRouter.post('/oauth/register', express.json({ limit: '16kb' }), (req, res) => {
   cleanup();
-  if (regLimited(req.ip ?? '')) return regError(res, 'too_many_requests', 'Too many registrations from this address; try again later', 429);
+  if (registrations.limited(addressKey(req.ip))) return regError(res, 'too_many_requests', 'Too many registrations from this address; try again later', 429);
   const b = (req.body && typeof req.body === 'object' ? req.body : {}) as Params;
   const uris = b.redirect_uris;
   if (!Array.isArray(uris) || uris.length < 1 || uris.length > 10) {
@@ -345,6 +343,11 @@ oauthRouter.post('/oauth/register', express.json({ limit: '16kb' }), (req, res) 
 });
 
 // ---- authorization endpoint
+
+oauthRouter.use('/oauth/authorize', (req, res, next) => {
+  if (authorizations.limited(addressKey(req.ip))) return errorPage(res, 429, TOO_MANY);
+  next();
+});
 
 oauthRouter.get('/oauth/authorize', (req, res) => {
   const p = req.query as Params;
@@ -507,6 +510,8 @@ oauthRouter.post('/oauth/token', ...tokenParsers, (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Pragma', 'no-cache');
   cleanup();
+  const key = addressKey(req.ip);
+  if (badTokenRequests.over(key)) return res.status(429).json({ error: 'too_many_requests', error_description: TOO_MANY });
   const b = (req.body && typeof req.body === 'object' ? req.body : {}) as Params;
   try {
     const grantType = str(b.grant_type);
@@ -519,6 +524,7 @@ oauthRouter.post('/oauth/token', ...tokenParsers, (req, res) => {
     res.json(out);
   } catch (e) {
     if (e instanceof OAuthError) {
+      badTokenRequests.add(key);
       if ((e as OAuthError & { basic?: boolean }).basic) res.setHeader('WWW-Authenticate', 'Basic realm="canon"');
       return res.status(e.status).json({ error: e.error, error_description: e.message });
     }
@@ -576,9 +582,13 @@ export function bearerAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(503).json({ error: 'mcp_disabled', error_description: 'AI access (MCP) is turned off in Canon settings' });
   }
   const h = req.get('authorization') ?? '';
+  // no token at all is how a connector finds out where to sign in: only tokens Canon never issued count
+  const key = addressKey(req.ip);
+  if (h && badBearers.over(key)) return res.status(429).json({ error: 'too_many_requests', error_description: TOO_MANY });
   const m = /^Bearer\s+([A-Za-z0-9._~+/=-]+)\s*$/i.exec(h);
+  const row = m ? get<TokenRow>("SELECT * FROM oauth_tokens WHERE token_hash = ? AND token_type = 'access'", sha256(m[1])) : undefined;
+  if (h && !row) badBearers.add(key);
   if (!m) return unauthorized(req, res, !!h, 'Missing bearer token');
-  const row = get<TokenRow>("SELECT * FROM oauth_tokens WHERE token_hash = ? AND token_type = 'access'", sha256(m[1]));
   if (!row || row.revoked || row.expires_at < Date.now()) return unauthorized(req, res, true, 'Token is invalid, expired or revoked');
   if (row.resource && !sameResource(row.resource, resourceUrl(req))) {
     return unauthorized(req, res, true, 'Token was issued for a different resource');

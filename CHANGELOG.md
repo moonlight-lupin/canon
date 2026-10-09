@@ -4,6 +4,18 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.19.8 — Sign-in hardening
+
+From a read-only study of Canon's sign-in code (0.19.7). Each fix has its test (`tests/sign-in-hardening.test.ts`).
+
+- **Signing in to your own account no longer resets your address's wrong tries.** Eight wrong passwords or two-step codes from one address within 15 minutes, at any accounts, and that address waits. Before, a successful sign-in wiped the address's count, so someone with one account could guess at everyone else's passwords without end by signing in to their own between guesses. Signing in still forgives the wrong tries at that same account (a typo, then the right password).
+- **Limits on the endpoints AI assistants connect through**: the authorization page (60 in 15 minutes per address), the token endpoint and `/mcp` (30 made-up codes, clients or tokens in 15 minutes per address — good requests aren't counted, since every claude.ai connector arrives from claude.ai's few addresses). Connecting without a token, as a connector does first, isn't counted.
+- **A full limiter drops its oldest addresses, not everyone's counts.** The OAuth registration limit cleared itself completely at 10,000 addresses; every per-address limit (sign-in, OAuth, the visitor form, self-service codes) now keeps at most 10,000 and lets the least recently seen go. IPv6 visitors are counted by their /64 network, which a home or a server can rotate through.
+- **A two-step code works once.** A code seen over someone's shoulder could be typed again for about a minute and a half; now the same code (or an older one) is refused. If Canon refuses a code you just used — for example to turn two-step sign-in on — wait for the next.
+- **An unknown username costs the same as a known one.** It cost two password checks and a known one, one, so the time an answer took told which usernames exist. The stand-in password is now hashed once when Canon starts.
+- **Changing your password, or turning two-step sign-in on or off, signs you out everywhere else**; you stay signed in where you made the change. **An administrator resetting someone's two-step sign-in now signs them out everywhere**, as resetting their password already did (an administrator doing either to their own account stays signed in where they did it). Expired sign-ins are cleared from the database.
+- Database: version 39 (the time step of each account's last two-step code).
+
 ## 0.19.7 — A sample church that does everything
 
 - **Settings → Sample data** now also fills every part of Canon that is switched on, so you can see them working together: the last eight Sundays and the next two, made from Canon's service templates (Canon's library is added first if it isn't there), with rotas and service records — attendance, visitors, offerings counted and verified; cell-group and Sunday school meetings with their records; events on the calendar and spaces; library books with loans (two overdue); the asset register with custodians and maintenance; and, when the books haven't been started, the books — opening balances, offerings posted, cash banked, the monthly bills, a bank statement matched (one line left to match), and expense claims being prepared, waiting, sent back, approved and paid. The screen says which modules are off and so left out.

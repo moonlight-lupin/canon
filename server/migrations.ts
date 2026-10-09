@@ -1308,4 +1308,9 @@ export const MIGRATIONS: (string | Migration)[] = [
       BEGIN SELECT RAISE(ABORT, 'A posted journal cannot be changed: reverse it instead.'); END;
     `,
   },
+  // 39 (0.19.8): the time step of the last two-step code an account used, so a code works only once (one seen over
+  // someone's shoulder can't sign in again while it is still current).
+  {
+    sql: `ALTER TABLE users ADD COLUMN totp_last_step INTEGER;`,
+  },
 ];

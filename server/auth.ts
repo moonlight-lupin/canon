@@ -10,7 +10,8 @@ import { outsideWall } from './lib/walls.ts';
 import { moduleOff } from '../shared/modules.ts';
 import { GUEST_ROLE } from '../shared/permissions.ts';
 import { getMeta, getSettings } from './repo/settings.ts';
-import { hashCode, verifyTotp } from './lib/totp.ts';
+import { hashCode, totpStep } from './lib/totp.ts';
+import { addressKey, makeLimiter } from './lib/rate-limit.ts';
 
 export interface User {
   id: number;
@@ -45,6 +46,10 @@ export function verifyPassword(pw: string, stored: string): boolean {
   const got = crypto.scryptSync(pw, Buffer.from(salt, 'base64'), expected.length, { N: Number(n), r: 8, p: 1 });
   return crypto.timingSafeEqual(expected, got);
 }
+
+// A password no one knows, hashed once at start: an unknown username then costs one password check, as a known one
+// does, so the time an answer takes doesn't tell which usernames exist (0.19.8 review)
+const DUMMY_HASH = hashPassword(crypto.randomBytes(24).toString('base64'));
 
 export const userCount = () => get<{ n: number }>('SELECT COUNT(*) n FROM users')!.n;
 
@@ -82,8 +87,8 @@ export type SignIn = { user: User } | { locked: true } | { second_step: number }
  */
 export function authenticate(username: string, password: string): SignIn {
   const row = get<Omit<User, 'totp_enabled'> & { password_hash: string; failed_logins: number; locked_until: string | null; totp_enabled: number }>('SELECT * FROM users WHERE username = ?', username.trim());
-  // Always run scrypt to keep timing similar for unknown users
-  const ok = verifyPassword(password, row?.password_hash ?? hashPassword('x-dummy-password'));
+  // always one password check, for an unknown username too
+  const ok = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
   if (!row) return null;
   if (row.locked_until && row.locked_until > new Date().toISOString()) return { locked: true };
   if (!ok) {
@@ -118,7 +123,16 @@ export function secondStepTicket(userId: number): string {
   return t;
 }
 
-/** Finish signing in with the authenticator code, or a one-time recovery code (used up). */
+/** The username a sign-in ticket is for (to count a wrong code against it). */
+export const ticketUsername = (ticket: string) => {
+  const t = tickets.get(ticket);
+  return t ? get<{ username: string }>('SELECT username FROM users WHERE id = ?', t.user_id)?.username : undefined;
+};
+
+/**
+ * Finish signing in with the authenticator code, or a one-time recovery code (used up). An authenticator code works
+ * once: one seen over someone's shoulder can't sign in again while it is still current (0.19.8 review).
+ */
 export function secondStep(ticket: string, code: string): User | null {
   const t = tickets.get(ticket);
   if (!t || t.until < Date.now() || t.tries >= 5) {
@@ -132,7 +146,8 @@ export function secondStep(ticket: string, code: string): User | null {
     tickets.delete(ticket);
     return null;
   }
-  let ok = verifyTotp(row.totp_secret, code);
+  const step = totpStep(row.totp_secret, code);
+  let ok = step !== null && useTotpStep(t.user_id, step);
   if (!ok) {
     const codes = JSON.parse(row.recovery_codes || '[]') as string[];
     const h = hashCode(code);
@@ -150,12 +165,17 @@ export function secondStep(ticket: string, code: string): User | null {
   return getUser(t.user_id) ?? null;
 }
 
+/** Record an authenticator code's time step as used; false when it (or a later one) already was. */
+export const useTotpStep = (userId: number, step: number) =>
+  run('UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)', step, userId, step).changes > 0;
+
 // ---- sessions -----------------------------------------------------------------------
 
 export function startSession(req: Request, res: Response, user: User) {
   const token = crypto.randomBytes(32).toString('base64url');
   const csrf = crypto.randomBytes(18).toString('base64url');
   run("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", user.id);
+  run('DELETE FROM sessions WHERE expires_at < ?', Date.now());
   run('INSERT INTO sessions (token_hash, user_id, csrf, expires_at) VALUES (?,?,?,?)',
     sha256(token), user.id, csrf, Date.now() + SESSION_DAYS * 86400_000);
   res.cookie(COOKIE, token, {
@@ -173,6 +193,16 @@ export function endSession(req: Request, res: Response) {
   const t = readCookie(req, COOKIE);
   if (t) run('DELETE FROM sessions WHERE token_hash = ?', sha256(t));
   res.clearCookie(COOKIE, { path: '/' });
+}
+
+/**
+ * End an account's sessions (a new password, two-step sign-in turned on or off or reset): all of them, or all but the
+ * one this request comes from (the person who made the change stays signed in there).
+ */
+export function endSessionsOf(userId: number, keep?: Request) {
+  const t = keep && readCookie(keep, COOKIE);
+  if (t) run('DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?', userId, sha256(t));
+  else run('DELETE FROM sessions WHERE user_id = ?', userId);
 }
 
 function readCookie(req: Request, name: string): string | undefined {
@@ -280,16 +310,13 @@ export function firstAdminId(): number | null {
   return get<{ id: number }>("SELECT MIN(id) AS id FROM users WHERE role = 'admin'")?.id ?? null;
 }
 
-// ---- crude login throttling (per IP, in memory) ---------------------------------------
+// ---- sign-in throttling (per address, in memory) ---------------------------------------
 
-const attempts = new Map<string, { n: number; until: number }>();
-export function loginThrottle(ip: string): boolean {
-  const a = attempts.get(ip);
-  return !!a && a.n >= 8 && a.until > Date.now();
-}
-export function loginFailed(ip: string) {
-  const a = attempts.get(ip);
-  const n = a && a.until > Date.now() ? a.n + 1 : 1;
-  attempts.set(ip, { n, until: Date.now() + 15 * 60_000 });
-}
-export const loginOk = (ip: string) => attempts.delete(ip);
+// Eight wrong passwords or codes from one address within 15 minutes, and that address waits. Signing in forgives only
+// the wrong tries at that same account (a typo, then the right password): signing in to one's own account between
+// guesses at others used to wipe the address's count, so one account was enough to guess on forever (0.19.8 review).
+const signIns = makeLimiter(8, 15 * 60_000);
+const accountTag = (username: string | undefined) => (username ?? '').trim().toLowerCase();
+export const loginThrottle = (ip: string) => signIns.over(addressKey(ip));
+export const loginFailed = (ip: string, username: string | undefined) => signIns.add(addressKey(ip), username ? accountTag(username) : undefined);
+export const loginOk = (ip: string, username: string) => signIns.forgive(addressKey(ip), accountTag(username));

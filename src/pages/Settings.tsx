@@ -182,7 +182,7 @@ function ProfileCard() {
       return api.patch('/me', { current_password: pw.current, new_password: pw.next }).catch((e: Error) => {
         throw new Error(t(e.message));
       });
-    }, t('Password changed.'));
+    }, t('Password changed. You are signed out everywhere else.'));
     if (ok) setPw({ current: '', next: '', confirm: '' });
   };
 

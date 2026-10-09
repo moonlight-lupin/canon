@@ -6628,6 +6628,10 @@
       "密码已更改。",
       "密碼已更改。"
     ],
+    "Password changed. You are signed out everywhere else.": [
+      "密码已更改。你在其他设备上的登入都已结束。",
+      "密碼已更改。你在其他設備上的登入都已結束。"
+    ],
     "Past": [
       "过往",
       "過往"
@@ -9680,9 +9684,9 @@
       "关闭",
       "關閉"
     ],
-    "Turn off two-step sign-in for {name}? They sign in with their password and can set it up again.": [
-      "关闭 {name} 的两步登入？对方将只用密码登入，之后可以重新设定。",
-      "關閉 {name} 的兩步登入？對方將只用密碼登入，之後可以重新設定。"
+    "Turn off two-step sign-in for {name}? They are signed out everywhere, sign in with their password and can set it up again.": [
+      "关闭 {name} 的两步登入？对方会在所有设备上被登出，之后只用密码登入，可以重新设定。",
+      "關閉 {name} 的兩步登入？對方會在所有設備上被登出，之後只用密碼登入，可以重新設定。"
     ],
     "Turn off what your church doesn’t use: it is hidden for everyone and AI assistants don’t see it. Nothing is deleted — turning it on again brings everything back.": [
       "关闭教会不使用的部分：所有人都不会再看到，AI 助手也看不到。不会删除任何资料——重新开启即可恢复一切。",
@@ -11410,8 +11414,8 @@
     ]
   },
   "guide": [
-    "d5fd4808b75b6581",
-    "8c2b9f0a8e6aac6a"
+    "73a8db15c216c3d4",
+    "03cf1f292d86d9d7"
   ],
   "outputs": {
     "Advent": [
@@ -11867,6 +11871,10 @@
     "Too many entries from here just now. Please try again in a few minutes.": [
       "刚才从这里提交的次数太多，请几分钟后再试。",
       "剛才從這裡提交的次數太多，請幾分鐘後再試。"
+    ],
+    "Too many requests from this address. Please try again in a few minutes.": [
+      "从这个地址发出的请求太多，请几分钟后再试。",
+      "從這個地址發出的請求太多，請幾分鐘後再試。"
     ],
     "Unknown application (client_id).": [
       "未知的应用（client_id）。",
