@@ -226,7 +226,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
         })}><Icon name="wand" />{t('Match the obvious ones')}</button>}
         {b.canEdit && <button className="btn" disabled={busy} onClick={() => act(() => api.post(`/bookkeeping/bank/statements/${id}/done`, { done: !s.done_at }), t('Saved.'))}>{s.done_at ? t('Reopen') : <><Icon name="check" />{t('Mark reconciled')}</>}</button>}
         {b.canEdit && <button className="btn danger ghost" disabled={busy} onClick={async () => {
-          if (!confirmAction(t('Remove this statement? Journals entered from it stay in the books.'))) return;
+          if (!await confirmAction(t('Remove this statement? Journals entered from it stay in the books.'), { danger: true, ok: t('Remove') })) return;
           if (await run(() => api.del(`/bookkeeping/bank/statements/${id}`), t('Deleted.'))) onBack();
         }}><Icon name="trash" /></button>}
       </div>
@@ -274,7 +274,7 @@ function StatementView({ id, onBack }: { id: number; onBack: () => void }) {
                       <div className="row" style={{ gap: 6 }}>
                         <span className="badge ok"><Icon name="link" />{l.group.book.map((x) => x.number).join(' + ')}</span>
                         <span className="small muted">{l.group.lines > 1 ? t('with {n} statement line(s)').replace('{n}', String(l.group.lines)) : t('one deposit, several entries')}</span>
-                        {b.canEdit && <button className="btn ghost small" disabled={busy} onClick={() => confirmAction(t('Unmatch this group? Every line in it is unmatched.')) && act(() => api.post(`/bookkeeping/bank/lines/${l.id}/unmatch`))}>{t('Unmatch')}</button>}
+                        {b.canEdit && <button className="btn ghost small" disabled={busy} onClick={async () => await confirmAction(t('Unmatch this group? Every line in it is unmatched.')) && act(() => api.post(`/bookkeeping/bank/lines/${l.id}/unmatch`))}>{t('Unmatch')}</button>}
                       </div>
                     )}
                     {l.status === 'ignored' && (

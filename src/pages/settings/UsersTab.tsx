@@ -41,14 +41,14 @@ export function UsersTab() {
     if (await run(() => api.patch(`/users/${u.id}`, { person_id: personId }), t('Saved.'))) reload();
   };
   const resetTwoStep = async (u: UserRow) => {
-    if (!confirmAction(t('Turn off two-step sign-in for {name}? They are signed out everywhere and their AI assistants are disconnected; they sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
+    if (!await confirmAction(t('Turn off two-step sign-in for {name}? They are signed out everywhere and their AI assistants are disconnected; they sign in with their password and can set it up again.').replace('{name}', u.display_name))) return;
     if (await run(() => api.patch(`/users/${u.id}`, { reset_two_step: true }), t('Saved.'))) reload();
   };
   const setRole = async (u: UserRow, role: Role) => {
     if (await run(() => api.patch(`/users/${u.id}`, { role }), t('Saved.'))) reload();
   };
   const remove = async (u: UserRow) => {
-    if (!confirmAction(`${t('Delete user')} ${u.username}?`)) return;
+    if (!await confirmAction(`${t('Delete user')} ${u.username}?`)) return;
     if (await run(() => api.del(`/users/${u.id}`), t('Deleted.'))) reload();
   };
 

@@ -7,7 +7,7 @@ import { UI_LANGS, langInfo } from '../../../shared/languages.ts';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useI18n } from '../../i18n.tsx';
-import { fmtDate, today } from '../../components/ui.tsx';
+import { confirmAction, fmtDate, today } from '../../components/ui.tsx';
 import { Icon, ReedMark } from '../../components/icons.tsx';
 import { ReceiptViewer } from '../../components/ReceiptViewer.tsx';
 import { SignaturePad } from '../records/CashCount.tsx';
@@ -448,7 +448,7 @@ function ClaimPage({ session, status, onExpired }: { session: Session; status: S
               )}
             </div>
           )}
-          <button className="btn ghost danger" disabled={busy} onClick={() => window.confirm(t('Delete this claim?')) && act(async () => { await call('DELETE', `/${c.id}`, undefined, session.token); }, () => nav('/self/claims'))}><Icon name="trash" />{t('Delete this claim')}</button>
+          <button className="btn ghost danger" disabled={busy} onClick={async () => (await confirmAction(t('Delete this claim?'), { danger: true, ok: t('Delete') })) && act(async () => { await call('DELETE', `/${c.id}`, undefined, session.token); }, () => nav('/self/claims'))}><Icon name="trash" />{t('Delete this claim')}</button>
         </>
       ) : (
         <>
@@ -498,7 +498,7 @@ function ClaimPage({ session, status, onExpired }: { session: Session; status: S
               </div>
             </div>
           )}
-          {c.may_withdraw && <button className="btn ghost" disabled={busy} onClick={() => window.confirm(t('Withdraw this claim?')) && act(() => call<View>('POST', `/${c.id}/withdraw`, undefined, session.token))}>{t('Withdraw this claim')}</button>}
+          {c.may_withdraw && <button className="btn ghost" disabled={busy} onClick={async () => (await confirmAction(t('Withdraw this claim?'))) && act(() => call<View>('POST', `/${c.id}/withdraw`, undefined, session.token))}>{t('Withdraw this claim')}</button>}
         </>
       )}
     </div>

@@ -908,6 +908,10 @@
       "应用密码",
       "應用密碼"
     ],
+    "Appearance": [
+      "外观",
+      "外觀"
+    ],
     "Approvals": [
       "审批",
       "審批"
@@ -1063,6 +1067,10 @@
     "As chosen for the service, else the church default": [
       "依聚会的设定，否则用教会默认",
       "依聚會的設定，否則用教會默認"
+    ],
+    "As this computer is set": [
+      "跟随这台电脑的设定",
+      "跟隨這臺電腦的設定"
     ],
     "Ask an administrator to add the SMTP server under Settings → E-mail.": [
       "请管理员在“设置 → 电邮”中添加 SMTP 服务器。",
@@ -2176,6 +2184,10 @@
       "不确认就关闭？Canon 不会再显示这个恢复密钥。若尚未打印或抄下，请在“设置 → 安全与隐私”另做新的恢复密钥。",
       "不確認就關閉？Canon 不會再顯示這個恢復密鑰。若尚未打印或抄下，請在“設置 → 安全與隱私”另做新的恢復密鑰。"
     ],
+    "Close without saving": [
+      "不保存就关闭",
+      "不保存就關閉"
+    ],
     "Close without saving? What you typed here will be lost.": [
       "不保存就关闭吗？在这里输入的内容会丢失。",
       "不保存就關閉嗎？在這裡輸入的內容會丟失。"
@@ -2299,6 +2311,10 @@
     "Condition": [
       "状况",
       "狀況"
+    ],
+    "Confirm": [
+      "确定",
+      "確定"
     ],
     "Confirm new password": [
       "确认新密码",
@@ -2611,6 +2627,10 @@
     "Daily": [
       "每天",
       "每天"
+    ],
+    "Dark": [
+      "深色",
+      "深色"
     ],
     "Dark background": [
       "深色背景",
@@ -4835,6 +4855,10 @@
     "Licence and allowed uses": [
       "许可与可用范围",
       "許可與可用範圍"
+    ],
+    "Light": [
+      "浅色",
+      "淺色"
     ],
     "Light background": [
       "浅色背景",
@@ -12390,7 +12414,7 @@
     ]
   },
   "guide": [
-    "a4850303d5b9fe0b",
-    "fc9c7dcdf1f78c14"
+    "665f092e1dbfb227",
+    "6e3cab7a4a514f0d"
   ]
 }

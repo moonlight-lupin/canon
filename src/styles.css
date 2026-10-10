@@ -35,33 +35,32 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --paper: #14171d;
-    --paper-2: #1b1f27;
-    --paper-3: #222732;
-    --sunk: #101318;
-    --ink: #ece6d8;
-    --ink-2: #b9b2a3;
-    --ink-3: #9a9588;
-    --rule: #2e333d;
-    --rule-strong: #434a57;
-    --reed: #c9a85a;
-    --reed-ink: #d8bb72;
-    --reed-wash: #2c2718;
-    --lapis: #8fa8d6;
-    --lapis-hover: #aac0e6;
-    --lapis-wash: #1f2a3e;
-    --on-lapis: #10131a;
-    --danger: #e08a80;
-    --danger-wash: #3a1f1c;
-    --ok: #a3c07e;
-    --ok-wash: #222c18;
-    --warn: #e2b55a;
-    --warn-wash: #33290f;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
-    color-scheme: dark;
-  }
+/* dark: chosen beside the language buttons, or as the computer is set (public/theme.js sets data-theme) */
+:root[data-theme='dark'] {
+  --paper: #14171d;
+  --paper-2: #1b1f27;
+  --paper-3: #222732;
+  --sunk: #101318;
+  --ink: #ece6d8;
+  --ink-2: #b9b2a3;
+  --ink-3: #9a9588;
+  --rule: #2e333d;
+  --rule-strong: #434a57;
+  --reed: #c9a85a;
+  --reed-ink: #d8bb72;
+  --reed-wash: #2c2718;
+  --lapis: #8fa8d6;
+  --lapis-hover: #aac0e6;
+  --lapis-wash: #1f2a3e;
+  --on-lapis: #10131a;
+  --danger: #e08a80;
+  --danger-wash: #3a1f1c;
+  --ok: #a3c07e;
+  --ok-wash: #222c18;
+  --warn: #e2b55a;
+  --warn-wash: #33290f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -207,6 +206,8 @@ img.church-logo { object-fit: contain; width: auto; }
 .btn.ghost:hover { background: var(--sunk); color: var(--ink); }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover { border-color: var(--danger); }
+.btn.danger-fill { background: var(--danger); border-color: var(--danger); color: var(--paper-3); }
+.btn.danger-fill:hover { filter: brightness(1.08); }
 .btn.sm { height: 28px; padding: 0 9px; font-size: 12.5px; }
 .btn.icon { width: 30px; padding: 0; }
 .btn.sm.icon { width: 26px; }
@@ -290,6 +291,10 @@ table.t tr.click:hover td { background: var(--sunk); }
 .overlay { position: fixed; inset: 0; background: rgb(20 23 29 / 0.45); z-index: 100; display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto; }
 .modal { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--shadow); width: 100%; max-width: 640px; }
 .modal.lg { max-width: 920px; }
+.modal.sm { max-width: 440px; margin-top: 10vh; }
+/* a confirmation sits above the dialog that asked */
+.overlay.confirm { z-index: 110; }
+.confirm-msg { margin: 0; font-size: 15px; white-space: pre-line; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--rule); }
 .modal-body { padding: 18px 20px; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--rule); }

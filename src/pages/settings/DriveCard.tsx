@@ -72,8 +72,8 @@ export function DriveCard({ encrypted, onCopied }: { encrypted: boolean; onCopie
     setCode(c);
     poll(c.interval);
   });
-  const disconnect = () => {
-    if (!confirmAction(t('Disconnect Google Drive? Canon stops sending backups there; the backups already in Drive stay.'))) return;
+  const disconnect = async () => {
+    if (!await confirmAction(t('Disconnect Google Drive? Canon stops sending backups there; the backups already in Drive stay.'))) return;
     run(async () => {
       await api.post('/backups/drive/disconnect', {});
       setFiles(null);

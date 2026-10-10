@@ -67,7 +67,7 @@ export function OverviewTab() {
   const postOfferings = async () => {
     const list = await run(() => api.get<{ id: number }[]>('/bookkeeping/journals?status=draft&kind=offering&limit=500'));
     if (!list?.length) return;
-    if (!confirmAction(t('Post {n} offering draft(s)? Posted journals can’t be changed, only reversed.').replace('{n}', String(list.length)))) return;
+    if (!await confirmAction(t('Post {n} offering draft(s)? Posted journals can’t be changed, only reversed.').replace('{n}', String(list.length)))) return;
     const r = await run(() => api.post<{ posted: string[]; failed: { id: number; error: string }[] }>('/bookkeeping/journals/post', { ids: list.map((j) => j.id) }));
     if (r) {
       window.alert(t('Posted: {n}.').replace('{n}', String(r.posted.length)) + (r.failed.length ? '\n' + t('Still drafts (open them in Journals to see why): {n}.').replace('{n}', String(r.failed.length)) : ''));
@@ -188,7 +188,7 @@ function ClosingCard({ isAdmin }: { isAdmin: boolean }) {
   const [date, setDate] = useState(lastMonthEnd());
   const [reopenTo, setReopenTo] = useState('');
   const close = async () => {
-    if (!confirmAction(t('Close the books up to {date}? Nothing dated on or before it can then be posted.').replace('{date}', fmtDate(date, lang)))) return;
+    if (!await confirmAction(t('Close the books up to {date}? Nothing dated on or before it can then be posted.').replace('{date}', fmtDate(date, lang)))) return;
     if (await run(() => api.post('/bookkeeping/close', { date }), t('Saved.'))) b.reload();
   };
   const reopen = async () => {
@@ -264,7 +264,7 @@ function OpeningDialog({ onClose }: { onClose: () => void }) {
     const j = await run(() => (draft ? api.put<{ id: number }>(`/bookkeeping/journals/${draft.id}`, body) : api.post<{ id: number }>('/bookkeeping/journals', body)));
     if (!j) return;
     if (post) {
-      if (!confirmAction(t('Post the opening balances? Posted journals can’t be changed, only reversed.'))) return;
+      if (!await confirmAction(t('Post the opening balances? Posted journals can’t be changed, only reversed.'))) return;
       if (!(await run(() => api.post(`/bookkeeping/journals/${j.id}/post`), t('Posted.')))) {
         b.reload();
         return;

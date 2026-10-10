@@ -166,8 +166,8 @@ function EventDialog({ id, initialDate, onClose, onSaved }: { id: number | null;
     onSaved();
     onClose();
   }, t('Saved.'));
-  const remove = () => {
-    if (!id || !confirmAction(t('Delete this event?'))) return;
+  const remove = async () => {
+    if (!id || !await confirmAction(t('Delete this event?'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/events/${id}`);
       onSaved();

@@ -54,8 +54,8 @@ export default function Templates() {
     await api.put(`/templates/${tp.id}/hidden`, { hidden });
     reload();
   }, hidden ? t('Archived. Find it under Archived templates.') : t('Restored.'));
-  const remove = (tp: Template) => {
-    if (!confirmAction(t('Delete this archived template for good? Services made from it keep their order of service.'))) return;
+  const remove = async (tp: Template) => {
+    if (!await confirmAction(t('Delete this archived template for good? Services made from it keep their order of service.'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/templates/${tp.id}`);
       reload();

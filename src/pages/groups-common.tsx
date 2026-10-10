@@ -264,7 +264,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
     if (await run(() => api.patch(`/group-members/${m.id}`, body))) changed();
   };
   const remove = async (m: MemberRow) => {
-    if (!confirmAction(t('Remove {name} from this group? To keep the record of a finished term, set an end date instead.').replace('{name}', m.name))) return;
+    if (!await confirmAction(t('Remove {name} from this group? To keep the record of a finished term, set an end date instead.').replace('{name}', m.name), { danger: true, ok: t('Remove') })) return;
     if (await run(() => api.del(`/group-members/${m.id}`), t('Removed.'))) changed();
   };
   const add = async () => {
@@ -289,7 +289,7 @@ export function GroupDetailModal({ groupId, onClose, onChanged }: { groupId: num
     if (await run(() => api.del(`/groups/${groupId}/meeting-skips/${date}`), t('Restored: it is made with the next meetings ahead.'))) skips.reload();
   };
   const delGroup = async () => {
-    if (!data || !confirmAction(t('Delete this group and all its memberships? To keep the history, mark it inactive instead.'))) return;
+    if (!data || !await confirmAction(t('Delete this group and all its memberships? To keep the history, mark it inactive instead.'), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/groups/${groupId}`), t('Deleted.'))) {
       onChanged();
       onClose();

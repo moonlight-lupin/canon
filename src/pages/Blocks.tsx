@@ -130,7 +130,7 @@ function BlockEditor({ block, canEdit, onChanged, onDeleted }: { block: Bulletin
     if (await run(() => api.patch(`/bulletin-blocks/${block.id}`, { name, data: body }), t('Saved.'))) await onChanged();
   };
   const remove = async () => {
-    if (!confirmAction(t('Delete this block? Bulletins and slides that use it will leave it out.'))) return;
+    if (!await confirmAction(t('Delete this block? Bulletins and slides that use it will leave it out.'), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/bulletin-blocks/${block.id}`), t('Deleted.'))) await onDeleted();
   };
   const upload = async (file: File | undefined) => {

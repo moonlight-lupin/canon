@@ -79,8 +79,8 @@ export function ImagesTab() {
     await api.patch(`/images/${i.id}`, { fit });
     await reload();
   });
-  const remove = (i: LibraryImage) => {
-    if (!confirmAction(i.uses ? t('Delete this picture? {n} service items show it; it comes off their slides.').replace('{n}', String(i.uses)) : t('Delete this picture?'))) return;
+  const remove = async (i: LibraryImage) => {
+    if (!await confirmAction(i.uses ? t('Delete this picture? {n} service items show it; it comes off their slides.').replace('{n}', String(i.uses)) : t('Delete this picture?'))) return;
     run(async () => {
       await api.del(`/images/${i.id}`);
       await reload();

@@ -92,7 +92,7 @@ export function TextEditor({ text, canEdit, onClose, onSaved }: { text: Partial<
   return (
     <Modal title={x.id ? lt(x.title) : t('New text')} onClose={onClose} size="lg" footer={canEdit ? (
       <>
-        {x.id && <button className="btn danger left" onClick={async () => { if (confirmAction(t('Are you sure?')) && await run(() => api.del(`/texts/${x.id}`))) onSaved(); }}><Icon name="trash" />{t('Delete')}</button>}
+        {x.id && <button className="btn danger left" onClick={async () => { if (await confirmAction(t('Are you sure?'), { danger: true, ok: t('Delete') }) && await run(() => api.del(`/texts/${x.id}`))) onSaved(); }}><Icon name="trash" />{t('Delete')}</button>}
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
         <button className="btn primary" disabled={busy || !hasAnyText(x.title) || !partsOk} onClick={save}>{t('Save')}</button>
       </>

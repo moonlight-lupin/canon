@@ -53,7 +53,7 @@ export function LanguagesPanel({ settings, onSaved, saveLabel, blocked }: { sett
     if (u.default_for.length) lines.push(t('It is the default Bible for: {langs}. Readings will use another installed version until you choose a new default.').replace('{langs}', u.default_for.map((l) => langInfo(l).native).join(', ')));
     if (u.services) lines.push(t('{n} service(s) chose this version; they will fall back to the church default.').replace('{n}', String(u.services)));
     lines.push(x.source === 'upload' ? t('You would need the file to upload it again.') : t('It can be downloaded again at any time.'));
-    if (!confirmAction(lines.join('\n\n'))) return;
+    if (!await confirmAction(lines.join('\n\n'))) return;
     await run(() => api.del(`/bible/translations/${encodeURIComponent(x.code)}`), t('Deleted.'));
     reloadBibles();
   };

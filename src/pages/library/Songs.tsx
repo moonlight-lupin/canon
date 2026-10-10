@@ -118,7 +118,7 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores 
   return (
     <Modal title={s.id ? lt(s.title) : t('New song')} onClose={onClose} size="lg" footer={canEdit ? (
       <>
-        {s.id && <button className="btn danger left" onClick={async () => { if (confirmAction(t('Are you sure?')) && await run(() => api.del(`/songs/${s.id}`))) onSaved(); }}><Icon name="trash" />{t('Delete')}</button>}
+        {s.id && <button className="btn danger left" onClick={async () => { if (await confirmAction(t('Are you sure?'), { danger: true, ok: t('Delete') }) && await run(() => api.del(`/songs/${s.id}`))) onSaved(); }}><Icon name="trash" />{t('Delete')}</button>}
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
         <button className="btn primary" disabled={busy || !hasAnyText(s.title) || !refsOk} onClick={save}>{t('Save')}</button>
       </>
@@ -292,7 +292,7 @@ export function HymnalEditor({ hymnal, canEdit, onClose, onSaved }: { hymnal: Pa
     <Modal title={h.id ? lt(h.name) : t('New hymnal')} onClose={onClose} footer={canEdit ? (
       <>
         {h.id && <button className="btn danger left" onClick={async () => {
-          if (confirmAction(t('Delete this hymnal? Songs stay in the library; only their numbers in this hymnal are removed.')) && await run(() => api.del(`/hymnals/${h.id}`))) onSaved();
+          if (await confirmAction(t('Delete this hymnal? Songs stay in the library; only their numbers in this hymnal are removed.'), { danger: true, ok: t('Delete') }) && await run(() => api.del(`/hymnals/${h.id}`))) onSaved();
         }}><Icon name="trash" />{t('Delete')}</button>}
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
         <button className="btn primary" disabled={busy || !hasAnyText(h.name) || !h.abbr?.trim()} onClick={save}>{t('Save')}</button>
@@ -376,7 +376,7 @@ function SheetMusicSection({ songId, canEdit, onChanged }: { songId?: number; ca
                   <div className="row tight">
                     <button type="button" className="btn sm ghost icon" disabled={busy || i === 0} onClick={() => act(api.post<Score[]>(`/songs/scores/${f.id}/move`, { by: -1 }))} aria-label={t('Move up')}><Icon name="chevronLeft" /></button>
                     <button type="button" className="btn sm ghost icon" disabled={busy || i === list.length - 1} onClick={() => act(api.post<Score[]>(`/songs/scores/${f.id}/move`, { by: 1 }))} aria-label={t('Move down')}><Icon name="chevronRight" /></button>
-                    <button type="button" className="btn sm ghost icon danger" disabled={busy} onClick={() => { if (confirmAction(t('Remove this page of sheet music?'))) void act(api.del<Score[]>(`/songs/scores/${f.id}`)); }} aria-label={t('Delete')}><Icon name="trash" /></button>
+                    <button type="button" className="btn sm ghost icon danger" disabled={busy} onClick={async () => { if (await confirmAction(t('Remove this page of sheet music?'), { danger: true, ok: t('Remove') })) void act(api.del<Score[]>(`/songs/scores/${f.id}`)); }} aria-label={t('Delete')}><Icon name="trash" /></button>
                   </div>
                 )}
               </div>

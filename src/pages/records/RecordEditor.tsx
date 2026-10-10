@@ -93,8 +93,8 @@ export function RecordEditor() {
     const r = await put();
     rec.setData({ ...r, saved: true });
   }, t('Saved.'));
-  const verify = (v: boolean) => {
-    if (!v && !confirmAction(t('Reopen this cash count? The offerings can then be changed again.'))) return;
+  const verify = async (v: boolean) => {
+    if (!v && !await confirmAction(t('Reopen this cash count? The offerings can then be changed again.'))) return;
     run(async () => {
       if (dirty) await put();
       const r = await api.post<Rec>(`/services/${sid}/record/verify`, { verified: v });
@@ -120,15 +120,15 @@ export function RecordEditor() {
     setInk(null);
     setPadKey((k) => k + 1);
   }, t('Signed.'));
-  const removeRecord = () => {
-    if (!confirmAction(t('Delete this service record — attendance, visitors, notes and offerings? Only do this if it was entered by mistake. The change log keeps a copy.'))) return;
+  const removeRecord = async () => {
+    if (!await confirmAction(t('Delete this service record — attendance, visitors, notes and offerings? Only do this if it was entered by mistake. The change log keeps a copy.'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/services/${sid}/record`);
       nav('/records');
     }, t('Deleted.'));
   };
-  const unsign = (name: string) => {
-    if (!confirmAction(t('Remove the signature of {name}?').replace('{name}', name))) return;
+  const unsign = async (name: string) => {
+    if (!await confirmAction(t('Remove the signature of {name}?').replace('{name}', name), { danger: true, ok: t('Remove') })) return;
     run(async () => {
       const r = await api.post<Rec>(`/services/${sid}/record/unsign`, { name });
       rec.setData({ ...r, saved: true });

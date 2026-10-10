@@ -79,6 +79,10 @@ function accessReason(module: ModuleKey, cfg: McpConfig, scopes: Set<string>, ro
   return 'read only';
 }
 
+/** What a module's tools for the person's own records cover (ToolDef.own). */
+const OWN_TEXT: Partial<Record<ModuleKey, string>> = { bookkeeping: 'your own expense claims' };
+const allows = (level: ModuleAccess, need: 'read' | 'write') => level === 'write' || need === 'read';
+
 /** canon_whoami: always offered; built here because it needs the connection's settings. */
 const WHOAMI: ToolDef = {
   name: 'canon_whoami', module: 'services', access: 'read', always: true, title: 'Who am I connected as', annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -89,11 +93,19 @@ const WHOAMI: ToolDef = {
     const cfg = settings.mcp;
     const { auth } = ctx;
     const levels = ctx.levels ?? (Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>);
+    // a module the role doesn't include, whose tools for the person's own records (expense claims) are still offered:
+    // said so, rather than "off" beside tools that work (0.20.1)
+    const own = Object.fromEntries(
+      [...new Set(TOOLS.filter((t) => t.own).map((t) => t.module))]
+        .map((m) => [m, levels[m] === 'off' ? effectiveAccess(m, cfg, auth.scopes, auth.user.role, true) : 'off'] as const)
+        .filter(([, l]) => l !== 'off'),
+    ) as Partial<Record<ModuleKey, ModuleAccess>>;
     if (a.brief) {
       return {
         user: { name: auth.user.display_name, role: auth.user.role },
         scopes: [...auth.scopes],
         modules: Object.fromEntries(MODULES.filter((m) => levels[m] !== 'off').map((m) => [m, levels[m]])),
+        ...(Object.keys(own).length ? { own } : {}),
         more: 'canon_whoami without brief: reasons, tools, playbooks, privacy and the working instructions',
       };
     }
@@ -102,7 +114,10 @@ const WHOAMI: ToolDef = {
       connection: { scopes: [...auth.scopes], write_allowed: auth.scopes.has('canon:write') && editsAnything(auth.user) },
       church: { name: settings.church_name, languages: settings.languages.map((l) => ({ code: l, name: langInfo(l).name })) },
       congregations: listCongregations().filter((c) => c.active).map((c) => ({ id: c.id, code: c.code, name: c.name, languages: c.languages })),
-      modules: Object.fromEntries(MODULES.map((m) => [m, { access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role) }])),
+      modules: Object.fromEntries(MODULES.map((m) => [m, {
+        access: levels[m], covers: MODULE_TEXT[m], why: accessReason(m, cfg, auth.scopes, auth.user.role),
+        ...(own[m] ? { own: `${OWN_TEXT[m] ?? 'your own records'} only (${own[m] === 'write' ? 'read and draft' : 'read'}): ${TOOLS.filter((t) => t.own && t.module === m && allows(own[m]!, t.access)).map((t) => t.name).join(', ')}` } : {}),
+      }])),
       sheet_music: scoresFor(cfg) ? 'shared: canon_sheet_music lists songs’ pages and returns the pictures' : 'not shared by the administrator',
       visitors: { off: 'not shared (attendance numbers only)', names: 'names, how they came and follow-up — no contact details', contact: 'names, follow-up and contact details — handle with care (PDPA)' }[visitorsFor(cfg, auth.user.role)],
       member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : !seesMemberDetails(auth.user) && cfg.expose_member_pii ? 'withheld: your role does not see members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',

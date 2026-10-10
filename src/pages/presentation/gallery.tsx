@@ -65,7 +65,7 @@ export function useGalleryActions(kind: 'slide' | 'bulletin', reload: () => Prom
       window.location.href = `/api${base}/${id}/export`;
     },
     remove: async (id: number) => {
-      if (!confirmAction(t('Delete this archived template for good? Services using it go back to the church default.'))) return false;
+      if (!await confirmAction(t('Delete this archived template for good? Services using it go back to the church default.'), { danger: true, ok: t('Delete') })) return false;
       if (await run(() => api.del(`${base}/${id}`), t('Deleted.'))) {
         await reload();
         reloadSettings();

@@ -139,7 +139,7 @@ function ItemDialog({ id, lists, onClose, onChanged }: { id: number | null; list
     }
   };
   const remove = async () => {
-    if (!id || !confirmAction(t('Delete {number} ({name}) from the register, with its photos, receipts and maintenance log?').replace('{number}', x.number ?? '').replace('{name}', x.name ?? ''))) return;
+    if (!id || !await confirmAction(t('Delete {number} ({name}) from the register, with its photos, receipts and maintenance log?').replace('{number}', x.number ?? '').replace('{name}', x.name ?? ''), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/equipment/items/${id}`), t('Deleted.'))) {
       onChanged();
       onClose();
@@ -218,7 +218,7 @@ function FilesSection({ item, canEdit, onChanged }: { item: Full; canEdit: boole
     if (ok) onChanged();
   };
   const remove = async (f: FileRow) => {
-    if (!confirmAction(t('Delete {name}?').replace('{name}', f.name))) return;
+    if (!await confirmAction(t('Delete {name}?').replace('{name}', f.name), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/equipment/files/${f.id}`), t('Deleted.'))) onChanged();
   };
   return (
@@ -267,7 +267,7 @@ function MaintenanceSection({ item, canEdit, currency, lang, onChanged }: { item
     }
   };
   const remove = async (x: Maint) => {
-    if (!confirmAction(t('Delete this maintenance entry?'))) return;
+    if (!await confirmAction(t('Delete this maintenance entry?'), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/equipment/maintenance/${x.id}`), t('Deleted.'))) onChanged();
   };
   return (

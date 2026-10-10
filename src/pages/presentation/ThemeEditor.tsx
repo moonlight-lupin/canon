@@ -74,8 +74,8 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
   const [big, setBig] = useState(1);
   const shown = preview[Math.min(big, preview.length - 1)];
 
-  const back = () => {
-    if (dirty && !confirmAction(t('Discard your unsaved changes?'))) return;
+  const back = async () => {
+    if (dirty && !await confirmAction(t('Discard your unsaved changes?'))) return;
     onBack();
   };
   const save = async () => {
@@ -155,7 +155,7 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
       <div className="grow" />
       <GuideLink anchor="slide-templates" />
       {isAdmin && !isDefault && <button className="btn sm" disabled={busy || dirty} title={dirty ? t('Save your changes first') : t('Services use this template unless they choose another.')} onClick={() => acts.makeDefault(theme.id)}><Icon name="check" />{t('Set as church default')}</button>}
-      {canEdit && !theme.builtin && <button className="btn sm" disabled={busy} onClick={() => { if (!dirty || confirmAction(t('Discard your unsaved changes?'))) acts.copy(theme.id); }}><Icon name="copy" />{t('Duplicate')}</button>}
+      {canEdit && !theme.builtin && <button className="btn sm" disabled={busy} onClick={async () => { if (!dirty || await confirmAction(t('Discard your unsaved changes?'))) acts.copy(theme.id); }}><Icon name="copy" />{t('Duplicate')}</button>}
       {isAdmin && theme.hidden && !theme.builtin && <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await acts.remove(theme.id)) onBack(); }}><Icon name="trash" />{t('Delete')}</button>}
     </div>
   );

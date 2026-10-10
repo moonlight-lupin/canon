@@ -98,26 +98,26 @@ export default function BackupsTab() {
       throw e;
     }
   });
-  const restore = (b: BackupFile) => {
-    if (!confirmAction(restoreWarning(`${when(b.created)} · ${b.name}`))) return;
+  const restore = async (b: BackupFile) => {
+    if (!await confirmAction(restoreWarning(`${when(b.created)} · ${b.name}`))) return;
     tryRestore(b.name, (pw) => api.post<{ safety: string }>(`/backups/${encodeURIComponent(b.name)}/restore`, pw ? { password: pw } : {}));
   };
-  const restoreFile = (file: File | undefined) => {
+  const restoreFile = async (file: File | undefined) => {
     if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
-    if (!confirmAction(restoreWarning(file.name))) return;
+    if (!await confirmAction(restoreWarning(file.name))) return;
     tryRestore(file.name, (pw) => api.upload<{ safety: string }>('/backups/restore-upload', file, pw ? { 'X-Backup-Password': encodeURIComponent(pw) } : undefined));
   };
-  const setPassword = (password: string | null) => {
-    if (password === null && !confirmAction(t('Stop encrypting backups? New backups are plain copies again; the encrypted ones still need their password.'))) return;
+  const setPassword = async (password: string | null) => {
+    if (password === null && !await confirmAction(t('Stop encrypting backups? New backups are plain copies again; the encrypted ones still need their password.'))) return;
     run(async () => {
       st.setData(await api.put<Status>('/backups/password', { password }));
       setNewPw('');
       setNewPw2('');
     }, password === null ? t('Backups are no longer encrypted.') : t('Backup password saved. New backups are encrypted.'));
   };
-  const remove = (b: BackupFile) => {
-    if (!confirmAction(`${t('Delete this backup?')} ${b.name}`)) return;
+  const remove = async (b: BackupFile) => {
+    if (!await confirmAction(`${t('Delete this backup?')} ${b.name}`)) return;
     run(async () => st.setData(await api.del<Status>(`/backups/${encodeURIComponent(b.name)}`)));
   };
 

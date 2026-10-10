@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
-import { Field, Modal, fmtDate, useAction, useSession } from './ui.tsx';
+import { Field, Modal, confirmAction, fmtDate, useAction, useSession } from './ui.tsx';
 import { Icon } from './icons.tsx';
 
 export interface RecoveryKey { key: string; id: string; made_at: string; qr: string }
@@ -23,8 +23,8 @@ interface EncryptResult extends CopiesResult { recovery: RecoveryKey; safety: st
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** Closing the recovery key's window before Done: asked first, since the key is not shown again. */
-export const closeUnconfirmed = (t: (s: string) => string, done: () => void) => () => {
-  if (window.confirm(t('Close without confirming? Canon will not show this recovery key again. If it isn’t printed or written down, make a new one in Settings → Security & privacy.'))) done();
+export const closeUnconfirmed = (t: (s: string) => string, done: () => void) => async () => {
+  if (await confirmAction(t('Close without confirming? Canon will not show this recovery key again. If it isn’t printed or written down, make a new one in Settings → Security & privacy.'), { danger: true, ok: t('Close') })) done();
 };
 
 /** The recovery key, shown this once. Done only once it is printed or written down and its end typed back. */

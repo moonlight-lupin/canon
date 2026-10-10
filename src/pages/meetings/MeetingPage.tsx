@@ -60,8 +60,8 @@ export default function MeetingPage() {
     const r = await api.post<ServiceFull>(`/services/${mid}/duplicate`, { date: nextDate || addDays(m.date, 7) });
     nav(`/meetings/${r.id}`);
   }, t('Next meeting created.'));
-  const remove = () => {
-    if (!confirmAction(t('Delete this meeting? A meeting with a record can’t be deleted.'))) return;
+  const remove = async () => {
+    if (!await confirmAction(t('Delete this meeting? A meeting with a record can’t be deleted.'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/services/${mid}`);
       nav(groupId ? `/meetings?group=${groupId}` : '/meetings');

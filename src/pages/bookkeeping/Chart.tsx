@@ -110,7 +110,7 @@ function useSaver(path: string, id: number | null, onClose: () => void) {
       }
     },
     del: async () => {
-      if (!id || !confirmAction(t('Delete it? (Anything already used in a journal can only be retired.)'))) return;
+      if (!id || !await confirmAction(t('Delete it? (Anything already used in a journal can only be retired.)'), { danger: true, ok: t('Delete') })) return;
       if (await run(() => api.del(`${path}/${id}`), t('Deleted.'))) {
         b.reload();
         onClose();

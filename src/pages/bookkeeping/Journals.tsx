@@ -42,7 +42,7 @@ export function JournalsTab() {
   };
   const drafts = (data ?? []).filter((j) => j.status === 'draft');
   const postPicked = async () => {
-    if (!confirmAction(t('Post {n} draft(s)? Posted journals can’t be changed, only reversed.').replace('{n}', String(picked.length)))) return;
+    if (!await confirmAction(t('Post {n} draft(s)? Posted journals can’t be changed, only reversed.').replace('{n}', String(picked.length)))) return;
     const r = await run(() => api.post<{ posted: string[]; failed: { id: number; error: string }[] }>('/bookkeeping/journals/post', { ids: picked }));
     if (r) {
       window.alert(t('Posted: {n}.').replace('{n}', String(r.posted.length)) + (r.failed.length ? '\n' + t('Still drafts (open them in Journals to see why): {n}.').replace('{n}', String(r.failed.length)) : ''));
@@ -153,7 +153,7 @@ export function JournalDialog({ id, onClose, onChanged, onOpen }: { id: number |
     const saved = await run(() => (id ? api.put<BkJournal>(`/bookkeeping/journals/${id}`, body()) : api.post<BkJournal>('/bookkeeping/journals', body())), post ? undefined : t('Saved.'));
     if (!saved) return;
     if (post) {
-      if (!confirmAction(t('Post this journal? Posted journals can’t be changed, only reversed.'))) {
+      if (!await confirmAction(t('Post this journal? Posted journals can’t be changed, only reversed.'))) {
         onChanged();
         if (!id) onClose();
         else full.reload();
@@ -170,7 +170,7 @@ export function JournalDialog({ id, onClose, onChanged, onOpen }: { id: number |
     onClose();
   };
   const del = async () => {
-    if (!id || !confirmAction(t('Delete this draft?'))) return;
+    if (!id || !await confirmAction(t('Delete this draft?'), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/bookkeeping/journals/${id}`), t('Deleted.'))) {
       onChanged();
       onClose();

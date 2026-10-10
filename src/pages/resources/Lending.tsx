@@ -425,7 +425,7 @@ function BookDialog({ id, categories, onClose, onChanged, onCreated }: { id: num
     }
   };
   const remove = async () => {
-    if (!id || !confirmAction(t('Delete “{title}” and its copies from the catalogue?').replace('{title}', b.title ?? ''))) return;
+    if (!id || !await confirmAction(t('Delete “{title}” and its copies from the catalogue?').replace('{title}', b.title ?? ''), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/lending/books/${id}`), t('Deleted.'))) {
       onChanged();
       onClose();
@@ -444,7 +444,7 @@ function BookDialog({ id, categories, onClose, onChanged, onCreated }: { id: num
     }
   };
   const copyDelete = async (c: Copy) => {
-    if (!confirmAction(t('Delete copy {n}?').replace('{n}', c.number))) return;
+    if (!await confirmAction(t('Delete copy {n}?').replace('{n}', c.number), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/lending/copies/${c.id}`), t('Deleted.'))) {
       full.reload();
       onChanged();

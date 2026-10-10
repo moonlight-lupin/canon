@@ -112,7 +112,7 @@ export function PersonEditor({ id, households, onClose, onSaved }: { id: number 
   };
 
   const remove = async () => {
-    if (!id || !confirmAction(t('Delete this person? Their serving history and qualifications will also be removed.'))) return;
+    if (!id || !await confirmAction(t('Delete this person? Their serving history and qualifications will also be removed.'), { danger: true, ok: t('Delete') })) return;
     const ok = await run(() => api.del(`/people/${id}`), t('Deleted.'));
     if (ok) {
       onSaved();
@@ -356,7 +356,7 @@ export function GroupsTeamsEditor({ personId, onQualsRemoved }: { personId: numb
     }
   };
   const delGroup = async (memberId: number, name: string) => {
-    if (!confirmAction(t('Remove from {name}?').replace('{name}', name))) return;
+    if (!await confirmAction(t('Remove from {name}?').replace('{name}', name), { danger: true, ok: t('Remove') })) return;
     if (await run(() => api.del(`/group-members/${memberId}`))) mine.reload();
   };
   const addTeam = async () => {
@@ -367,13 +367,13 @@ export function GroupsTeamsEditor({ personId, onQualsRemoved }: { personId: numb
     }
   };
   const delTeam = async (teamId: number, name: string) => {
-    if (!confirmAction(t('Remove from {name}?').replace('{name}', name))) return;
+    if (!await confirmAction(t('Remove from {name}?').replace('{name}', name), { danger: true, ok: t('Remove') })) return;
     try {
       await api.del(`/teams/${teamId}/members/${personId}`);
       mine.reload();
     } catch (e) {
       // still qualified for roles in that team: offer to drop those qualifications too
-      if (e instanceof ApiError && e.status === 409 && confirmAction(t('This person is still qualified for roles in this team. Remove them from the team and drop those qualifications?'))) {
+      if (e instanceof ApiError && e.status === 409 && await confirmAction(t('This person is still qualified for roles in this team. Remove them from the team and drop those qualifications?'))) {
         const r = await run(() => api.del<{ removed_qualifications: number[] }>(`/teams/${teamId}/members/${personId}?cascade=1`));
         if (r) {
           onQualsRemoved(r.removed_qualifications);

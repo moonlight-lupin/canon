@@ -17,6 +17,8 @@ Environment variables are optional overrides:
 | `CANON_ENCRYPT` | — | `0` keeps a **new** database plain (not recommended). An existing database is never changed by it. |
 | `CANON_TEST_COPY` | — | `1` for a test copy of the church's data: no e-mail is sent and Google Drive is left alone; a banner says so. See [DOCKER.md](DOCKER.md#a-test-copy-of-the-churchs-data). |
 
+**Security headers.** Canon sends a Content-Security-Policy with every page (0.20.1): scripts run only from Canon itself (never inline or from another site), nothing is loaded from elsewhere, and another site can't show Canon inside a frame of its page. A proxy in front of Canon (Cloudflare, Caddy, nginx) should pass it on unchanged, not replace it with one of its own. The visitor form, the AI sign-in page and uploaded files keep stricter policies of their own.
+
 ### In the background on Windows
 
 Canon can run without a window, starting when the computer starts (before anyone signs in) and starting again if it stops by itself. Its icon by the clock shows that it is running and the address other computers use.

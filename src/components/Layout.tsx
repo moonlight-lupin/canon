@@ -13,6 +13,7 @@ import { allows, pageModule } from '../../shared/permissions.ts';
 import { pageOff } from '../../shared/modules.ts';
 import { setExportContext } from './xlsx-download.ts';
 import { UpdateNotice } from './Updates.tsx';
+import { useTheme } from '../theme.ts';
 
 // newTab: a page outside Canon's frame (the phone claims page) opens in a tab of its own
 const NAV: { group: string; items: { to: string; label: string; icon: IconName; admin?: boolean; newTab?: boolean }[] }[] = [
@@ -153,7 +154,10 @@ export function Layout() {
           })}
         </nav>
         <div className="side-foot">
-          <Seg<Lang> value={lang} onChange={changeLang} options={uiLangs.map((l) => ({ value: l, label: langInfo(l).short }))} />
+          <div className="row" style={{ gap: 8 }}>
+            <Seg<Lang> value={lang} onChange={changeLang} options={uiLangs.map((l) => ({ value: l, label: langInfo(l).short }))} />
+            <ThemeSwitch />
+          </div>
           <div className="row" style={{ gap: 14 }}>
             <NavLink to="/guide" className="small muted" style={{ textDecoration: 'none' }}>{t('Guide')}</NavLink>
             <NavLink to="/about" className="small muted" style={{ textDecoration: 'none' }}>{t('About Canon')}</NavLink>
@@ -280,4 +284,17 @@ function TestCopyBanner() {
   const { data } = useApi<{ test_copy?: boolean }>('/about');
   if (!data?.test_copy) return null;
   return <div className="callout warn no-print" style={{ marginBottom: 12 }}>{t('Test copy: Canon sends no e-mail here and leaves Google Drive alone.')}</div>;
+}
+
+/** Light, dark, or as this computer is set (0.20.1): remembered in this browser. */
+function ThemeSwitch() {
+  const { t } = useI18n();
+  const [theme, setTheme] = useTheme();
+  return (
+    <Seg value={theme} onChange={setTheme} label={t('Appearance')} options={[
+      { value: 'auto', label: <Icon name="monitor" />, title: t('As this computer is set') },
+      { value: 'light', label: <Icon name="sun" />, title: t('Light') },
+      { value: 'dark', label: <Icon name="moon" />, title: t('Dark') },
+    ]} />
+  );
 }

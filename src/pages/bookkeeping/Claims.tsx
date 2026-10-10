@@ -127,12 +127,12 @@ function ClaimDialog({ id, onClose, onChanged }: { id: number; onClose: () => vo
   return (
     <Modal title={`${c.number ?? t('Expense claim')} · ${c.claimant}`} onClose={onClose} size="lg" footer={
       <>
-        {b.canEdit && (c.status === 'draft' || c.status === 'withdrawn' || c.status === 'rejected') && <button className="btn danger ghost" disabled={busy} onClick={() => confirmAction(t('Delete this claim?')) && run(() => api.del(`/bookkeeping/claims/${c.id}`), t('Deleted.')).then((r) => { if (r) { onChanged(); onClose(); } })}><Icon name="trash" />{t('Delete')}</button>}
-        {b.canEdit && (c.status === 'draft' || c.status === 'submitted') && <button className="btn ghost" disabled={busy} onClick={() => confirmAction(t('Withdraw this claim?')) && run(() => api.post(`/bookkeeping/claims/${c.id}/withdraw`)).then(after)}>{t('Withdraw')}</button>}
+        {b.canEdit && (c.status === 'draft' || c.status === 'withdrawn' || c.status === 'rejected') && <button className="btn danger ghost" disabled={busy} onClick={async () => await confirmAction(t('Delete this claim?'), { danger: true, ok: t('Delete') }) && run(() => api.del(`/bookkeeping/claims/${c.id}`), t('Deleted.')).then((r) => { if (r) { onChanged(); onClose(); } })}><Icon name="trash" />{t('Delete')}</button>}
+        {b.canEdit && (c.status === 'draft' || c.status === 'submitted') && <button className="btn ghost" disabled={busy} onClick={async () => await confirmAction(t('Withdraw this claim?')) && run(() => api.post(`/bookkeeping/claims/${c.id}/withdraw`)).then(after)}>{t('Withdraw')}</button>}
         <div className="grow" />
         <button className="btn" onClick={() => navigator.clipboard?.writeText(c.link).then(() => window.alert(t('Link copied.')))}><Icon name="link" />{t('Copy the claim’s link')}</button>
         {iApprove && <a className="btn primary" href={`/self/claims/${c.id}`} target="_blank" rel="noopener">{t('Approve or send back…')}</a>}
-        {b.canEdit && c.status === 'draft' && <button className="btn" disabled={busy || c.problems.length > 0} title={c.problems.join(' ')} onClick={() => confirmAction(t('Record that the claimant signed this claim on paper? Attach the signed form among the receipts first.')) && run(() => api.post(`/bookkeeping/claims/${c.id}/submit-paper`)).then(after)}>{t('Signed on paper: submit')}</button>}
+        {b.canEdit && c.status === 'draft' && <button className="btn" disabled={busy || c.problems.length > 0} title={c.problems.join(' ')} onClick={async () => await confirmAction(t('Record that the claimant signed this claim on paper? Attach the signed form among the receipts first.')) && run(() => api.post(`/bookkeeping/claims/${c.id}/submit-paper`)).then(after)}>{t('Signed on paper: submit')}</button>}
         {b.canEdit && c.status === 'approved' && !pay && <button className="btn primary" onClick={() => setPay({ date: today(), bank: b.accounts.find((a) => a.kind === 'bank' && a.active)?.id ?? null, ref: '' })}>{t('Pay…')}</button>}
       </>
     }>
@@ -325,7 +325,7 @@ function ClaimSettings({ onClose }: { onClose: () => void }) {
                   </td>
                   <td><span className="small muted">{t('Up to')}</span> <MoneyInput cents={a.max_amount ?? 0} onChange={(c) => saveApprover({ person_id: a.person_id, ministry_ids: a.ministry_ids, max_amount: c || null, active: a.active }, a.id)} label={t('Up to')} /><div className="small muted">{t('(empty = any amount)')}</div></td>
                   <td><label className="check small"><input type="checkbox" checked={a.active} onChange={(e) => saveApprover({ person_id: a.person_id, ministry_ids: a.ministry_ids, max_amount: a.max_amount, active: e.target.checked }, a.id)} />{t('Active')}</label></td>
-                  <td><button className="btn ghost icon" aria-label={t('Remove')} onClick={() => confirmAction(t('Remove this approver?')) && run(() => api.del(`/bookkeeping/claim-approvers/${a.id}`)).then(() => approvers.reload())}><Icon name="x" /></button></td>
+                  <td><button className="btn ghost icon" aria-label={t('Remove')} onClick={async () => await confirmAction(t('Remove this approver?'), { danger: true, ok: t('Remove') }) && run(() => api.del(`/bookkeeping/claim-approvers/${a.id}`)).then(() => approvers.reload())}><Icon name="x" /></button></td>
                 </tr>
               ))}
             </tbody>

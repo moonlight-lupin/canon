@@ -1,10 +1,10 @@
 // The service planner: the library panel and quick add, with when each hymn was last sung.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { PicturesPanel } from '../Images.tsx';
 import { useDraggable } from '@dnd-kit/core';
 import { useApi } from '../../api.ts';
 import { useI18n } from '../../i18n.tsx';
-import { Bi, Field, SearchBox, fmtDate } from '../../components/ui.tsx';
+import { Bi, Field, SearchBox, fmtDate, useEscapeLayer } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
 import { langInfo } from '../../../shared/languages.ts';
 import { matchesHymnNumber } from '../../../shared/parts.ts';
@@ -56,12 +56,8 @@ export function QuickAdd({ at, time, date, songs, texts, onAdd, onClose }: {
   const [q, setQ] = useState('');
   const [ref, setRef] = useState('');
   const ql = q.trim().toLowerCase();
-  useEffect(() => {
-    // a dialog opened from the panel closes first (its own Escape): the panel only when nothing else took the key
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && onClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [onClose]);
+  // a dialog opened from the panel closes first: the panel only when nothing is open above it
+  useEscapeLayer(onClose);
   const add = (item: Partial<ServiceItem>) => onAdd(item, at);
   const pickKind = (k: ItemKind) => {
     if (k === 'song' || k === 'text' || k === 'scripture') return setMode(k);

@@ -34,7 +34,7 @@
 .file-tile .pdf { height: 110px; display: grid; place-items: center; background: var(--sunk); border-radius: 4px; color: var(--ink-3); font-weight: 600; }
 
 /* labels: the screen shows the sheets like paper; print gives only the sheets */
-.labels-screen { background: #e9e5da; min-height: 100vh; padding: 16px; }
+.labels-screen { background: var(--sunk); min-height: 100vh; padding: 16px; }
 .labels-bar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; max-width: 210mm; margin: 0 auto 6px; }
 .labels-tip { max-width: 210mm; margin: 0 auto 12px; }
 .label-page { background: #fff; color: #111; margin: 0 auto 16px; box-sizing: border-box; box-shadow: 0 2px 12px rgb(0 0 0 / 0.15); overflow: hidden; break-after: page; }

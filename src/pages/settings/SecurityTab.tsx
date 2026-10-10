@@ -92,8 +92,8 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
     onChanged();
   }, t('Saved.'));
   const check = () => run(async () => setPreview((await api.post<{ years: ArchiveYear[] }>('/archives/run', { dry_run: true })).years));
-  const archive = () => {
-    if (!confirmAction(t('Move these years out of the live database into archive files? They can still be opened (read-only) here.'))) return;
+  const archive = async () => {
+    if (!await confirmAction(t('Move these years out of the live database into archive files? They can still be opened (read-only) here.'))) return;
     run(async () => {
       await api.post('/archives/run', {});
       setPreview(null);
@@ -167,8 +167,8 @@ function KeepingCard({ onChanged }: { onChanged: () => void }) {
 function ArchiveViewer({ year, onClose, onChanged }: { year: number; onClose: () => void; onChanged: () => void }) {
   const { t, lang } = useI18n();
   const { run, busy } = useAction();
-  const bringBack = (serviceId: number) => {
-    if (!confirmAction(t('Bring this record back into Canon to correct it? It leaves the archive until the next archiving, and the change is logged.'))) return;
+  const bringBack = async (serviceId: number) => {
+    if (!await confirmAction(t('Bring this record back into Canon to correct it? It leaves the archive until the next archiving, and the change is logged.'))) return;
     run(async () => {
       await api.post(`/archives/${year}/records/${serviceId}/restore`, {});
       recs.reload();

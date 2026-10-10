@@ -90,8 +90,8 @@ export function VisitorCardsReview({ serviceId, onAccepted }: { serviceId: numbe
     reload();
     onAccepted?.();
   }, t('Added to the new visitors.'));
-  const discard = (c: VisitorCard) => {
-    if (!confirmAction(t('Discard this entry? It is deleted and not kept anywhere.'))) return;
+  const discard = async (c: VisitorCard) => {
+    if (!await confirmAction(t('Discard this entry? It is deleted and not kept anywhere.'))) return;
     run(async () => {
       await api.del(`/visitor-cards/${c.id}`);
       reload();

@@ -30,8 +30,8 @@ export function RolesCard({ data, reload }: { data: RolesData | undefined; reloa
     await api.put(`/access-roles/${r.key}/archived`, { archived: on });
     reload();
   }, on ? t('Archived. Find it under Archived roles.') : t('Restored.'));
-  const remove = (r: RoleDef) => {
-    if (!confirmAction(t('Delete this role?'))) return;
+  const remove = async (r: RoleDef) => {
+    if (!await confirmAction(t('Delete this role?'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/access-roles/${r.key}`);
       reload();

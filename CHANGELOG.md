@@ -4,6 +4,17 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.20.1 — Light or dark, Canon's own questions, and a Content-Security-Policy
+
+- **Light or dark, by choice**: three small buttons beside the language buttons at the bottom of the sidebar — as this computer is set (the starting choice), light or dark — remembered in this browser. Canon used to follow only the computer's setting. The choice applies before the page is drawn (no light flash), and **printing is always light** (a page printed in dark mode had light text on white paper). The printable screens (labels, the cash-count declaration, visitor cards, a month's offerings) no longer keep a light background behind light text in dark mode. Checked on every page in both modes for text too faint to read; a test fails if a colour has no dark value.
+- **Canon asks in a window of its own**, not the browser's pop-up (titled with the computer's address, in the browser's language, and stopped by some browsers after a few). **Cancel** or Escape leaves everything as it was; what deletes something or loses what was typed has a red button that says so (**Delete**, **Remove**, **Close without saving**). Focus goes back to where it was. A test fails if the browser's pop-up comes back, or if a question isn't waited for.
+- **Escape closes only the window on top**: a question over a form, or a window opened from another, used to close both (noticed in the 0.20.0 study, not changed then). The service planner's library panel closes only when nothing is open above it.
+- **A Content-Security-Policy for the web app**: scripts run only from Canon itself (never inline, never from another site), nothing is loaded from elsewhere, and another site can't show Canon inside a frame of its own page. A proxy in front of Canon should pass it on unchanged ([docs/ADMINISTRATION.md](docs/ADMINISTRATION.md#configuration)). Checked page by page in the built app, with no blocked requests.
+- **AI assistants**: `canon_whoami` gave book-keeping as off for a role without it, while offering that person the expense-claim tools for their own claims; it now names them under `own` (also in `brief`). Noticed in the 0.20.0 study.
+- Already done, found while planning this release: the book-keeping card on the dashboard and the journal note on a service record (0.17.1), and the books in **Settings → Export data** (0.17.2).
+- The roadmap's recovery and pilot milestone is now 0.21.0 (it was planned as 0.20.0, before the code study's fixes took that number).
+- No database change.
+
 ## 0.20.0 — The rest of the code study: data care, dates, meetings and AI data
 
 The medium- and low-priority findings of the Daedalus Workshop's read-only study of Canon 0.19.10 (the high-priority ones are in 0.19.11). Each fix has its test (`tests/agent-data.test.ts`, `tests/data-care.test.ts`, `tests/time-zone.test.ts`, and new tests in the member-field, meeting, record and prompt suites).

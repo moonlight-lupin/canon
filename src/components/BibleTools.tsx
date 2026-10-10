@@ -173,7 +173,7 @@ export function AddBibleDialog({ langs, initialLang, onClose, onDone }: {
   };
   const doImport = async (skipErrors: boolean) => {
     if (!file || !preview) return;
-    if (existing && !confirmAction(t('Replace {code} ({name}, {n} verses) with this file?').replace('{code}', code).replace('{name}', existing.name).replace('{n}', existing.verses.toLocaleString()))) return;
+    if (existing && !await confirmAction(t('Replace {code} ({name}, {n} verses) with this file?').replace('{code}', code).replace('{name}', existing.name).replace('{n}', existing.verses.toLocaleString()))) return;
     const p = await run(() => api.post<UploadPreview>(`/bible/uploads${params({ replace: existing ? 1 : undefined, skip_errors: skipErrors ? 1 : undefined })}`, body(file)));
     if (!p?.applied) return;
     toast(`${t('Imported')}: ${code} · ${p.verses.toLocaleString()} ${t('verses')}`);

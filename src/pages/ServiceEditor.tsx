@@ -132,7 +132,7 @@ export default function ServiceEditor() {
   }, [svc, openId, patchItem, run, sid, reload]);
 
   const removeItem = async (itemId: number) => {
-    if (!confirmAction(t('Are you sure?'))) return;
+    if (!await confirmAction(t('Are you sure?'))) return;
     pending.current.delete(itemId);
     const ok = await run(() => api.del(`/items/${itemId}`));
     if (ok) {
@@ -298,7 +298,7 @@ export default function ServiceEditor() {
               {
                 label: svc.kind === 'meeting' ? t('Delete this meeting') : t('Delete this service'), danger: true,
                 onClick: async () => {
-                  if (!confirmAction(t('Are you sure?'))) return;
+                  if (!await confirmAction(t('Are you sure?'))) return;
                   if (await run(() => api.del(`/services/${sid}`))) nav(svc.kind === 'meeting' ? '/meetings' : '/services');
                 },
               },

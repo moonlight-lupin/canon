@@ -63,8 +63,8 @@ export function BackgroundsTab() {
     setEditing(null);
     await reload();
   }, t('Saved.'));
-  const remove = (b: SlideBackground) => {
-    if (!confirmAction(b.uses ? t('Delete this background? {n} service items use it; they go back to the slide template’s background.').replace('{n}', String(b.uses)) : t('Delete this background?'))) return;
+  const remove = async (b: SlideBackground) => {
+    if (!await confirmAction(b.uses ? t('Delete this background? {n} service items use it; they go back to the slide template’s background.').replace('{n}', String(b.uses)) : t('Delete this background?'))) return;
     run(async () => {
       await api.del(`/backgrounds/${b.id}`);
       await reload();

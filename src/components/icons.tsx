@@ -19,6 +19,8 @@ const P: Record<string, string> = {
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   print: 'M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z',
   monitor: 'M3 4h18v12H3zM8 20h8M12 16v4',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  moon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   download: 'M12 3v12M7 10l5 5 5-5M4 21h16',

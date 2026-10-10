@@ -94,7 +94,7 @@ Example (fictional) result of `canon_find_services {"similar_to": 42}`:
 
 Read tools are safe to call freely. Write tools change church data: confirm first (section 8).
 
-**Start with `canon_whoami`** when unsure what you can do: it returns the person you act for and their role, each module's access (off / read / write) with the reason, whether member contact details are shown, what you get about new visitors (`visitors`), the church's languages and congregations, the tools and playbooks on this connection, what agents may never do, and the working instructions. It is offered on every connection.
+**Start with `canon_whoami`** when unsure what you can do: it returns the person you act for and their role, each module's access (off / read / write) with the reason, whether member contact details are shown, what you get about new visitors (`visitors`), the church's languages and congregations, the tools and playbooks on this connection, what agents may never do, and the working instructions. It is offered on every connection. A role without book-keeping still makes its own expense claims: `canon_whoami` then gives `bookkeeping` as off with `own` naming the claims tools it has (`canon_claims`, `canon_draft_claim`); `brief` adds `own: {"bookkeeping": "write"}`.
 
 | Module | Read | Write |
 |---|---|---|

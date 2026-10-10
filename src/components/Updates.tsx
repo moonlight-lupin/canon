@@ -72,7 +72,7 @@ export function UpdatesCard() {
   const auto = (on: boolean) => run(() => api.put<UpdateStatus>('/updates/auto', { auto: on })).then((r) => r && setS(r));
   const install = async () => {
     if (!s.latest) return;
-    if (!confirmAction(t('Update Canon to {v}? Canon makes a backup first, then gets the new version and restarts. It is unavailable for a minute or two; people using it reload the page afterwards.').replace('{v}', s.latest.version))) return;
+    if (!await confirmAction(t('Update Canon to {v}? Canon makes a backup first, then gets the new version and restarts. It is unavailable for a minute or two; people using it reload the page afterwards.').replace('{v}', s.latest.version))) return;
     setPhase('installing');
     const r = await run(() => api.post<{ to: string }>('/updates/install', { version: s.latest!.version }));
     if (!r) {

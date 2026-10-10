@@ -129,8 +129,8 @@ export function CongregationsCard({ churchLangs }: { churchLangs: Lang[] }) {
     await refreshCongregations();
     setEdit(null);
   }, t('Saved.'));
-  const remove = (c: Congregation) => {
-    if (!confirmAction(t('Delete this congregation? Its services, members and groups stay; they just lose the tag.'))) return;
+  const remove = async (c: Congregation) => {
+    if (!await confirmAction(t('Delete this congregation? Its services, members and groups stay; they just lose the tag.'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/congregations/${c.id}`);
       await refreshCongregations();

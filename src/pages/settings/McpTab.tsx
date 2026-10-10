@@ -81,7 +81,7 @@ export function McpTab() {
   // the server switch takes effect at once (the module levels below are reviewed and saved together)
   const setEnabled = async (enabled: boolean) => {
     if (!cfg.data) return;
-    if (!enabled && !confirmAction(t('Turn the MCP server off? Every connected AI assistant loses access until you turn it on again.'))) return;
+    if (!enabled && !await confirmAction(t('Turn the MCP server off? Every connected AI assistant loses access until you turn it on again.'))) return;
     const r = await run(() => api.put<McpConfig>('/mcp/config', { ...cfg.data!, enabled }), enabled ? t('The MCP server is on.') : t('The MCP server is off.'));
     if (r) {
       cfg.setData(r);
@@ -243,7 +243,7 @@ export function GrantsCard() {
   const { data, error, loading, reload } = useApi<Grant[]>('/mcp/grants');
   const { run, busy } = useAction();
   const revoke = async (g: Grant) => {
-    if (!confirmAction(`${t('Revoke access for')} ${g.client_name}?`)) return;
+    if (!await confirmAction(`${t('Revoke access for')} ${g.client_name}?`)) return;
     if (await run(() => api.del(`/mcp/grants/${encodeURIComponent(g.grant_id)}`), t('Revoked.'))) reload();
   };
   return (

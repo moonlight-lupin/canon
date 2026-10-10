@@ -28,7 +28,7 @@ export function LogoField() {
     if (input.current) input.current.value = '';
   };
   const remove = async () => {
-    if (!confirmAction(t('Remove the church logo?'))) return;
+    if (!await confirmAction(t('Remove the church logo?'), { danger: true, ok: t('Remove') })) return;
     await run(async () => {
       await api.del('/assets/logo');
       await refreshLogo();

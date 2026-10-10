@@ -8,6 +8,7 @@ import { isChinese, langInfo, dateLocale } from '../../shared/languages.ts';
 import { Icon } from './icons.tsx';
 import type { Access, PermModule, RoleDef } from '../../shared/permissions.ts';
 import { dayIn } from '../../shared/dates.ts';
+import { modalStack } from './modal-stack.ts';
 
 // ---------------------------------------------------------------- session
 
@@ -84,6 +85,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
+      <ConfirmHost />
       <div className="toasts no-print" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} className={`toast${t.err ? ' err' : ''}`}>{t.msg}</div>
@@ -141,15 +143,11 @@ export function Modal({
     window.addEventListener(SAVED_EVENT, saved);
     return () => window.removeEventListener(SAVED_EVENT, saved);
   }, []);
-  const tryClose = useCallback(() => {
-    if (touched.current && !window.confirm(t('Close without saving? What you typed here will be lost.'))) return;
+  const tryClose = useCallback(async () => {
+    if (touched.current && !(await confirmAction(t('Close without saving? What you typed here will be lost.'), { ok: t('Close without saving'), danger: true }))) return;
     onClose();
   }, [onClose, t]);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && !e.defaultPrevented && tryClose();
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  }, [tryClose]);
+  useEscapeLayer(tryClose);
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && tryClose()}>
       <div className={`modal${size ? ' ' + size : ''}`} role="dialog" aria-modal="true" onInput={(e) => { if (!notInput(e)) touched.current = true; }} onChange={(e) => { if (!notInput(e)) touched.current = true; }}>
@@ -427,11 +425,11 @@ export function Bi({ v, className }: { v: L10n | null | undefined; className?: s
   );
 }
 
-export function Seg<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
+export function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: ReactNode; title?: string }[]; onChange: (v: T) => void; label?: string }) {
   return (
-    <div className="seg" role="group">
+    <div className="seg" role="group" aria-label={label}>
       {options.map((o) => (
-        <button key={o.value} type="button" className={value === o.value ? 'on' : ''} aria-pressed={value === o.value} onClick={() => onChange(o.value)}>
+        <button key={o.value} type="button" className={value === o.value ? 'on' : ''} aria-pressed={value === o.value} onClick={() => onChange(o.value)} title={o.title} aria-label={o.title}>
           {o.label}
         </button>
       ))}
@@ -459,8 +457,75 @@ export function useDebounced<T>(v: T, ms = 250) {
   return d;
 }
 
-/** window.confirm wrapper so it can be swapped for a modal later. */
-export const confirmAction = (msg: string) => window.confirm(msg);
+/**
+ * Escape closes this (a dialog, or a panel that closes like one) only while nothing was opened on top of it
+ * (modal-stack.ts, 0.20.1: Escape in a dialog opened from another closed both).
+ */
+export function useEscapeLayer(close: () => void) {
+  const latest = useRef(close);
+  latest.current = close;
+  useEffect(() => {
+    const id = modalStack.push(() => latest.current());
+    return () => modalStack.remove(id);
+  }, []);
+}
+
+// ---------------------------------------------------------------- confirm
+
+interface ConfirmOpts {
+  /** the button that goes ahead (default "Confirm") */
+  ok?: string;
+  /** it deletes or loses something: the button says so in red */
+  danger?: boolean;
+}
+interface Ask { id: number; msg: string; opts: ConfirmOpts; resolve: (yes: boolean) => void; from: Element | null }
+let ask: ((a: Ask) => void) | null = null;
+let asked = 0;
+
+/**
+ * Ask before going ahead: true once the person confirms. Canon's own dialog (0.20.1) — it was the browser's pop-up,
+ * titled with the computer's address, in the browser's language, and blocked by some browsers after a few.
+ */
+export function confirmAction(msg: string, opts: ConfirmOpts = {}): Promise<boolean> {
+  return new Promise((resolve) => (ask ? ask({ id: ++asked, msg, opts, resolve, from: document.activeElement }) : resolve(false)));
+}
+
+/** Shows the confirmations, one at a time (mounted once, by ToastProvider). */
+function ConfirmHost() {
+  const [queue, setQueue] = useState<Ask[]>([]);
+  useEffect(() => {
+    ask = (a) => setQueue((q) => [...q, a]);
+    return () => {
+      ask = null;
+    };
+  }, []);
+  const cur = queue[0];
+  if (!cur) return null;
+  const answer = (yes: boolean) => {
+    cur.resolve(yes);
+    setQueue((q) => q.slice(1));
+  };
+  return <ConfirmDialog key={cur.id} ask={cur} answer={answer} />;
+}
+
+function ConfirmDialog({ ask: a, answer }: { ask: Ask; answer: (yes: boolean) => void }) {
+  const { t } = useI18n();
+  useEscapeLayer(() => answer(false));
+  // back to where the person was (the field or the button that asked), as the browser's pop-up did
+  useEffect(() => () => (a.from as HTMLElement | null)?.focus?.(), [a.from]);
+  const msgId = `confirm-${a.id}`;
+  return (
+    <div className="overlay confirm no-print" onMouseDown={(e) => e.target === e.currentTarget && answer(false)}>
+      <div className="modal sm" role="alertdialog" aria-modal="true" aria-describedby={msgId}>
+        <div className="modal-body"><p id={msgId} className="confirm-msg">{a.msg}</p></div>
+        <div className="modal-foot">
+          <button type="button" className="btn" onClick={() => answer(false)}>{t('Cancel')}</button>
+          <button type="button" className={`btn ${a.opts.danger ? 'danger-fill' : 'primary'}`} autoFocus onClick={() => answer(true)}>{a.opts.ok ?? t('Confirm')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Keep a stable ref to the latest value (for event handlers in effects). */
 export function useLatest<T>(v: T) {

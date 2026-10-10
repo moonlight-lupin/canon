@@ -160,8 +160,8 @@ export function TemplateEditor({ tpl, isDefault, onBack, acts, onSaved }: {
   const setO = (p: Partial<BulletinOptions>) => setDraft((d) => ({ ...d, options: { ...d.options, ...p } }));
   const setPrint = (k: PrintKey, v: string) => setO({ print: { ...o.print, [k]: v } });
 
-  const back = () => {
-    if (dirty && !confirmAction(t('Discard your unsaved changes?'))) return;
+  const back = async () => {
+    if (dirty && !await confirmAction(t('Discard your unsaved changes?'))) return;
     onBack();
   };
   const save = async () => {
@@ -187,7 +187,7 @@ export function TemplateEditor({ tpl, isDefault, onBack, acts, onSaved }: {
       <div className="grow" />
       <GuideLink anchor="bulletin-templates" />
       {isAdmin && !isDefault && <button className="btn sm" disabled={busy || dirty} title={dirty ? t('Save your changes first') : t('Services use this template unless they choose another.')} onClick={() => acts.makeDefault(tpl.id)}><Icon name="check" />{t('Set as church default')}</button>}
-      {canEdit && !tpl.builtin && <button className="btn sm" disabled={busy} onClick={() => { if (!dirty || confirmAction(t('Discard your unsaved changes?'))) acts.copy(tpl.id); }}><Icon name="copy" />{t('Duplicate')}</button>}
+      {canEdit && !tpl.builtin && <button className="btn sm" disabled={busy} onClick={async () => { if (!dirty || await confirmAction(t('Discard your unsaved changes?'))) acts.copy(tpl.id); }}><Icon name="copy" />{t('Duplicate')}</button>}
       {isAdmin && tpl.hidden && !tpl.builtin && <button className="btn sm ghost danger" disabled={busy} onClick={async () => { if (await acts.remove(tpl.id)) onBack(); }}><Icon name="trash" />{t('Delete')}</button>}
     </div>
   );

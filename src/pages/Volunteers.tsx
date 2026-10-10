@@ -89,7 +89,7 @@ function RotaTab({ people }: { people: PersonRow[] }) {
     if (ok) patchCells((cs) => cs.filter((x) => x.id !== c.id));
   };
   const autofill = async () => {
-    if (!data?.services.length || !confirmAction(t('Fill empty slots fairly across these services?'))) return;
+    if (!data?.services.length || !await confirmAction(t('Fill empty slots fairly across these services?'))) return;
     const r = await run(() => api.post<unknown[]>('/rota/autofill', { service_ids: data.services.map((s) => s.id) }));
     if (r) {
       toastFilled(r.length);
@@ -284,11 +284,11 @@ function TeamsTab({ people }: { people: PersonRow[] }) {
   const [roster, setRoster] = useState<number | null>(null);
 
   const delTeam = async (tm: TeamWithRoles) => {
-    if (!confirmAction(t('Delete this team, its roles and all their rota assignments?'))) return;
+    if (!await confirmAction(t('Delete this team, its roles and all their rota assignments?'), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/teams/${tm.id}`), t('Deleted.'))) reload();
   };
   const delRole = async (r: RoleWithMembers) => {
-    if (!confirmAction(t('Delete this role and all its rota assignments?'))) return;
+    if (!await confirmAction(t('Delete this role and all its rota assignments?'), { danger: true, ok: t('Delete') })) return;
     if (await run(() => api.del(`/roles/${r.id}`), t('Deleted.'))) reload();
   };
 
@@ -385,7 +385,7 @@ function TeamMembersModal({ team, people, onClose, onChanged }: { team: TeamFull
       ? t('{name} is qualified for {roles} in this team. Remove them from the team and drop those qualifications?')
         .replace('{name}', m.name).replace('{roles}', held.map((r) => lt(r.name)).join(', '))
       : t('Remove {name} from this team?').replace('{name}', m.name);
-    if (!confirmAction(msg)) return;
+    if (!await confirmAction(msg)) return;
     const path = `/teams/${team.id}/members/${m.person_id}${held.length ? '?cascade=1' : ''}`;
     if (await run(() => api.del(path), t('Removed.'))) onChanged();
   };

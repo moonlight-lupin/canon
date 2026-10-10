@@ -17,7 +17,7 @@
 .rec-actions .grow { flex: 1; }
 input.invalid { border-color: var(--danger, #a33); }
 
-.decl { background: #e9e5da; min-height: 100vh; padding: 16px; }
+.decl { background: var(--sunk); min-height: 100vh; padding: 16px; }
 .decl-bar { display: flex; justify-content: space-between; max-width: 210mm; margin: 0 auto 12px; }
 .decl-page { background: #fff; color: #1e2430; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 18mm; box-sizing: border-box; font: 11pt/1.45 Georgia, 'Songti SC', SimSun, serif; box-shadow: 0 2px 12px rgb(0 0 0 / 0.15); }
 .decl-page h1 { font-size: 16pt; margin: 0; text-align: center; }

@@ -45,7 +45,7 @@ export default function Coworkers() {
   const groups = CATS.map((cat) => ({ cat, items: list.filter((c) => c.category === cat) })).filter((g) => g.items.length);
 
   const remove = async (c: CoworkerRow) => {
-    if (!confirmAction(t('Remove this co-worker record? The person stays in the member register.'))) return;
+    if (!await confirmAction(t('Remove this co-worker record? The person stays in the member register.'), { danger: true, ok: t('Remove') })) return;
     const ok = await run(() => api.del(`/coworkers/${c.id}`), t('Deleted.'));
     if (ok) reload();
   };
@@ -299,7 +299,7 @@ function CommitteeTagger({ personId, onChanged }: { personId: number; onChanged:
     }
   };
   const remove = async (memberId: number, name: string) => {
-    if (!confirmAction(t('Remove from {name}?').replace('{name}', name))) return;
+    if (!await confirmAction(t('Remove from {name}?').replace('{name}', name), { danger: true, ok: t('Remove') })) return;
     if (await run(() => api.del(`/group-members/${memberId}`))) changed();
   };
   return (

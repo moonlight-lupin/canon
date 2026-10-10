@@ -32,7 +32,7 @@ export function HouseholdsTab({
     if (ok) onChanged();
   };
   const remove = async (h: Household) => {
-    if (!confirmAction(t('Delete this household? Its members stay in the register.'))) return;
+    if (!await confirmAction(t('Delete this household? Its members stay in the register.'), { danger: true, ok: t('Delete') })) return;
     const ok = await run(() => api.del(`/households/${h.id}`), t('Deleted.'));
     if (ok) onChanged();
   };

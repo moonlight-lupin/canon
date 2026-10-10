@@ -25,8 +25,8 @@ export function SpacesTab() {
     await api.patch(`/spaces/${s.id}`, { archived: on });
     reload();
   }, on ? t('Archived.') : t('Restored.'));
-  const remove = (s: Space) => {
-    if (!confirmAction(t('Delete this space?'))) return;
+  const remove = async (s: Space) => {
+    if (!await confirmAction(t('Delete this space?'), { danger: true, ok: t('Delete') })) return;
     run(async () => {
       await api.del(`/spaces/${s.id}`);
       reload();

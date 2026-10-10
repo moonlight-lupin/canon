@@ -33,8 +33,8 @@ export function SampleDataTab() {
     reload();
     if (r?.library_added) window.alert(t('Canon’s library (hymns, liturgical texts and service templates) was added first: the sample’s services are made from its templates. It stays when the sample is removed.'));
   }, t('Sample data added.'));
-  const remove = () => {
-    if (!confirmAction(t('Remove all the sample data? Everything else stays as it is.'))) return;
+  const remove = async () => {
+    if (!await confirmAction(t('Remove all the sample data? Everything else stays as it is.'), { danger: true, ok: t('Remove') })) return;
     run(async () => {
       const r = await api.del<{ kept?: { what: string; name: string; why: string[] }[] }>('/sample-data');
       reload();
