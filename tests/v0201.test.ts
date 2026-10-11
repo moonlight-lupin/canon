@@ -126,3 +126,9 @@ test('dark mode: every colour the app uses is given for dark too, and the choice
   assert.deepEqual([...light].filter((v) => !dark.has(v)), [], 'colours without a dark value');
   assert.doesNotMatch(css, /prefers-color-scheme/, 'the switch decides (theme.js follows the computer when asked to), not a media query of its own');
 });
+
+test('an icon is never drawn at the browser’s default size (300 × 150): Icon has a size of its own, and the appearance switch sizes its icons', () => {
+  const icons = read('src/components/icons.tsx');
+  assert.match(icons, /<svg viewBox="0 0 24 24" width="1em" height="1em"/, 'Icon without a default size');
+  assert.match(read('src/styles.css'), /\.seg button svg \{[^}]*width: 15px; height: 15px;/);
+});

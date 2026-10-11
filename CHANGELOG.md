@@ -4,6 +4,11 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.20.2 — The appearance switch shows its icons
+
+- The light / dark buttons beside the language buttons (0.20.1) showed blank: their icons had no size, so the browser drew them at its default 300 × 150 and the button cut them off. They are sized now, and every icon has a size of its own (1em) wherever a stylesheet gives it none. A test fails if either goes. Checked in the browser.
+- No database change.
+
 ## 0.20.1 — Light or dark, Canon's own questions, and a Content-Security-Policy
 
 - **Light or dark, by choice**: three small buttons beside the language buttons at the bottom of the sidebar — as this computer is set (the starting choice), light or dark — remembered in this browser. Canon used to follow only the computer's setting. The choice applies before the page is drawn (no light flash), and **printing is always light** (a page printed in dark mode had light text on white paper). The printable screens (labels, the cash-count declaration, visitor cards, a month's offerings) no longer keep a light background behind light text in dark mode. Checked on every page in both modes for text too faint to read; a test fails if a colour has no dark value.

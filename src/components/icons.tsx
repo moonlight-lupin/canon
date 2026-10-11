@@ -64,7 +64,9 @@ export type IconName = keyof typeof P;
 
 export function Icon({ name, ...rest }: { name: IconName } & SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...rest}>
+    // 1em unless a stylesheet says otherwise (0.20.2: icons in the appearance switch had no size, so the browser drew
+    // them 300 × 150 and the button showed a blank)
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...rest}>
       <path d={P[name]} />
     </svg>
   );

@@ -259,6 +259,7 @@ label.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13
 .seg button { border: 0; background: transparent; padding: 0 11px; height: 30px; font: 500 12.5px var(--sans); color: var(--ink-2); cursor: pointer; border-right: 1px solid var(--rule); }
 .seg button:last-child { border-right: 0; }
 .seg button.on { background: var(--ink); color: var(--paper); }
+.seg button svg { width: 15px; height: 15px; display: block; }
 
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
