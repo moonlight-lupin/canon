@@ -297,29 +297,33 @@ test('the CSRF token is compared in constant time', async () => {
 
 // ---------------------------------------------------------------- 6. the account's wait
 
-test('wrong passwords make an account wait a little longer each time (1, 2, 4, 8, then 15 minutes), not 15 at once', async () => {
+test('wrong passwords make the address that typed them wait a little longer each time (1, 2, 4, 8, then 15 minutes); the owner elsewhere signs in (0.20.2)', async () => {
   await user('abby');
-  const wrong = (ip: string) => post('/login', { username: 'abby', password: 'wrong-horse-3' }, ip);
-  const waitMinutes = () => {
-    const u = get<{ locked_until: string | null }>("SELECT locked_until FROM users WHERE username = 'abby'")!.locked_until;
-    return u ? Math.round((Date.parse(u) - Date.now()) / 60_000) : 0;
-  };
-  for (let i = 0; i < 5; i++) await wrong(`203.0.113.${50 + i}`);
-  assert.equal(waitMinutes(), 1, 'five in a row: a minute');
-  // tries during the wait don't make it longer (or anyone could keep an account waiting by trying now and then)
-  const until = get<{ locked_until: string }>("SELECT locked_until FROM users WHERE username = 'abby'")!.locked_until;
-  for (let i = 0; i < 3; i++) assert.equal((await wrong('203.0.113.56')).status, 401);
-  assert.equal(get<{ locked_until: string }>("SELECT locked_until FROM users WHERE username = 'abby'")!.locked_until, until);
-  // the right password during the wait doesn't sign in
-  assert.equal((await post('/login', { username: 'abby', password: 'correct-horse-3' }, '203.0.113.57')).status, 401);
-  for (const minutes of [2, 4, 8, 15, 15]) {
-    run("UPDATE users SET locked_until = ? WHERE username = 'abby'", new Date(Date.now() - 1000).toISOString());
-    await wrong('203.0.113.58');
-    assert.equal(waitMinutes(), minutes);
+  const id = get<{ id: number }>("SELECT id FROM users WHERE username = 'abby'")!.id;
+  const ip = '203.0.113.50';
+  const wrong = () => post('/login', { username: 'abby', password: 'wrong-horse-3' }, ip);
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  try {
+    for (let i = 0; i < 5; i++) await wrong();
+    assert.equal(A.addressWaitMinutes(id, ip), 1, 'five in a row: that address waits a minute');
+    // tries during the wait don't make it longer (or anyone could keep it waiting by trying now and then)
+    for (let i = 0; i < 2; i++) assert.equal((await wrong()).status, 401);
+    assert.equal(A.addressWaitMinutes(id, ip), 1);
+    // the right password from that address during the wait doesn't sign in; from anywhere else it does
+    assert.equal((await post('/login', { username: 'abby', password: 'correct-horse-3' }, ip)).status, 401);
+    assert.equal((await post('/login', { username: 'abby', password: 'correct-horse-3' }, '198.51.100.9')).status, 200, 'the owner, elsewhere');
+    for (const minutes of [2, 4, 8, 15, 15]) {
+      mock.timers.tick(16 * 60_000);
+      await wrong();
+      assert.equal(A.addressWaitMinutes(id, ip), minutes);
+    }
+    mock.timers.tick(16 * 60_000);
+    await login('abby', 'correct-horse-3', ip);
+    assert.equal(A.addressWaitMinutes(id, ip), 0, 'the right password starts that address afresh');
+    assert.equal(get<{ failed_logins: number }>("SELECT failed_logins FROM users WHERE username = 'abby'")!.failed_logins, 0);
+  } finally {
+    mock.timers.reset();
   }
-  run("UPDATE users SET locked_until = ? WHERE username = 'abby'", new Date(Date.now() - 1000).toISOString());
-  await login('abby', 'correct-horse-3', '203.0.113.59');
-  assert.equal(get<{ failed_logins: number }>("SELECT failed_logins FROM users WHERE username = 'abby'")!.failed_logins, 0, 'the right password starts afresh');
 });
 
 test('a browser that signed in to the account before isn’t held up by a wait someone else caused', async () => {
@@ -328,15 +332,15 @@ test('a browser that signed in to the account before isn’t held up by a wait s
   assert.equal(first.status, 200);
   const device = first.cookie.split('; ').find((c) => c.startsWith('canon_device_'));
   assert.ok(device, 'a browser that signed in is remembered for this account');
-  // someone who knows the username makes the account wait
-  for (let i = 0; i < 5; i++) await post('/login', { username: 'bree', password: 'wrong-horse-3' }, `203.0.113.${61 + i}`);
+  // someone who knows the username makes the account wait: from many addresses at once (0.20.2)
+  for (let i = 0; i < A.ACCOUNT_MAX_FAILED; i++) await post('/login', { username: 'bree', password: 'wrong-horse-3' }, `198.51.100.${10 + i}`);
   assert.equal((await post('/login', { username: 'bree', password: 'correct-horse-3' }, '203.0.113.66')).status, 401, 'another browser waits');
   assert.equal((await post('/login', { username: 'bree', password: 'correct-horse-3' }, '203.0.113.67', device)).status, 200, 'hers signs in');
   // with that browser, wrong passwords still count against the address as before (eight in 15 minutes)
   // a new password forgets the browsers remembered with the old one
   const s = await login('bree', 'correct-horse-3', '203.0.113.68');
   assert.equal((await call(s, 'PATCH', '/me', { current_password: 'correct-horse-3', new_password: 'correct-horse-4' })).status, 200);
-  for (let i = 0; i < 5; i++) await post('/login', { username: 'bree', password: 'wrong-horse-3' }, `203.0.113.${70 + i}`);
+  for (let i = 0; i < A.ACCOUNT_MAX_FAILED; i++) await post('/login', { username: 'bree', password: 'wrong-horse-3' }, `198.51.100.${40 + i}`);
   assert.equal((await post('/login', { username: 'bree', password: 'correct-horse-4' }, '203.0.113.75', device)).status, 401);
   // another account's browser cookie is no use for this account
   await user('cleo');

@@ -15,6 +15,7 @@ import { CLAIM_STATUS_LABEL, type Claim, type ClaimStatus } from '../../../share
 import type { L10n } from '../../../shared/types.ts';
 import '../resources/resources.css';
 import '../records.css';
+import { ThemeSwitch } from '../../components/ThemeSwitch.tsx';
 
 /** A stored UTC time as the local day (YYYY-MM-DD), for showing dates. */
 const localDay = (s: string) => {
@@ -133,6 +134,7 @@ function Shell({ status, session, onSignOut, children }: { status: Status | null
             {choices.map((l) => <option key={l} value={l}>{langInfo(l).native}</option>)}
           </select>
         )}
+        <ThemeSwitch compact />
       </header>
       {children}
       {session && (

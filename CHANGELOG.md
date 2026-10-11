@@ -4,8 +4,10 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## 0.20.2 — The appearance switch shows its icons
+## 0.20.2 — The appearance switch shows its icons; guessing at a password holds up only the guesser
 
+- **Someone guessing at an account's password holds up only themselves.** Wrong passwords made the whole account wait (up to 15 minutes), so anyone who knew a username could, with one guess a quarter of an hour, keep its owner out of every browser that hadn't signed in to it before (a new phone, a borrowed computer). The wait is now counted per account and network address: the guesser's address waits, and the owner signs in from anywhere else. Guesses from many addresses at once (20 within an hour) still make the account wait; **Settings → User accounts** then shows **Locked**, with **Let in now** for an administrator (recorded in the change log). Tests sign in from one guessing address and another, guess from twenty addresses, and let the account in.
+- **Light or dark on members' own pages**: the lending library, **My claims** and the bulletin link have one button at the top that steps through as the phone is set, light and dark.
 - The light / dark buttons beside the language buttons (0.20.1) showed blank: their icons had no size, so the browser drew them at its default 300 × 150 and the button cut them off. They are sized now, and every icon has a size of its own (1em) wherever a stylesheet gives it none. A test fails if either goes. Checked in the browser.
 - No database change.
 

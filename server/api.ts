@@ -41,7 +41,7 @@ import { serviceRoutes } from './routes/services.ts';
 import { adminRoutes } from './routes/admin.ts';
 import {
   authenticate, createUser, endSession, getUser, hashPassword, listUsers, loginFailed, loginOk, loginRetryAfter, loginThrottle,
-  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES,
+  requireAdmin, requireUser, sessionUser, startSession, userCount, verifyPassword, wallOf, secondStep, secondStepTicket, LOCK_MINUTES, letIn,
   endSessionsOf, ticketUsername, useTotpStep, csrfOk, totpSecretOf,
   firstAdminId, memberLinkProblem, personLinkProblem, twoStepRequired,
 } from './auth.ts';
@@ -357,6 +357,8 @@ api.patch('/users/:id', requireAdmin, h(async (req) => {
     congregation_id: z.number().int().nullable().optional(),
     /** a lost phone: turn the account's two-step sign-in off so they can sign in and set it up again */
     reset_two_step: z.literal(true).optional(),
+    /** waiting after wrong passwords: let them in now (0.20.2) */
+    let_in: z.literal(true).optional(),
   }).parse(req.body);
   const uid = id(req);
   if (b.role && !roleDef(b.role).admin && uid === req.user!.id) throw Object.assign(new Error('You cannot demote yourself'), { status: 400 });
@@ -382,12 +384,14 @@ api.patch('/users/:id', requireAdmin, h(async (req) => {
     endSessionsOf(uid, uid === req.user!.id ? req : undefined);
     revokeUserGrants(uid);
   }
+  // a new password ends every wait too (the guide: Reset password ends the wait)
+  if (b.let_in || b.password) letIn(uid);
   if (b.display_name) run('UPDATE users SET display_name = ? WHERE id = ?', b.display_name, uid);
   if (b.congregation_id !== undefined) run('UPDATE users SET congregation_id = ? WHERE id = ?', b.congregation_id, uid);
   if (b.person_id !== undefined) run('UPDATE users SET person_id = ? WHERE id = ?', b.person_id, uid);
   const after = getUser(uid);
   const pick = (u: typeof after) => (u ? { username: u.username, display_name: u.display_name, role: u.role, person_id: u.person_id ?? null, congregation_id: u.congregation_id ?? null } : null);
-  logChange({ entity: 'users', entity_id: uid, action: 'update', before: pick(before), after: pick(after), summary: b.password ? 'Password changed' : undefined });
+  logChange({ entity: 'users', entity_id: uid, action: 'update', before: pick(before), after: pick(after), summary: b.password ? 'Password changed' : b.let_in ? 'Let in after wrong passwords' : undefined });
   return after;
 }));
 api.delete('/users/:id', requireAdmin, h((req) => {

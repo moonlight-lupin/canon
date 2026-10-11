@@ -47,6 +47,9 @@ export function UsersTab() {
   const setRole = async (u: UserRow, role: Role) => {
     if (await run(() => api.patch(`/users/${u.id}`, { role }), t('Saved.'))) reload();
   };
+  const letIn = async (u: UserRow) => {
+    if (await run(() => api.patch(`/users/${u.id}`, { let_in: true }), t('They can sign in now.'))) reload();
+  };
   const remove = async (u: UserRow) => {
     if (!await confirmAction(`${t('Delete user')} ${u.username}?`)) return;
     if (await run(() => api.del(`/users/${u.id}`), t('Deleted.'))) reload();
@@ -66,7 +69,12 @@ export function UsersTab() {
                   <td className="nowrap">
                     {u.display_name}{u.id === me.id && <span className="badge lapis" style={{ marginLeft: 6 }}>{t('You')}</span>}
                     {!!u.totp_enabled && <span className="badge ok" style={{ marginLeft: 6 }} title={t('Two-step sign-in')}>2FA</span>}
-                    {!!u.locked && <span className="badge warn" style={{ marginLeft: 6 }} title={t('Waiting after wrong passwords (a little longer each time, up to 15 minutes); a new password ends the wait')}>{t('Locked')}</span>}
+                    {!!u.locked && (
+                      <>
+                        <span className="badge warn" style={{ marginLeft: 6 }} title={t('Wrong passwords for this account from several places at once: it waits up to 15 minutes, except in browsers that signed in to it before. Let in now ends the wait.')}>{t('Locked')}</span>
+                        <button type="button" className="btn sm ghost" style={{ marginLeft: 4 }} disabled={busy} onClick={() => letIn(u)}>{t('Let in now')}</button>
+                      </>
+                    )}
                     {!!u.must_change_password && <span className="badge" style={{ marginLeft: 6 }} title={t('They choose their own password at their next sign-in.')}>{t('New password due')}</span>}
                   </td>
                   <td className="nowrap"><span className="code">{u.username}</span></td>

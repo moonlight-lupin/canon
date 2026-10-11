@@ -4820,6 +4820,10 @@
       "减：尚未出现在对账单上",
       "減：尚未出現在對賬單上"
     ],
+    "Let in now": [
+      "立即放行",
+      "立即放行"
+    ],
     "Liabilities": [
       "负债",
       "負債"
@@ -9620,6 +9624,10 @@
       "只限这些事工",
       "只限這些事工"
     ],
+    "They can sign in now.": [
+      "现在可以登入了。",
+      "現在可以登入了。"
+    ],
     "They choose their own password at their next sign-in.": [
       "对方下次登入时会设定自己的密码。",
       "對方下次登入時會設定自己的密碼。"
@@ -10755,6 +10763,10 @@
     "Would like to be contacted": [
       "希望有人联络",
       "希望有人聯絡"
+    ],
+    "Wrong passwords for this account from several places at once: it waits up to 15 minutes, except in browsers that signed in to it before. Let in now ends the wait.": [
+      "这个帐户同时从好几个地方被输入了错误的密码：它最多要等候 15 分钟，但之前登入过这个帐户的浏览器除外。按“立即放行”即可结束等候。",
+      "這個帳戶同時從好幾個地方被輸入了錯誤的密碼：它最多要等候 15 分鐘，但之前登入過這個帳戶的瀏覽器除外。按“立即放行”即可結束等候。"
     ],
     "Wrong username or password. After several wrong tries an account waits a little (up to 15 minutes).": [
       "用户名或密码不正确。多次输入错误后，帐户须稍等片刻（最多 15 分钟）。",
@@ -12414,7 +12426,7 @@
     ]
   },
   "guide": [
-    "665f092e1dbfb227",
-    "6e3cab7a4a514f0d"
+    "611b8e4724011e48",
+    "36a5b9e3ddc366b7"
   ]
 }

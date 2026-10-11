@@ -138,9 +138,14 @@ const listUserRows = () => all<User & { created_at: string; person_name: string 
 
 // ---- the account's wait after wrong passwords ----------------------------------------------
 
-/** Wrong passwords (or codes) in a row before an account waits, and the longest it waits. */
+/** Wrong passwords (or codes) in a row before an address waits for that account, and the longest it waits. */
 export const MAX_FAILED = 5;
 export const LOCK_MINUTES = 15;
+/**
+ * Wrong passwords for one account within an hour, from every address together, before the account itself waits
+ * (0.20.2). Each address waits on its own after MAX_FAILED, so these can only come from many addresses at once.
+ */
+export const ACCOUNT_MAX_FAILED = 20;
 /**
  * How long an account waits after its n-th wrong try in a row (0.19.9): from the fifth, 1 minute, then 2, 4, 8, and
  * 15 at most. It was 15 minutes at once, which let anyone who knew a username keep the account shut with five guesses
@@ -153,12 +158,49 @@ export type SignIn = { user: User } | { locked: true } | { second_step: number; 
 type AccountRow = Omit<User, 'totp_enabled' | 'must_change_password'> & { password_hash: string; failed_logins: number; locked_until: string | null; totp_enabled: number };
 const waiting = (row: { locked_until: string | null }) => !!row.locked_until && row.locked_until > new Date().toISOString();
 
-/** A wrong password or code for this account: from the fifth in a row, it waits (longer each time). */
-function failedFor(userId: number) {
-  const row = get<{ failed_logins: number }>('SELECT failed_logins FROM users WHERE id = ?', userId);
-  const n = (row?.failed_logins ?? 0) + 1;
+// ---- waits after wrong passwords (0.20.2) --------------------------------------------------
+//
+// Counted per account AND address: someone who knows a username and guesses makes their own address wait (longer each
+// time), while the owner signing in from home, the office or a new phone isn't held up — before, the whole account
+// waited, so one guess every quarter of an hour kept it shut for every browser that hadn't signed in to it before.
+// Guesses from many addresses at once (ACCOUNT_MAX_FAILED in an hour) still make the whole account wait, as before;
+// an administrator can let it in (letIn). The per-address waits are kept in memory: a restart forgets them.
+
+const addressWaits = new Map<string, { n: number; until: number }>();
+const accountTries = makeLimiter(ACCOUNT_MAX_FAILED, 60 * 60_000);
+const waitKey = (userId: number, ip: string | undefined) => `${userId}|${addressKey(ip)}`;
+const addressWaiting = (userId: number, ip: string | undefined) => (addressWaits.get(waitKey(userId, ip))?.until ?? 0) > Date.now();
+
+/** A wrong password or code for this account from this address: from the fifth in a row, that address waits. */
+function failedFor(userId: number, ip: string | undefined) {
+  const k = waitKey(userId, ip);
+  const n = (addressWaits.get(k)?.n ?? 0) + 1;
   const wait = waitMinutes(n);
-  run('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?', n, wait ? new Date(Date.now() + wait * 60_000).toISOString() : null, userId);
+  addressWaits.delete(k);
+  addressWaits.set(k, { n, until: wait ? Date.now() + wait * 60_000 : 0 });
+  while (addressWaits.size > 10_000) addressWaits.delete(addressWaits.keys().next().value!);
+  accountTries.add(String(userId), 'wrong');
+  const lock = accountTries.over(String(userId)) ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() : null;
+  run('UPDATE users SET failed_logins = failed_logins + 1, locked_until = COALESCE(?, locked_until) WHERE id = ?', lock, userId);
+}
+
+/** Minutes this address still waits for this account (0 when it may try). */
+export function addressWaitMinutes(userId: number, ip: string | undefined): number {
+  const until = addressWaits.get(waitKey(userId, ip))?.until ?? 0;
+  return until > Date.now() ? Math.round((until - Date.now()) / 60_000) : 0;
+}
+
+/** Right password (and code) from this address: its count starts again. */
+function rightFrom(userId: number, ip: string | undefined) {
+  addressWaits.delete(waitKey(userId, ip));
+  run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', userId);
+}
+
+/** An administrator lets a waiting account in now (Settings → User accounts): every wait for it ends. */
+export function letIn(userId: number) {
+  for (const k of [...addressWaits.keys()]) if (k.startsWith(`${userId}|`)) addressWaits.delete(k);
+  accountTries.forgive(String(userId), 'wrong');
+  run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', userId);
 }
 
 // ---- browsers an account has signed in on (0.19.9) -------------------------------------------
@@ -215,17 +257,17 @@ export async function authenticate(username: string, password: string, req?: Req
   const ok = await verifyPassword(password, row?.password_hash ?? await DUMMY_HASH);
   if (!row) return null;
   const device = knownDevice(req, row);
-  if (!device && waiting(row)) return { locked: true };
+  if (!device && (waiting(row) || addressWaiting(row.id, req?.ip))) return { locked: true };
   if (!ok) {
     if (device) deviceTries.add(device);
-    else failedFor(row.id);
+    else failedFor(row.id, req?.ip);
     return null;
   }
   if (passwordNeedsRehash(row.password_hash)) run('UPDATE users SET password_hash = ? WHERE id = ?', await hashPassword(password), row.id);
   // with two-step sign-in, the count goes on until the code is right too: a known password and a loop of guesses at
   // the code still make the account wait (0.19.0 review)
   if (row.totp_enabled) return { second_step: row.id, trusted: !!device };
-  run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', row.id);
+  rightFrom(row.id, req?.ip);
   return { user: getUser(row.id)! };
 }
 
@@ -275,7 +317,7 @@ export function secondStep(ticket: string, code: string, ip?: string): User | nu
   t.tries++;
   const row = get<{ totp_secret: string | null; recovery_codes: string; locked_until: string | null }>('SELECT totp_secret, recovery_codes, locked_until FROM users WHERE id = ?', t.user_id);
   if (!row?.totp_secret) return null;
-  if (!t.trusted && waiting(row)) {
+  if (!t.trusted && (waiting(row) || addressWaiting(t.user_id, ip))) {
     tickets.delete(ticket);
     return null;
   }
@@ -294,11 +336,11 @@ export function secondStep(ticket: string, code: string, ip?: string): User | nu
     }
   }
   if (!ok) {
-    if (!t.trusted) failedFor(t.user_id);
+    if (!t.trusted) failedFor(t.user_id, ip);
     return null;
   }
   tickets.delete(ticket);
-  run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', t.user_id);
+  rightFrom(t.user_id, ip);
   return getUser(t.user_id) ?? null;
 }
 

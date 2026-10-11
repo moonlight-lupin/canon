@@ -52,7 +52,7 @@ after(async () => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-test('five wrong passwords make the account wait a while — even the right password; a new password ends the wait', async () => {
+test('five wrong passwords make that address wait a while — even the right password; a new password ends the wait', async () => {
   for (let i = 0; i < 5; i++) assert.equal((await post('/login', { username: 'locky', password: 'wrong-wrong' })).status, 401);
   const locked = await post('/login', { username: 'locky', password: 'correct-horse-3' });
   // the same answer as a wrong password: nobody learns from it which usernames exist (0.19.0 review)
@@ -61,7 +61,8 @@ test('five wrong passwords make the account wait a while — even the right pass
   assert.match(locked.body.error, /waits a little/);
   const boss = await login('boss');
   const id = (await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').id;
-  assert.ok((await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').locked);
+  // only this address waits (0.20.2): the account itself isn't Locked, and its owner elsewhere signs in
+  assert.ok(!(await call(boss, 'GET', '/users')).body.find((u: Json) => u.username === 'locky').locked);
   assert.equal((await call(boss, 'PATCH', `/users/${id}`, { password: 'correct-horse-4' })).status, 200);
   await login('locky', 'correct-horse-4');
 });

@@ -18,6 +18,7 @@ import { ANNOUNCEMENTS_KEY, weeklySections } from '../../shared/presentation.ts'
 import { isNumberedLine } from './bulletin-order.tsx';
 import { servingOnLabel } from '../../shared/labels.ts';
 import './outputs.css';
+import { ThemeSwitch } from '../components/ThemeSwitch.tsx';
 
 function useNarrow(q = '(max-width: 640px)') {
   const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
@@ -95,8 +96,9 @@ export default function Share({ attendee = false }: { attendee?: boolean }) {
             {r.has_logo && logoVersion && <img className="sh-logo" src={logoUrl(logoVersion)} alt="" />}
             <div className="sh-church"><Bi v={r.church.name} langs={langs} sep=" · " /></div>
           </div>
-          {r.languages.length > 1 && (
-            <div className="row">
+          <div className="row">
+            <ThemeSwitch compact />
+            {r.languages.length > 1 && (
               <Seg<LangMode>
                 value={mode}
                 onChange={(m) => {
@@ -107,8 +109,8 @@ export default function Share({ attendee = false }: { attendee?: boolean }) {
                 }}
                 options={langOptions(r.languages, t)}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
         <h1 className="sh-title"><Bi v={r.title} langs={langs} sep=" " /></h1>
         <div className="sh-date">

@@ -10,6 +10,7 @@ import { fmtDate } from '../../components/ui.tsx';
 import { ReedMark } from '../../components/icons.tsx';
 import type { L10n } from '../../../shared/types.ts';
 import '../resources/resources.css';
+import { ThemeSwitch } from '../../components/ThemeSwitch.tsx';
 
 interface Copy { number: string; book_id: number; title: string; authors: string | null; shelf: string | null; has_cover: boolean; updated_at: string; status: 'available' | 'out' | 'returned' | 'unavailable'; due_on: string | null; loan_days: number }
 interface MyLoan { id: number; number: string; title: string; due_on: string; overdue_days: number; renewals: number; renewals_left: number; can_renew: boolean; returned: boolean }
@@ -83,6 +84,7 @@ function Shell({ children }: { children: ReactNode }) {
             {choices.map((l) => <option key={l} value={l}>{langInfo(l).native}</option>)}
           </select>
         )}
+        <ThemeSwitch compact />
       </header>
       {church && !church.on ? <Paused /> : children}
     </div>
