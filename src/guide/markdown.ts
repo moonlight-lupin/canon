@@ -418,6 +418,17 @@ export function renderBlocks(blocks: Block[], opts: RenderOptions = {}, key = 'b
   });
 }
 
+/**
+ * Release notes (About Canon → Updates) link to files in the repository, e.g. "[docs/UPGRADING.md](docs/UPGRADING.md#docker)":
+ * point those at the release's own tag on GitHub, given its page (".../releases/tag/v0.20.3"). Other links are left alone.
+ */
+export function rebaseReleaseLinks(src: string, releaseUrl: string): string {
+  const m = /^(https:\/\/github\.com\/[^/]+\/[^/]+)\/releases\/tag\/([^/?#]+)$/.exec(releaseUrl.trim());
+  if (!m) return src;
+  return src.replace(/(\]\()([^)\s]+)(\))/g, (all, open: string, href: string, close: string) =>
+    /^([a-z][a-z0-9+.-]*:|\/|#)/i.test(href) ? all : `${open}${m[1]}/blob/${m[2]}/${href.replace(/^\.\//, '')}${close}`);
+}
+
 /** Convenience: Markdown source → React nodes. */
 export function renderMarkdown(src: string, opts: RenderOptions = {}): ReactNode[] {
   return renderBlocks(parse(src), opts);

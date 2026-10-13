@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { parse, renderBlocks, renderMarkdown, safeHref, sections, slugify } from '../src/guide/markdown.ts';
+import { parse, rebaseReleaseLinks, renderBlocks, renderMarkdown, safeHref, sections, slugify } from '../src/guide/markdown.ts';
 
 const html = (md: string) => renderToStaticMarkup(createElement('div', null, ...renderMarkdown(md)));
 
@@ -69,4 +69,20 @@ test('flow charts (0.19.6): a fenced block marked flow, one step per line, who i
   // other fenced blocks stay code; search finds a flow's words
   assert.equal(parse('```\n[x] a | b\n```')[0].type, 'code');
   assert.match(sections(blocks)[0].haystack, /approver approves/);
+});
+
+test('release notes (About → Updates): repository links point at the release tag on GitHub; others stay', () => {
+  const url = 'https://github.com/example/canon/releases/tag/v1.2.3';
+  const md = 'See [UPGRADING](docs/UPGRADING.md#docker), [readme](./README.md), [web](https://example.org), [guide](/guide), [top](#x) and [evil](javascript:alert(1)).';
+  const out = rebaseReleaseLinks(md, url);
+  assert.match(out, /\(https:\/\/github\.com\/example\/canon\/blob\/v1\.2\.3\/docs\/UPGRADING\.md#docker\)/);
+  assert.match(out, /\(https:\/\/github\.com\/example\/canon\/blob\/v1\.2\.3\/README\.md\)/);
+  assert.match(out, /\(https:\/\/example\.org\)/);
+  assert.match(out, /\(\/guide\)/);
+  assert.match(out, /\(#x\)/);
+  assert.match(out, /\(javascript:alert\(1\)\)/); // left for the renderer, which shows it as text
+  assert.equal(rebaseReleaseLinks(md, 'https://evil.example/x'), md); // not a GitHub release page: unchanged
+  const rendered = html(rebaseReleaseLinks('- **Bold** and `code`, see [docs](docs/A.md).\n- Second', url));
+  assert.match(rendered, /<ul><li><strong>Bold<\/strong> and <code>code<\/code>, see <a href="https:\/\/github\.com\/example\/canon\/blob\/v1\.2\.3\/docs\/A\.md" target="_blank"/);
+  assert.ok(!/javascript:/.test(html(out)));
 });

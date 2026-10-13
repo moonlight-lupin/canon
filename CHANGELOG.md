@@ -4,6 +4,10 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## Unreleased
+
+- **About Canon → Updates shows the release notes formatted**: lists, bold, `code`, headings and links, with the guide's own safe renderer (no HTML from the notes is ever run), instead of the raw Markdown text. Links to files in Canon's repository (e.g. docs/UPGRADING.md) open on GitHub at that release's version. Long notes scroll inside the card. A test covers the links; checked in the browser.
+
 ## 0.20.3 — E-mail through AgentMail, with an API key
 
 - **AgentMail as an e-mail provider.** Settings → E-mail has **AgentMail** beside Gmail, Microsoft 365 and Other provider. It needs no SMTP server: enter an **API key** and the **Inbox address** (an AgentMail inbox, e.g. church@agentmail.to), **Save**, then **Send test**. Canon sends through AgentMail's HTTPS API (`POST /v0/inboxes/{inbox}/messages/send`). E-mails go out under the inbox's display name, which is set in AgentMail, and the **Reply-to address** still applies. Everything that sends e-mail uses it: volunteer reminders, the lending library's reminders and codes, expense-claim notices and account-security notices.

@@ -417,6 +417,15 @@ table.t tr.click:hover td { background: var(--sunk); }
 .callout { border-left: 3px solid var(--reed); background: var(--reed-wash); padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 13px; }
 .callout.lapis { border-color: var(--lapis); background: var(--lapis-wash); }
 .callout.warn { border-color: var(--warn); background: var(--warn-wash); }
+/* release notes on About Canon → Updates (Markdown from the GitHub release) */
+.release-notes { margin-top: 6px; line-height: 1.55; max-height: 420px; overflow-y: auto; overflow-wrap: anywhere; }
+.release-notes > :first-child { margin-top: 0; }
+.release-notes p, .release-notes ul, .release-notes ol { margin: 6px 0; }
+.release-notes ul, .release-notes ol { padding-left: 20px; }
+.release-notes li { margin: 3px 0; }
+.release-notes h1, .release-notes h2, .release-notes h3, .release-notes h4 { font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+.release-notes code { font-size: 12px; }
+.release-notes pre { white-space: pre-wrap; }
 .spinner { width: 18px; height: 18px; border: 2px solid var(--rule-strong); border-top-color: var(--reed); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading { display: flex; justify-content: center; padding: 48px; }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { api, useApi } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
+import { rebaseReleaseLinks, renderMarkdown } from '../guide/markdown.ts';
 import { confirmAction, fmtDate, useAction } from './ui.tsx';
 
 export interface UpdateStatus {
@@ -104,7 +105,7 @@ export function UpdatesCard() {
           {s.latest.notes && (
             <details className="small">
               <summary>{t('Release notes')}</summary>
-              <div style={{ whiteSpace: 'pre-wrap', marginTop: 6 }}>{s.latest.notes}</div>
+              <div className="release-notes">{renderMarkdown(rebaseReleaseLinks(s.latest.notes, s.latest.url))}</div>
             </details>
           )}
         </div>
