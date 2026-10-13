@@ -12,7 +12,7 @@ import { backupDir, checkFolder, createBackup, lastBackupAt, listBackups, nextDu
 import { backupKeyState } from '../lib/backup-crypto.ts';
 import { getSettings } from '../repo/settings.ts';
 import { listRoles } from '../lib/permissions.ts';
-import { smtpHealth } from '../lib/mailer.ts';
+import { smtpConfigured, smtpHealth } from '../lib/mailer.ts';
 import { publicUrl } from '../lib/public-url.ts';
 import { checkPublicAddress } from '../repo/lending-self.ts';
 
@@ -108,7 +108,7 @@ export const ADMIN_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_admin_settings', module: 'admin', access: 'read', title: 'Settings overview', annotations: RO,
-    description: 'For administrators: how Canon is set up — church name and languages, parts of Canon switched on, two-step sign-in rules, the public address, e-mail (configured and tested, never the password), backups, how long logs and visitors\' details are kept, the visitor form, the lending library and what AI assistants may see. Read only: settings are changed in Canon.',
+    description: 'For administrators: how Canon is set up — church name and languages, parts of Canon switched on, two-step sign-in rules, the public address, e-mail (sent by SMTP or AgentMail, configured and tested — never the password or API key), backups, how long logs and visitors\' details are kept, the visitor form, the lending library and what AI assistants may see. Read only: settings are changed in Canon.',
     input: {},
     handler: () => {
       const s = getSettings();
@@ -118,7 +118,7 @@ export const ADMIN_TOOLS: ToolDef[] = [
         modules: s.modules,
         security: s.security,
         public_address: publicUrl() || null,
-        email: { configured: !!s.smtp?.host, from: s.smtp?.from_email || null, tested: mail.tested, failing: mail.failing },
+        email: { configured: smtpConfigured(), via: s.smtp.provider, from: s.smtp?.from_email || null, tested: mail.tested, failing: mail.failing },
         backups: backupStatus(),
         keeping: s.retention,
         visitor_form: { enabled: !!s.visitor_form?.enabled },

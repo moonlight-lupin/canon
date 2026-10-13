@@ -37,6 +37,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.20.0 | The rest of the code study: the church's time zone, cancelled meetings that stay cancelled, archived member fields, the members list paged, one rule for offerings; personal fields marked where defined, the daily tidy's duties apart, uploads by their bytes, journals frozen whole — done |
 | 0.20.1 | Light or dark by choice, Canon's own confirmation dialog, Escape closes only the window on top, a Content-Security-Policy for the web app, AI assistants told of their own expense claims — done |
 | 0.20.2 | The appearance switch shows its icons and reaches members' own pages; guessing at a password holds up only the guesser, with Let in now for an administrator — done |
+| 0.20.3 | E-mail through AgentMail with an API key, beside SMTP — done |
 | 0.21.0 | Recovery and operational acceptance: real-machine write-ups (a NAS, Windows) and a pilot cycle with a church (below) |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.

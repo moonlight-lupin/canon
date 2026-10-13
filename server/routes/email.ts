@@ -1,4 +1,4 @@
-// REST routes for SMTP settings, test e-mail, manual volunteer reminders. Mounted inside /api after authentication (see server/api.ts).
+// REST routes for e-mail settings (SMTP or AgentMail), test e-mail, manual volunteer reminders. Mounted inside /api after authentication (see server/api.ts).
 // Nothing here sends automatically: reminders go out only when an editor presses "Send reminders".
 // There are deliberately no MCP tools for e-mail — agents must not send e-mail.
 import { addressForOthers } from '../lib/lan.ts';
@@ -31,6 +31,7 @@ const EmailOrBlank = z.union([z.literal(''), Email]);
 const NoBreaks = (max: number) => z.string().trim().max(max).regex(/^[^\r\n]*$/, 'must be one line');
 
 const SmtpInput = z.object({
+  provider: z.enum(['smtp', 'agentmail']).default('smtp'),
   host: NoBreaks(255),
   port: z.number().int().min(1).max(65535),
   secure: z.boolean(),
@@ -40,6 +41,8 @@ const SmtpInput = z.object({
   reply_to: EmailOrBlank,
   /** omitted = keep the stored password; "" = clear it */
   password: z.string().max(500).optional(),
+  /** AgentMail API key, same rules: omitted = keep, "" = clear */
+  api_key: NoBreaks(500).optional(),
 });
 
 // ---------------------------------------------------------------- settings (admins)
@@ -51,10 +54,14 @@ emailRoutes.get('/email/settings', h((req) => {
 
 emailRoutes.put('/email/settings', h((req) => {
   adminOnly(req);
-  const { password, ...smtp } = SmtpInput.parse(req.body);
+  const { password, api_key, ...smtp } = SmtpInput.parse(req.body);
   if (password !== undefined) {
     if (password === '') deleteMeta('smtp_password');
     else setMeta('smtp_password', password);
+  }
+  if (api_key !== undefined) {
+    if (api_key === '') deleteMeta('agentmail_api_key');
+    else setMeta('agentmail_api_key', api_key);
   }
   return updateSettings({ smtp }).smtp;
 }));

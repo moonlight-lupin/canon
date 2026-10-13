@@ -276,3 +276,100 @@ test('not configured → 400; viewers cannot send', async () => {
   assert.match(r.body.error, /Settings → E-mail/);
   assert.equal((await call(admin, 'GET', `/services/${serviceId}/reminders/preview`)).body.smtp_configured, false);
 });
+
+// ---------------------------------------------------------------- AgentMail (HTTPS API with an API key; a fake fetch, never the real service)
+
+const AGENTMAIL = { ...SMTP, provider: 'agentmail', host: '', user: '', from_email: 'grace-church@agentmail.to', reply_to: 'office@example.org' };
+
+test('AgentMail: API key is admin-only and write-only; sends to the inbox with a bearer key', async () => {
+  const admin = await login('admin', 'correct-horse-1');
+  const editor = await login('editor', 'correct-horse-2');
+  assert.equal((await call(editor, 'PUT', '/email/settings', { ...AGENTMAIL, api_key: 'am_x' })).status, 403);
+
+  // no API key yet → not set up
+  let r = await call(admin, 'PUT', '/email/settings', { ...AGENTMAIL, api_key: '' });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.body.provider, 'agentmail');
+  assert.equal(r.body.has_api_key, false);
+  assert.equal(mailer.smtpConfigured(), false);
+
+  r = await call(admin, 'PUT', '/email/settings', { ...AGENTMAIL, api_key: 'am_test_fictional_key_123' });
+  assert.equal(r.body.has_api_key, true);
+  assert.equal(mailer.smtpConfigured(), true);
+  assert.ok(!r.text.includes('am_test_fictional_key_123'));
+  assert.ok(!(await call(admin, 'GET', '/email/settings')).text.includes('am_test_fictional_key_123'));
+  assert.ok(!(await call(admin, 'GET', '/settings')).text.includes('am_test_fictional_key_123'));
+  assert.ok(!all<Json>("SELECT changes FROM change_log WHERE entity = 'settings'").some((c) => String(c.changes).includes('am_test_fictional')));
+  // omitted keeps it; a key with a line break is refused
+  assert.equal((await call(admin, 'PUT', '/email/settings', { ...AGENTMAIL })).body.has_api_key, true);
+  assert.equal((await call(admin, 'PUT', '/email/settings', { ...AGENTMAIL, api_key: 'am_x\r\nX-Evil: 1' })).status, 400);
+
+  const calls: { url: string; init: Json }[] = [];
+  mailer.setHttpFetch(async (url, init) => {
+    calls.push({ url, init: init as Json });
+    return { status: 200, text: async () => JSON.stringify({ message_id: '<m1@agentmail.to>', thread_id: 't1' }) };
+  });
+  outbox.length = 0;
+  try {
+    const t = await call(admin, 'POST', '/email/test', { to: 'admin@example.org' });
+    assert.equal(t.status, 200, t.text);
+    assert.equal(outbox.length, 0); // not through SMTP
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://api.agentmail.to/v0/inboxes/grace-church%40agentmail.to/messages/send');
+    assert.equal(calls[0].init.method, 'POST');
+    assert.equal(calls[0].init.headers.authorization, 'Bearer am_test_fictional_key_123');
+    const body = JSON.parse(calls[0].init.body);
+    assert.equal(body.to, 'admin@example.org');
+    assert.equal(body.reply_to, 'office@example.org');
+    assert.ok(body.subject && body.text && body.html);
+    // the test is remembered for these settings; a new key forgets it
+    assert.equal(mailer.smtpHealth().tested, true);
+    await call(admin, 'PUT', '/email/settings', { ...AGENTMAIL, api_key: 'am_another_fictional_key' });
+    assert.equal(mailer.smtpHealth().tested, false);
+  } finally {
+    mailer.setHttpFetch(null);
+  }
+});
+
+test('AgentMail errors map to clear messages; a bad key stops the batch', async () => {
+  const admin = await login('admin', 'correct-horse-1');
+  await call(admin, 'PUT', '/email/settings', { ...AGENTMAIL, api_key: 'am_test_fictional_key_123' });
+  const answer = (status: number, body: Json) => mailer.setHttpFetch(async () => ({ status, text: async () => JSON.stringify(body) }));
+  try {
+    const cases: [number, Json, string, RegExp][] = [
+      [401, { name: 'UnauthorizedError' }, 'auth', /API key/],
+      [403, { name: 'Forbidden' }, 'auth', /API key/],
+      [404, { name: 'NotFoundError', message: 'Inbox not found' }, 'auth', /grace-church@agentmail\.to/],
+      [403, { name: 'MessageRejectedError', message: 'Recipient is suppressed' }, 'recipient', /suppressed/],
+      [429, { name: 'TooManyRequests' }, 'connection', /try again/],
+      [503, {}, 'connection', /not available/],
+      [400, { name: 'ValidationError', errors: [{ path: ['to'], message: 'Invalid email' }] }, 'recipient', /recipient/],
+    ];
+    for (const [status, body, code, msg] of cases) {
+      answer(status, body);
+      const r = await call(admin, 'POST', '/email/test', { to: 'admin@example.org' });
+      assert.equal(r.status, 502, `${status}: ${r.text}`);
+      assert.equal(r.body.code ?? code, code, `${status}`);
+      assert.match(r.body.error, msg, `${status}`);
+    }
+    // network failures (fetch rejects; the reason is in .cause)
+    const s = { ...AGENTMAIL, provider: 'agentmail' as const };
+    assert.equal(mailer.mapMailError(Object.assign(new TypeError('fetch failed'), { cause: { code: 'ENOTFOUND' } }), s).code, 'dns');
+    assert.equal(mailer.mapMailError(Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }), s).code, 'timeout');
+    assert.equal(mailer.mapMailError(Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } }), s).code, 'connection');
+
+    // a rejected key stops a batch of reminders after the first
+    answer(401, { name: 'UnauthorizedError' });
+    const editor = await login('editor', 'correct-horse-2');
+    const r = await call(editor, 'POST', `/services/${serviceId}/reminders`, {});
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.body.sent, 0);
+    assert.equal(r.body.failed, 1);
+    assert.equal(r.body.results[0].code, 'auth');
+    assert.ok(r.body.skipped >= 1);
+    assert.ok(mailer.smtpHealth().failing);
+  } finally {
+    mailer.setHttpFetch(null);
+    await call(admin, 'PUT', '/email/settings', { ...SMTP, provider: 'smtp', api_key: '' });
+  }
+});

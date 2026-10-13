@@ -1,5 +1,5 @@
 // Volunteer reminder e-mails (sent manually by an editor for one service), test e-mails and the e-mail log.
-// PDPA: addresses go only to the SMTP server; the log keeps who/when/subject/result, never the message body.
+// PDPA: addresses go only to the SMTP server / AgentMail; the log keeps who/when/subject/result, never the message body.
 import type { L10n, Lang } from '../../shared/types.ts';
 import { isCJK, isChinese, langInfo } from '../../shared/languages.ts';
 import { all, get, run } from '../db.ts';
@@ -348,7 +348,7 @@ export async function sendReminders(
   serviceId: number,
   opts: { baseUrl: string; userId: number; personIds?: number[]; note?: string; delayMs?: number },
 ) {
-  if (!smtpConfigured()) throw new MailError('not_configured', 'E-mail is not set up yet — an administrator can add the SMTP server under Settings → E-mail.');
+  if (!smtpConfigured()) throw new MailError('not_configured', 'E-mail is not set up yet — an administrator can set it up under Settings → E-mail.');
   if (inFlight.has(serviceId)) throw Object.assign(new Error('Reminders for this service are already being sent.'), { status: 409 });
   inFlight.add(serviceId);
   try {
@@ -391,7 +391,7 @@ export async function sendReminders(
   }
 }
 
-/** Bilingual test message (church languages, up to two) to check the SMTP settings. */
+/** Bilingual test message (church languages, up to two) to check the e-mail settings. */
 export async function sendTestEmail(to: string, userId: number) {
   const langs = getSettings().languages.slice(0, 2);
   const church = getSettings().church_name;

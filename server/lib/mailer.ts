@@ -1,6 +1,6 @@
-// Outgoing e-mail over the church's own SMTP server (Settings → E-mail).
-// The SMTP password is write-only: it lives in the internal meta store and is never returned by the API.
-// PDPA: recipient addresses go only to the SMTP server; message bodies are never logged.
+// Outgoing e-mail (Settings → E-mail): over the church's own SMTP server, or through AgentMail's HTTPS API with an API key.
+// The SMTP password and the AgentMail API key are write-only: they live in the internal meta store and are never returned by the API.
+// PDPA: recipient addresses go only to the SMTP server / AgentMail; message bodies are never logged.
 import { config } from '../config.ts';
 import crypto from 'node:crypto';
 import nodemailer from 'nodemailer';
@@ -48,11 +48,26 @@ export function setTransportFactory(f: TransportFactory | null) {
   factory = f ?? defaultFactory;
 }
 
+/** The part of fetch the AgentMail sender uses (tests swap it). */
+export type HttpFetch = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<{ status: number; text(): Promise<string> }>;
+const defaultFetch: HttpFetch = (url, init) => fetch(url, init);
+let httpFetch: HttpFetch = defaultFetch;
+
+/** Swap the HTTP client AgentMail is called with. Pass null to restore fetch. */
+export function setHttpFetch(f: HttpFetch | null) {
+  httpFetch = f ?? defaultFetch;
+}
+
+export const AGENTMAIL_API = 'https://api.agentmail.to/v0';
+
 const LOOPBACK = /^(localhost|127(\.\d+){3}|::1|\[::1\])$/i;
 
-/** SMTP is usable once a host and a sender address are set. */
+const isAgentMail = (s: SmtpSettings) => s.provider === 'agentmail';
+
+/** E-mail is usable once a sender address is set, with an SMTP host or (AgentMail) a saved API key. */
 export function smtpConfigured(s: SmtpSettings = getSettings().smtp): boolean {
-  return !!s.host.trim() && !!s.from_email.trim();
+  if (!s.from_email.trim()) return false;
+  return isAgentMail(s) ? !!getMeta('agentmail_api_key') : !!s.host.trim();
 }
 
 export function transportOptions(s: SmtpSettings = getSettings().smtp, password = getMeta('smtp_password') ?? ''): SmtpTransportOptions {
@@ -86,9 +101,48 @@ export class MailError extends Error {
 /** Errors that will hit every message alike, so a batch should stop. */
 export const isFatal = (code: MailErrorCode) => code !== 'recipient' && code !== 'other';
 
-/** Turn a nodemailer / socket error into a clear, actionable message. */
-export function mapMailError(err: unknown, s: Pick<SmtpSettings, 'host' | 'port' | 'secure'> = getSettings().smtp): MailError {
+/** An AgentMail API answer other than 2xx (its body: { name, code?, message?, errors? }). */
+class AgentMailHttpError extends Error {
+  status: number;
+  body: { name?: string; code?: string; message?: string; errors?: unknown };
+  constructor(status: number, body: AgentMailHttpError['body']) {
+    super(body.message || body.name || `HTTP ${status}`);
+    this.status = status;
+    this.body = body;
+  }
+}
+
+function mapAgentMailError(err: unknown, inbox: string): MailError {
+  if (err instanceof AgentMailHttpError) {
+    const { status, body } = err;
+    const detail = String(body.message || body.code || body.name || '').slice(0, 200);
+    // this message was refused (e.g. a suppressed or bounced recipient); others may still go
+    if (status === 403 && /reject/i.test(`${body.name ?? ''} ${body.code ?? ''}`)) return new MailError('recipient', `AgentMail refused this message${detail ? `: ${detail}` : '.'}`);
+    // a wrong key is 403 Forbidden (seen live), 401 by the book
+    if (status === 401 || status === 403) return new MailError('auth', `AgentMail did not accept the API key for ${inbox} — check the key, and that it may send from this inbox (a key made for one inbox works only for that one).`);
+    if (status === 404) return new MailError('auth', `AgentMail has no inbox ${inbox} for this API key — the inbox address must be one of your AgentMail inboxes.`);
+    if (status === 429) return new MailError('connection', 'AgentMail is limiting how fast this account sends — try again in a few minutes.');
+    if (status >= 500) return new MailError('connection', `AgentMail is not available just now (HTTP ${status}) — try again later.`);
+    if (status === 400 && /\bto\b/.test(JSON.stringify(body.errors ?? ''))) return new MailError('recipient', 'AgentMail refused the recipient address.');
+    return new MailError('other', `AgentMail error (HTTP ${status})${detail ? `: ${detail}` : ''}`);
+  }
+  // fetch failures: the reason is in err.cause
+  const e = (err ?? {}) as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+  const why = `${e.cause?.code ?? ''} ${e.cause?.message ?? ''} ${e.message ?? ''}`;
+  if (e.name === 'TimeoutError' || e.name === 'AbortError' || /ETIMEDOUT|timed? ?out/i.test(why)) return new MailError('timeout', 'AgentMail did not respond in time — check this computer’s internet connection.');
+  if (/ENOTFOUND|EAI_AGAIN/.test(why)) return new MailError('dns', 'api.agentmail.to could not be found — check this computer’s internet connection.');
+  if (/certificate|SSL|TLS/i.test(why)) return new MailError('tls', 'The secure connection to AgentMail failed — a firewall or proxy may be intercepting it.');
+  if (/ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH|fetch failed/i.test(why)) return new MailError('connection', 'Could not reach AgentMail — check this computer’s internet connection.');
+  return new MailError('other', `AgentMail error: ${String(e.message ?? err).slice(0, 300)}`);
+}
+
+/** Turn a nodemailer / socket / AgentMail error into a clear, actionable message. */
+export function mapMailError(
+  err: unknown,
+  s: Pick<SmtpSettings, 'host' | 'port' | 'secure'> & Partial<Pick<SmtpSettings, 'provider' | 'from_email'>> = getSettings().smtp,
+): MailError {
   if (err instanceof MailError) return err;
+  if (err instanceof AgentMailHttpError || s.provider === 'agentmail') return mapAgentMailError(err, (s.from_email ?? '').trim());
   const e = (err ?? {}) as { code?: string; errno?: string | number; responseCode?: number; message?: string; command?: string };
   const msg = String(e.message ?? err ?? 'Unknown error');
   const where = `${s.host}:${s.port}`;
@@ -117,16 +171,28 @@ export function mapMailError(err: unknown, s: Pick<SmtpSettings, 'host' | 'port'
   return new MailError('other', `SMTP error: ${msg.slice(0, 300)}`);
 }
 
-/** Send one message using Settings → E-mail. Throws MailError. */
-export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> {
-  // a test copy of the church's data (CANON_TEST_COPY=1) never writes to real members
-  if (config.testCopy) throw new MailError('test_copy', 'This is a test copy of Canon: it sends no e-mail.');
-  const s = getSettings().smtp;
-  if (!smtpConfigured(s)) throw new MailError('not_configured', 'E-mail is not set up yet — an administrator can add the SMTP server under Settings → E-mail.');
-  if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(m.to)) throw new MailError('recipient', 'Not a valid e-mail address.');
+/** One message through AgentMail: POST /inboxes/{inbox}/messages/send, the inbox being the sender address. */
+async function sendViaAgentMail(s: SmtpSettings, m: MailMessage): Promise<{ messageId?: string }> {
+  const res = await httpFetch(`${AGENTMAIL_API}/inboxes/${encodeURIComponent(s.from_email.trim())}/messages/send`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${getMeta('agentmail_api_key') ?? ''}`, 'content-type': 'application/json' },
+    // no sender name: AgentMail sends with the inbox's own display name
+    body: JSON.stringify({ to: m.to, reply_to: s.reply_to.trim() || undefined, subject: m.subject, text: m.text, html: m.html }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const raw = await res.text();
+  let body: Record<string, unknown> = {};
+  try {
+    body = JSON.parse(raw) ?? {};
+  } catch { /* not JSON */ }
+  if (res.status < 200 || res.status >= 300) throw new AgentMailHttpError(res.status, body as AgentMailHttpError['body']);
+  return { messageId: typeof body.message_id === 'string' ? body.message_id : undefined };
+}
+
+async function sendViaSmtp(s: SmtpSettings, m: MailMessage): Promise<{ messageId?: string }> {
   const transport = factory(transportOptions(s));
   try {
-    const r = await transport.sendMail({
+    return await transport.sendMail({
       from: { name: s.from_name.trim() || s.from_email.trim(), address: s.from_email.trim() },
       to: m.to,
       replyTo: s.reply_to.trim() || undefined,
@@ -134,13 +200,6 @@ export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> 
       text: m.text,
       html: m.html,
     });
-    if (getMeta('smtp_failing')) deleteMeta('smtp_failing');
-    return r;
-  } catch (err) {
-    const me = mapMailError(err, s);
-    // an error that would hit every message (sign-in, connection …): self-service pauses until e-mail works again
-    if (isFatal(me.code)) setMeta('smtp_failing', JSON.stringify({ at: new Date().toISOString(), error: me.message }));
-    throw me;
   } finally {
     try {
       transport.close?.();
@@ -150,10 +209,33 @@ export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> 
   }
 }
 
+/** Send one message using Settings → E-mail. Throws MailError. */
+export async function sendMail(m: MailMessage): Promise<{ messageId?: string }> {
+  // a test copy of the church's data (CANON_TEST_COPY=1) never writes to real members
+  if (config.testCopy) throw new MailError('test_copy', 'This is a test copy of Canon: it sends no e-mail.');
+  const s = getSettings().smtp;
+  if (!smtpConfigured(s)) throw new MailError('not_configured', 'E-mail is not set up yet — an administrator can set it up under Settings → E-mail.');
+  if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(m.to)) throw new MailError('recipient', 'Not a valid e-mail address.');
+  try {
+    const r = await (isAgentMail(s) ? sendViaAgentMail(s, m) : sendViaSmtp(s, m));
+    if (getMeta('smtp_failing')) deleteMeta('smtp_failing');
+    return r;
+  } catch (err) {
+    const me = mapMailError(err, s);
+    // an error that would hit every message (sign-in, connection …): self-service pauses until e-mail works again
+    if (isFatal(me.code)) setMeta('smtp_failing', JSON.stringify({ at: new Date().toISOString(), error: me.message }));
+    throw me;
+  }
+}
+
 /** The e-mail settings as one value (the password hashed): a successful test e-mail is remembered for these. */
 export function smtpFingerprint(s: SmtpSettings = getSettings().smtp): string {
-  const pw = crypto.createHash('sha256').update(getMeta('smtp_password') ?? '').digest('hex');
-  return crypto.createHash('sha256').update(JSON.stringify([s.host.trim(), s.port, s.secure, s.user.trim(), s.from_email.trim(), pw])).digest('hex').slice(0, 32);
+  const hash = (v: string) => crypto.createHash('sha256').update(v).digest('hex');
+  const parts = isAgentMail(s)
+    ? ['agentmail', s.from_email.trim(), hash(getMeta('agentmail_api_key') ?? '')]
+    // unchanged for SMTP, so a test e-mail that worked before AgentMail existed still counts
+    : [s.host.trim(), s.port, s.secure, s.user.trim(), s.from_email.trim(), hash(getMeta('smtp_password') ?? '')];
+  return hash(JSON.stringify(parts)).slice(0, 32);
 }
 
 /** E-mail is known to work: a test e-mail succeeded with the current settings, and nothing has failed since. */

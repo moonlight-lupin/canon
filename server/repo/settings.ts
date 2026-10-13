@@ -11,6 +11,8 @@ export type PaperSize = 'a4-booklet' | 'a4' | 'a5' | 'letter-booklet' | 'letter'
 export type CoverStyle = 'plain' | 'cross' | 'logo' | 'verse';
 
 export interface SmtpSettings {
+  /** how e-mail goes out: the church's SMTP server, or AgentMail's API (an API key; the sender address is the AgentMail inbox); absent = SMTP */
+  provider?: 'smtp' | 'agentmail';
   host: string;
   port: number;
   /** true = implicit TLS (465); false = STARTTLS when offered (587) */
@@ -19,8 +21,9 @@ export interface SmtpSettings {
   from_name: string;
   from_email: string;
   reply_to: string;
-  /** the password is stored separately (write-only, never returned by the API) */
+  /** the password and the AgentMail API key are stored separately (write-only, never returned by the API) */
   has_password?: boolean;
+  has_api_key?: boolean;
 }
 
 export interface Settings {
@@ -122,7 +125,7 @@ export const DEFAULT_SETTINGS: Settings = {
   member_fields_retired: [],
   security: { disk_encryption: false, require_admin_2fa: false, require_all_2fa: false },
   trust_proxy: false,
-  smtp: { host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
+  smtp: { provider: 'smtp', host: '', port: 587, secure: false, user: '', from_name: '', from_email: '', reply_to: '' },
   mcp: {
     enabled: false,
     modules: { members: 'off', coworkers: 'read', groups: 'read', volunteers: 'read', services: 'write', library: 'write', templates: 'read', records: 'off', contributions: 'off', lending: 'off', equipment: 'off', bookkeeping: 'off', admin: 'off' },
@@ -156,7 +159,7 @@ export function getSettings(): Settings {
   out.mcp = { ...DEFAULT_SETTINGS.mcp, ...out.mcp, modules: { ...DEFAULT_SETTINGS.mcp.modules, ...out.mcp.modules } };
   // before 0.15.1 one switch shared every contact detail: visitors' followed it
   if (!(raw.mcp as { visitors?: string } | undefined)?.visitors) out.mcp.visitors = out.mcp.expose_member_pii ? 'contact' : 'names';
-  out.smtp = { ...DEFAULT_SETTINGS.smtp, ...out.smtp, has_password: !!getMeta('smtp_password') };
+  out.smtp = { ...DEFAULT_SETTINGS.smtp, ...out.smtp, has_password: !!getMeta('smtp_password'), has_api_key: !!getMeta('agentmail_api_key') };
   out.backup = { ...DEFAULT_SETTINGS.backup, ...out.backup };
   out.retention = { ...DEFAULT_SETTINGS.retention, ...out.retention };
   out.visitor_form = { ...DEFAULT_SETTINGS.visitor_form, ...out.visitor_form };
@@ -178,13 +181,13 @@ export function updateSettings(patch: Partial<Settings>): Settings {
   const before = getSettings();
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in DEFAULT_SETTINGS) || v === undefined) continue;
-    const value = k === 'smtp' ? { ...(v as SmtpSettings), has_password: undefined } : v;
+    const value = k === 'smtp' ? { ...(v as SmtpSettings), has_password: undefined, has_api_key: undefined } : v;
     run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', k, JSON.stringify(value));
   }
   cache = null;
   const after = getSettings();
   // change log (only when someone is making the change; never any password)
-  const pick = (s: Settings) => Object.fromEntries(Object.keys(patch).filter((k) => !/password/i.test(k)).map((k) => [k, k === 'smtp' ? { ...s.smtp, has_password: undefined } : s[k as keyof Settings]]));
+  const pick = (s: Settings) => Object.fromEntries(Object.keys(patch).filter((k) => !/password/i.test(k)).map((k) => [k, k === 'smtp' ? { ...s.smtp, has_password: undefined, has_api_key: undefined } : s[k as keyof Settings]]));
   logChange({ entity: 'settings', entity_id: null, action: 'update', before: pick(before), after: pick(after) });
   return after;
 }

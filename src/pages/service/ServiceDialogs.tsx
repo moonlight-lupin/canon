@@ -151,8 +151,8 @@ export function ReminderDialog({ svc, onClose }: { svc: ServiceFull; onClose: ()
         <div className="callout warn" style={{ marginBottom: 12 }}>
           <strong>{t('E-mail is not set up yet.')}</strong>{' '}
           {isAdmin
-            ? <>{t('Add the church’s SMTP server under')} <Link to="/settings" onClick={onClose}>{t('Settings')} → {t('E-mail')}</Link>.</>
-            : t('Ask an administrator to add the SMTP server under Settings → E-mail.')}
+            ? <>{t('Set up the church’s e-mail under')} <Link to="/settings" onClick={onClose}>{t('Settings')} → {t('E-mail')}</Link>.</>
+            : t('Ask an administrator to set up e-mail under Settings → E-mail.')}
         </div>
       )}
       {sendError && <div className="callout warn" style={{ marginBottom: 12 }}>{sendError}</div>}

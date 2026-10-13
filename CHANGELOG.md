@@ -4,6 +4,16 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.20.3 — E-mail through AgentMail, with an API key
+
+- **AgentMail as an e-mail provider.** Settings → E-mail has **AgentMail** beside Gmail, Microsoft 365 and Other provider. It needs no SMTP server: enter an **API key** and the **Inbox address** (an AgentMail inbox, e.g. church@agentmail.to), **Save**, then **Send test**. Canon sends through AgentMail's HTTPS API (`POST /v0/inboxes/{inbox}/messages/send`). E-mails go out under the inbox's display name, which is set in AgentMail, and the **Reply-to address** still applies. Everything that sends e-mail uses it: volunteer reminders, the lending library's reminders and codes, expense-claim notices and account-security notices.
+- The API key is kept like the SMTP password: write-only, stored in Canon's database, never shown again or sent to the browser, kept out of the change log, with **Change** and **Clear**. A successful test e-mail is remembered for the inbox and key (the self-service checks of the lending library and claims), so a new key needs a new test. Churches on SMTP keep their earlier test.
+- AgentMail's answers become clear messages: a key it refuses (401 or 403), an inbox it doesn't know (404), a refused recipient, too many e-mails at once (429), the service down, or no internet. A refused key or no connection stops a batch of reminders after the first, as with SMTP.
+- Messages that asked for "the SMTP server" when no e-mail is set up now say "set up e-mail".
+- **AI assistants**: `canon_admin_settings` gives e-mail's `via` (`smtp` or `agentmail`), and its `configured` is now true for AgentMail with a key and an inbox (it looked only at the SMTP host).
+- Tests send through a fake AgentMail (the key stays write-only, the request is right, each error maps). Checked once against the real AgentMail with a test inbox, and in the browser.
+- No database change.
+
 ## 0.20.2 — The appearance switch shows its icons; guessing at a password holds up only the guesser
 
 - **Someone guessing at an account's password holds up only themselves.** Wrong passwords made the whole account wait (up to 15 minutes), so anyone who knew a username could, with one guess a quarter of an hour, keep its owner out of every browser that hadn't signed in to it before (a new phone, a borrowed computer). The wait is now counted per account and network address: the guesser's address waits, and the owner signs in from anywhere else. Guesses from many addresses at once (20 within an hour) still make the account wait; **Settings → User accounts** then shows **Locked**, with **Let in now** for an administrator (recorded in the change log). Tests sign in from one guessing address and another, guess from twenty addresses, and let the account in.
