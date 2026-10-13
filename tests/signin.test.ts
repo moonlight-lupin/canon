@@ -74,7 +74,10 @@ test('two-step sign-in: set up with an authenticator, then a code (or a recovery
   assert.match(setup.body.uri, /^otpauth:\/\/totp\//);
   assert.match(setup.body.qr, /^data:image\/png;base64,/);
   assert.equal((await call(ed, 'POST', '/me/two-step/enable', { code: '000000', password: 'correct-horse-3' })).status, 400);
-  const on = await call(ed, 'POST', '/me/two-step/enable', { code: T.totp(setup.body.secret), password: 'correct-horse-3' });
+  // one moment for both: recomputing "the code that turned it on" later could cross into the next 30-second code
+  const t0 = Date.now();
+  const firstCode = T.totp(setup.body.secret, t0);
+  const on = await call(ed, 'POST', '/me/two-step/enable', { code: firstCode, password: 'correct-horse-3' });
   assert.equal(on.status, 200);
   assert.equal(on.body.recovery_codes.length, 8);
   // the password alone no longer signs in
@@ -83,8 +86,8 @@ test('two-step sign-in: set up with an authenticator, then a code (or a recovery
   assert.equal(step1.body.csrf, undefined);
   assert.equal((await post('/login/code', { ticket: step1.body.ticket, code: '123456' })).status, 401);
   // a code works once (0.19.8): the one that turned it on can't sign in, the next one can
-  assert.equal((await post('/login/code', { ticket: step1.body.ticket, code: T.totp(setup.body.secret) })).status, 401);
-  const done = await post('/login/code', { ticket: step1.body.ticket, code: T.totp(setup.body.secret, Date.now() + 30_000) });
+  assert.equal((await post('/login/code', { ticket: step1.body.ticket, code: firstCode })).status, 401);
+  const done = await post('/login/code', { ticket: step1.body.ticket, code: T.totp(setup.body.secret, t0 + 30_000) });
   assert.equal(done.status, 200);
   assert.ok(done.body.csrf);
   // a recovery code works once
