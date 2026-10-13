@@ -4,9 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
-## Unreleased
+## 0.20.4 — Release notes formatted, packages updated, old translations tidied
 
 - **About Canon → Updates shows the release notes formatted**: lists, bold, `code`, headings and links, with the guide's own safe renderer (no HTML from the notes is ever run), instead of the raw Markdown text. Links to files in Canon's repository (e.g. docs/UPGRADING.md) open on GitHub at that release's version. Long notes scroll inside the card. A test covers the links; checked in the browser.
+- **Packages updated** within their versions: express 5.3.0, nodemailer 10.1.0, vite 8.3.4, zod 4.6.7, docx 9.10.0, the MCP SDK 1.32.1 and three development tools. Every test passes, the app builds, and its pages load with no errors.
+- **Old translations tidied**: 31 Chinese phrases (Simplified and Traditional) that no screen uses any more (earlier wordings) are taken out. Each was checked against the code first.
+- A two-step sign-in test could fail when a 30-second code ended in the middle of it (it worked out "the code that turned it on" again, a moment later), and then failed the two tests after it. The code is now worked out once. Canon itself didn't change.
+- No database change.
 
 ## 0.20.3 — E-mail through AgentMail, with an API key
 
