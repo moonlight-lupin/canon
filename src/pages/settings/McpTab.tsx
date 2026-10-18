@@ -7,9 +7,9 @@ import { Empty, ErrorBox, Loading, Seg, confirmAction, useAction, useToast } fro
 import { Icon } from '../../components/icons.tsx';
 import { FilterBar, Pager, useLogQuery, type Paged } from '../../components/LogTools.tsx';
 import type { McpConfig, ModuleAccess, ModuleKey } from '../../types-client.ts';
-import type { VisitorAccess } from '../../../shared/types.ts';
+import type { MelodyAccess, VisitorAccess } from '../../../shared/types.ts';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../../types-client.ts';
-import { churchLevel, piiShared, scoresShared, toolOffered, type ToolShape } from '../../../shared/mcp-exposure.ts';
+import { churchLevel, melodiesShared, piiShared, scoresShared, toolOffered, type ToolShape } from '../../../shared/mcp-exposure.ts';
 import type { ModuleSwitches } from '../../../shared/modules.ts';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { fmtStamp, PublicUrlField } from './common.tsx';
@@ -98,7 +98,8 @@ export function McpTab() {
   };
   const pii = piiShared(d);
   const scores = scoresShared(d);
-  const exposed = (x: Tool, level: ModuleAccess) => toolOffered(x, level, pii, scores, d.enabled, switches);
+  const melodies = melodiesShared(d) !== 'off';
+  const exposed = (x: Tool, level: ModuleAccess) => toolOffered(x, level, pii, scores, melodies, d.enabled, switches);
   const visible = (tools.data ?? []).filter((x) => exposed(x, churchLevel(x.module, d, switches))).length;
 
   return (
@@ -187,6 +188,20 @@ export function McpTab() {
                     {level === 'off' ? <span className="badge">{t('Off')}</span> : (
                       <Seg<'off' | 'on'> value={d.sheet_music ? 'on' : 'off'} onChange={(v) => setD((x) => x && { ...x, sheet_music: v === 'on' })}
                         options={[{ value: 'off', label: t('Off') }, { value: 'on', label: t('Shared') }]} />
+                    )}
+                  </div>
+                </div>
+              )}
+              {m === 'library' && (
+                <div className="mod-row nested">
+                  <div className="row between">
+                    <div>
+                      <strong>{t('Melodies')}</strong>
+                      <InfoTip text={t('Songs’ melodies in numbered notation (Library → song → Melody in numbered notation). Shared: canon_melody reads and checks them and canon_save_melody saves one the assistant wrote (for example from the sheet music) — a musician’s melody is replaced only when you agree. Public-domain songs only, or all songs: choose all songs only if the church’s licence lets it copy or arrange the music (check its terms). Melodies the assistant reads become copies at the AI provider.')} />
+                    </div>
+                    {level === 'off' ? <span className="badge">{t('Off')}</span> : (
+                      <Seg<MelodyAccess> value={d.melodies ?? 'off'} onChange={(v) => setD((x) => x && { ...x, melodies: v })}
+                        options={[{ value: 'off', label: t('Off') }, { value: 'public_domain', label: t('Public-domain songs') }, { value: 'licensed', label: t('All songs (our licence)') }]} />
                     )}
                   </div>
                 </div>

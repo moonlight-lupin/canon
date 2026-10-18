@@ -123,7 +123,7 @@ export const ADMIN_TOOLS: ToolDef[] = [
         keeping: s.retention,
         visitor_form: { enabled: !!s.visitor_form?.enabled },
         lending: { self_service: !!s.lending?.self_service },
-        ai: { enabled: s.mcp.enabled, modules: s.mcp.modules, member_contact_details: s.mcp.expose_member_pii, visitors: s.mcp.visitors, sheet_music: !!s.mcp.sheet_music },
+        ai: { enabled: s.mcp.enabled, modules: s.mcp.modules, member_contact_details: s.mcp.expose_member_pii, visitors: s.mcp.visitors, sheet_music: !!s.mcp.sheet_music, melodies: s.mcp.melodies ?? 'off' },
       };
     },
   },

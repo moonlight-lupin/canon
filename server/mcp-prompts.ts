@@ -11,7 +11,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
-import type { Lang, ModuleAccess, ModuleKey } from '../shared/types.ts';
+import type { Lang, MelodyAccess, ModuleAccess, ModuleKey } from '../shared/types.ts';
 import { langInfo } from '../shared/languages.ts';
 import { SEASONS, seasonOf } from '../shared/season.ts';
 
@@ -19,6 +19,8 @@ export interface PromptCtx {
   levels: Record<ModuleKey, ModuleAccess>;
   /** the administrator exposes member contact details / birthdays */
   pii: boolean;
+  /** whose melodies may be written: none, public-domain songs', or every song's */
+  melodies: MelodyAccess;
   languages: Lang[];
   /** YYYY-MM-DD */
   today: string;
@@ -34,6 +36,8 @@ export interface PromptDef {
   needs: Partial<Record<ModuleKey, 'read' | 'write'>>;
   /** only offered when the administrator exposes member personal data */
   requiresPii?: boolean;
+  /** only offered when the administrator shares melodies (Library → Melodies) */
+  requiresMelodies?: boolean;
   /** argument name → description; every argument is an optional string */
   args: Record<string, string>;
   build: (a: PromptArgs, c: PromptCtx) => string;
@@ -516,22 +520,55 @@ export const PROMPTS: PromptDef[] = [
       );
     },
   },
+  {
+    name: 'write_melody',
+    title: 'Write a hymn\'s melody in numbered notation',
+    description: 'Write a song\'s melody in numbered notation (jianpu) from its sheet music or from the user: check it, fix it, and save it to the song — only for songs the administrator allows (public domain, or under the church\'s licence).',
+    needs: { library: 'write' },
+    requiresMelodies: true,
+    args: {
+      song: 'The song: title or hymnal number (e.g. "HP 178")',
+    },
+    build: (a, c) => lines(
+      ...header(`write the melody of ${a.song ? q(a.song) : 'a song'} in numbered notation`, c),
+      '',
+      '## Before you start',
+      '- Read the resource canon://guide/jianpu: the notation, its catches (a melody over several lines goes inside N: { … }; a line break is @br() with its parentheses) and a worked example. Write only what it describes.',
+      c.melodies === 'public_domain'
+        ? '- The administrator shares only public-domain songs\' melodies: if the song is not marked public domain, stop and say a musician should type it in Canon.'
+        : '- The administrator allows every song\'s melody (the church\'s licence covers copying or arranging the music). Still write only the tune the church sings, from its own hymnal or the user — never from another publisher\'s edition you find elsewhere.',
+      '',
+      '## Steps',
+      `1. Find the song: canon_search_library {"q":${a.song ? q(a.song) : '"…"'},"type":"songs"}, then canon_melody {"song_id":…} — it says whether the song may be done here and shows any melody it has already.`,
+      '2. The tune: if sheet music is shared on this connection, canon_sheet_music {"song_id":…,"pictures":true} and read the pages (key, time signature, notes, where the lines break). Otherwise ask the user for the tune (a photo of the hymnal page, or the numbers). Never guess a melody from memory.',
+      '3. The words: canon_get_library_item {"type":"song","id":…} for the stanzas. Write one L: line per stanza and language, one syllable per note (English: split words with "- ", e.g. "bless- ings"; Chinese: one character per note). Only the stanzas the hymnal prints under the music, unless the user asks for more.',
+      '4. Write the jianpu text: @1(key) and @meter(n, d) first, then N: { … } with a @br() where the hymnal starts a new line, then the L: lines.',
+      '5. Check it: canon_melody {"source":…}. Fix every error; fix warnings too unless you are sure (a short first bar before an upbeat is fine). Check again until ok is true.',
+      '6. Show the user the text and a short summary (key, time signature, lines, stanzas), and ask before saving. If the song already has a melody, say what would change — replace it only if they agree.',
+      '7. Save: canon_save_melody {"song_id":…,"source":…} (with "replace":true only after a yes). Ask the user to look at the drawing in Library → the song → Melody in numbered notation, and to compare it with the hymnal.',
+      '',
+      '## Notes',
+      '- The melody is for the church\'s musicians inside Canon. Don\'t give the jianpu text to anyone else or paste it outside this conversation.',
+      ...ETIQUETTE,
+    ),
+  },
 ];
 
 // ---------------------------------------------------------------- exposure control
 
-export function allowedPrompts(levels: Record<ModuleKey, ModuleAccess>, pii: boolean): PromptDef[] {
+export function allowedPrompts(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, melodies: MelodyAccess = 'off'): PromptDef[] {
   return PROMPTS.filter((p) => {
     for (const [m, need] of Object.entries(p.needs) as [ModuleKey, 'read' | 'write'][]) {
       const lvl = levels[m];
       if (lvl === 'off' || (need === 'write' && lvl !== 'write')) return false;
     }
+    if (p.requiresMelodies && melodies === 'off') return false;
     return !p.requiresPii || pii;
   });
 }
 
 export function registerPrompts(server: McpServer, ctx: PromptCtx) {
-  const prompts = allowedPrompts(ctx.levels, ctx.pii);
+  const prompts = allowedPrompts(ctx.levels, ctx.pii, ctx.melodies);
   for (const p of prompts) {
     const argsSchema = Object.fromEntries(Object.entries(p.args).map(([k, d]) => [k, z.string().max(200).optional().describe(d)]));
     server.registerPrompt(p.name, { title: p.title, description: p.description, argsSchema }, (args: PromptArgs): GetPromptResult => ({
@@ -560,6 +597,13 @@ export const RESOURCES = [
     title: 'Canon user guide',
     description: 'The guide for church office staff (English): the weekly routine, library, templates, people, settings and troubleshooting. Useful for answering "how do I…" questions about the Canon web app.',
     file: 'guide/en.md',
+  },
+  {
+    name: 'jianpu-notation',
+    uri: 'canon://guide/jianpu',
+    title: 'Numbered notation (jianpu) for melodies',
+    description: 'How to write a song’s melody in numbered notation for canon_melody / canon_save_melody (jpFun’s notation, in English): key, time signature, notes, lines, words under the notes, the catches, and a worked example.',
+    file: 'JIANPU-NOTATION.md',
   },
 ] as const;
 

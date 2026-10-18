@@ -102,3 +102,15 @@ Only when members is readable and the administrator exposes personal data.
 1. `canon_find_groups {"kind"}`, then `canon_find_groups {"id"}` per group.
 2. Report sizes, leaders, groups without a leader, terms ending within three months, people on many groups, small or inactive groups. For committees, cross-check `canon_list_coworkers`.
 3. Changes only after yes: `canon_update_group_members` (end terms with `end_date`, don't remove), `canon_save_group` (`active=false` retires a group).
+
+## write_melody — a hymn's melody in numbered notation (jianpu)
+
+Only while melodies are shared (`canon_whoami` → `melodies`) and the Library is read & write.
+
+1. Read `references/jianpu.md` (the same as the resource `canon://guide/jianpu`): the notation and its catches — a melody over several lines goes inside `N: { … }`; a line break is `@br()` with its parentheses.
+2. Find the song: `canon_search_library {"q":"HP 178","type":"songs"}`, then `canon_melody {"song_id"}` — it refuses a song the administrator doesn't allow (stop, and say a musician should type it in Canon) and shows any melody it already has.
+3. The tune: `canon_sheet_music {"song_id","pictures":true}` when sheet music is shared, or ask the user for a photo of the hymnal page. Never write a melody from memory.
+4. The words: `canon_get_library_item {"type":"song","id"}`; one `L:` line per stanza and language, one syllable per note (English `bless- ings`, Chinese a character per note, `{}` for a note that holds the syllable before).
+5. Write the jianpu and check it: `canon_melody {"source"}` until `ok` is true (fix warnings unless one is intended, e.g. an upbeat).
+6. Show the text and a short summary (key, time signature, lines, stanzas) and ask. If the song has a melody already, say what would change.
+7. After a yes: `canon_save_melody {"song_id","source"}` (`"replace": true` only after a yes to replacing). Ask the user to look at the drawing in Library → the song → Melody in numbered notation and compare it with the hymnal.

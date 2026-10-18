@@ -6,7 +6,8 @@ type JpFun = typeof import('jpfun');
 let engine: Promise<JpFun> | null = null;
 export const loadJianpu = () => (engine ??= import('jpfun'));
 
-export interface JianpuProblem { message: string; line: number; column: number; error: boolean }
+/** One of jpFun's problems: its code (shared/jianpu-messages.ts gives Canon's words for it) and its own message (Chinese). */
+export interface JianpuProblem { code?: string; message: string; line: number; column: number; error: boolean }
 export interface JianpuResult { pages: SVGSVGElement[]; problems: JianpuProblem[] }
 
 let measurer: InstanceType<JpFun['CanvasTextMeasurer']> | null = null;
@@ -20,18 +21,22 @@ export async function renderJianpu(source: string): Promise<JianpuResult> {
     if (ctx) measurer = new jp.CanvasTextMeasurer(ctx);
   }
   const lineStarts = [0, ...[...source.matchAll(/\n/g)].map((m) => m.index! + 1)];
-  const problem = (d: { message: string; span: { start: number } }, error: boolean): JianpuProblem => {
+  const problem = (d: { code?: string; message: string; span: { start: number } }, error: boolean): JianpuProblem => {
     const at = jp.Diagnostic.offsetToLineCol(d.span?.start ?? 0, lineStarts);
-    return { message: d.message, line: at.line, column: at.column, error };
+    return { code: d.code, message: d.message, line: at.line, column: at.column, error };
   };
   try {
     const r = jp.compileScore(source, measurer ? { textMeasurer: measurer } : {});
-    const problems = [...r.diagnostics, ...r.layout.diagnostics].map((d) => problem(d, d instanceof jp.ErrorDiagnostic));
+    // the same problem can come from both stages: list it once
+    const seen = new Set<string>();
+    const problems = [...r.diagnostics, ...r.layout.diagnostics]
+      .filter((d) => { const k = `${d.code} ${d.span?.start} ${d.message}`; return !seen.has(k) && !!seen.add(k); })
+      .map((d) => problem(d, d instanceof jp.ErrorDiagnostic));
     return { pages: jp.renderLayoutPagesToSvg(r.layout, { background: '#fff' }).map(cleanSvg).filter((x): x is SVGSVGElement => !!x), problems };
   } catch (e) {
     // jpFun stops at the first error it can't get past, and throws it
-    const d = e as { message?: string; span?: { start: number } };
-    return { pages: [], problems: [problem({ message: d.message ?? String(e), span: d.span ?? { start: 0 } }, true)] };
+    const d = e as { code?: string; message?: string; span?: { start: number } };
+    return { pages: [], problems: [problem({ code: d.code, message: d.message ?? String(e), span: d.span ?? { start: 0 } }, true)] };
   }
 }
 

@@ -1,6 +1,7 @@
 // 0.21.0: a song's melody in numbered notation (jianpu): saved and cleared by the church's editors, gone with its song,
-// listed with the service's sheet music, carried in library files — and never seen or written by AI tools. The guide's
-// examples must stay drawable by the pinned jpFun. Fictional data.
+// listed with the service's sheet music, carried in library files — and outside the song tools AI assistants use (the
+// melody tools are tested in oauth-mcp.test.ts). The guide's and the notation reference's examples must stay drawable
+// by the pinned jpFun. Fictional data.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -94,7 +95,7 @@ test('a melody goes with its song, and is listed with the service’s sheet musi
   assert.equal(get('SELECT 1 FROM song_melodies WHERE song_id = ?', song.id), undefined);
 });
 
-test('AI tools neither see nor write melodies', async () => {
+test('melodies are not part of songs for AI tools: only canon_melody / canon_save_melody (when shared) handle them', async () => {
   const song = newSong('A Hymn For Musicians');
   mel.setMelody(song.id, TUNE);
   const ctx = { auth: { user: { id: 1, role: 'admin' } }, pii: false, scores: true, levels: { library: 'write', services: 'write' } } as never;
@@ -139,5 +140,49 @@ test('the guide’s melody examples are drawn by the pinned jpFun without errors
       assert.deepEqual(r.diagnostics.map((d) => d.message), [], `${lang}.md example`);
       assert.match(renderLayoutPagesToSvg(r.layout)[0], /^<svg/);
     }
+  }
+});
+
+test('Canon’s words for jpFun’s problems: the details are found in jpFun’s own messages', async () => {
+  const { compileScore } = await import('jpfun');
+  const { jianpuHint, fillHint, JIANPU_HINTS } = await import('../shared/jianpu-messages.ts');
+  const problems = (src: string) => {
+    try {
+      const r = compileScore(src);
+      return [...r.diagnostics, ...r.layout.diagnostics];
+    } catch (e) {
+      return [e as { code: string; message: string }];
+    }
+  };
+  // a mistake each, and what Canon should say (when jpFun changes a message, this shows which hint lost its details)
+  const cases: [string, string, RegExp][] = [
+    ['@meter(4)\nN: 1', 'E_MISSING_REQUIRED_ARG', /^@meter is missing a value it needs \(den\)/],
+    ['@metre(4, 4)\nN: 1', 'W_UNKNOWN_FUNCTION', /^There is no @metre:/],
+    ['@meter(4, 4\nN: 1', 'E_UNTERMINATED_CALL', /^@meter\( is not closed/],
+    ['@1(H4)\nN: 1', 'W_KEY_TONALITY', /^The key “H4” .* so C4 is used/],
+    ['@meter(3, 4)\nN: 1 2 3 | 1 2 3 4 |', 'W_METER_MISMATCH', /^This bar has 4 beats, but the time signature is 3\/4\.$/],
+    ['L: abc', 'E_LYRICS_WITHOUT_VOICE_NOTES', /^An L: line/],
+  ];
+  for (const [src, code, said] of cases) {
+    const d = problems(src).find((x) => x.code === code);
+    assert.ok(d, `${JSON.stringify(src)} gives ${code}`);
+    const h = jianpuHint(d.code, d.message);
+    assert.ok(h);
+    assert.match(fillHint(h.template, h.vars), said);
+  }
+  assert.equal(jianpuHint('E_SOMETHING_NEW', 'x'), null, 'other codes keep jpFun’s message');
+  for (const t of Object.values(JIANPU_HINTS)) assert.ok(/^[\x20-\x7e’“”…]+$/.test(t), `English: ${t}`);
+});
+
+test('the notation reference for agents: the same in docs and the skill, and its examples are drawn without problems', async () => {
+  const { compileScore } = await import('jpfun');
+  const root = path.join(import.meta.dirname, '..');
+  const doc = fs.readFileSync(path.join(root, 'docs', 'JIANPU-NOTATION.md'), 'utf8');
+  assert.equal(fs.readFileSync(path.join(root, 'skills', 'canon', 'references', 'jianpu.md'), 'utf8'), doc, 'skills/canon/references/jianpu.md is a copy of docs/JIANPU-NOTATION.md');
+  const examples = [...doc.matchAll(/```jianpu\n([\s\S]*?)```/g)].map((m) => m[1]);
+  assert.ok(examples.length >= 2);
+  for (const src of examples) {
+    const r = compileScore(src);
+    assert.deepEqual([...r.diagnostics, ...r.layout.diagnostics].map((d) => d.message), [], src.slice(0, 40));
   }
 });

@@ -132,6 +132,7 @@ export const DEFAULT_SETTINGS: Settings = {
     expose_member_pii: false,
     visitors: 'names',
     sheet_music: false,
+    melodies: 'off',
   },
 };
 

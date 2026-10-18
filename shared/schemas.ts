@@ -291,4 +291,5 @@ export const McpConfigSchema = z.object({
   // older clients don't send it: the server keeps the saved level
   visitors: z.enum(['off', 'names', 'contact']).optional(),
   sheet_music: z.boolean().optional(),
+  melodies: z.enum(['off', 'public_domain', 'licensed']).optional(),
 });

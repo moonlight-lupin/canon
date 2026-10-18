@@ -33,7 +33,8 @@ let base = '';
 const ALL_WRITE = { members: 'write', coworkers: 'write', groups: 'write', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'write', contributions: 'write' } as const;
 function setMcp(modules: Partial<Record<keyof typeof ALL_WRITE, Level>>, pii: boolean) {
   const cur = getSettings().mcp;
-  updateSettings({ mcp: { ...cur, enabled: true, modules: { ...cur.modules, ...modules }, expose_member_pii: pii } });
+  // melodies shared (public-domain songs) so write_melody is offered whenever its module allows it
+  updateSettings({ mcp: { ...cur, enabled: true, modules: { ...cur.modules, ...modules }, expose_member_pii: pii, melodies: 'public_domain' } });
 }
 
 before(async () => {
@@ -173,6 +174,7 @@ test('prompts/get returns a playbook that only names existing tools', async () =
     check_library: { focus: 'songs' },
     member_care: { days: '30' },
     group_overview: { kind: 'committee' },
+    write_melody: { song: 'HP 178' },
   };
   for (const p of PROMPTS) {
     const r = await mcp(adminToken, 'prompts/get', { name: p.name, arguments: args[p.name] ?? {} });
@@ -206,10 +208,10 @@ test('every canon_* name in the agent handbook and the skill exists', () => {
   }
 });
 
-test('resources/list and resources/read serve the handbook and the user guide', async () => {
+test('resources/list and resources/read serve the handbook, the user guide and the jianpu notation', async () => {
   const list = await mcp(adminToken, 'resources/list');
   const uris = (list.result.resources as Json[]).map((r) => r.uri).sort();
-  assert.deepEqual(uris, ['canon://guide/agents', 'canon://guide/user']);
+  assert.deepEqual(uris, ['canon://guide/agents', 'canon://guide/jianpu', 'canon://guide/user']);
   for (const r of list.result.resources as Json[]) assert.equal(r.mimeType, 'text/markdown');
 
   const agents = await mcp(adminToken, 'resources/read', { uri: 'canon://guide/agents' });
@@ -220,6 +222,9 @@ test('resources/list and resources/read serve the handbook and the user guide', 
 
   const user = await mcp(adminToken, 'resources/read', { uri: 'canon://guide/user' });
   assert.match(user.result.contents[0].text, /^# /);
+
+  const jianpu = await mcp(adminToken, 'resources/read', { uri: 'canon://guide/jianpu' });
+  assert.match(jianpu.result.contents[0].text, /canon_save_melody/);
 
   const missing = await mcp(adminToken, 'resources/read', { uri: 'canon://guide/nope' });
   assert.ok(missing.error);

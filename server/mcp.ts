@@ -15,7 +15,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess, DRAFT_ONLY_MODULES } from '../shared/types.ts';
-import type { McpConfig, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
+import type { McpConfig, MelodyAccess, ModuleAccess, ModuleKey, Role } from '../shared/types.ts';
 import { LANG_CODE_RE, langInfo } from '../shared/languages.ts';
 import { bearerAuth, externalBase, type McpAuth } from './oauth.ts';
 import { asActor } from './lib/actor.ts';
@@ -37,11 +37,12 @@ import { RESOURCE_TOOLS } from './mcp-tools/resources.ts';
 import { BOOKKEEPING_TOOLS } from './mcp-tools/bookkeeping.ts';
 import { CLAIMS_TOOLS } from './mcp-tools/claims.ts';
 import { SCORE_TOOLS } from './mcp-tools/scores.ts';
+import { MELODY_TOOLS } from './mcp-tools/melodies.ts';
 import { ADMIN_TOOLS } from './mcp-tools/admin.ts';
 import { allowedPrompts, registerPrompts, registerResources } from './mcp-prompts.ts';
-import { effectiveAccess, piiFor, roleAccess, scoresFor, sensitiveFor, switchedOff, visitorsFor } from './lib/mcp-access.ts';
+import { effectiveAccess, melodiesFor, piiFor, roleAccess, scoresFor, sensitiveFor, switchedOff, visitorsFor } from './lib/mcp-access.ts';
 import { toolOffered } from '../shared/mcp-exposure.ts';
-export { effectiveAccess, piiFor, scoresFor, sensitiveFor, switchedOff, visitorsFor };
+export { effectiveAccess, melodiesFor, piiFor, scoresFor, sensitiveFor, switchedOff, visitorsFor };
 import { editsAnything, roleDef, seesMemberDetails } from './lib/permissions.ts';
 import { wallOf } from './auth.ts';
 import { leadsMeeting } from './lib/leaders.ts';
@@ -119,10 +120,11 @@ const WHOAMI: ToolDef = {
         ...(own[m] ? { own: `${OWN_TEXT[m] ?? 'your own records'} only (${own[m] === 'write' ? 'read and draft' : 'read'}): ${TOOLS.filter((t) => t.own && t.module === m && allows(own[m]!, t.access)).map((t) => t.name).join(', ')}` } : {}),
       }])),
       sheet_music: scoresFor(cfg) ? 'shared: canon_sheet_music lists songs’ pages and returns the pictures' : 'not shared by the administrator',
+      melodies: { off: 'not shared by the administrator', public_domain: 'public-domain songs only: canon_melody reads and checks, canon_save_melody saves (notation: canon://guide/jianpu)', licensed: 'every song (the church’s licence allows it): canon_melody reads and checks, canon_save_melody saves (notation: canon://guide/jianpu)' }[melodiesFor(cfg)],
       visitors: { off: 'not shared (attendance numbers only)', names: 'names, how they came and follow-up — no contact details', contact: 'names, follow-up and contact details — handle with care (PDPA)' }[visitorsFor(cfg, auth.user.role)],
       member_contact_details: piiFor(cfg, auth.user.role) ? 'shown where relevant — handle with care (PDPA)' : !seesMemberDetails(auth.user) && cfg.expose_member_pii ? 'withheld: your role does not see members’ contact details (PDPA)' : 'withheld by the administrator (PDPA) — do not try to obtain or infer them',
       tools: allowedTools(cfg, auth.scopes, auth.user.role).map((t) => t.name),
-      playbooks: allowedPrompts(levels, piiFor(cfg, auth.user.role)).map((p) => p.name),
+      playbooks: allowedPrompts(levels, piiFor(cfg, auth.user.role), melodiesFor(cfg)).map((p) => p.name),
       never: [
         'send e-mail or messages', 'delete people',
         levels.admin === 'off' ? 'see user accounts, passwords, settings or connection data' : 'see passwords, sign-in secrets or connection tokens, or change accounts, roles or settings',
@@ -133,13 +135,13 @@ const WHOAMI: ToolDef = {
         'type hymn words that are under copyright unless the church holds a licence',
         'remove or overwrite anything without asking the user first',
       ],
-      instructions: instructions(levels, piiFor(cfg, auth.user.role), settings.languages),
+      instructions: instructions(levels, piiFor(cfg, auth.user.role), settings.languages, melodiesFor(cfg)),
       handbook: 'canon://guide/agents',
     };
   },
 };
 
-export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...BOOKKEEPING_TOOLS, ...CLAIMS_TOOLS, ...SCORE_TOOLS, ...ADMIN_TOOLS];
+export const TOOLS: ToolDef[] = [WHOAMI, ...SERVICE_TOOLS, ...LIBRARY_TOOLS, ...VOLUNTEER_TOOLS, ...PEOPLE_TOOLS, ...GROUP_TOOLS, ...RECORD_TOOLS, ...RESOURCE_TOOLS, ...BOOKKEEPING_TOOLS, ...CLAIMS_TOOLS, ...SCORE_TOOLS, ...MELODY_TOOLS, ...ADMIN_TOOLS];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
@@ -156,6 +158,7 @@ export function toolCatalog() {
     description: t.description,
     requires_pii: !!t.requiresPii,
     requires_scores: !!t.requiresScores,
+    requires_melodies: !!t.requiresMelodies,
     ...(t.always ? { always: true } : {}),
     ...(t.switch ? { switch: t.switch } : {}),
     exposed: offered.has(t.name),
@@ -183,15 +186,15 @@ export function meetingGate(user: { role: Role; person_id?: number | null }) {
 export function allowedTools(cfg: McpConfig, scopes: Set<string>, role: Role): ToolDef[] {
   const switches = getSettings().modules;
   return TOOLS.filter((t) => toolOffered(
-    { access: t.access, always: t.always, switch: t.switch, requires_pii: t.requiresPii, requires_scores: t.requiresScores },
-    effectiveAccess(t.module, cfg, scopes, role, t.own), piiFor(cfg, role), scoresFor(cfg), cfg.enabled, switches,
+    { access: t.access, always: t.always, switch: t.switch, requires_pii: t.requiresPii, requires_scores: t.requiresScores, requires_melodies: t.requiresMelodies },
+    effectiveAccess(t.module, cfg, scopes, role, t.own), piiFor(cfg, role), scoresFor(cfg), melodiesFor(cfg) !== 'off', cfg.enabled, switches,
   ));
 }
 
 const LEVEL_TEXT: Record<ModuleAccess, string> = { off: 'not available', read: 'read only', write: 'read & write' };
 
-function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, languages: string[]) {
-  const prompts = allowedPrompts(levels, pii).map((p) => p.name);
+function instructions(levels: Record<ModuleKey, ModuleAccess>, pii: boolean, languages: string[], melodies: MelodyAccess) {
+  const prompts = allowedPrompts(levels, pii, melodies).map((p) => p.name);
   const langs = languages.map((l) => `${l} = ${langInfo(l).name}`).join(', ');
   return [
     'Canon is a local-first church management system for a Reformed / Presbyterian congregation.',
@@ -399,8 +402,8 @@ export function buildServer(auth: McpAuth, base = '') {
   const cfg = settings.mcp;
   const levels = Object.fromEntries(MODULES.map((m) => [m, effectiveAccess(m, cfg, auth.scopes, auth.user.role)])) as Record<ModuleKey, ModuleAccess>;
   const pii = piiFor(cfg, auth.user.role);
-  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), visitors: visitorsFor(cfg, auth.user.role), scores: scoresFor(cfg), levels, base };
-  const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, pii, settings.languages) });
+  const ctx: Ctx = { auth, pii, sensitive: sensitiveFor(cfg, auth.user.role), visitors: visitorsFor(cfg, auth.user.role), scores: scoresFor(cfg), melodies: melodiesFor(cfg), levels, base };
+  const server = new McpServer({ name: 'canon', title: 'Canon', version: VERSION }, { instructions: instructions(levels, pii, settings.languages, melodiesFor(cfg)) });
   const tools = allowedTools(cfg, auth.scopes, auth.user.role);
   let auditInHandlers = false;
   const register = (t: ToolDef) =>
@@ -427,7 +430,7 @@ export function buildServer(auth: McpAuth, base = '') {
     server.registerTool('canon_placeholder', { description: 'placeholder', inputSchema: {} }, async () => ok(null)).remove();
   }
   // Playbooks (prompts) are filtered by the same effective access; the handbook and user guide are always readable.
-  registerPrompts(server, { levels, pii, languages: settings.languages, today: churchToday() });
+  registerPrompts(server, { levels, pii, melodies: melodiesFor(cfg), languages: settings.languages, today: churchToday() });
   registerResources(server);
   auditInHandlers = !wrapToolsCall(server, auth);
   compactToolsList(server);

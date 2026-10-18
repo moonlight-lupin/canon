@@ -21,6 +21,8 @@ export interface Ctx {
   visitors?: 'off' | 'names' | 'contact';
   /** songs' sheet music may be listed and its pictures returned */
   scores?: boolean;
+  /** whose melodies may be read and written: none, public-domain songs', or every song's (absent = none) */
+  melodies?: 'off' | 'public_domain' | 'licensed';
   /** effective access per module on this connection (absent = none: checks fail closed) */
   levels?: Record<ModuleKey, ModuleAccess>;
   /** the address this client reached Canon at (for links in results), without a trailing slash */
@@ -45,6 +47,8 @@ export interface ToolDef {
   requiresPii?: boolean;
   /** only offered when the administrator shares sheet music (Library → Sheet music) */
   requiresScores?: boolean;
+  /** only offered when the administrator shares melodies (Library → Melodies: public-domain songs, or all songs) */
+  requiresMelodies?: boolean;
   /** offered on every connection, whatever the module settings (canon_whoami) */
   always?: boolean;
   /** follows the connection's module setting but not the person's role: the person's own records (expense claims) */

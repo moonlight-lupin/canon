@@ -52,6 +52,30 @@
       "8 周",
       "8 周"
     ],
+    "@br() takes a whole number of lines, 1 or more.": [
+      "@br() 的行数必须是 1 或以上的整数。",
+      "@br() 的行數必須是 1 或以上的整數。"
+    ],
+    "@{fn} doesn’t take “{value}”.": [
+      "@{fn} 不接受“{value}”。",
+      "@{fn} 不接受“{value}”。"
+    ],
+    "@{fn} has nothing inside it.": [
+      "@{fn} 里面没有内容。",
+      "@{fn} 裡面沒有內容。"
+    ],
+    "@{fn} is missing a value it needs ({arg}). For example: @meter(4, 4), @1(G4).": [
+      "@{fn} 缺少必需的值（{arg}）。例如：@meter(4, 4)、@1(G4)。",
+      "@{fn} 缺少必需的值（{arg}）。例如：@meter(4, 4)、@1(G4)。"
+    ],
+    "@{fn} was given too many values.": [
+      "给 @{fn} 的值太多。",
+      "給 @{fn} 的值太多。"
+    ],
+    "@{fn}( is not closed: add the ).": [
+      "@{fn}( 没有闭合：请补上 )。",
+      "@{fn}( 沒有閉合：請補上 )。"
+    ],
     "A Bible you uploaded may be licensed to your church only. Give the file to another church only if the licence allows it.": [
       "你上传的圣经可能只授权给贵教会使用。只有在许可允许时，才把文件交给其他教会。",
       "你上傳的聖經可能只授權給貴教會使用。只有在許可允許時，才把文件交給其他教會。"
@@ -96,9 +120,21 @@
       "在银行对账单上才看到的 PayNow 或转账奉献：把它加入聚会的奉献，聚会记录和奉献报表也就会有这笔。",
       "在銀行對賬單上才看到的 PayNow 或轉賬奉獻：把它加入聚會的奉獻，聚會記錄和奉獻報表也就會有這筆。"
     ],
+    "A line break cuts through a note that is still sounding. Move the @br() to a bar line.": [
+      "换行切断了一个仍在延续的音。请把 @br() 移到小节线处。",
+      "換行切斷了一個仍在延續的音。請把 @br() 移到小節線處。"
+    ],
     "A line is a hymn line, or one sentence of a reading or the liturgy. The rest continues on the next slide, with every language kept together.": [
       "一行即一句歌词，或经文、礼文中的一个句子。其余内容接续在下一张投影片，各语言保持对齐。",
       "一行即一句歌詞，或經文、禮文中的一個句子。其餘內容接續在下一張投影片，各語言保持對齊。"
+    ],
+    "A line is too tall for the page.": [
+      "有一行太高，页面放不下。",
+      "有一行太高，頁面放不下。"
+    ],
+    "A line of words is empty.": [
+      "有一行歌词是空的。",
+      "有一行歌詞是空的。"
     ],
     "A loan lasts {n} days.": [
       "借期为 {n} 天。",
@@ -124,6 +160,10 @@
       "新的恢复密钥会取代这一个，用来打开数据库。之前做的备份，仍需要当时有效的恢复密钥。",
       "新的恢復密鑰會取代這一個，用來打開數據庫。之前做的備份，仍需要當時有效的恢復密鑰。"
     ],
+    "A note can’t be read. Notes are 1 to 7, 0 is a rest; a comma after a note is an octave lower, an apostrophe an octave higher.": [
+      "无法读取一个音符。音符为 1 到 7，0 是休止；音符后加逗号表示低八度，加撇号表示高八度。",
+      "無法讀取一個音符。音符為 1 到 7，0 是休止；音符後加逗號表示低八度，加撇號表示高八度。"
+    ],
     "A page of its own": [
       "独立一页",
       "獨立一頁"
@@ -139,6 +179,10 @@
     "A public https address that reaches this Canon": [
       "可连到这个 Canon 的公开 https 网址",
       "可連到這個 Canon 的公開 https 網址"
+    ],
+    "A quotation mark is not closed.": [
+      "引号没有闭合。",
+      "引號沒有閉合。"
     ],
     "A recovery code was used to sign in to your account.": [
       "有人用恢复码登入了你的帐户。",
@@ -176,6 +220,10 @@
       "表格分三栏：项目、内容（诗歌、经文、讲题）与带领者。",
       "表格分三欄：項目、內容（詩歌、經文、講題）與帶領者。"
     ],
+    "A value given to @{fn} is the wrong kind.": [
+      "给 @{fn} 的值类型不对。",
+      "給 @{fn} 的值類型不對。"
+    ],
     "A verse or part has words in one language but not in another.": [
       "某一节或某部分只有一种语言有内容，另一种语言没有。",
       "某一節或某部分只有一種語言有內容，另一種語言沒有。"
@@ -183,6 +231,10 @@
     "A volunteer team: its members are the team roster. Rota roles, qualifications and the team itself are managed in Volunteers.": [
       "这是事奉团队：成员即团队名单。岗位、资格及团队本身在「事奉」页面管理。",
       "這是事奉團隊：成員即團隊名單。崗位、資格及團隊本身在「事奉」頁面管理。"
+    ],
+    "A { has no closing }.": [
+      "{ 没有对应的 }。",
+      "{ 沒有對應的 }。"
     ],
     "A “due soon” e-mail once, and an “overdue” e-mail once a week, to borrowers with an e-mail address, in their language. Uses the church’s e-mail account (Settings → E-mail).": [
       "给有电邮地址的借阅者，以其语言发送：一次“即将到期”电邮，以及每周一次“已逾期”电邮。使用教会的电邮帐户（设置 → 电邮）。",
@@ -772,6 +824,10 @@
       "所有投影模板",
       "所有投影模板"
     ],
+    "All songs (our licence)": [
+      "所有诗歌（教会许可）",
+      "所有詩歌（教會許可）"
+    ],
     "All the words": [
       "完整内容",
       "完整內容"
@@ -831,6 +887,10 @@
     "An Excel file with the right columns and a few example rows": [
       "含正确栏位和几行范例的 Excel 文件",
       "含正確欄位和幾行範例的 Excel 文件"
+    ],
+    "An L: line has to come right after the notes it goes with (the N: line).": [
+      "L: 行必须紧接在它所配的音符（N: 行）之后。",
+      "L: 行必須緊接在它所配的音符（N: 行）之後。"
     ],
     "An account limited to one congregation sees its services, meetings, records, members and groups, and the whole church’s — not those of other congregations. Administrators always see everything.": [
       "限定于某个堂的帐户，只看到该堂以及全教会的聚会、聚会活动、记录、会友和群组——看不到其他堂的资料。管理员始终可以看到全部。",
@@ -4384,6 +4444,10 @@
       "导入…",
       "導入…"
     ],
+    "In @{fn}, put the plain values before the named ones.": [
+      "在 @{fn} 中，请把普通的值放在带名称的值之前。",
+      "在 @{fn} 中，請把普通的值放在帶名稱的值之前。"
+    ],
     "In Canon": [
       "在 Canon 中",
       "在 Canon 中"
@@ -5103,6 +5167,10 @@
     "Meets": [
       "聚会",
       "聚會"
+    ],
+    "Melodies": [
+      "旋律",
+      "旋律"
     ],
     "Melody in numbered notation": [
       "简谱旋律",
@@ -7264,6 +7332,10 @@
       "可在此下载并导入公版圣经。若要使用本教会已获授权的译本（如和合本修订版、ESV、NIV、Alkitab），请按「添加圣经译本」并上传 CSV 文件。",
       "可在此下載並導入公版聖經。若要使用本教會已獲授權的譯本（如和合本修訂版、ESV、NIV、Alkitab），請按「添加聖經譯本」並上傳 CSV 文件。"
     ],
+    "Public-domain songs": [
+      "公共领域的诗歌",
+      "公共領域的詩歌"
+    ],
     "Public-domain words to start with. Add what your church will use; the rest can be added later in Library → Canon’s library.": [
       "可先使用的公共领域内容。加入教会会用到的部分；其余的之后可在 资料库 → Canon 自带资料库 加入。",
       "可先使用的公共領域內容。加入教會會用到的部分；其餘的之後可在 資料庫 → Canon 自帶資料庫 加入。"
@@ -8840,6 +8912,10 @@
       "诗歌：新增 {a} 首，已有 {e} 首",
       "詩歌：新增 {a} 首，已有 {e} 首"
     ],
+    "Songs’ melodies in numbered notation (Library → song → Melody in numbered notation). Shared: canon_melody reads and checks them and canon_save_melody saves one the assistant wrote (for example from the sheet music) — a musician’s melody is replaced only when you agree. Public-domain songs only, or all songs: choose all songs only if the church’s licence lets it copy or arrange the music (check its terms). Melodies the assistant reads become copies at the AI provider.": [
+      "诗歌的简谱旋律（资料库 → 诗歌 → 简谱旋律）。提供时：canon_melody 读取并检查旋律，canon_save_melody 保存助手写好的旋律（例如根据乐谱写成）——乐手输入的旋律只有在你同意后才会被取代。可选只限公共领域的诗歌，或所有诗歌：只有在教会的版权许可允许复制或改编乐谱时才选所有诗歌（请查看许可条款）。助手读取的旋律会成为 AI 服务商处的副本。",
+      "詩歌的簡譜旋律（資料庫 → 詩歌 → 簡譜旋律）。提供時：canon_melody 讀取並檢查旋律，canon_save_melody 保存助手寫好的旋律（例如根據樂譜寫成）——樂手輸入的旋律只有在你同意後才會被取代。可選只限公共領域的詩歌，或所有詩歌：只有在教會的版權許可允許複製或改編樂譜時才選所有詩歌（請查看許可條款）。助手讀取的旋律會成為 AI 服務商處的副本。"
+    ],
     "Songs’ sheet music (Library → song → Sheet music). Shared: canon_sheet_music lists a service’s songs with their pages and can send the scans and photos for the assistant to read (key, range, tune). The pages then become copies at the AI provider: share them only if the church may copy the music (public domain, or under its licence).": [
       "诗歌的乐谱（资料库 → 诗歌 → 乐谱）。提供：canon_sheet_music 会列出聚会诗歌及其页面，并可把扫描和照片交给 AI 助手阅读（调性、音域、曲调）。这些页面会成为 AI 服务商处的副本：只有在教会可以复印该乐谱时（公共领域，或在版权许可之内）才提供。",
       "詩歌的樂譜（資料庫 → 詩歌 → 樂譜）。提供：canon_sheet_music 會列出聚會詩歌及其頁面，並可把掃描和照片交給 AI 助手閱讀（調性、音域、曲調）。這些頁面會成為 AI 服務商處的副本：只有在教會可以複印該樂譜時（公共領域，或在版權許可之內）才提供。"
@@ -9376,6 +9452,14 @@
       "靠耶和华而得的喜乐是你的力量",
       "靠耶和華而得的喜樂是你的力量"
     ],
+    "The key “{value}” can’t be read. Write a note name and an octave, e.g. @1(G4) or @1(Eb4).": [
+      "无法读取调号“{value}”。请写音名和八度，例如 @1(G4) 或 @1(Eb4)。",
+      "無法讀取調號“{value}”。請寫音名和八度，例如 @1(G4) 或 @1(Eb4)。"
+    ],
+    "The key “{value}” isn’t written the usual way, so {other} is used. Write a note name and an octave, e.g. @1(G4).": [
+      "调号“{value}”的写法不规范，已改用 {other}。请写音名和八度，例如 @1(G4)。",
+      "調號“{value}”的寫法不規範，已改用 {other}。請寫音名和八度，例如 @1(G4)。"
+    ],
     "The keys open by themselves through {how}: Canon starts with the computer, with nobody there.": [
       "密钥会通过{how}自动打开：电脑启动时 Canon 也会启动，不需要有人在场。",
       "密鑰會通過{how}自動打開：電腦啟動時 Canon 也會啟動，不需要有人在場。"
@@ -9528,6 +9612,10 @@
       "对账单显示",
       "對賬單顯示"
     ],
+    "The time signature can’t be read, so 4/4 is used. Write it as @meter(3, 4).": [
+      "无法读取拍号，已改用 4/4。请写成 @meter(3, 4) 的形式。",
+      "無法讀取拍號，已改用 4/4。請寫成 @meter(3, 4) 的形式。"
+    ],
     "The time, place, leader and whether an offering is taken are copied from the group’s previous meeting. Change them on the meeting’s page.": [
       "时间、地点、带领者以及是否收奉献，会从这个群组上一次的聚会复制过来。可在聚会页面更改。",
       "時間、地點、帶領者以及是否收奉獻，會從這個群組上一次的聚會複製過來。可在聚會頁面更改。"
@@ -9580,6 +9668,10 @@
       "然后附上收据和签了名的表格，并记录已在纸本上签名。",
       "然後附上收據和簽了名的表格，並記錄已在紙本上簽名。"
     ],
+    "There is no @{fn}: check the spelling (for example @meter, @1, @br()).": [
+      "没有 @{fn}：请检查拼写（例如 @meter、@1、@br()）。",
+      "沒有 @{fn}：請檢查拼寫（例如 @meter、@1、@br()）。"
+    ],
     "There is no recovery key yet.": [
       "还没有恢复密钥。",
       "還沒有恢復密鑰。"
@@ -9587,6 +9679,10 @@
     "There is no recovery key yet. Without one, the data can’t be recovered if this computer or its Windows account is lost.": [
       "还没有恢复密钥。没有它，若这台电脑或其 Windows 帐户遗失，资料将无法恢复。",
       "還沒有恢復密鑰。沒有它，若這臺電腦或其 Windows 帳戶遺失，資料將無法恢復。"
+    ],
+    "There is something between two lines of notes. Put a melody that runs over several lines inside N: { … }.": [
+      "两行音符之间有其他内容。跨多行的旋律请放在 N: { … } 里面。",
+      "兩行音符之間有其他內容。跨多行的旋律請放在 N: { … } 裡面。"
     ],
     "These copies could not be encrypted: delete them yourself, or try again.": [
       "这些副本无法加密：请自行删除，或再试一次。",
@@ -9611,6 +9707,10 @@
     "They will be signed out everywhere, and their AI assistants disconnected.": [
       "对方会在所有设备上被登出，连接的 AI 助手也会断开。",
       "對方會在所有設備上被登出，連接的 AI 助手也會斷開。"
+    ],
+    "This bar has {beats} beats, but the time signature is {meter}.": [
+      "这一小节有 {beats} 拍，但拍号是 {meter}。",
+      "這一小節有 {beats} 拍，但拍號是 {meter}。"
     ],
     "This church requires two-step sign-in for administrators. Set it up to continue: you need an authenticator app on your phone.": [
       "本教会要求管理员使用两步登入。请先设置才能继续：您需要手机上的验证器应用。",
@@ -11112,6 +11212,10 @@
       "次（本堂聚会之前 12 个月内）",
       "次（本堂聚會之前 12 個月內）"
     ],
+    "jpFun could not read this (a fault in jpFun itself).": [
+      "jpFun 无法读取这里（jpFun 本身的问题）。",
+      "jpFun 無法讀取這裡（jpFun 本身的問題）。"
+    ],
     "just added": [
       "刚加入",
       "剛加入"
@@ -11751,6 +11855,10 @@
     "“Which describes you best?” answers": [
       "“哪一项最适合形容您？”的选项",
       "“哪一項最適合形容您？”的選項"
+    ],
+    "“{value}” is not a number.": [
+      "“{value}”不是数字。",
+      "“{value}”不是數字。"
     ]
   },
   "outputs": {
@@ -12386,7 +12494,7 @@
     ]
   },
   "guide": [
-    "6ba6d662c51c74dc",
-    "a981c877b0cd8191"
+    "39a2335ef68def2c",
+    "5e27bd48009854b2"
   ]
 }

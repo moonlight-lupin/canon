@@ -32,7 +32,7 @@ let server: Server;
 let base = '';
 
 const ALL_ON = { members: 'read', coworkers: 'read', volunteers: 'write', services: 'write', library: 'write', templates: 'write', records: 'off', contributions: 'off', admin: 'off' } as const;
-function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean; visitors: 'off' | 'names' | 'contact'; sheet_music: boolean }>) {
+function setMcp(patch: Partial<{ enabled: boolean; modules: Partial<Record<keyof typeof ALL_ON, 'off' | 'read' | 'write'>>; expose_member_pii: boolean; visitors: 'off' | 'names' | 'contact'; sheet_music: boolean; melodies: 'off' | 'public_domain' | 'licensed' }>) {
   const cur = getSettings().mcp;
   updateSettings({ mcp: { ...cur, ...patch, modules: { ...cur.modules, ...(patch.modules ?? {}) } } });
 }
@@ -979,6 +979,82 @@ test('sheet music for agents: off by default, a nested switch under the Library;
   assert.match(link.json!.data.url, /\/upload\/[\w-]+$/);
   assert.equal(link.json!.data.song.pages_now, 2);
   setMcp({ sheet_music: false, modules: { library: 'write', services: 'write' } });
+});
+
+test('melodies for agents (0.21.0): off by default; public-domain songs or all songs; checked before saving, replaced only when asked', async () => {
+  const mel = await import('../server/repo/melodies.ts');
+  const { get } = await import('../server/db.ts');
+  const pd = lib.songs.insert({ title: { en: 'A Public Domain Tune' }, stanzas: [{ label: '1', text: { en: 'Line' } }], category: 'hymn', public_domain: true, tags: [], refrain_after_each: false } as never);
+  const cr = lib.songs.insert({ title: { en: 'A Copyrighted Tune' }, stanzas: [{ label: '1', text: { en: 'Line' } }], category: 'hymn', public_domain: false, tags: [], refrain_after_each: false } as never);
+  const TUNE = '@1(G4)\n@meter(4, 4)\nN: { 1 2 3 1 | 5 - - - | }\nL: Praise the Lord, a- men';
+  const at = tokens.access_token;
+  const prompts = async () => ((await mcp(at, 'prompts/list')).body.result.prompts as Json[]).map((p) => p.name as string);
+
+  assert.equal(getSettings().mcp.melodies, 'off', 'off by default');
+  let names = await toolNames(at);
+  assert.ok(!names.includes('canon_melody') && !names.includes('canon_save_melody'));
+  assert.ok(!(await prompts()).includes('write_melody'));
+  assert.match((await call(at, 'canon_whoami')).text, /"melodies":"not shared by the administrator"/);
+  setMcp({ melodies: 'public_domain', modules: { library: 'off' } });
+  assert.ok(!(await toolNames(at)).includes('canon_melody'), 'nothing while the Library is off');
+
+  // Library read: read and check, no saving, no playbook
+  setMcp({ modules: { library: 'read' } });
+  names = await toolNames(at);
+  assert.ok(names.includes('canon_melody') && !names.includes('canon_save_melody'));
+  assert.ok(!(await prompts()).includes('write_melody'));
+  const bad = await call(at, 'canon_melody', { source: '@1(G4)\n@meter(4)\nN: 1' });
+  assert.equal(bad.isError, false, bad.text);
+  assert.equal(bad.json!.data.check.ok, false);
+  assert.deepEqual(bad.json!.data.check.problems.map((p: Json) => [p.level, p.line, p.column]), [['error', 2, 1]]);
+  assert.match(bad.json!.data.check.problems[0].message, /^@meter is missing a value it needs \(den\)/);
+  assert.match(bad.json!.data.check.problems[0].jpfun_message, /缺少/);
+  const good = await call(at, 'canon_melody', { source: TUNE });
+  assert.deepEqual(good.json!.data.check, { ok: true, problems: [], summary: { key: 'G4', meter: '4/4', lines: 1, lyric_lines: 1 } });
+
+  // public-domain songs only
+  setMcp({ modules: { library: 'write' } });
+  assert.ok((await toolNames(at)).includes('canon_save_melody'));
+  assert.ok((await prompts()).includes('write_melody'));
+  assert.match((await call(at, 'canon_whoami')).text, /"melodies":"public-domain songs only/);
+  const refused = await call(at, 'canon_save_melody', { song_id: cr.id, source: TUNE });
+  assert.equal(refused.isError, true);
+  assert.match(refused.text, /not marked public domain/);
+  assert.equal((await call(at, 'canon_melody', { song_id: cr.id })).isError, true, 'nor read');
+  const withErrors = await call(at, 'canon_save_melody', { song_id: pd.id, source: '@meter(4)\nN: 1' });
+  assert.equal(withErrors.isError, true);
+  assert.match(withErrors.text, /has errors and was not saved: line 1, column 1: @meter is missing/);
+  assert.equal(mel.melodyFor(pd.id), null);
+  const saved = await call(at, 'canon_save_melody', { song_id: pd.id, source: TUNE });
+  assert.equal(saved.isError, false, saved.text);
+  assert.equal(saved.json!.data.replaced, false);
+  assert.equal(mel.melodyFor(pd.id), TUNE);
+  assert.ok(get("SELECT 1 FROM change_log WHERE entity = 'songs' AND entity_id = ? AND via = 'mcp' AND changes LIKE '%melody%'", pd.id), 'logged as an AI change');
+  const read = await call(at, 'canon_melody', { song_id: pd.id });
+  assert.equal(read.json!.data.source, TUNE);
+  assert.equal(read.json!.data.check.ok, true);
+
+  // a melody that is there is replaced only when asked
+  const other = TUNE.replace('5 - - -', '5 - 5 -');
+  const again = await call(at, 'canon_save_melody', { song_id: pd.id, source: other });
+  assert.equal(again.isError, true);
+  assert.match(again.text, /already has a melody/);
+  assert.equal(mel.melodyFor(pd.id), TUNE);
+  const replaced = await call(at, 'canon_save_melody', { song_id: pd.id, source: other, replace: true });
+  assert.equal(replaced.json!.data.replaced, true);
+  assert.equal(mel.melodyFor(pd.id), other);
+
+  // all songs, under the church's licence
+  setMcp({ melodies: 'licensed' });
+  const lic = await call(at, 'canon_save_melody', { song_id: cr.id, source: TUNE });
+  assert.equal(lic.isError, false, lic.text);
+  assert.equal(mel.melodyFor(cr.id), TUNE);
+
+  // the notation reference is a resource
+  const res = await mcp(at, 'resources/read', { uri: 'canon://guide/jianpu' });
+  assert.match(((res.body.result as Json).contents as Json[])[0].text, /^# Numbered notation \(jianpu\)/);
+  setMcp({ melodies: 'off' });
+  assert.ok(!(await toolNames(at)).includes('canon_melody'));
 });
 
 test('administration for agents: administrators\' connections only, read only unless write; never secrets', async () => {

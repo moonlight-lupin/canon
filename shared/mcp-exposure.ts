@@ -2,7 +2,7 @@
 // the screen kept its own copy of the rule, which missed Settings → Modules and the tool that is always offered).
 // The server then lowers each module's level further by the connection's scope and the person's role
 // (server/lib/mcp-access.ts).
-import { configuredAccess, type McpConfig, type ModuleAccess, type ModuleKey } from './types.ts';
+import { configuredAccess, type McpConfig, type MelodyAccess, type ModuleAccess, type ModuleKey } from './types.ts';
 import type { ModuleSwitches, OptionalModule } from './modules.ts';
 
 /** AI modules that are also parts of Canon a church can switch off (Settings → Modules): off there, off for agents. */
@@ -20,6 +20,8 @@ export function churchLevel(module: ModuleKey, cfg: McpConfig, switches: Partial
 export const piiShared = (cfg: McpConfig) => !!cfg.expose_member_pii && configuredAccess('members', cfg.modules) !== 'off';
 /** Songs' sheet music is shared with agents. */
 export const scoresShared = (cfg: McpConfig) => !!cfg.sheet_music && configuredAccess('library', cfg.modules) !== 'off';
+/** Songs' melodies in numbered notation (0.21.0): which songs' melodies agents may read and write ('off' while the Library is off). */
+export const melodiesShared = (cfg: McpConfig): MelodyAccess => (configuredAccess('library', cfg.modules) === 'off' ? 'off' : cfg.melodies ?? 'off');
 
 export interface ToolShape {
   access: 'read' | 'write';
@@ -29,13 +31,15 @@ export interface ToolShape {
   switch?: OptionalModule;
   requires_pii?: boolean;
   requires_scores?: boolean;
+  requires_melodies?: boolean;
 }
 
-/** Is a tool offered, given its module's level on the connection and whether personal data and sheet music are shared? */
-export function toolOffered(t: ToolShape, level: ModuleAccess, pii: boolean, scores: boolean, enabled: boolean, switches: Partial<ModuleSwitches> | undefined): boolean {
+/** Is a tool offered, given its module's level on the connection and whether personal data, sheet music and melodies are shared? */
+export function toolOffered(t: ToolShape, level: ModuleAccess, pii: boolean, scores: boolean, melodies: boolean, enabled: boolean, switches: Partial<ModuleSwitches> | undefined): boolean {
   if (t.always) return enabled;
   if (isSwitchedOff(t.switch, switches)) return false;
   if (level === 'off' || (t.access === 'write' && level !== 'write')) return false;
   if (t.requires_scores && !scores) return false;
+  if (t.requires_melodies && !melodies) return false;
   return !t.requires_pii || pii;
 }

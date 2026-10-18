@@ -1,7 +1,8 @@
 // Melodies (0.21.0): a song's melody in numbered notation (jianpu), typed by the church's musicians in jpFun's notation
 // (https://github.com/madderscientist/jpFun) and drawn in the browser — in the song's editor and on Outputs → Sheet
-// music. Only the source text is kept here. Like sheet music it is for the musicians inside Canon: AI tools neither
-// read nor write it (it is not a column of songs, so canon_save_song / canon_get_library_item never see it).
+// music. Only the source text is kept here. Like sheet music it is for the musicians inside Canon: it is not a column
+// of songs, so canon_save_song / canon_get_library_item never see it; AI assistants read and write it only through
+// canon_melody / canon_save_melody, when the administrator shares melodies (server/mcp-tools/melodies.ts).
 import type { L10n } from '../../shared/types.ts';
 import { all, get, run } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';

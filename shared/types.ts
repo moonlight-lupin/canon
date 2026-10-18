@@ -491,4 +491,8 @@ export interface McpConfig {
   visitors: VisitorAccess;
   /** songs' sheet music (scans, photos, PDFs) — only while the Library is on; off by default (copies for the AI provider) */
   sheet_music: boolean;
+  /** songs' melodies in numbered notation (0.21.0) — only while the Library is on: off (default), public-domain songs
+   *  only, or every song when the church's licence lets it copy or arrange the music (absent = off) */
+  melodies?: MelodyAccess;
 }
+export type MelodyAccess = 'off' | 'public_domain' | 'licensed';

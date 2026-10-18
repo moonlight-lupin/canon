@@ -1,8 +1,10 @@
 // A song's melody drawn in numbered notation (jianpu, 0.21.0): in the song's editor (redrawn as it is typed) and on
-// Outputs → Sheet music. jpFun's messages are in Chinese; where they are shown, the line and column point to the place.
+// Outputs → Sheet music. Problems are shown in Canon's words where it has them (shared/jianpu-messages.ts), else in
+// jpFun's own (Chinese), with the line and column; jpFun's message is kept as the tooltip.
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n.tsx';
 import { renderJianpu, type JianpuProblem } from './jianpu.ts';
+import { fillHint, jianpuHint } from '../../shared/jianpu-messages.ts';
 
 export function JianpuView({ source, delay = 0, problems: showProblems = false, className }: {
   source: string;
@@ -42,11 +44,14 @@ export function JianpuView({ source, delay = 0, problems: showProblems = false, 
       {state === 'failed' && !showProblems && <div className="small muted">{t('This melody could not be drawn. Open the song in the Library to correct it.')}</div>}
       {showProblems && problems.length > 0 && (
         <ul className="jianpu-problems small">
-          {problems.map((p, i) => (
-            <li key={i} className={p.error ? 'error' : 'muted'}>
-              {t('Line {l}, column {c}').replace('{l}', String(p.line)).replace('{c}', String(p.column))}: {p.message}
-            </li>
-          ))}
+          {problems.map((p, i) => {
+            const hint = jianpuHint(p.code, p.message);
+            return (
+              <li key={i} className={p.error ? 'error' : 'muted'} title={hint ? p.message : undefined}>
+                {t('Line {l}, column {c}').replace('{l}', String(p.line)).replace('{c}', String(p.column))}: {hint ? fillHint(t(hint.template), hint.vars) : p.message}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

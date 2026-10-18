@@ -6,7 +6,7 @@ import { configuredAccess } from '../../shared/types.ts';
 import type { McpConfig, ModuleAccess, ModuleKey, Role, VisitorAccess } from '../../shared/types.ts';
 import type { OptionalModule } from '../../shared/modules.ts';
 import type { PermModule } from '../../shared/permissions.ts';
-import { MODULE_SWITCH, churchLevel, isSwitchedOff, piiShared, scoresShared } from '../../shared/mcp-exposure.ts';
+import { MODULE_SWITCH, churchLevel, isSwitchedOff, melodiesShared, piiShared, scoresShared } from '../../shared/mcp-exposure.ts';
 import { getSettings } from '../repo/settings.ts';
 import { roleDef } from './permissions.ts';
 
@@ -28,6 +28,8 @@ export function visitorsFor(cfg: McpConfig, role: Role): VisitorAccess {
 }
 /** Songs' sheet music: shared by the administrator, while the Library is shared. */
 export const scoresFor = (cfg: McpConfig) => scoresShared(cfg);
+/** Songs' melodies (0.21.0): none, public-domain songs', or every song's — as the administrator chose, while the Library is shared. */
+export const melodiesFor = (cfg: McpConfig) => melodiesShared(cfg);
 /** The church's member fields marked sensitive: personal data is shared, and the role sees sensitive fields too. */
 export const sensitiveFor = (cfg: McpConfig, role: Role) => piiFor(cfg, role) && roleDef(role).sensitive_fields;
 
