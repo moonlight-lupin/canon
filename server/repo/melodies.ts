@@ -6,11 +6,11 @@
 import type { L10n } from '../../shared/types.ts';
 import { all, get, run } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
-import { guardJianpu, normalizeJianpu } from '../../shared/jianpu-prep.ts';
+import { MAX_MELODY_CHARS, guardJianpu, normalizeJianpu } from '../../shared/jianpu-prep.ts';
 import { fillHint, JIANPU_HINTS } from '../../shared/jianpu-messages.ts';
 import { logChange } from './changelog.ts';
 
-export const MAX_MELODY_CHARS = 50_000;
+export { MAX_MELODY_CHARS };
 
 export const melodyFor = (songId: number): string | null =>
   get<{ source: string }>('SELECT source FROM song_melodies WHERE song_id = ?', songId)?.source ?? null;

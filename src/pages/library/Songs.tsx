@@ -10,6 +10,7 @@ import { CsvTools } from '../../components/CsvTools.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { BulkSheetMusic } from './BulkSheetMusic.tsx';
 import { JianpuView } from '../../components/Jianpu.tsx';
+import { MAX_MELODY_CHARS } from '../../../shared/jianpu-prep.ts';
 import { GuideLink } from '../template-ui.tsx';
 import { qrPreviewUrl, scoreUrl } from '../../../shared/presentation.ts';
 import type { Hymnal, Song, SongCategory, Stanza } from '../../types-client.ts';
@@ -71,7 +72,7 @@ export function Songs() {
                       {s.psalm ? <span className="badge reed" style={{ marginLeft: 6 }}>Ps {s.psalm}</span> : null}
                       {!s.stanzas.length && <span className="badge warn" style={{ marginLeft: 6 }}>{t('No words yet')}</span>}
                       {scoreCounts.data?.[s.id] ? <span className="badge" style={{ marginLeft: 6 }} title={t('Sheet music')}><Icon name="music" width={12} height={12} /> {scoreCounts.data[s.id]}</span> : null}
-                      {withMelody.has(s.id) && <span className="badge" style={{ marginLeft: 6 }} title={t('Melody in numbered notation')}>1 2 3</span>}
+                      {withMelody.has(s.id) && <span className="badge" style={{ marginLeft: 6 }} title={t('Melody in numbered notation')}><Icon name="music" width={12} height={12} /> {t('Melody')}</span>}
                     </td>
                     <td className="small">{s.author}</td>
                     <td className="small muted">{s.tune}{s.meter ? ` · ${s.meter}` : ''}</td>
@@ -133,7 +134,7 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores 
       <>
         {s.id && <button className="btn danger left" onClick={async () => { if (await confirmAction(t('Are you sure?'), { danger: true, ok: t('Delete') }) && await run(() => api.del(`/songs/${s.id}`))) onSaved(); }}><Icon name="trash" />{t('Delete')}</button>}
         <button className="btn" onClick={onClose}>{t('Cancel')}</button>
-        <button className="btn primary" disabled={busy || !hasAnyText(s.title) || !refsOk} onClick={save}>{t('Save')}</button>
+        <button className="btn primary" disabled={busy || !hasAnyText(s.title) || !refsOk || (melody?.length ?? 0) > MAX_MELODY_CHARS} onClick={save}>{t('Save')}</button>
       </>
     ) : undefined}>
       <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0 }} className="stack">
@@ -420,7 +421,7 @@ function MelodySection({ value, onChange, canEdit }: { value: string; onChange: 
     <div>
       <div className="row" style={{ marginBottom: 6 }}>
         <h3>{t('Melody in numbered notation')}</h3>
-        <InfoTip text={t('The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza or language. Canon draws it as you type, and the musicians find it with the sheet music (Outputs → Sheet music). Saved with the song. Like sheet music it stays inside Canon: not on the share pages, the slides or for AI assistants.')} />
+        <InfoTip text={t('The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza or language. Canon draws it as you type, and the musicians find it with the sheet music (Outputs → Sheet music). Saved with the song. Like sheet music it stays inside Canon: not on the share pages or the slides, and for AI assistants only when an administrator allows it (Settings → AI / MCP).')} />
         <div className="grow" />
         <GuideLink anchor="melodies" label={t('How to write it')} />
       </div>
@@ -436,6 +437,13 @@ function MelodySection({ value, onChange, canEdit }: { value: string; onChange: 
           <textarea rows={8} spellCheck={false} autoCapitalize="off" autoCorrect="off" autoComplete="off" value={value} readOnly={!canEdit} aria-label={t('Melody in numbered notation')}
             placeholder={'@1(G4)\n@meter(4, 4)\nN: 1 2 3 1 | 5 - 5 - |\nL: …'} onChange={(e) => onChange(e.target.value)} />
           <JianpuView source={value} delay={300} problems className="melody-preview" />
+          {/* the length limit shows before Save refuses it: from 80% of the way */}
+          {value.length > MAX_MELODY_CHARS * 0.8 && (
+            <div className={`small melody-count${value.length > MAX_MELODY_CHARS ? ' over' : ' muted'}`}>
+              {(value.length > MAX_MELODY_CHARS ? t('{n} of {max} characters: too long to save. Shorten it (comments starting with % count too).') : t('{n} of {max} characters'))
+                .replace('{n}', value.length.toLocaleString()).replace('{max}', MAX_MELODY_CHARS.toLocaleString())}
+            </div>
+          )}
         </div>
       )}
     </div>

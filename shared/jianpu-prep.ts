@@ -11,6 +11,9 @@
 //  4. Words beyond the last note were dropped without a word. Canon counts what was placed and says what is left over.
 // Problems Canon adds have codes starting C_ (their words are in shared/jianpu-messages.ts).
 
+/** The longest melody Canon keeps (characters); the editor counts down to it, the server refuses beyond it. */
+export const MAX_MELODY_CHARS = 50_000;
+
 export interface PrepProblem { code: string; offset: number; error: boolean; vars?: Record<string, string> }
 
 // ---------------------------------------------------------------- 1. Chinese-keyboard punctuation in the notes

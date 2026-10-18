@@ -260,7 +260,7 @@ Open [Library](/library).
 
 ### Melodies in numbered notation {#melodies}
 
-In a song's editor, **Melody in numbered notation** keeps the tune in numbered notation (jianpu), the way many Chinese hymnals print it. Type it in the notation of [jpFun](https://github.com/madderscientist/jpFun), the engine Canon draws it with: the drawing beside it changes as you type, and **Save** keeps it with the song. **Start from an example** fills in the Doxology to copy from. The musicians find the melody on **Outputs → Sheet music**, above any scanned pages. A song with a melody shows **1 2 3** in the list.
+In a song's editor, **Melody in numbered notation** keeps the tune in numbered notation (jianpu), the way many Chinese hymnals print it. Type it in the notation of [jpFun](https://github.com/madderscientist/jpFun), the engine Canon draws it with: the drawing beside it changes as you type, and **Save** keeps it with the song. **Start from an example** fills in the Doxology to copy from. The musicians find the melody on **Outputs → Sheet music**, above any scanned pages. A song with a melody shows **♫ Melody** in the list. On a phone the drawing keeps a readable size: swipe it sideways. A melody can be up to 50,000 characters; near that, a count appears under the drawing, and **Save** waits until it is short enough.
 
 ```jianpu
 @1(G4)
