@@ -111,7 +111,7 @@ function offeredKeys(): Partial<Record<LibraryPart, string[]>> {
 async function addBundled(parts: LibraryPart[], restore: boolean) {
   const rows = await bundled();
   const offered = offeredKeys();
-  const counts: Record<LibraryPart, number> = { songs: 0, texts: 0, templates: 0 };
+  const counts: Record<LibraryPart, number> & { melodies?: number } = { songs: 0, texts: 0, templates: 0 };
   tx(() => {
     for (const part of parts) {
       const seen = new Set(offered[part] ?? []);
@@ -126,10 +126,46 @@ async function addBundled(parts: LibraryPart[], restore: boolean) {
     }
     setMeta('seed_offered', JSON.stringify(offered));
   });
-  if (counts.songs + counts.texts + counts.templates > 0) {
-    console.log(`seed: added ${counts.songs} songs, ${counts.texts} texts, ${counts.templates} templates`);
+  if (parts.includes('songs')) {
+    const melodies = await addMelodies(restore);
+    if (melodies) counts.melodies = melodies;
+  }
+  if (counts.songs + counts.texts + counts.templates + (counts.melodies ?? 0) > 0) {
+    console.log(`seed: added ${counts.songs} songs, ${counts.texts} texts, ${counts.templates} templates, ${counts.melodies ?? 0} melodies`);
   }
   return counts;
+}
+
+/**
+ * Melodies for the bundled songs (seed/melodies.ts, 0.21.2): a song of the library with that key and no melody gets it,
+ * once per key (meta seed_melodies_offered) — a melody the church cleared stays cleared unless it asks for the library
+ * back (restore), and one it typed or changed is never touched.
+ */
+async function addMelodies(restore: boolean): Promise<number> {
+  const { SEED_MELODIES } = await import('./melodies.ts');
+  const { melodyFor, setMelody } = await import('../repo/melodies.ts');
+  let offered: string[] = [];
+  try {
+    offered = JSON.parse(getMeta('seed_melodies_offered') ?? '[]') as string[];
+  } catch { /* none yet */ }
+  const seen = new Set(offered);
+  let added = 0;
+  for (const [key, source] of Object.entries(SEED_MELODIES)) {
+    const song = get<{ id: number }>('SELECT id FROM songs WHERE key = ?', key);
+    // offered only once the song is here: a library without the song gets the melody when it adds it
+    if (!song) continue;
+    if ((restore || !seen.has(key)) && !melodyFor(song.id)) {
+      try {
+        setMelody(song.id, source);
+        added++;
+      } catch (e) {
+        console.warn(`seed: melody for ${key} not added: ${(e as Error).message}`);
+      }
+    }
+    seen.add(key);
+  }
+  setMeta('seed_melodies_offered', JSON.stringify([...seen]));
+  return added;
 }
 
 /** Add parts of the bundled library (chosen from now on, so updates add their new items too). */

@@ -4,6 +4,14 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.21.2 — Melodies for the Doxology, Gloria Patri, Threefold Amen and The Lord Is in His Holy Temple
+
+- **Canon's library brings four melodies in numbered notation**: the Doxology (OLD HUNDREDTH, in G), Gloria Patri (GREATOREX, in E♭), the Threefold Amen (Danish, in F) and The Lord Is in His Holy Temple (Root's QUAM DILECTA, in D♭), with their words in English and, for the Doxology and the Amen, Chinese. Each was read note by note from a public-domain source (the Cyber Hymnal / CCEL and Hymnary.org) and passes Canon's own check.
+- **Two responses join the library**: the Threefold Amen and The Lord Is in His Holy Temple (Habakkuk 2:20; the Chinese words from the Chinese Union Version).
+- A church that already has one of these songs gets its melody once, on its next start (or with **Canon's library**), only if the song has no melody: a melody it typed is never touched, and one it cleared stays cleared unless it asks for the library back (**Also add back the ones you deleted**). **Canon's library** counts the melodies it added.
+- Tests: the four melodies draw without problems; a new library gets them; a church's own or cleared melody is respected; a church from before gets them once.
+- No database change.
+
 ## 0.21.1 — Melodies: a rest takes a word
 
 - **The notation guide was wrong about rests.** It said a rest takes no word. In jpFun 0.7.0 a rest (`0`) takes one, like a note, so every word after a rest was printed one note early unless the writer put `{}` where the rest is. So does the second note of a tie, which the guide also said took none. The guide (Library → **Melodies in numbered notation**), the notation reference for AI assistants (`canon://guide/jianpu`, `references/jianpu.md` in the skill, with an example) and the `write_melody` playbook now say to write `{}` for each rest.

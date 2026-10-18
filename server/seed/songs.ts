@@ -1671,6 +1671,39 @@ const CORE_SONGS: SeedSong[] = [
       ),
     ],
   }),
+
+  // 0.21.2: two short responses, with their melodies (seed/melodies.ts)
+  song({
+    key: 'the-lord-is-in-his-holy-temple',
+    title: { en: 'The Lord Is in His Holy Temple', zh: '主在圣殿中' },
+    author: 'Habakkuk 2:20',
+    composer: 'George F. Root',
+    tune: 'QUAM DILECTA',
+    meter: 'Irregular',
+    year: null,
+    category: 'response',
+    tags: ['response', 'call to worship', 'opening'],
+    stanzas: [
+      st(
+        '1',
+        ['The Lord is in His holy temple:', 'let all the earth keep silence before Him.'],
+        ['惟耶和华在他的圣殿中；', '全地的人都当在他面前肃敬静默。'],
+      ),
+    ],
+  }),
+
+  song({
+    key: 'threefold-amen',
+    title: { en: 'Threefold Amen', zh: '阿们颂' },
+    author: null,
+    composer: 'Danish (anonymous)',
+    tune: 'THREEFOLD AMEN (DANISH)',
+    meter: 'Irregular',
+    year: null,
+    category: 'response',
+    tags: ['response', 'amen', 'closing'],
+    stanzas: [st('1', ['Amen, Amen, Amen.'], ['阿们，阿们，阿们。'])],
+  }),
 ];
 
 export const SEED_SONGS: SeedSong[] = [...CORE_SONGS, ...SEED_HYMNS];

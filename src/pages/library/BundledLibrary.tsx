@@ -12,12 +12,12 @@ interface Status extends Record<Part, { chosen: boolean; bundled: number; in_lib
   standards: { key: string; id: number | null }[];
 }
 interface Result {
-  added: Record<Part, number>;
+  added: Record<Part, number> & { melodies?: number };
   standards: { key: string; parts: number }[] | { error: string } | null;
 }
 
 const ROWS: { key: Choice; name: string; description: string }[] = [
-  { key: 'songs', name: 'Hymns & psalms', description: '{n} public-domain hymns, metrical psalms and service music (Doxology, Gloria Patri …): English words, credits, tune and metre; a few also in Chinese.' },
+  { key: 'songs', name: 'Hymns & psalms', description: '{n} public-domain hymns, metrical psalms and service music (Doxology, Gloria Patri …): English words, credits, tune and metre; a few also in Chinese. The Doxology, Gloria Patri, Threefold Amen and The Lord Is in His Holy Temple come with their melody in numbered notation.' },
   { key: 'texts', name: 'Liturgical texts', description: '{n} creeds, calls to worship, confessions, prayers and benedictions, in English and Chinese.' },
   { key: 'templates', name: 'Service templates', description: "{n} orders of worship: Lord's Day, Lord's Supper, Evening Worship, Baptism, Lessons and Carols. They use the hymns and texts above." },
   { key: 'standards', name: 'Westminster Standards', description: 'The Shorter Catechism (107 questions), Larger Catechism (196) and Confession of Faith, in English. Downloaded from the internet.' },
@@ -51,6 +51,7 @@ export function BundledLibraryPanel({ onAdded }: { onAdded?: () => void }) {
       r.added.songs && `${r.added.songs} ${t('hymns')}`,
       r.added.texts && `${r.added.texts} ${t('texts')}`,
       r.added.templates && `${r.added.templates} ${t('templates')}`,
+      r.added.melodies && t('{n} melodies in numbered notation').replace('{n}', String(r.added.melodies)),
       r.standards && !('error' in r.standards) && t('Westminster Standards'),
     ].filter(Boolean).join(', ');
     const problem = r.standards && 'error' in r.standards ? `${t('The Westminster Standards could not be downloaded; try again later in Library → Liturgical texts.')} (${r.standards.error})` : '';
