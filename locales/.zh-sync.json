@@ -56,6 +56,10 @@
       "@br() 的行数必须是 1 或以上的整数。",
       "@br() 的行數必須是 1 或以上的整數。"
     ],
+    "@br({value}) asks for too many lines: use @br() for a new line (at most @br({max})).": [
+      "@br({value}) 要求的行数太多：换行请用 @br()（最多 @br({max})）。",
+      "@br({value}) 要求的行數太多：換行請用 @br()（最多 @br({max})）。"
+    ],
     "@{fn} doesn’t take “{value}”.": [
       "@{fn} 不接受“{value}”。",
       "@{fn} 不接受“{value}”。"
@@ -1568,6 +1572,10 @@
       "购买日期",
       "購買日期"
     ],
+    "Brackets go more than {max} deep.": [
+      "括号嵌套超过 {max} 层。",
+      "括號嵌套超過 {max} 層。"
+    ],
     "Bring back": [
       "取回",
       "取回"
@@ -2027,6 +2035,10 @@
     "Chinese name": [
       "中文名",
       "中文名"
+    ],
+    "Chinese-keyboard punctuation in the notes is read as the notation’s: {chars}": [
+      "音符中的中文键盘标点已当作简谱符号读取：{chars}",
+      "音符中的中文鍵盤標點已當作簡譜符號讀取：{chars}"
     ],
     "Choice from a list": [
       "从列表中选择",
@@ -4908,9 +4920,9 @@
       "行距",
       "行距"
     ],
-    "Line {l}, column {c}": [
-      "第 {l} 行第 {c} 列",
-      "第 {l} 行第 {c} 列"
+    "Line {l}, column {c}: {problem}": [
+      "第 {l} 行第 {c} 列：{problem}",
+      "第 {l} 行第 {c} 列：{problem}"
     ],
     "Line {n}": [
       "第 {n} 项",
@@ -5675,6 +5687,10 @@
     "No": [
       "否",
       "否"
+    ],
+    "No @br() yet, so Canon starts a new line every {bars} bars. Add @br() where the hymnal starts a new line to place them yourself.": [
+      "还没有 @br()，所以 Canon 每 {bars} 个小节换一行。在诗本换行的地方加上 @br()，就能自己决定换行位置。",
+      "還沒有 @br()，所以 Canon 每 {bars} 個小節換一行。在詩本換行的地方加上 @br()，就能自己決定換行位置。"
     ],
     "No AI activity yet.": [
       "还没有 AI 使用记录。",
@@ -9756,6 +9772,14 @@
       "这个文件会加入：",
       "這個文件會加入："
     ],
+    "This has {value} bars: a melody here can have up to {max}.": [
+      "这里有 {value} 个小节：旋律最多可有 {max} 个。",
+      "這裡有 {value} 個小節：旋律最多可有 {max} 個。"
+    ],
+    "This has {value} held beats (-): a melody here can have up to {max}.": [
+      "这里有 {value} 个延长拍（-）：旋律最多可有 {max} 个。",
+      "這裡有 {value} 個延長拍（-）：旋律最多可有 {max} 個。"
+    ],
     "This is now the church default.": [
       "已设为教会默认。",
       "已設為教會默認。"
@@ -9775,6 +9799,10 @@
     "This journal reverses journal {n}.": [
       "这笔分录冲销了分录 {n}。",
       "這筆分錄沖銷了分錄 {n}。"
+    ],
+    "This line of words has {count} more than there are notes for, from “{first}”: they are not shown.": [
+      "这行歌词比音符多出 {count} 个，从“{first}”起：这些不会显示。",
+      "這行歌詞比音符多出 {count} 個，從“{first}”起：這些不會顯示。"
     ],
     "This link does not work.": [
       "这个链接无法使用。",
@@ -9808,6 +9836,10 @@
       "无法绘制此旋律。请在资料库中打开这首诗歌加以修正。",
       "無法繪製此旋律。請在資料庫中打開這首詩歌加以修正。"
     ],
+    "This melody takes too long to draw. Look for a very large number or a very long line.": [
+      "这段旋律绘制时间太长。请检查是否有非常大的数字或非常长的一行。",
+      "這段旋律繪製時間太長。請檢查是否有非常大的數字或非常長的一行。"
+    ],
     "This member’s personal data was erased on {date} (PDPA). The record stays, anonymous, so past rotas and group histories still count.": [
       "这位会友的个人资料已于 {date} 删除（PDPA）。记录以匿名方式保留，过去的轮值表和小组记录仍可统计。",
       "這位會友的個人資料已於 {date} 刪除（PDPA）。記錄以匿名方式保留，過去的輪值表和小組記錄仍可統計。"
@@ -9839,6 +9871,10 @@
     "This upload link does not work any more": [
       "这个上传链接已无法使用",
       "這個上傳鏈接已無法使用"
+    ],
+    "This would be drawn on {value} lines: a melody here can have up to {max}.": [
+      "这会画成 {value} 行：旋律最多可有 {max} 行。",
+      "這會畫成 {value} 行：旋律最多可有 {max} 行。"
     ],
     "This year": [
       "今年",
@@ -11844,6 +11880,10 @@
       "{r} 份聚会记录、{c} 条修改记录、{a} 条 AI 使用记录",
       "{r} 份聚會記錄、{c} 條修改記錄、{a} 條 AI 使用記錄"
     ],
+    "{value} is far larger than a melody needs (at most {max}).": [
+      "{value} 远远超过旋律所需（最多 {max}）。",
+      "{value} 遠遠超過旋律所需（最多 {max}）。"
+    ],
     "— none —": [
       "— 无 —",
       "— 無 —"
@@ -12502,7 +12542,7 @@
     ]
   },
   "guide": [
-    "040758b7cad2f4f1",
-    "891be7b55888899e"
+    "d6a93fb20334cf8f",
+    "25fd66ad62bcd616"
   ]
 }

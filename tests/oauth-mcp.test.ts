@@ -1010,7 +1010,7 @@ test('melodies for agents (0.21.0): off by default; public-domain songs or all s
   assert.match(bad.json!.data.check.problems[0].message, /^@meter is missing a value it needs \(den\)/);
   assert.match(bad.json!.data.check.problems[0].jpfun_message, /缺少/);
   const good = await call(at, 'canon_melody', { source: TUNE });
-  assert.deepEqual(good.json!.data.check, { ok: true, problems: [], summary: { key: 'G4', meter: '4/4', lines: 1, lyric_lines: 1 } });
+  assert.deepEqual(good.json!.data.check, { ok: true, problems: [], summary: { key: 'G4', meter: '4/4', lines: 1, lyric_lines: 1, new_lines_added_by_canon: 0 } });
 
   // public-domain songs only
   setMcp({ modules: { library: 'write' } });

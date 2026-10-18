@@ -30,12 +30,12 @@ export const MELODY_TOOLS: ToolDef[] = [
       song_id: Id.optional(),
       source: Source.optional(),
     },
-    handler: (a, ctx) => {
+    handler: async (a, ctx) => {
       if (!a.song_id === (a.source == null)) throw new InputError('Give song_id or source.');
-      if (a.source != null) return { check: checkJianpu(a.source) };
+      if (a.source != null) return { check: await checkJianpu(a.source) };
       const song = allowedSong(a.song_id, ctx);
       const source = melodyFor(a.song_id);
-      return { song_id: a.song_id, title: song.title, public_domain: song.public_domain, source, ...(source ? { check: checkJianpu(source) } : {}) };
+      return { song_id: a.song_id, title: song.title, public_domain: song.public_domain, source, ...(source ? { check: await checkJianpu(source) } : {}) };
     },
   },
   {
@@ -46,10 +46,10 @@ export const MELODY_TOOLS: ToolDef[] = [
       source: Source,
       replace: z.boolean().default(false),
     },
-    handler: (a, ctx) => {
+    handler: async (a, ctx) => {
       const song = allowedSong(a.song_id, ctx);
       if (!a.source.trim()) throw new InputError('The melody is empty. (To remove a melody, a person clears it in the song’s editor.)');
-      const check = checkJianpu(a.source);
+      const check = await checkJianpu(a.source);
       if (!check.ok) throw new InputError(`The melody has errors and was not saved: ${check.problems.filter((p) => p.level === 'error').map((p) => `line ${p.line}, column ${p.column}: ${p.message}`).join('; ')}`);
       const had = melodyFor(a.song_id);
       if (had && !a.replace) throw new InputError('This song already has a melody (typed by the church’s musicians or saved before). Show the user what would change; save with replace: true only if they agree.');

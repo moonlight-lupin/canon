@@ -31,12 +31,23 @@ export const JIANPU_HINTS: Record<string, string> = {
   W_BR_OFFSET: '@br() takes a whole number of lines, 1 or more.',
   E_PAGE_OVERFLOW: 'A line is too tall for the page.',
   E_BUG: 'jpFun could not read this (a fault in jpFun itself).',
+  // Canon's own (shared/jianpu-prep.ts)
+  C_BR_TOO_MANY: '@br({value}) asks for too many lines: use @br() for a new line (at most @br({max})).',
+  C_NUMBER_TOO_LARGE: '{value} is far larger than a melody needs (at most {max}).',
+  C_TOO_MANY_BARS: 'This has {value} bars: a melody here can have up to {max}.',
+  C_TOO_MANY_HELD: 'This has {value} held beats (-): a melody here can have up to {max}.',
+  C_TOO_DEEP: 'Brackets go more than {max} deep.',
+  C_TOO_MANY_LINES: 'This would be drawn on {value} lines: a melody here can have up to {max}.',
+  C_AUTO_BREAKS: 'No @br() yet, so Canon starts a new line every {bars} bars. Add @br() where the hymnal starts a new line to place them yourself.',
+  C_WORDS_LEFT_OVER: 'This line of words has {count} more than there are notes for, from “{first}”: they are not shown.',
+  C_TOO_SLOW: 'This melody takes too long to draw. Look for a very large number or a very long line.',
 };
 
-/** Canon's sentence for one of jpFun's problems, with its details; null when the code has none (show jpFun's message). */
-export function jianpuHint(code: string | undefined, message: string): { template: string; vars: Record<string, string> } | null {
+/** Canon's sentence for a problem (jpFun's, details read from its message; Canon's own C_ codes, details given); null when the code has none (show jpFun's message). */
+export function jianpuHint(code: string | undefined, message: string, given?: Record<string, string>): { template: string; vars: Record<string, string> } | null {
   const template = code ? JIANPU_HINTS[code] : undefined;
   if (!template) return null;
+  if (given) return { template, vars: given };
   const vars: Record<string, string> = {
     fn: /@([^\s(（，,:：]+)/.exec(message)?.[1] ?? '',
     value: /["“]([^"”]*)["”]/.exec(message)?.[1] ?? '',

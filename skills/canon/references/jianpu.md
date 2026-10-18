@@ -55,7 +55,8 @@ Each bar should fill the time signature. The first bar may be short (an upbeat),
 
 `@br()` starts a new line of music. **Keep the parentheses**: a bare `@br` is ignored without any warning. Break where
 the hymnal breaks (usually at the end of a phrase or a line of the words), so the words have room. A whole hymn on one
-line is squeezed until its words overlap.
+line is squeezed until its words overlap: when a melody has no `@br()` at all, Canon starts a new line every 4 bars
+and says so (`C_AUTO_BREAKS`, a warning) — better to place them yourself.
 
 ## Words
 
@@ -68,6 +69,8 @@ line is squeezed until its words overlap.
   `L: a {} b c`.
 - **Two characters on one note**: wrap them in braces: `{你好}`.
 - Keep each `L:` on one source line.
+- More words than notes: the words left over are not drawn, and the check says so (`C_WORDS_LEFT_OVER`, with the first
+  word left over). Count the syllables against the notes again.
 - Don't use `""` (it is printed as two quote marks) or `_` (it is printed as an underscore) as an empty syllable.
 
 ## A second example: 3/4 with an upbeat, quavers and a held syllable
@@ -97,3 +100,7 @@ L: 荣耀尊贵都归给天上君王，{}同声歌唱赞美主圣名。
   hymnal's sheet music (`canon_sheet_music`, when shared) or from the user. Never write a melody from memory.
 - The melody is for the church's musicians inside Canon. Don't pass the jianpu text on outside the conversation.
 - `%` starts a comment that runs to the end of the line.
+- Chinese-keyboard punctuation in the notes is read as notation ("，" as `,`, "’" as `'`, "－" as `-`, "｜" as `|`,
+  full-width digits as digits); `read_as_notation` lists what was. Write the plain characters yourself.
+- Far more than a hymn needs is refused (`@br()` above 4, numbers in the thousands, more than 400 bars or 120 lines),
+  and a check that takes more than a few seconds is stopped (`C_TOO_SLOW`).

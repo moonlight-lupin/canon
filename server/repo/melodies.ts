@@ -6,6 +6,8 @@
 import type { L10n } from '../../shared/types.ts';
 import { all, get, run } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
+import { guardJianpu, normalizeJianpu } from '../../shared/jianpu-prep.ts';
+import { fillHint, JIANPU_HINTS } from '../../shared/jianpu-messages.ts';
 import { logChange } from './changelog.ts';
 
 export const MAX_MELODY_CHARS = 50_000;
@@ -13,12 +15,18 @@ export const MAX_MELODY_CHARS = 50_000;
 export const melodyFor = (songId: number): string | null =>
   get<{ source: string }>('SELECT source FROM song_melodies WHERE song_id = ?', songId)?.source ?? null;
 
-/** Save a song's melody; an empty one removes it. Returns what is kept. */
+/**
+ * Save a song's melody; an empty one removes it. Returns what is kept: Chinese-keyboard punctuation in the notes is kept
+ * as the notation's own ("，" → ","), and a melody that asks for more than a hymn ever needs (it would freeze the pages
+ * that draw it) is refused — shared/jianpu-prep.ts.
+ */
 export function setMelody(songId: number, source: string): string | null {
   const song = get<{ title: string }>('SELECT title FROM songs WHERE id = ?', songId);
   if (!song) throw new NotFound('That song does not exist.');
-  const text = source.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+  const text = normalizeJianpu(source.replace(/\r\n?/g, '\n').replace(/\s+$/, '')).text;
   if (text.length > MAX_MELODY_CHARS) throw new BadRequest(`A melody can be up to ${MAX_MELODY_CHARS.toLocaleString('en')} characters.`);
+  const tooMuch = guardJianpu(text).find((p) => p.error);
+  if (tooMuch) throw new BadRequest(fillHint(JIANPU_HINTS[tooMuch.code] ?? 'This melody asks for too much.', tooMuch.vars ?? {}));
   const before = melodyFor(songId);
   if (text === (before ?? '')) return before;
   if (text) {

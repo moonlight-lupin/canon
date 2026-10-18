@@ -608,7 +608,8 @@ table.t tr.click:hover td { background: var(--sunk); }
 .melody-edit { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px; align-items: start; }
 .melody-edit textarea { font-family: var(--mono); font-size: 13px; min-height: 180px; resize: vertical; }
 .melody-preview .jianpu-pages svg { border: 1px solid var(--rule); border-radius: 6px; }
-@media (max-width: 720px) { .melody-edit { grid-template-columns: 1fr; } }
+/* 16px on phones: iOS zooms the page into smaller text boxes */
+@media (max-width: 720px) { .melody-edit { grid-template-columns: 1fr; } .melody-edit textarea { font-size: 16px; } }
 .score-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score-phone { display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: start; margin: 4px 0 10px; padding: 10px; border: 1px dashed var(--rule-strong); border-radius: 8px; }
 .score-phone img { width: 120px; height: 120px; background: #fff; border-radius: 6px; }

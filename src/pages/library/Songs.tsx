@@ -120,6 +120,8 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores 
       ? await run(() => api.patch<Song>(`/songs/${id}`, body))
       : await run(() => api.post<Song>('/songs', body));
     if (!saved) return;
+    // a new song now exists: if a later step fails (hymnal numbers, melody), Save again updates it — never a second copy
+    if (!id) setS((x) => ({ ...x, id: saved.id }));
     if (refsChanged && !(await run(() => api.put(`/songs/${saved.id}/hymnals`, refs.map((r) => ({ ...r, number: r.number.trim() })))))) return;
     if (melodyChanged && !(await run(() => api.put(`/songs/${saved.id}/melody`, { source: melody })))) return;
     await run(async () => saved, t('Saved.'));
@@ -431,7 +433,7 @@ function MelodySection({ value, onChange, canEdit }: { value: string; onChange: 
         ) : <div className="field-hint">{t('No melody yet.')}</div>
       ) : (
         <div className="melody-edit">
-          <textarea rows={8} spellCheck={false} value={value} readOnly={!canEdit} aria-label={t('Melody in numbered notation')}
+          <textarea rows={8} spellCheck={false} autoCapitalize="off" autoCorrect="off" autoComplete="off" value={value} readOnly={!canEdit} aria-label={t('Melody in numbered notation')}
             placeholder={'@1(G4)\n@meter(4, 4)\nN: 1 2 3 1 | 5 - 5 - |\nL: …'} onChange={(e) => onChange(e.target.value)} />
           <JianpuView source={value} delay={300} problems className="melody-preview" />
         </div>

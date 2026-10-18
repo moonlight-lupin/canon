@@ -275,9 +275,11 @@ L: 赞美真神万福之根，世上万民都当颂扬，
 
 - `@1(G4)` is the key (1 = G) and `@meter(4, 4)` the time signature.
 - `N: { … }` holds the notes: `1` to `7` are the notes of the scale, `0` is a rest, and `-` holds the note for one more beat. A comma after a note puts it an octave lower (`7,`), an apostrophe an octave higher (`1'`). A `/` after a note halves it (`1/` is a quaver) and a `.` adds a dot (`1.`). `|` is a bar line and `||` the double bar at the end. Each bar should fill the time signature: one that doesn't is listed under the drawing.
-- `@br()` starts a new line. Keep the parentheses: without them it is ignored. Break the lines where the hymnal does, so the words have room.
-- Each `L:` line holds the words of one stanza or language, one syllable per note. Chinese is split into characters by itself; in English, split words with a hyphen and a space (`bless- ings`). Keep each `L:` on one line.
+- `@br()` starts a new line. Keep the parentheses: without them it is ignored. Break the lines where the hymnal does, so the words have room. A melody with no `@br()` at all gets a new line every 4 bars from Canon (it says so under the drawing), so it is never one crushed line.
+- Each `L:` line holds the words of one stanza or language, one syllable per note. Chinese is split into characters by itself; in English, split words with a hyphen and a space (`bless- ings`). Keep each `L:` on one line. A line with more words than notes is pointed out: the words left over are not shown.
+- Typing on a Chinese keyboard is fine: in the notes, "，" is read as `,` (an octave lower), "’" as `'`, "－" and "—" as `-`, "｜" as `|` and full-width digits as digits (the words keep their own punctuation). Canon says when it did so, and saves the melody with the notation's characters.
 - Whatever can't be drawn is listed under the drawing with its line and column. Canon explains the usual mistakes in its own words (point at one to see jpFun's original message); anything rarer is shown as jpFun says it, in Chinese.
+- Far more than a hymn needs (such as `@br(1000)`, a number in the thousands, or more than 400 bars) is refused with the reason, and a melody that takes more than a few seconds to draw is stopped, so the editor and the Sheet music page never freeze.
 - The melody stays inside Canon, like sheet music: it is not on the share pages or the slides. AI assistants read and write melodies only when an administrator allows it (Settings → AI / MCP → Library → **Melodies**): then Claude can write a hymn's melody from its sheet music, check it, and save it after you agree. It goes into library files with the sheet music. Type in only music the church may copy (public domain, or under its licence).
 
 ### Liturgical texts and catechisms

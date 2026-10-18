@@ -1,43 +1,53 @@
 // Numbered notation (jianpu, 0.21.0): a song's melody typed in jpFun's notation (https://github.com/madderscientist/jpFun),
-// drawn in the browser. This is the only file that imports jpFun (it is still 0.x: an API change touches only this),
-// and it loads on first use, so pages without a melody don't download it.
+// drawn in the browser. jpFun runs in a worker (jianpu-worker.ts) with a time limit: a melody that takes too long is
+// stopped, and the page stays usable. The worker loads on first use, so pages without a melody don't download jpFun.
+// What happens around jpFun (Chinese-keyboard punctuation, limits, new lines, words left over) is shared/jianpu-prep.ts.
+import type { MelodyProblem, MelodyResult } from '../../shared/jianpu-prep.ts';
 
-type JpFun = typeof import('jpfun');
-let engine: Promise<JpFun> | null = null;
-export const loadJianpu = () => (engine ??= import('jpfun'));
+export type JianpuProblem = MelodyProblem;
+export interface JianpuResult { pages: SVGSVGElement[]; problems: JianpuProblem[]; changed: string[]; autoBreaks: number }
 
-/** One of jpFun's problems: its code (shared/jianpu-messages.ts gives Canon's words for it) and its own message (Chinese). */
-export interface JianpuProblem { code?: string; message: string; line: number; column: number; error: boolean }
-export interface JianpuResult { pages: SVGSVGElement[]; problems: JianpuProblem[] }
+/** How long one melody may take to draw. */
+export const DRAW_TIME_LIMIT_MS = 6000;
 
-let measurer: InstanceType<JpFun['CanvasTextMeasurer']> | null = null;
+let worker: Worker | null = null;
+let seq = 0;
+// one melody at a time: its time limit starts when the worker takes it
+let queue: Promise<unknown> = Promise.resolve();
 
-/** Draw a melody: one SVG per page (empty when it can't be drawn), and what jpFun found wrong, by line and column. */
-export async function renderJianpu(source: string): Promise<JianpuResult> {
-  const jp = await loadJianpu();
-  // measured with the browser's own fonts, so lyrics and notes are spaced as they are drawn
-  if (!measurer) {
-    const ctx = document.createElement('canvas').getContext('2d');
-    if (ctx) measurer = new jp.CanvasTextMeasurer(ctx);
-  }
-  const lineStarts = [0, ...[...source.matchAll(/\n/g)].map((m) => m.index! + 1)];
-  const problem = (d: { code?: string; message: string; span: { start: number } }, error: boolean): JianpuProblem => {
-    const at = jp.Diagnostic.offsetToLineCol(d.span?.start ?? 0, lineStarts);
-    return { code: d.code, message: d.message, line: at.line, column: at.column, error };
-  };
-  try {
-    const r = jp.compileScore(source, measurer ? { textMeasurer: measurer } : {});
-    // the same problem can come from both stages: list it once
-    const seen = new Set<string>();
-    const problems = [...r.diagnostics, ...r.layout.diagnostics]
-      .filter((d) => { const k = `${d.code} ${d.span?.start} ${d.message}`; return !seen.has(k) && !!seen.add(k); })
-      .map((d) => problem(d, d instanceof jp.ErrorDiagnostic));
-    return { pages: jp.renderLayoutPagesToSvg(r.layout, { background: '#fff' }).map(cleanSvg).filter((x): x is SVGSVGElement => !!x), problems };
-  } catch (e) {
-    // jpFun stops at the first error it can't get past, and throws it
-    const d = e as { code?: string; message?: string; span?: { start: number } };
-    return { pages: [], problems: [problem({ code: d.code, message: d.message ?? String(e), span: d.span ?? { start: 0 } }, true)] };
-  }
+const newWorker = () => new Worker(new URL('./jianpu-worker.ts', import.meta.url), { type: 'module' });
+
+function draw(source: string): Promise<MelodyResult> {
+  const id = ++seq;
+  return new Promise((resolve) => {
+    const w = (worker ??= newWorker());
+    const done = (r: MelodyResult) => {
+      clearTimeout(timer);
+      w.removeEventListener('message', onMessage);
+      w.removeEventListener('error', onError);
+      resolve(r);
+    };
+    const failed = (code: string, message = ''): MelodyResult => ({ svgs: [], problems: [{ code, error: true, line: 1, column: 1, message }], changed: [], autoBreaks: 0, lineCount: 0 });
+    const onMessage = (e: MessageEvent<{ id: number; result: MelodyResult }>) => { if (e.data.id === id) done(e.data.result); };
+    const onError = (e: ErrorEvent) => { worker = null; w.terminate(); done(failed('E_BUG', e.message)); };
+    // too long (or out of memory): end this worker; the next melody gets a new one
+    const timer = setTimeout(() => { worker = null; w.terminate(); done(failed('C_TOO_SLOW')); }, DRAW_TIME_LIMIT_MS);
+    w.addEventListener('message', onMessage);
+    w.addEventListener('error', onError);
+    w.postMessage({ id, source });
+  });
+}
+
+/** Draw a melody: one SVG per page (none when it can't be drawn), and its problems by line and column. */
+export function renderJianpu(source: string): Promise<JianpuResult> {
+  const next = queue.then(() => draw(source));
+  queue = next.catch(() => undefined);
+  return next.then((r) => ({
+    pages: r.svgs.map(cleanSvg).filter((x): x is SVGSVGElement => !!x),
+    problems: r.problems,
+    changed: r.changed,
+    autoBreaks: r.autoBreaks,
+  }));
 }
 
 // What a drawn melody may contain. jpFun escapes the text it writes; this keeps anything else out all the same.
