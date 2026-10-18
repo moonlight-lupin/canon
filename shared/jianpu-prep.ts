@@ -9,6 +9,8 @@
 //  3. jpFun never starts a new line by itself: a hymn typed without @br() was one crushed line. With no @br() at all,
 //     Canon starts a new line every 4 bars, and says so.
 //  4. Words beyond the last note were dropped without a word. Canon counts what was placed and says what is left over.
+//     And (0.21.1) a rest takes a word like a note does, so words drift one place early after a rest without {}: Canon
+//     says which line of words has a word under a rest.
 // Problems Canon adds have codes starting C_ (their words are in shared/jianpu-messages.ts).
 
 /** The longest melody Canon keeps (characters); the editor counts down to it, the server refuses beyond it. */
@@ -143,23 +145,28 @@ export function originalOffset(offset: number, at: number[]): number {
   return Math.max(0, offset - shift);
 }
 
-// ---------------------------------------------------------------- 4. words left over
+// ---------------------------------------------------------------- 4. words left over, and words under rests
 
 interface LyricLine { name: string; tokens: string[] }
-interface Region { text?: string; y?: number; line?: number }
+interface Region { text?: string; x?: number; w?: number; y?: number; line?: number }
+interface LaidOut { name?: string; layoutLine?: number; box?: { x: number }; ports?: { lyric?: { x: number } } }
+/** The parts of jpFun's compileScore result read here (only these are typed). */
+type Compiled = {
+  lowering?: { columns?: Record<string, Record<string, { ast?: { lyrics?: LyricLine[] } }>> };
+  layout?: { objects?: LaidOut[]; attachments?: { regions?: Region[] }[] };
+};
 
 /**
- * Compare each line of words with what jpFun placed under the notes; a line with words left over gets a problem at its
- * L: line (offset in what was typed). `compiled` is jpFun's compileScore result (only the parts read here are typed).
+ * The words jpFun drew, each with the L: line it came from (0 = the first), and the L: lines of the one part — null when
+ * there are several parts (which words went where can't be told from here).
  */
-export function leftoverWords(compiled: unknown, source: string): PrepProblem[] {
-  const r = compiled as { lowering?: { columns?: Record<string, Record<string, { ast?: { lyrics?: LyricLine[] } }>> }; layout?: { attachments?: { regions?: Region[] }[] } };
+function drawnWords(compiled: unknown): { lyrics: LyricLine[]; words: { region: Region; row: number }[] } | null {
+  const r = compiled as Compiled;
   const voices: LyricLine[][] = [];
   for (const col of Object.values(r.lowering?.columns ?? {})) {
     for (const n of Object.values(col ?? {})) if (n?.ast?.lyrics?.length) voices.push(n.ast.lyrics);
   }
-  // only one part: with several, which words went where can't be told from here
-  if (voices.length !== 1) return [];
+  if (voices.length !== 1) return null;
   const rows = new Map<string, Region[]>();
   for (const a of r.layout?.attachments ?? []) {
     for (const g of a.regions ?? []) if (typeof g.text === 'string' && g.text.trim() && g.y != null) {
@@ -168,22 +175,67 @@ export function leftoverWords(compiled: unknown, source: string): PrepProblem[] 
     }
   }
   // within each line of music, the rows of words top to bottom are the L: lines in order
-  const placed: number[] = [];
+  const words: { region: Region; row: number }[] = [];
   for (const regions of rows.values()) {
     const ys = [...new Set(regions.map((g) => Math.round(g.y!)))].sort((a, b) => a - b);
-    for (const g of regions) {
-      const i = ys.indexOf(Math.round(g.y!));
-      placed[i] = (placed[i] ?? 0) + 1;
-    }
+    for (const g of regions) words.push({ region: g, row: ys.indexOf(Math.round(g.y!)) });
   }
-  const lyricLines = [...source.matchAll(/^\s*L(\([^)\n]*\))?\s*:/gm)].map((m) => m.index! + m[0].indexOf('L'));
+  return { lyrics: voices[0], words };
+}
+
+/** Where each L: line starts in the source (at its L). */
+const lyricLineOffsets = (source: string) => [...source.matchAll(/^\s*L(\([^)\n]*\))?\s*:/gm)].map((m) => m.index! + m[0].indexOf('L'));
+
+/**
+ * Compare each line of words with what jpFun placed under the notes; a line with words left over gets a problem at its
+ * L: line (offset in what was typed). `compiled` is jpFun's compileScore result.
+ */
+export function leftoverWords(compiled: unknown, source: string): PrepProblem[] {
+  const drawn = drawnWords(compiled);
+  if (!drawn) return [];
+  const placed: number[] = [];
+  for (const w of drawn.words) placed[w.row] = (placed[w.row] ?? 0) + 1;
+  const lyricLines = lyricLineOffsets(source);
   const out: PrepProblem[] = [];
-  voices[0].forEach((l, i) => {
+  drawn.lyrics.forEach((l, i) => {
     const words = l.tokens.map((t) => t.replace(/^\{(.*)\}$/, '$1')).filter((t) => t.trim());
     const got = placed[i] ?? 0;
     if (words.length > got) {
       out.push({ code: 'C_WORDS_LEFT_OVER', offset: lyricLines[i] ?? 0, error: false, vars: { count: String(words.length - got), first: words[got] ?? '' } });
     }
+  });
+  return out;
+}
+
+/**
+ * jpFun gives a rest (0) a word, like a note (0.21.1): a line of words that doesn't leave it empty with {} runs one place
+ * early after every rest. A word drawn under a rest gets a problem at its L: line, with the first such word. jpFun centres
+ * each word on its note's (or rest's) lyric point and widens the spacing rather than move a word; punctuation before or
+ * after a word hangs out to the side (a few points, notes are 25 or more apart). So a word belongs to the note or rest
+ * nearest it on its line — and only when that one is clearly nearest, so an unclear case says nothing.
+ */
+export function wordsUnderRests(compiled: unknown, source: string): PrepProblem[] {
+  const drawn = drawnWords(compiled);
+  if (!drawn) return [];
+  const slots = ((compiled as Compiled).layout?.objects ?? [])
+    .filter((o) => o.box && o.ports?.lyric)
+    .map((o) => ({ rest: o.name === '0', line: o.layoutLine ?? 0, x: o.box!.x + o.ports!.lyric!.x }));
+  const under: { first: string; count: number; x: number; line: number }[] = [];
+  for (const { region: g, row } of drawn.words) {
+    if (g.x == null || g.w == null) continue;
+    const x = g.x + g.w / 2;
+    const line = g.line ?? 0;
+    const [near, next] = slots.filter((o) => o.line === line).map((o) => ({ ...o, d: Math.abs(o.x - x) })).sort((a, b) => a.d - b.d);
+    if (!near?.rest || (next && next.d < 2 * near.d)) continue;
+    const u = (under[row] ??= { first: g.text!, count: 0, x, line });
+    u.count++;
+    // the first in the music, whatever order jpFun lists them in
+    if (line < u.line || (line === u.line && x < u.x)) Object.assign(u, { first: g.text!, x, line });
+  }
+  const lyricLines = lyricLineOffsets(source);
+  const out: PrepProblem[] = [];
+  under.forEach((u, i) => {
+    if (u) out.push({ code: 'C_WORDS_UNDER_REST', offset: lyricLines[i] ?? 0, error: false, vars: { count: String(u.count), first: u.first } });
   });
   return out;
 }
@@ -254,7 +306,7 @@ export function runJianpu(jp: JpFunLike, source: string, o: { draw: boolean; com
     }
     const tall = tooManyLines(r.layout.lineCount);
     if (tall) return { svgs: [], problems: [...problems, at(0, tall.code, true, '', tall.vars)], changed, autoBreaks: wrapped.at.length, lineCount: r.layout.lineCount };
-    for (const w of leftoverWords(r, normal)) problems.push(at(w.offset, w.code, w.error, '', w.vars));
+    for (const w of [...wordsUnderRests(r, normal), ...leftoverWords(r, normal)]) problems.push(at(w.offset, w.code, w.error, '', w.vars));
     const svgs = o.draw ? jp.renderLayoutPagesToSvg(r.layout as never, o.svgOptions ?? {}) : [];
     return { svgs, problems, changed, autoBreaks: wrapped.at.length, lineCount: r.layout.lineCount };
   } catch (e) {

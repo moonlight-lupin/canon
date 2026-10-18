@@ -4,6 +4,13 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.21.1 — Melodies: a rest takes a word
+
+- **The notation guide was wrong about rests.** It said a rest takes no word. In jpFun 0.7.0 a rest (`0`) takes one, like a note, so every word after a rest was printed one note early unless the writer put `{}` where the rest is. So does the second note of a tie, which the guide also said took none. The guide (Library → **Melodies in numbered notation**), the notation reference for AI assistants (`canon://guide/jianpu`, `references/jianpu.md` in the skill, with an example) and the `write_melody` playbook now say to write `{}` for each rest.
+- **A word under a rest is pointed out** under the drawing and by `canon_melody` (a warning, `C_WORDS_UNDER_REST`, with the first such word and how many), for each line of words. A melody with several parts is left alone, as for words left over.
+- Tests: where jpFun puts words (a rest and a tied note take one, a held beat and a whole-bar rest don't), so a jpFun upgrade that changes it shows up; the new warning, also with punctuation beside the words; the notation reference's examples pass Canon's own check as well as jpFun's.
+- No database change.
+
 ## 0.21.0 — Melodies in numbered notation (jianpu); the public address in Settings → Church
 
 - **A song's melody in numbered notation.** In the Library, a song's editor has **Melody in numbered notation** under its sheet music: type the tune as text in the notation of [jpFun](https://github.com/madderscientist/jpFun), with a line of words under it for each stanza or language, and the jianpu is drawn beside it as you type. Whatever can't be drawn is listed with its line and column, the usual mistakes in Canon's own words (English or Chinese; jpFun writes its messages in Chinese only). **Start from an example** fills in the Doxology; **Save** keeps the melody with the song. A song with a melody shows **♫ Melody** in the list. The guide's **Melodies in numbered notation** explains the notation.

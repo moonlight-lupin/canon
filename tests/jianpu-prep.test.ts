@@ -90,6 +90,39 @@ test('words left over are reported at their L: line; a held syllable ({}) and a 
   assert.deepEqual(codes(`${B}N: { 1 2 3 5@a | 5@b 4 3 2 | } @tie(a, b)\nL: a b c d e f g`), []);
 });
 
+// 0.21.1: the notation guide said rests take no word. They do, in jpFun 0.7.0 — and so does the second note of a tie.
+// If a jpFun upgrade changes where words go, this shows it: correct docs/JIANPU-NOTATION.md and wordsUnderRests.
+test('jpFun gives a word to each note, rest (0) and tied note, but none to a held beat (-) or a whole-bar rest', () => {
+  const under = (notes: string, words: string) => {
+    const r = jp.compileScore(`${B}N: { ${notes} }\nL: ${words}`, {}) as unknown as {
+      layout: { objects: { name?: string; box: { x: number }; ports: { lyric?: { x: number } } }[]; attachments: { regions?: { text?: string; x: number; w: number }[] }[] };
+    };
+    const at = (x: number) => r.layout.objects.find((o) => o.name != null && o.ports.lyric && Math.abs(o.box.x + o.ports.lyric.x - x) < 1)?.name;
+    return r.layout.attachments.flatMap((a) => a.regions ?? []).filter((g) => g.text).map((g) => `${g.text}:${at(g.x + g.w / 2)}`).join(' ');
+  };
+  assert.equal(under('1 2 0 3 | 4 - - - |', 'a b c d e'), 'a:1 b:2 c:0 d:3 e:4');
+  assert.equal(under('1 2 0 3 | 4 - - - |', 'a b {} c d'), 'a:1 b:2 c:3 d:4');
+  assert.equal(under('1 Z 2 3 | @rest() | 4 - - - |', 'a b c d e'), 'a:1 b:0 c:2 d:3 e:4');
+  assert.equal(under('1 2 3 5@a | 5@b 4 3 2 | @tie(a, b)', 'a b c d e f'), 'a:1 b:2 c:3 d:5 e:5 f:4');
+});
+
+test('a word under a rest is reported at its L: line, with the first one; {} for the rest is not', () => {
+  const src = `${B}N: { 1 2 0 3 | 4 0 5 0 | 6 - - - | }\nL: a {} {} b c {} d {} e\nL: one two three four five six seven`;
+  const p = run(src).problems.filter((x) => x.code === 'C_WORDS_UNDER_REST');
+  assert.equal(p.length, 1);
+  assert.equal(p[0].line, 5);
+  assert.deepEqual(p[0].vars, { count: '2', first: 'three' });
+  assert.deepEqual(codes(`${B}N: { 1 2 0 3 | 4 0 5 0 | 6 - - - | }\nL: a b {} c d {} e {} f\nL: 一二{}三四{}五{}六`), []);
+  // punctuation hangs to the side of a word: still found, and a word before a rest is not mistaken for one under it
+  const said = `${B}N: { 1/ 1/ 2 0 0 | 3 3 2 0 | 1 - - - || }\nL: Hear us, Lord; {} hear, our prayer; {} Lord.\nL: 主垂听，{}{}听祷告，{}“主”。！`;
+  assert.deepEqual(run(said).problems.filter((x) => x.code === 'C_WORDS_UNDER_REST').map((x) => [x.line, x.vars]), [[4, { count: '2', first: 'hear,' }]]);
+  // over a new line of music: the first in the music, from the line it is on
+  const two = `${B}N: { 1 2 3 4 | @br() 5 0 6 7 | }\nL: a b c d e f g h`;
+  assert.deepEqual(run(two).problems.filter((x) => x.code === 'C_WORDS_UNDER_REST').map((x) => x.vars), [{ count: '1', first: 'f' }]);
+  // several parts: left alone (which words went where can't be told)
+  assert.deepEqual(codes(`${B}N: 1 0 3 4 |\nL: a b c d\nN: 5 6 0 1 |\nL: a b c d`).filter((c) => c === 'C_WORDS_UNDER_REST'), []);
+});
+
 test('the server checks in a thread of its own: a melody that takes too long ends the thread, not Canon', async () => {
   const quick = await checkJianpu(`${B}N: { 1 2 3 7， | 5 - - - | }`);
   assert.equal(quick.ok, true);

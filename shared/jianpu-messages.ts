@@ -40,6 +40,7 @@ export const JIANPU_HINTS: Record<string, string> = {
   C_TOO_MANY_LINES: 'This would be drawn on {value} lines: a melody here can have up to {max}.',
   C_AUTO_BREAKS: 'No @br() yet, so Canon starts a new line every {bars} bars. Add @br() where the hymnal starts a new line to place them yourself.',
   C_WORDS_LEFT_OVER: 'This line of words has {count} more than there are notes for, from “{first}”: they are not shown.',
+  C_WORDS_UNDER_REST: 'In this line of words, “{first}” is under a rest ({count} in all). A rest takes a word, like a note: write {} for each rest, so the words stay with their notes.',
   C_TOO_SLOW: 'This melody takes too long to draw. Look for a very large number or a very long line.',
 };
 

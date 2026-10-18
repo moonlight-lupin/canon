@@ -44,7 +44,7 @@ A plain note is one beat (a crotchet). Then:
 | `1 -` | the note held one more beat (a minim); `1 - - -` is four beats. A `-` can carry a note over a bar line: `3 - | - 2` |
 | `1/` | half a beat (a quaver); `1//` a quarter beat (a semiquaver) |
 | `1.` | dotted: one and a half beats; `1/.` a dotted quaver |
-| `5@a … 5@b` with `@tie(a, b)` after the notes | a tie: the same note held over (sung as one, so it takes one syllable) |
+| `5@a … 5@b` with `@tie(a, b)` after the notes | a tie: the same note held over, sung as one (its second note still takes a word: write `{}` for it) |
 
 Bar lines: `|` a bar line, `||` a double bar (the end), `|:` and `:|` repeat signs.
 
@@ -60,13 +60,25 @@ and says so (`C_AUTO_BREAKS`, a warning) — better to place them yourself.
 
 ## Words
 
-- Each `L:` line gives one syllable to each note that is sung. Rests, `-` and the second note of a tie take none.
+- Each `L:` line gives one syllable to each note **and to each rest** (`0`), and to the second note of a tie. Only a
+  held beat (`-`) takes none.
+- **A rest**: write `{}` where the rest is, so it gets no word. Without it, the word meant for the next note is printed
+  under the rest, and every word after it one note early. The check says so (`C_WORDS_UNDER_REST`, with the first word
+  under a rest).
+
+  ```jianpu
+  @1(D4)
+  @meter(4, 4)
+  N: { 1 1 2 0 | 3 3 2 0 | 1 - - - || }
+  L: Hear us, Lord; {} hear our prayer; {} Lord.
+  L: 主垂听，{}听祷告，{}主。
+  ```
 - **Chinese** is split into characters by itself: write the line as it is printed, punctuation included
   (`赞美真神万福之根，`).
 - **English**: separate words with spaces, and split a word into syllables with a hyphen and a space: `bless- ings`,
   `crea- tures`. The hyphen is printed.
-- **A syllable held over two different notes** (a slur): write `{}` for the second note, which gives it no word:
-  `L: a {} b c`.
+- **A syllable held over two different notes** (a slur), **or over a tie**: write `{}` for the second note, which gives
+  it no word: `L: a {} b c`.
 - **Two characters on one note**: wrap them in braces: `{你好}`.
 - Keep each `L:` on one source line.
 - More words than notes: the words left over are not drawn, and the check says so (`C_WORDS_LEFT_OVER`, with the first

@@ -1129,6 +1129,7 @@
   "In the print window choose double-sided, “flip on short edge”, then fold the sheets in half.": "在打印窗口中选择双面打印、“短边翻页”，然后把纸对折。",
   "In the service planner each item can still be set to “Full text” or “Title only”, whatever the template says.": "在聚会程序编辑中，每个项目仍可单独设为「完整内容」或「只印标题」，不受模板限制。",
   "In this group": "在这个群组中",
+  "In this line of words, “{first}” is under a rest ({count} in all). A rest takes a word, like a note: write {} for each rest, so the words stay with their notes.": "这行歌词中，“{first}”落在休止符下（共 {count} 个）。休止符和音符一样占一个字：每个休止符处写 {}，歌词才会对准音符。",
   "In use": "使用中",
   "In use (untick to retire it: it stays in old journals and reports)": "使用中（取消勾选即停用：仍保留在旧分录和报表中）",
   "In your library": "已在资料库中",

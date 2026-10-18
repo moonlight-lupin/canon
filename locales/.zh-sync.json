@@ -4520,6 +4520,10 @@
       "在这个群组中",
       "在這個群組中"
     ],
+    "In this line of words, “{first}” is under a rest ({count} in all). A rest takes a word, like a note: write {} for each rest, so the words stay with their notes.": [
+      "这行歌词中，“{first}”落在休止符下（共 {count} 个）。休止符和音符一样占一个字：每个休止符处写 {}，歌词才会对准音符。",
+      "這行歌詞中，“{first}”落在休止符下（共 {count} 個）。休止符和音符一樣佔一個字：每個休止符處寫 {}，歌詞才會對準音符。"
+    ],
     "In use": [
       "使用中",
       "使用中"
@@ -12554,7 +12558,7 @@
     ]
   },
   "guide": [
-    "25f7fd16e24de7a9",
-    "4fc7e8e9d133cade"
+    "c09efffef52d82fa",
+    "59bb28719bb30084"
   ]
 }

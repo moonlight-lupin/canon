@@ -181,8 +181,12 @@ test('the notation reference for agents: the same in docs and the skill, and its
   assert.equal(fs.readFileSync(path.join(root, 'skills', 'canon', 'references', 'jianpu.md'), 'utf8'), doc, 'skills/canon/references/jianpu.md is a copy of docs/JIANPU-NOTATION.md');
   const examples = [...doc.matchAll(/```jianpu\n([\s\S]*?)```/g)].map((m) => m[1]);
   assert.ok(examples.length >= 2);
+  const jp = await import('jpfun');
+  const { runJianpu } = await import('../shared/jianpu-prep.ts');
   for (const src of examples) {
     const r = compileScore(src);
     assert.deepEqual([...r.diagnostics, ...r.layout.diagnostics].map((d) => d.message), [], src.slice(0, 40));
+    // and Canon's own check (0.21.1: no word under a rest, none left over)
+    assert.deepEqual(runJianpu(jp as never, src, { draw: false }).problems.map((p) => p.code), [], src.slice(0, 40));
   }
 });
