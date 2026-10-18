@@ -12,7 +12,7 @@ import type { L10n } from '../../types-client.ts';
 interface Part { key: string; label: { en: string; zh: string }; pii: boolean; query: string }
 interface Summary {
   hymnals: { added: number; existing: number };
-  songs: { added: number; existing: number; numbers_added: number; sheet_music_added: number };
+  songs: { added: number; existing: number; numbers_added: number; sheet_music_added: number; melodies_added?: number };
   texts: { added: number; existing: number };
   blocks: { added: number; existing: number };
   backgrounds?: { added: number; existing: number };
@@ -130,6 +130,7 @@ export function ImportLibrary() {
     t('Songs: {a} new, {e} already here').replace('{a}', String(s.songs.added)).replace('{e}', String(s.songs.existing)),
     s.songs.numbers_added ? t('{n} hymnal numbers added').replace('{n}', String(s.songs.numbers_added)) : '',
     s.songs.sheet_music_added ? t('{n} pages of sheet music').replace('{n}', String(s.songs.sheet_music_added)) : '',
+    s.songs.melodies_added ? t('{n} melodies in numbered notation').replace('{n}', String(s.songs.melodies_added)) : '',
     t('Liturgical texts: {a} new, {e} already here').replace('{a}', String(s.texts.added)).replace('{e}', String(s.texts.existing)),
     t('Hymnals: {a} new').replace('{a}', String(s.hymnals.added)),
     t('QR codes & notes: {a} new').replace('{a}', String(s.blocks.added)),

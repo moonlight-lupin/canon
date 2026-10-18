@@ -1,6 +1,6 @@
 {
   "name": "canon",
-  "version": "0.20.4",
+  "version": "0.21.0",
   "private": true,
   "description": "Canon — local-first, multilingual church system: service planner with bulletins & slides, member and co-worker registers, groups, volunteer rota, and an OAuth MCP server for AI agents.",
   "license": "MIT",
@@ -62,6 +62,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
+    "jpfun": "0.7.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",

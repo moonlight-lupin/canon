@@ -1401,4 +1401,15 @@ export const MIGRATIONS: (string | Migration)[] = [
     CREATE TRIGGER meeting_skips_group_gone AFTER DELETE ON groups BEGIN DELETE FROM meeting_skips WHERE group_id = OLD.id; END;
     `,
   },
+  // 44 (0.21.0): a song's melody in numbered notation (jianpu), typed by the church's musicians: the source text, drawn
+  // in the browser. Kept apart from songs (like song_scores) so AI tools neither read nor write it.
+  {
+    sql: `
+    CREATE TABLE song_melodies (
+      song_id INTEGER PRIMARY KEY REFERENCES songs(id) ON DELETE CASCADE,
+      source TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    `,
+  },
 ];

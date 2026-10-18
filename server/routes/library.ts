@@ -9,6 +9,7 @@ import { installLibrary, libraryStatus } from '../seed/index.ts';
 import { legacyImport, rawBody } from './csv.ts';
 import { h, id, str } from './helpers.ts';
 import * as sc from '../repo/scores.ts';
+import * as mel from '../repo/melodies.ts';
 import { BadRequest } from '../lib/table.ts';
 
 export const libraryRoutes = express.Router();
@@ -56,6 +57,10 @@ libraryRoutes.get('/songs/scores/:id', (req, res, next) => {
     next(e);
   }
 });
+// ---- a song's melody in numbered notation (0.21.0): jpFun source text, drawn in the browser; '' removes it
+libraryRoutes.get('/songs/melodies/ids', h(() => mel.melodySongIds()));
+libraryRoutes.get('/songs/:id/melody', h((req) => ({ source: mel.melodyFor(id(req)) })));
+libraryRoutes.put('/songs/:id/melody', h((req) => ({ source: mel.setMelody(id(req), z.object({ source: z.string() }).parse(req.body).source) })));
 // a link to add this song's pages from a phone (no sign-in, for a few hours): the QR code in the song's Sheet music
 libraryRoutes.post('/songs/:id/upload-link', h((req) => {
   const hours = z.object({ hours: z.number().int().min(1).max(sc.MAX_LINK_HOURS).optional() }).parse(req.body ?? {}).hours ?? 24;

@@ -447,6 +447,8 @@
 .sm-song-title { font-size: 17px; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 .sm-stanzas { margin-left: auto; font: 600 11px var(--sans); letter-spacing: 0.06em; color: #7a6224; }
 .sm-page { display: block; width: 100%; height: auto; margin: 0 0 10px; border: 1px solid #ece6d8; break-inside: avoid; }
+.sm-jianpu { margin: 0 0 10px; }
+.sm-jianpu .jianpu-pages svg { break-inside: avoid; }
 .sm-pdf { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed #ddd4c0; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
 .sm-print-note { display: none; }
 @media print {

@@ -11,6 +11,7 @@ import { all, db, get, tx } from '../db.ts';
 import { BadRequest } from '../lib/table.ts';
 import * as lib from './library.ts';
 import { addScore, scoreData, scoresFor } from './scores.ts';
+import { melodyFor, setMelody } from './melodies.ts';
 import { createBlock, listBlocks, setBlockImage } from './presentation.ts';
 import { backgroundKey, backgroundByName, backgrounds as bgTable, saveBackground } from './backgrounds.ts';
 import { imageIdsByName, imageKey, images as imageTable, saveImage, updateImage } from './images.ts';
@@ -24,7 +25,7 @@ interface LibraryFile {
   version: number;
   exported_at: string;
   hymnals: { abbr: string; name: L10n; publisher: string | null; year: number | null; notes: string | null; sort: number }[];
-  songs: (Omit<Song, 'id' | 'hymnals'> & { numbers: { abbr: string; number: string }[]; scores?: (FileBlob & { name: string })[] })[];
+  songs: (Omit<Song, 'id' | 'hymnals'> & { numbers: { abbr: string; number: string }[]; scores?: (FileBlob & { name: string })[]; melody?: string })[];
   texts: Record<string, unknown>[];
   blocks?: { name: string; kind: string; data: Record<string, unknown>; image?: FileBlob }[];
   backgrounds?: { name: string; image: FileBlob }[];
@@ -70,6 +71,8 @@ export function exportLibrary(o: ExportOptions = {}): Buffer {
         ...rest,
         numbers: (hymnals ?? []).map((r) => ({ abbr: abbrOf.get(r.hymnal_id) ?? r.abbr, number: r.number })),
         ...(o.scores !== false ? { scores: scoresFor(id).map((f) => ({ name: f.name, mime: f.mime, data: scoreData(f.id).data.toString('base64') })) } : {}),
+        // its melody in numbered notation (0.21.0) goes with the sheet music
+        ...(o.scores !== false && melodyFor(id) ? { melody: melodyFor(id)! } : {}),
       };
     }),
     texts: want('texts', true) ? lib.texts.list('', [], 'id').map(({ id: _id, ...t }) => t as Record<string, unknown>) : [],
@@ -127,7 +130,7 @@ function readFile(buf: Buffer): LibraryFile {
 
 export interface ImportSummary {
   hymnals: { added: number; existing: number };
-  songs: { added: number; existing: number; numbers_added: number; sheet_music_added: number };
+  songs: { added: number; existing: number; numbers_added: number; sheet_music_added: number; melodies_added: number };
   texts: { added: number; existing: number };
   blocks: { added: number; existing: number };
   backgrounds: { added: number; existing: number };
@@ -145,7 +148,7 @@ const titleKey = (t: L10n | undefined) => [t?.en, t?.zh, ...Object.values(t ?? {
 export function importLibrary(buf: Buffer, o: { dryRun?: boolean; biblePermission?: boolean } = {}): ImportSummary {
   const f = readFile(buf);
   const sum: ImportSummary = {
-    hymnals: { added: 0, existing: 0 }, songs: { added: 0, existing: 0, numbers_added: 0, sheet_music_added: 0 },
+    hymnals: { added: 0, existing: 0 }, songs: { added: 0, existing: 0, numbers_added: 0, sheet_music_added: 0, melodies_added: 0 },
     texts: { added: 0, existing: 0 }, blocks: { added: 0, existing: 0 }, backgrounds: { added: 0, existing: 0 }, images: { added: 0, existing: 0 }, bibles: { added: 0, existing: 0, skipped: 0 }, problems: [],
   };
   const run = () => {
@@ -166,7 +169,7 @@ export function importLibrary(buf: Buffer, o: { dryRun?: boolean; biblePermissio
     const byKey = new Map(existing.filter((s) => s.key).map((s) => [s.key!, s]));
     const byTitle = new Map(existing.map((s) => [titleKey(s.title), s]));
     for (const s of f.songs ?? []) {
-      const { numbers, scores, ...fields } = s;
+      const { numbers, scores, melody, ...fields } = s;
       const cur = (s.key && byKey.get(s.key)) || byTitle.get(titleKey(s.title));
       let songId: number;
       let hadScores = false;
@@ -186,6 +189,17 @@ export function importLibrary(buf: Buffer, o: { dryRun?: boolean; biblePermissio
       if (add.length) {
         sum.songs.numbers_added += add.length;
         if (!o.dryRun) lib.setSongHymnals(songId, [...have.map((h) => ({ hymnal_id: h.hymnal_id, number: h.number })), ...add]);
+      }
+      // a melody, when the song has none here
+      if (typeof melody === 'string' && melody.trim() && !(cur && melodyFor(cur.id))) {
+        sum.songs.melodies_added++;
+        if (!o.dryRun) {
+          try {
+            setMelody(songId, melody);
+          } catch (e) {
+            sum.problems.push(`${titleKey(s.title)}: ${(e as Error).message}`);
+          }
+        }
       }
       // sheet music, when the song has none here
       if (scores?.length && !hadScores) {

@@ -1,5 +1,6 @@
-// Outputs → Sheet music: the service's songs in order, each with the sheet music kept with it in the Library (scans
-// or photos; a PDF opens on its own). For the musicians: print it, or open it on a tablet at the piano.
+// Outputs → Sheet music: the service's songs in order, each with the sheet music kept with it in the Library (its
+// melody in numbered notation, drawn here, then scans or photos; a PDF opens on its own). For the musicians: print it,
+// or open it on a tablet at the piano.
 import { FitToScreen } from '../components/onscreen.ts';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
@@ -9,10 +10,11 @@ import { Icon } from '../components/icons.tsx';
 import type { L10n, Lang } from '../types-client.ts';
 import { Bi, formatDate, hasAny } from './content.tsx';
 import { scoreUrl } from '../../shared/presentation.ts';
+import { JianpuView } from '../components/Jianpu.tsx';
 import './outputs.css';
 
 interface Score { id: number; name: string; mime: string; size: number }
-interface SongRow { item_id: number; start: string; title: L10n; subtitle: L10n; song: { id: number; title: L10n }; stanzas: string[]; scores: Score[] }
+interface SongRow { item_id: number; start: string; title: L10n; subtitle: L10n; song: { id: number; title: L10n }; stanzas: string[]; scores: Score[]; melody?: string | null }
 interface Data { service: { id: number; date: string; title: L10n; languages: Lang[]; status: string }; songs: SongRow[] }
 
 export default function SheetMusic() {
@@ -22,7 +24,8 @@ export default function SheetMusic() {
   if (error) return <div className="out-page"><ErrorBox error={error} /></div>;
   if (!data) return <Loading />;
   const langs = data.service.languages.length ? data.service.languages : (['en'] as Lang[]);
-  const missing = data.songs.filter((s) => !s.scores.length).length;
+  const has = (s: SongRow) => s.scores.length > 0 || !!s.melody;
+  const missing = data.songs.filter((s) => !has(s)).length;
   return (
     <div className="out sm-out">
       <div className="out-bar no-print">
@@ -45,18 +48,19 @@ export default function SheetMusic() {
                 <span className="sm-time">{s.start}</span> <Bi v={s.title} langs={langs} />
                 {hasAny(s.subtitle) && <span className="muted"> · <Bi v={s.subtitle} langs={langs.slice(0, 1)} /></span>}
                 {s.stanzas.length > 0 && <span className="muted"> · {t('Stanzas')} {s.stanzas.join(', ')}</span>}
-                {!s.scores.length && <span className="sm-none"> — {t('no sheet music')}</span>}
+                {!has(s) && <span className="sm-none"> — {t('no sheet music')}</span>}
               </li>
             ))}
           </ol>
         )}
-        {data.songs.filter((s) => s.scores.length).map((s) => (
+        {data.songs.filter(has).map((s) => (
           <section key={s.item_id} className="sm-song">
             <h2 className="sm-song-title">
               <Bi v={s.title} langs={langs} />
               {hasAny(s.subtitle) && <span className="muted"> · <Bi v={s.subtitle} langs={langs.slice(0, 1)} /></span>}
               {s.stanzas.length > 0 && <span className="sm-stanzas">{t('Stanzas')} {s.stanzas.join(', ')}</span>}
             </h2>
+            {s.melody && <JianpuView source={s.melody} className="sm-jianpu" />}
             {s.scores.map((f) => f.mime === 'application/pdf' ? (
               <div key={f.id} className="sm-pdf">
                 <Icon name="file" /> {f.name}

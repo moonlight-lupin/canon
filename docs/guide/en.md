@@ -204,7 +204,7 @@ For a Mac, choose **Files** → **PowerPoint for Keynote (Mac)**: the same slide
 ### 5. Share with the team
 
 - **Run sheet**: a printable timed list with leaders and AV cues for the team. The **Slide** column gives each item's slide numbers, and the AV cue says where each part starts — e.g. "1 → 3 · 2 → 6 · 3 → 9 · Refrain → 5, 8, 11" for a hymn with its refrain after every stanza, and the QR code or note slide. The numbers are the ones in the slide footer, so the operator can type one and press Enter. They count the title slide as 1 and follow the service as it is now: print the sheet again after changes.
-- **Sheet music**: the service's songs in order, with the stanzas sung and the sheet music kept with each song in the Library (see [Library](#library)) — to print, or to open on a tablet at the piano. Songs without sheet music are listed so the musicians know to bring their own; a PDF opens on its own.
+- **Sheet music**: the service's songs in order, with the stanzas sung and the sheet music kept with each song in the Library (see [Library](#library)) — to print, or to open on a tablet at the piano. A song's melody in numbered notation (see [Melodies in numbered notation](#melodies)) is drawn first, then its scanned pages. Songs with neither are listed so the musicians know to bring their own; a PDF opens on its own.
 - **Share** (in the **Outputs** bar; it shows **On** while a link works) has two links:
   - **Share with team**: press **Enable link**, then **Copy** and send the link. It is read-only and has no contact details. Besides the order of service it shows what only the team needs: the service's **Notes** (at the top, as **Notes for the team**), each item's notes under the item, who is serving today and who serves at the next service. **Disable link** stops it; turning it on again makes a new link.
   - **Bulletin for the congregation**: one link per service for attendees to read the bulletin on their phones — the order of service, the words of the hymns and readings, and the announcements, with a language switch; no serving team, team notes or contact details. Tick **Print the QR code on the bulletin's back page** and / or **Show the QR code on the title slide (in a corner, while people arrive)** — the slide on screen before the service, in Canon's slides and the PowerPoint file (the FreeShow project gets it as its first show), or **Download QR code** to use it elsewhere. **Disable link** stops it.
@@ -246,6 +246,7 @@ Open [Library](/library).
 
 - **Hymns & songs**: search by title, words or number (`HP 123`). **New song**: title, author, tune, **Stanzas** (label `R` for a refrain), **Hymnal numbers**. Untick **Public domain** to add the copyright line and **CCLI song #**.
   - **A refrain sung after every stanza**: type it once, as a stanza labelled `R` (or `C` for a chorus), and tick **Refrain after each stanza**. On a service, tick only the numbered stanzas you sing: Canon puts the refrain after each. The slides show it in full every time; the bulletin prints it in full once, then "(Refrain)" after the later stanzas. On the slides, a stanza's number (or "Refrain") is in the top corner of every slide of that stanza, not only the first.
+  - **Melody in numbered notation**: the tune in jianpu, typed as text and drawn as you type; see [Melodies in numbered notation](#melodies).
   - **Sheet music**: **Add pages** with scans or photos of the music (PNG, JPEG or WebP) or a PDF, up to 10 MB each; the arrows put the pages in order. A song with sheet music shows ♫ and the number of pages in the list. The musicians find it in the service planner under **Outputs → Sheet music**. It stays inside Canon (and in its backups): never on the share pages or the slides, and AI assistants read it only when an administrator shares it (Settings → AI / MCP). Keep only music the church may copy (public domain, or under its licence).
     - **From a phone**: shows a QR code. Scan it, take photos of the hymnal page by page (or choose files), and they become the song's next pages, with no sign-in. The link works for 24 hours.
     - **Upload sheet music** (above the list): many scans at once. Name each file by its hymnal number, e.g. `HP 178.jpg`, and `HP 178-2.jpg` for page 2 (a bare `178.jpg` uses the first hymnal with that number). Canon matches the files to the hymns. Check the list, change or skip any, choose whether to **replace** the pages a hymn already has, and upload.
@@ -254,6 +255,28 @@ Open [Library](/library).
 - To load a hymnal's index (numbers and titles), use **Import…** on the hymnal. Songs not yet in the library are added as title-only songs tagged *needs-words*; words are never imported.
 
 > **Tip:** Copyrighted hymn words may only be typed in under your church's licence.
+
+### Melodies in numbered notation {#melodies}
+
+In a song's editor, **Melody in numbered notation** keeps the tune in numbered notation (jianpu), the way many Chinese hymnals print it. Type it in the notation of [jpFun](https://github.com/madderscientist/jpFun), the engine Canon draws it with: the drawing beside it changes as you type, and **Save** keeps it with the song. **Start from an example** fills in the Doxology to copy from. The musicians find the melody on **Outputs → Sheet music**, above any scanned pages. A song with a melody shows **1 2 3** in the list.
+
+```jianpu
+@1(G4)
+@meter(4, 4)
+N: {
+  1 - 1 7, | 6, 5, 1 2 | 3 - - - | @br()
+  3 3 3 2 | 1 4 3 - | 2 - - - ||
+}
+L: Praise God, from whom all bless- ings flow; praise him, all crea- tures here be- low;
+L: 赞美真神万福之根，世上万民都当颂扬，
+```
+
+- `@1(G4)` is the key (1 = G) and `@meter(4, 4)` the time signature.
+- `N: { … }` holds the notes: `1` to `7` are the notes of the scale, `0` is a rest, and `-` holds the note for one more beat. A comma after a note puts it an octave lower (`7,`), an apostrophe an octave higher (`1'`). A `/` after a note halves it (`1/` is a quaver) and a `.` adds a dot (`1.`). `|` is a bar line and `||` the double bar at the end. Each bar should fill the time signature: one that doesn't is listed under the drawing.
+- `@br()` starts a new line. Keep the parentheses: without them it is ignored. Break the lines where the hymnal does, so the words have room.
+- Each `L:` line holds the words of one stanza or language, one syllable per note. Chinese is split into characters by itself; in English, split words with a hyphen and a space (`bless- ings`). Keep each `L:` on one line.
+- Whatever can't be drawn is listed under the drawing with its line and column. The messages come from jpFun, in Chinese.
+- The melody stays inside Canon, like sheet music: it is not on the share pages or the slides, and AI assistants neither read nor write it. It goes into library files with the sheet music. Type in only music the church may copy (public domain, or under its licence).
 
 ### Liturgical texts and catechisms
 
@@ -626,7 +649,7 @@ Open [Settings](/settings). Administrators see its sections listed down the left
 - **Church**, **Languages**, **User accounts**, **Roles & permissions**: see [Getting started](#getting-started).
 - **Spaces** (administrators): the church's halls, rooms and other places — a **Name** in each language, the **Capacity** and **Notes** (e.g. projector, piano). Services, meetings and calendar events can each be in one. The ⋯ menu edits, archives (it stays on its bookings but isn't offered for new ones) or deletes a space nothing was ever booked in.
 - **Export data** (administrators): one click for each part of Canon — every list as an Excel file (it imports back with **Import…**), with the ones holding personal data marked — and **Download everything (zip)** with all of them and the library file. This is not a backup: services, records and accounts are only in a backup.
-  - **Library file**: the hymnals, songs with their words, hymnal numbers and **sheet music**, liturgical texts, **QR codes & notes**, slide backgrounds and images (tick what to include; **Bibles you uploaded** only if their licence allows sharing) in one `.canonlib` file. **Import a library file…** on another Canon — another church, or a new computer — shows what it would add, then adds only what that Canon doesn't have: songs and texts match by key or title, hymnals by abbreviation. Existing songs only gain hymnal numbers and sheet music they lack. Uploaded Bibles are added only when you confirm the church may use them.
+  - **Library file**: the hymnals, songs with their words, hymnal numbers, **sheet music** and melodies in numbered notation, liturgical texts, **QR codes & notes**, slide backgrounds and images (tick what to include; **Bibles you uploaded** only if their licence allows sharing) in one `.canonlib` file. **Import a library file…** on another Canon — another church, or a new computer — shows what it would add, then adds only what that Canon doesn't have: songs and texts match by key or title, hymnals by abbreviation. Existing songs only gain hymnal numbers, sheet music and a melody they lack. Uploaded Bibles are added only when you confirm the church may use them.
   - **The library, section by section**: the same kind of file for one section at a time — **Hymns** one hymnal at a time (words, numbers and sheet music), **Songs in no hymnal**, **Liturgical texts**, each **Bible** you uploaded, **QR codes & notes**, **Slide backgrounds** and **Images**. Administrators also find an **Export** button on each Library tab (on Hymns & songs, a list of the hymnals) and **Import a library file…** beside it.
 - **Modules** (administrators; also offered when Canon is first set up): turn off the parts your church doesn't use — **Meetings and calendar**, **Volunteers and rota**, **Visitor form** — or on the ones it wants: the **Lending library**, the **Asset register** and **Book-keeping** start switched off. A part that is off is hidden for everyone (the sidebar, the planner's tabs, settings and reports), refused by the server, and AI assistants don't see it. Nothing is deleted: turning it on again brings everything back.
 - **Member fields** (administrators): your own fields on the member register — **Text**, **Date**, **Yes / no** or **Choice from a list** (with its choices), each with a label in the church's languages, e.g. "Cell group leader?", "Joined via", "Dietary needs". Tick **Sensitive** to hide a field from read-only accounts and AI assistants (unless personal data is shared). They show on each member's page under **More details**, filter the members list, and are columns in the members CSV (`custom_…`). Removing a field hides it and keeps its values: it is listed under **Removed fields**, where **Restore** (then **Save**) brings it back with them. A new field never takes a removed field's place, even with the same name. A field that members have values in keeps its type (Canon says how many members have one): add a new field instead.

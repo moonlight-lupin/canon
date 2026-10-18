@@ -39,7 +39,8 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.20.2 | The appearance switch shows its icons and reaches members' own pages; guessing at a password holds up only the guesser, with Let in now for an administrator — done |
 | 0.20.3 | E-mail through AgentMail with an API key, beside SMTP — done |
 | 0.20.4 | Release notes formatted in About Canon → Updates, packages updated, unused translations taken out — done |
-| 0.21.0 | Recovery and operational acceptance: real-machine write-ups (a NAS, Windows) and a pilot cycle with a church (below) |
+| 0.21.0 | Melodies in numbered notation (jianpu): typed with a song, drawn as they are typed and on Outputs → Sheet music — done |
+| 0.22.0 | Recovery and operational acceptance: real-machine write-ups (a NAS, Windows) and a pilot cycle with a church (below) |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
 
@@ -245,9 +246,9 @@ Items 1 and 2 shipped in 0.17.4. Canon's books can now be a church's main books 
 
 Reports carry each year's surplus into its fund; there is no posted year-end closing journal (none is needed).
 
-## 0.21.0 — Recovery and operational acceptance (next)
+## 0.22.0 — Recovery and operational acceptance (next)
 
-Planned as 0.20.0, before the code study's fixes took that number.
+Planned as 0.20.0, before the code study's fixes took that number, then as 0.21.0, before melodies in numbered notation took that.
 
 Before Canon is offered for unattended use or to replace a church's books outright (from the v0.19.1 review):
 1. **Complete disaster recovery**: one backup package with the database, the archived years and what recovery needs; sent to Google Drive whole; restored in the app and by hand into a fresh computer, with nothing needed from the lost one. The package itself is done (0.19.3; a test restores one backup file alone onto an empty computer with the recovery key, and current and archived records read back). Through Google Drive too (0.19.5: a test sends the package to Drive, loses the office computer, and restores it on a new one — in the app and by hand — with the recovery key; members and the archived year read back). **Done.**
@@ -257,4 +258,6 @@ Before Canon is offered for unattended use or to replace a church's books outrig
 
 ## Later
 
+- **Melodies on the slides and in the bulletin** (after 0.21.0): the melody drawn by the server (with a font of its own, so Docker needs none) above a stanza's words on its first slide and under a hymn's heading in the bulletin, a template switch for each; only the stanzas sung, with the words taken from the song's stanzas.
+- **Melodies from MusicXML** (jpFun already reads it): a hymn's melody brought in from a MusicXML file instead of typed.
 - **Child check-in and pick-up** for Sunday school: name labels and a collection code for the guardian.

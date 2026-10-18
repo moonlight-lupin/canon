@@ -1,5 +1,5 @@
 // Library → Songs and hymnals.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { hasAnyText } from '../../../shared/labels.ts';
 import { compareHymnNumbers } from '../../../shared/parts.ts';
 import { api, useApi } from '../../api.ts';
@@ -9,6 +9,8 @@ import { Icon } from '../../components/icons.tsx';
 import { CsvTools } from '../../components/CsvTools.tsx';
 import { InfoTip } from '../../components/InfoTip.tsx';
 import { BulkSheetMusic } from './BulkSheetMusic.tsx';
+import { JianpuView } from '../../components/Jianpu.tsx';
+import { GuideLink } from '../template-ui.tsx';
 import { qrPreviewUrl, scoreUrl } from '../../../shared/presentation.ts';
 import type { Hymnal, Song, SongCategory, Stanza } from '../../types-client.ts';
 import { type HymnalRow, LangBadges, langsIn, numbersOf, SONG_CAT_LABEL, SONG_CATS, songMatches } from './common.tsx';
@@ -18,6 +20,8 @@ export function Songs() {
   const { canEdit } = useSession();
   const { data, reload } = useApi<Song[]>('/songs');
   const scoreCounts = useApi<Record<number, number>>('/songs/scores/counts');
+  const melodyIds = useApi<number[]>('/songs/melodies/ids');
+  const withMelody = useMemo(() => new Set(melodyIds.data ?? []), [melodyIds.data]);
   const { data: hymnals } = useApi<HymnalRow[]>('/hymnals');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<SongCategory | ''>('');
@@ -67,6 +71,7 @@ export function Songs() {
                       {s.psalm ? <span className="badge reed" style={{ marginLeft: 6 }}>Ps {s.psalm}</span> : null}
                       {!s.stanzas.length && <span className="badge warn" style={{ marginLeft: 6 }}>{t('No words yet')}</span>}
                       {scoreCounts.data?.[s.id] ? <span className="badge" style={{ marginLeft: 6 }} title={t('Sheet music')}><Icon name="music" width={12} height={12} /> {scoreCounts.data[s.id]}</span> : null}
+                      {withMelody.has(s.id) && <span className="badge" style={{ marginLeft: 6 }} title={t('Melody in numbered notation')}>1 2 3</span>}
                     </td>
                     <td className="small">{s.author}</td>
                     <td className="small muted">{s.tune}{s.meter ? ` · ${s.meter}` : ''}</td>
@@ -83,7 +88,7 @@ export function Songs() {
         </div>
       )}
       {bulk && data && <BulkSheetMusic songs={data} hymnals={hymnals ?? []} onClose={() => setBulk(false)} onDone={() => scoreCounts.reload()} />}
-      {edit && <SongEditor song={edit} hymnals={hymnals ?? []} canEdit={canEdit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} onScores={scoreCounts.reload} />}
+      {edit && <SongEditor song={edit} hymnals={hymnals ?? []} canEdit={canEdit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); melodyIds.reload(); }} onScores={scoreCounts.reload} />}
     </>
   );
 }
@@ -104,6 +109,11 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores 
   };
   const refsChanged = JSON.stringify(refs) !== JSON.stringify((song.hymnals ?? []).map(({ hymnal_id, number }) => ({ hymnal_id, number })));
   const refsOk = refs.every((r) => r.number.trim()) && new Set(refs.map((r) => r.hymnal_id)).size === refs.length;
+  // the melody in numbered notation (0.21.0): kept apart from the song, saved with it
+  const savedMelody = useApi<{ source: string | null }>(song.id ? `/songs/${song.id}/melody` : null);
+  const [melody, setMelody] = useState<string | null>(song.id ? null : '');
+  useEffect(() => { if (savedMelody.data && melody === null) setMelody(savedMelody.data.source ?? ''); }, [savedMelody.data]);
+  const melodyChanged = melody !== null && melody.trim() !== (savedMelody.data?.source ?? '');
   const save = async () => {
     const { id, hymnals: _h, ...body } = s as Song;
     const saved = id
@@ -111,6 +121,7 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores 
       : await run(() => api.post<Song>('/songs', body));
     if (!saved) return;
     if (refsChanged && !(await run(() => api.put(`/songs/${saved.id}/hymnals`, refs.map((r) => ({ ...r, number: r.number.trim() })))))) return;
+    if (melodyChanged && !(await run(() => api.put(`/songs/${saved.id}/melody`, { source: melody })))) return;
     await run(async () => saved, t('Saved.'));
     onSaved();
   };
@@ -163,6 +174,7 @@ export function SongEditor({ song, hymnals, canEdit, onClose, onSaved, onScores 
         </div>
 
         <SheetMusicSection songId={s.id} canEdit={canEdit} onChanged={onScores} />
+        {melody !== null && <MelodySection value={melody} onChange={setMelody} canEdit={canEdit} />}
 
         <div className="row">
           <label className="check"><input type="checkbox" checked={!!s.public_domain} onChange={(e) => set('public_domain', e.target.checked)} />{t('Public domain')}</label>
@@ -383,6 +395,47 @@ function SheetMusicSection({ songId, canEdit, onChanged }: { songId?: number; ca
             ))}
           </div>
         )}
+    </div>
+  );
+}
+
+/** An example to start from: a public-domain tune (OLD HUNDREDTH), with a line of words in English and in Chinese. */
+const MELODY_EXAMPLE = `@1(G4)
+@meter(4, 4)
+N: {
+  1 - 1 7, | 6, 5, 1 2 | 3 - - - | @br()
+  3 3 3 2 | 1 4 3 - | 2 - - - ||
+}
+L: Praise God, from whom all bless- ings flow; praise him, all crea- tures here be- low;
+L: 赞美真神万福之根，世上万民都当颂扬，
+`;
+
+/** A song's melody in numbered notation (jianpu), typed in jpFun's notation and drawn beside it as it is typed. */
+function MelodySection({ value, onChange, canEdit }: { value: string; onChange: (v: string) => void; canEdit: boolean }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(!!value.trim());
+  return (
+    <div>
+      <div className="row" style={{ marginBottom: 6 }}>
+        <h3>{t('Melody in numbered notation')}</h3>
+        <InfoTip text={t('The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza or language. Canon draws it as you type, and the musicians find it with the sheet music (Outputs → Sheet music). Saved with the song. Like sheet music it stays inside Canon: not on the share pages, the slides or for AI assistants.')} />
+        <div className="grow" />
+        <GuideLink anchor="melodies" label={t('How to write it')} />
+      </div>
+      {!open ? (
+        canEdit ? (
+          <div className="row tight">
+            <button type="button" className="btn sm" onClick={() => setOpen(true)}><Icon name="plus" />{t('Add a melody')}</button>
+            <button type="button" className="btn sm ghost" onClick={() => { onChange(MELODY_EXAMPLE); setOpen(true); }}>{t('Start from an example')}</button>
+          </div>
+        ) : <div className="field-hint">{t('No melody yet.')}</div>
+      ) : (
+        <div className="melody-edit">
+          <textarea rows={8} spellCheck={false} value={value} readOnly={!canEdit} aria-label={t('Melody in numbered notation')}
+            placeholder={'@1(G4)\n@meter(4, 4)\nN: 1 2 3 1 | 5 - 5 - |\nL: …'} onChange={(e) => onChange(e.target.value)} />
+          <JianpuView source={value} delay={300} problems className="melody-preview" />
+        </div>
+      )}
     </div>
   );
 }

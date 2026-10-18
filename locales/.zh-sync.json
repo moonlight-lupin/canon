@@ -372,6 +372,10 @@
       "添加一行",
       "添加一行"
     ],
+    "Add a melody": [
+      "添加旋律",
+      "添加旋律"
+    ],
     "Add a photo of the receipt": [
       "拍照加入收据",
       "拍照加入收據"
@@ -3072,6 +3076,10 @@
       "拖动以移动",
       "拖動以移動"
     ],
+    "Drawing the melody…": [
+      "正在绘制旋律…",
+      "正在繪製旋律…"
+    ],
     "Drawn exactly as the projector shows it.": [
       "与投影画面完全相同。",
       "與投影畫面完全相同。"
@@ -4152,6 +4160,10 @@
       "如何添加圣经译本",
       "如何添加聖經譯本"
     ],
+    "How to write it": [
+      "写法说明",
+      "寫法說明"
+    ],
     "How visitors described themselves on the visitor form (counted; who said what stays on the service records).": [
       "新朋友在表格中如何形容自己（只计数目；谁选了什么只记在聚会记录中）。",
       "新朋友在表格中如何形容自己（只計數目；誰選了什麼只記在聚會記錄中）。"
@@ -4828,6 +4840,10 @@
       "行距",
       "行距"
     ],
+    "Line {l}, column {c}": [
+      "第 {l} 行第 {c} 列",
+      "第 {l} 行第 {c} 列"
+    ],
     "Line {n}": [
       "第 {n} 项",
       "第 {n} 項"
@@ -5087,6 +5103,10 @@
     "Meets": [
       "聚会",
       "聚會"
+    ],
+    "Melody in numbered notation": [
+      "简谱旋律",
+      "簡譜旋律"
     ],
     "Mem.": [
       "入会",
@@ -5731,6 +5751,10 @@
     "No meetings planned": [
       "尚未安排聚会活动",
       "尚未安排聚會活動"
+    ],
+    "No melody yet.": [
+      "尚无旋律。",
+      "尚無旋律。"
     ],
     "No members yet": [
       "还没有成员",
@@ -8868,6 +8892,10 @@
       "开始日期",
       "開始日期"
     ],
+    "Start from an example": [
+      "从示例开始",
+      "從示例開始"
+    ],
     "Start from the church chart of accounts and funds (General, Missions, Building, Benevolence) — rename, add or retire them afterwards": [
       "使用教会科目表和款项模板（常费、宣教、建堂、慈惠）——之后可以改名、增加或停用",
       "使用教會科目表和款項模板（常費、宣教、建堂、慈惠）——之後可以改名、增加或停用"
@@ -9512,6 +9540,10 @@
       "合计相符。",
       "合計相符。"
     ],
+    "The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza or language. Canon draws it as you type, and the musicians find it with the sheet music (Outputs → Sheet music). Saved with the song. Like sheet music it stays inside Canon: not on the share pages, the slides or for AI assistants.": [
+      "以简谱记下的曲调，用 jpFun 的写法输入，每节或每种语言在下面各写一行歌词。Canon 会边输入边画出简谱，乐手可在乐谱中找到它（输出 → 乐谱）。随诗歌一起保存。和乐谱一样只留在 Canon 内：不出现在分享页面、投影片中，也不提供给 AI 助手。",
+      "以簡譜記下的曲調，用 jpFun 的寫法輸入，每節或每種語言在下面各寫一行歌詞。Canon 會邊輸入邊畫出簡譜，樂手可在樂譜中找到它（輸出 → 樂譜）。隨詩歌一起保存。和樂譜一樣只留在 Canon 內：不出現在分享頁面、投影片中，也不提供給 AI 助手。"
+    ],
     "The two passwords differ.": [
       "两次输入的密码不同。",
       "兩次輸入的密碼不同。"
@@ -9663,6 +9695,10 @@
     "This meeting’s record already has offerings. They stay in the record but are not counted in the offerings reports while no offering is taken.": [
       "这次聚会的记录中已有奉献。这些奉献会保留在记录中，但在不收奉献期间，不会计入奉献报表。",
       "這次聚會的記錄中已有奉獻。這些奉獻會保留在記錄中，但在不收奉獻期間，不會計入奉獻報表。"
+    ],
+    "This melody could not be drawn. Open the song in the Library to correct it.": [
+      "无法绘制此旋律。请在资料库中打开这首诗歌加以修正。",
+      "無法繪製此旋律。請在資料庫中打開這首詩歌加以修正。"
     ],
     "This member’s personal data was erased on {date} (PDPA). The record stays, anonymous, so past rotas and group histories still count.": [
       "这位会友的个人资料已于 {date} 删除（PDPA）。记录以匿名方式保留，过去的轮值表和小组记录仍可统计。",
@@ -11540,6 +11576,10 @@
       "已记录 {n} 次聚会活动",
       "已記錄 {n} 次聚會活動"
     ],
+    "{n} melodies in numbered notation": [
+      "{n} 首简谱旋律",
+      "{n} 首簡譜旋律"
+    ],
     "{n} months": [
       "{n} 个月",
       "{n} 個月"
@@ -12346,7 +12386,7 @@
     ]
   },
   "guide": [
-    "33b6b0c80365c4bd",
-    "d791e0ddf6af8cf1"
+    "6ba6d662c51c74dc",
+    "a981c877b0cd8191"
   ]
 }

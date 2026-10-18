@@ -4,6 +4,15 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.21.0 — Melodies in numbered notation (jianpu)
+
+- **A song's melody in numbered notation.** In the Library, a song's editor has **Melody in numbered notation** under its sheet music: type the tune as text in the notation of [jpFun](https://github.com/madderscientist/jpFun), with a line of words under it for each stanza or language, and the jianpu is drawn beside it as you type. Whatever can't be drawn is listed with its line and column. **Start from an example** fills in the Doxology; **Save** keeps the melody with the song. A song with a melody shows **1 2 3** in the list. The guide's **Melodies in numbered notation** explains the notation.
+- **Outputs → Sheet music** draws each song's melody before its scanned pages, to print or to open on a tablet; a song with a melody no longer counts as "without sheet music".
+- Like sheet music, melodies stay inside Canon: not on the share pages or the slides, and AI assistants neither read nor write them (they are not part of a song's fields). Library files carry them with the sheet music, and importing one adds a melody only to a song that has none. They are not in the CSV import or export.
+- jpFun 0.7.0 (Apache-2.0) is pinned to that exact version. It runs in the browser only and loads only on the pages that draw a melody.
+- Tests: saving, clearing and the size limit; a viewer can't change a melody; it goes with its song; it is listed with a service's sheet music; AI tools never see it; library files carry it; the guide's examples are drawn by the pinned jpFun.
+- Database: version 44 (`song_melodies`).
+
 ## 0.20.4 — Release notes formatted, packages updated, old translations tidied
 
 - **About Canon → Updates shows the release notes formatted**: lists, bold, `code`, headings and links, with the guide's own safe renderer (no HTML from the notes is ever run), instead of the raw Markdown text. Links to files in Canon's repository (e.g. docs/UPGRADING.md) open on GitHub at that release's version. Long notes scroll inside the card. A test covers the links; checked in the browser.
