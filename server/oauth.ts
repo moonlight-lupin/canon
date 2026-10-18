@@ -52,7 +52,7 @@ function safeEqual(a: string, b: string): boolean {
 
 /**
  * The externally visible origin (no trailing slash). Used both to mint metadata/token audiences and to check them.
- * The public address (Settings → AI / MCP, or CANON_PUBLIC_URL) wins; X-Forwarded-* only when trusted; otherwise the request's own protocol + host.
+ * The public address (Settings → Church, or CANON_PUBLIC_URL) wins; X-Forwarded-* only when trusted; otherwise the request's own protocol + host.
  */
 export function externalBase(req: Request): string {
   const pub = publicUrl();

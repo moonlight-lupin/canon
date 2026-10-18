@@ -172,9 +172,9 @@
       "只用于这个项目投影片的背景图片，例如圣餐的饼与杯。图片会用投影模板的背景色淡化，让文字清楚易读。图片存放在「资料库 → 投影背景」。",
       "只用於這個項目投影片的背景圖片，例如聖餐的餅與杯。圖片會用投影模板的背景色淡化，讓文字清楚易讀。圖片存放在「資料庫 → 投影背景」。"
     ],
-    "A public https address (Settings → AI / MCP), so phones reach Canon from anywhere": [
-      "公开的 https 网址（设置 → AI / MCP），手机在任何地方都能连上 Canon",
-      "公開的 https 網址（設置 → AI / MCP），手機在任何地方都能連上 Canon"
+    "A public https address (Settings → Church), so phones reach Canon from anywhere": [
+      "公开的 https 网址（设置 → 教会），手机在任何地方都能连上 Canon",
+      "公開的 https 網址（設置 → 教會），手機在任何地方都能連上 Canon"
     ],
     "A public https address that reaches this Canon": [
       "可连到这个 Canon 的公开 https 网址",
@@ -1760,9 +1760,9 @@
       "Canon 没有这种货币的纸币和硬币面额：请输入点算总额。",
       "Canon 沒有這種貨幣的紙幣和硬幣面額：請輸入點算總額。"
     ],
-    "Canon has no public address yet: this link works on the church’s network only (Settings → AI / MCP).": [
-      "Canon 还没有公开网址：这个链接只在教会的网络内有效（设置 → AI / MCP）。",
-      "Canon 還沒有公開網址：這個鏈接只在教會的網絡內有效（設置 → AI / MCP）。"
+    "Canon has no public address yet: this link works on the church’s network only (Settings → Church).": [
+      "Canon 还没有公开网址：这个链接只在教会的网络内有效（设置 → 教会）。",
+      "Canon 還沒有公開網址：這個鏈接只在教會的網絡內有效（設置 → 教會）。"
     ],
     "Canon hasn’t come back yet. Look at the Canon window (or data/logs/launcher.log) on the computer it runs on.": [
       "Canon 尚未恢复运行。请在运行 Canon 的电脑上查看 Canon 窗口（或 data/logs/launcher.log）。",
@@ -1907,6 +1907,10 @@
     "Change": [
       "更换",
       "更換"
+    ],
+    "Change in Settings → Church": [
+      "在 设置 → 教会 中更改",
+      "在 設置 → 教會 中更改"
     ],
     "Change log": [
       "修改记录",
@@ -5900,13 +5904,13 @@
       "还没有项目：项目（如建堂筹款、宣教之旅）可以标在任何一行上，跨款项、跨年度。",
       "還沒有項目：項目（如建堂籌款、宣教之旅）可以標在任何一行上，跨款項、跨年度。"
     ],
-    "No public address is set (Settings → AI / MCP), so phones can only open this link on the church’s own network.": [
-      "尚未设定公开网址（设置 → AI / MCP），所以手机只能在教会自己的网络中打开这个链接。",
-      "尚未設定公開網址（設置 → AI / MCP），所以手機只能在教會自己的網絡中打開這個鏈接。"
+    "No public address is set (Settings → Church), so phones can only open this link on the church’s own network.": [
+      "尚未设定公开网址（设置 → 教会），所以手机只能在教会自己的网络中打开这个链接。",
+      "尚未設定公開網址（設置 → 教會），所以手機只能在教會自己的網絡中打開這個鏈接。"
     ],
-    "No public address is set (Settings → AI / MCP): these links open only on the church’s own network.": [
-      "尚未设定公开网址（设置 → AI / MCP）：这些链接只能在教会自己的网络中打开。",
-      "尚未設定公開網址（設置 → AI / MCP）：這些鏈接只能在教會自己的網絡中打開。"
+    "No public address is set (Settings → Church): these links open only on the church’s own network.": [
+      "尚未设定公开网址（设置 → 教会）：这些链接只能在教会自己的网络中打开。",
+      "尚未設定公開網址（設置 → 教會）：這些鏈接只能在教會自己的網絡中打開。"
     ],
     "No public-domain Bible available — add one your church has permission to use.": [
       "没有公版圣经——请添加本教会已获授权的译本。",
@@ -8488,9 +8492,9 @@
       "设定参考代码…",
       "設定參考代碼…"
     ],
-    "Set the public address in Settings → AI / MCP.": [
-      "请在 设置 → AI / MCP 中设定公开网址。",
-      "請在 設置 → AI / MCP 中設定公開網址。"
+    "Set the public address in Settings → Church.": [
+      "请在 设置 → 教会 中设定公开网址。",
+      "請在 設置 → 教會 中設定公開網址。"
     ],
     "Set the time, place, leader and offering on the meeting’s page next.": [
       "接下来请在聚会页面设定时间、地点、带领者和奉献。",
@@ -9448,6 +9452,10 @@
       "各款项合计等于净资产。先填限定用途和指定用途的款项；余额通常归入常费。",
       "各款項合計等於淨資產。先填限定用途和指定用途的款項；餘額通常歸入常費。"
     ],
+    "The https address people reach Canon at from the internet: phones opening the visitor form, the bulletin and share links, links in e-mails, claims and the lending library on members’ phones, and AI assistants such as claude.ai. Ask whoever set up the tunnel (e.g. Cloudflare Tunnel) for it and paste it here. Leave it empty if Canon is used only on the church’s own network: links then work only there.": [
+      "人们从互联网访问 Canon 的 https 网址：手机打开新朋友登记表、次序单和分享链接、电子邮件中的链接、会友在手机上使用的报销和借阅图书馆，以及 claude.ai 等 AI 助手。请向设置隧道（例如 Cloudflare Tunnel）的人索取网址并贴在这里。如果 Canon 只在教会自己的网络中使用，可留空：链接就只在教会网络内有效。",
+      "人們從互聯網訪問 Canon 的 https 網址：手機打開新朋友登記表、次序單和分享鏈接、電子郵件中的鏈接、會友在手機上使用的報銷和借閱圖書館，以及 claude.ai 等 AI 助手。請向設置隧道（例如 Cloudflare Tunnel）的人索取網址並貼在這裡。如果 Canon 只在教會自己的網絡中使用，可留空：鏈接就只在教會網絡內有效。"
+    ],
     "The joy of the Lord is your strength": [
       "靠耶和华而得的喜乐是你的力量",
       "靠耶和華而得的喜樂是你的力量"
@@ -9776,13 +9784,13 @@
       "此链接已失效",
       "此鏈接已失效"
     ],
-    "This link points at this computer only (“localhost”), so phones cannot open it. Set a public address in Settings → AI / MCP, or open Canon by its network address (as other computers do) and switch the form off and on again.": [
-      "这个链接只指向本机（“localhost”），手机无法打开。请在“设置 → AI / MCP”设定公开网址，或用 Canon 的网络地址（其他电脑使用的地址）打开 Canon，再把表格关闭后重新开启。",
-      "這個鏈接只指向本機（“localhost”），手機無法打開。請在“設置 → AI / MCP”設定公開網址，或用 Canon 的網絡地址（其他電腦使用的地址）打開 Canon，再把表格關閉後重新開啟。"
+    "This link points at this computer only (“localhost”), so phones cannot open it. Set a public address in Settings → Church, or open Canon by its network address (as other computers do) and switch the form off and on again.": [
+      "这个链接只指向本机（“localhost”），手机无法打开。请在“设置 → 教会”设定公开网址，或用 Canon 的网络地址（其他电脑使用的地址）打开 Canon，再把表格关闭后重新开启。",
+      "這個鏈接只指向本機（“localhost”），手機無法打開。請在“設置 → 教會”設定公開網址，或用 Canon 的網絡地址（其他電腦使用的地址）打開 Canon，再把表格關閉後重新開啟。"
     ],
-    "This link points at this computer only, so phones cannot open it. Set a public address in Settings → AI / MCP, or connect this computer to the church network.": [
-      "此链接只指向这台电脑，手机无法打开。请在 设置 → AI / MCP 设定公开网址，或把这台电脑连上教会网络。",
-      "此鏈接只指向這臺電腦，手機無法打開。請在 設置 → AI / MCP 設定公開網址，或把這臺電腦連上教會網絡。"
+    "This link points at this computer only, so phones cannot open it. Set a public address in Settings → Church, or connect this computer to the church network.": [
+      "此链接只指向这台电脑，手机无法打开。请在 设置 → 教会 设定公开网址，或把这台电脑连上教会网络。",
+      "此鏈接只指向這臺電腦，手機無法打開。請在 設置 → 教會 設定公開網址，或把這臺電腦連上教會網絡。"
     ],
     "This loan can’t be renewed again. Please bring it back, or see the librarian.": [
       "这次借阅不能再续借，请归还或找图书管理员。",
@@ -10219,10 +10227,6 @@
     "Until": [
       "结束日期",
       "結束日期"
-    ],
-    "Until a public address is set, the connector URL above only works on the network where Canon runs.": [
-      "设定公开网址之前，上面的连接网址只能在 Canon 所在的网络中使用。",
-      "設定公開網址之前，上面的連接網址只能在 Canon 所在的網絡中使用。"
     ],
     "Until they have a fund and an income account, offerings to {funds} are drafted into the general fund (with a note on the draft).": [
       "{funds} 的奉献在指定款项和收入科目之前，会起草到常费（草稿上附有说明）。",
@@ -11012,10 +11016,6 @@
       "教会名称",
       "教會名稱"
     ],
-    "claude.ai connects over the internet, so Canon needs a public https address. Ask whoever set up the tunnel (e.g. Cloudflare Tunnel) for it and paste it here. Leave it empty if you only use Canon on the office network.": [
-      "claude.ai 经由互联网连接，因此 Canon 需要一个公开的 https 网址。请向设置隧道（如 Cloudflare Tunnel）的同工索取并贴在这里。若只在办公室网络使用，可留空。",
-      "claude.ai 經由互聯網連接，因此 Canon 需要一個公開的 https 網址。請向設置隧道（如 Cloudflare Tunnel）的同工索取並貼在這裡。若只在辦公室網絡使用，可留空。"
-    ],
     "closing slide": [
       "结束投影",
       "結束投影"
@@ -11292,6 +11292,10 @@
       "无法识别",
       "無法識別"
     ],
+    "not set: the connector URL above only works on the network where Canon runs.": [
+      "未设定：上面的连接器网址只在运行 Canon 的网络内有效。",
+      "未設定：上面的連接器網址只在運行 Canon 的網絡內有效。"
+    ],
     "not verified yet": [
       "尚未核实",
       "尚未核實"
@@ -11427,6 +11431,10 @@
     "serving as": [
       "已担任",
       "已擔任"
+    ],
+    "set by your IT administrator": [
+      "由 IT 管理员设定",
+      "由 IT 管理員設定"
     ],
     "sheet": [
       "张纸",
@@ -12494,7 +12502,7 @@
     ]
   },
   "guide": [
-    "39a2335ef68def2c",
-    "5e27bd48009854b2"
+    "040758b7cad2f4f1",
+    "891be7b55888899e"
   ]
 }

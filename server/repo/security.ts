@@ -194,10 +194,10 @@ export function securityChecklist(): CheckItem[] {
 
   const pub = s.public_url;
   items.push(!pub
-    ? { key: 'public', status: 'info', title: 'Public address', detail: 'No public address: Canon is reached on the church’s network only (AI assistants and the visitor form from outside need one).', link: '/settings?tab=mcp' }
+    ? { key: 'public', status: 'info', title: 'Public address', detail: 'No public address: Canon is reached on the church’s network only (phones away from church, the visitor form, members’ claims and AI assistants need one).', link: '/settings?tab=church' }
     : /^https:\/\//i.test(pub)
       ? { key: 'public', status: 'ok', title: 'Public address', detail: `${pub} (https).` }
-      : { key: 'public', status: 'warn', title: 'Public address', detail: `${pub} is not https: sign-ins and members’ details would cross the internet unencrypted.`, link: '/settings?tab=mcp' });
+      : { key: 'public', status: 'warn', title: 'Public address', detail: `${pub} is not https: sign-ins and members’ details would cross the internet unencrypted.`, link: '/settings?tab=church' });
 
   const users = all<{ id: number; display_name: string; role: string; created_at: string; last_login_at: string | null }>('SELECT id, display_name, role, created_at, last_login_at FROM users');
   const admins = users.filter((u) => isAdmin(u)).length;

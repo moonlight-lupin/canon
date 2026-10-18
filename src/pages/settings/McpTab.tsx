@@ -1,4 +1,5 @@
 // Settings → AI agents (MCP): what agents may do, who has connected, and the AI activity log.
+import { Link } from 'react-router-dom';
 import { SaveBar } from '../template-ui.tsx';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { api, useApi } from '../../api.ts';
@@ -12,7 +13,7 @@ import { MODULES, MODULE_PARENT, READ_ONLY_MODULES, configuredAccess } from '../
 import { churchLevel, melodiesShared, piiShared, scoresShared, toolOffered, type ToolShape } from '../../../shared/mcp-exposure.ts';
 import type { ModuleSwitches } from '../../../shared/modules.ts';
 import { InfoTip } from '../../components/InfoTip.tsx';
-import { fmtStamp, PublicUrlField } from './common.tsx';
+import { fmtStamp, type PublicAddressInfo } from './common.tsx';
 import { DateRange, KeepMonths } from './ChangeLogTab.tsx';
 import '../people.css';
 import '../presentation.css';
@@ -123,7 +124,16 @@ export function McpTab() {
             </div>
           ) : endpoint.error ? <ErrorBox error={endpoint.error} /> : <Loading />}
         </div>
-        {endpoint.data && <PublicUrlField info={endpoint.data} onSaved={endpoint.reload} />}
+        {/* the public address is the church's, not only AI's: it is set in Settings → Church (0.21.0) */}
+        {endpoint.data && (
+          <div className="small">
+            <strong>{t('Public address')}</strong>{' '}
+            {endpoint.data.public_url_set
+              ? <span className="code">{endpoint.data.env_override ? t('set by your IT administrator') : endpoint.data.public_url}</span>
+              : <span className="muted">{t('not set: the connector URL above only works on the network where Canon runs.')}</span>}
+            {' '}<Link to="/settings?tab=church">{t('Change in Settings → Church')}</Link>
+          </div>
+        )}
         <div className="small">
           <strong>{t('To connect in claude.ai')}</strong>
           <ol className="steps">
@@ -361,4 +371,4 @@ export function AuditCard() {
   );
 }
 
-export interface EndpointInfo { url: string; public_url_set: boolean; public_url: string; trust_proxy: boolean; env_override: boolean }
+export interface EndpointInfo extends PublicAddressInfo { url: string }

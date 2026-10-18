@@ -11,7 +11,7 @@ Environment variables are optional overrides:
 | `CANON_PORT` | `3000` | HTTP port. On Windows, put e.g. `set CANON_PORT=5018` in a file `canon.local.bat` next to `start-canon.bat`; on a Mac, `export CANON_PORT=5018` in `canon.local.sh` next to `start-canon.command`. It is read at start-up and is not part of the repository. |
 | `CANON_HOST` | `0.0.0.0` | Interface to listen on. The default lets the office network reach Canon. |
 | `CANON_DB` | `data/canon.db` | The SQLite database file. Archives (`archives/`) and pre-upgrade copies (`pre-upgrade/`) sit next to it. |
-| `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → AI / MCP instead. |
+| `CANON_PUBLIC_URL` | — | Forces the public address. Normally set in Settings → Church instead. |
 | `CANON_TRUST_PROXY` | — | Honours `X-Forwarded-*` from a proxy on this computer or the local network (Cloudflare Tunnel, Caddy, Docker). Automatic once a public address is set. |
 | `CANON_KEY_FILE` | — | A file (at least 32 bytes, e.g. a Docker secret) that locks Canon's encryption keys, kept outside the data folder. See [Encryption](#encryption). |
 | `CANON_ENCRYPT` | — | `0` keeps a **new** database plain (not recommended). An existing database is never changed by it. |
@@ -137,7 +137,7 @@ How it works:
 ## Connecting Claude (MCP)
 
 1. **Settings → AI / MCP:** enable the server and choose each module's access. By default, members are hidden and contact details are redacted.
-2. claude.ai needs a public **https** address. Run a tunnel, for example [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) (`cloudflared tunnel --url http://localhost:3000`). Paste its address into **Settings → AI / MCP → Public address**, press **Check**, then **Save**.
+2. claude.ai needs a public **https** address. Run a tunnel, for example [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) (`cloudflared tunnel --url http://localhost:3000`). Paste its address into **Settings → Church → Public address**, press **Check**, then **Save**.
 3. In claude.ai, go to **Settings → Connectors → Add custom connector** and paste `https://<your-host>/mcp`. Leave the client ID blank, then sign in with a Canon account and approve.
 4. Connected agents and the activity log are listed under Settings → AI / MCP, where each one can be revoked.
 

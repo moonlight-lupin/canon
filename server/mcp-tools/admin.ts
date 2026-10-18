@@ -148,7 +148,7 @@ export const ADMIN_TOOLS: ToolDef[] = [
       const mail = smtpHealth();
       const enc = backupKeyState(getSettings().backup.encrypted);
       return {
-        public_address: !pub.url ? { ok: false, detail: 'no public address is set (Settings → AI / MCP)' } : { ok: pub.ok, url: pub.url, ...(pub.ok ? {} : { problem: pub.error }) },
+        public_address: !pub.url ? { ok: false, detail: 'no public address is set (Settings → Church)' } : { ok: pub.ok, url: pub.url, ...(pub.ok ? {} : { problem: pub.error }) },
         backup_folder: { ok: !checkFolder(backupDir()), problem: checkFolder(backupDir()) },
         backup_encryption: { encrypted: enc.encrypted, problem: enc.problem },
         email: { tested: mail.tested, failing: mail.failing },

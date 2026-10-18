@@ -4,7 +4,7 @@
 
 The skill only guides Claude. The data comes from the **Canon MCP connector**, so connect that first:
 
-1. In Canon: **Settings → AI / MCP** → enable the server, set the public address, choose module access, **Save AI access**.
+1. In Canon: set the public address in **Settings → Church**, then **Settings → AI / MCP** → enable the server, choose module access, **Save AI access**.
 2. In claude.ai: **Settings → Connectors → Add custom connector** → `https://<your Canon address>/mcp` → sign in to Canon and approve.
 
 ## Install in claude.ai (or the Claude desktop app)

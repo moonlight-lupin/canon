@@ -346,7 +346,7 @@ function ClaimSettings({ onClose }: { onClose: () => void }) {
           <label className="check"><input type="checkbox" checked={form.self} onChange={(e) => setForm({ ...form, self: e.target.checked })} />{t('Members may sign in with a code sent to the e-mail address on their member record')}</label>
           {s.data && (
             <ul className="small">
-              {s.data.sign_in.gates.map((g) => <li key={g.key}>{g.ok ? '✓' : '✗'} {g.key === 'email' ? t('E-mail works (Settings → E-mail: send a test)') : t('A public https address (Settings → AI / MCP), so phones reach Canon from anywhere')}</li>)}
+              {s.data.sign_in.gates.map((g) => <li key={g.key}>{g.ok ? '✓' : '✗'} {g.key === 'email' ? t('E-mail works (Settings → E-mail: send a test)') : t('A public https address (Settings → Church), so phones reach Canon from anywhere')}</li>)}
             </ul>
           )}
           <p className="small muted">{t('Without it, people with a Canon account still claim and approve from My claims.')}</p>
@@ -366,7 +366,7 @@ function ShareLink({ onClose }: { onClose: () => void }) {
           <p className="small">{t('Members open this to make a claim on their phone; approvers, to approve. Share it, or print the QR code for the notice board.')}</p>
           <div style={{ width: 200 }} dangerouslySetInnerHTML={{ __html: l.data.qr }} />
           <code className="code">{l.data.link}</code>
-          {!l.data.public && <div className="callout warn small">{t('Canon has no public address yet: this link works on the church’s network only (Settings → AI / MCP).')}</div>}
+          {!l.data.public && <div className="callout warn small">{t('Canon has no public address yet: this link works on the church’s network only (Settings → Church).')}</div>}
           <div className="row"><button className="btn" onClick={() => navigator.clipboard?.writeText(l.data!.link)}><Icon name="copy" />{t('Copy')}</button><button className="btn" onClick={() => window.print()}><Icon name="print" />{t('Print')}</button></div>
         </div>
       )}

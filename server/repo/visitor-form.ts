@@ -41,7 +41,7 @@ const serviceForm = (serviceId: number): ServiceVisitorForm => {
   }
 };
 
-/** The form's web address: the public address when set (Settings → AI / MCP), else this computer's network address. */
+/** The form's web address: the public address when set (Settings → Church), else this computer's network address. */
 export function formUrl(token: string, origin?: string): string {
   return `${addressForOthers(origin)}/v/${token}`;
 }

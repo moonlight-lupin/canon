@@ -1,6 +1,7 @@
-// The public address Canon is reached at from the internet (needed for claude.ai's OAuth connector).
-// Set by an administrator in Settings → AI / MCP; the CANON_PUBLIC_URL / CANON_TRUST_PROXY environment
-// variables remain as an optional override for IT administrators.
+// The public address Canon is reached at from the internet: links other people open, phones away from church, e-mails,
+// members' self-service pages and claude.ai's OAuth connector.
+// Set by an administrator in Settings → Church (0.21.0; before, in Settings → AI / MCP); the CANON_PUBLIC_URL /
+// CANON_TRUST_PROXY environment variables remain as an optional override for IT administrators.
 import { config } from '../config.ts';
 import { getSettings } from '../repo/settings.ts';
 

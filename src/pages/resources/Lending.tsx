@@ -591,8 +591,8 @@ const GATE_TEXT: Record<Gate['key'], { name: string; fix: Record<string, string>
   },
   public_address: {
     name: 'A public https address that reaches this Canon',
-    fix: { none: 'Set the public address in Settings → AI / MCP.', http: 'The public address must start with https:// (codes would otherwise cross the internet unencrypted).', unreachable: 'The public address doesn’t reach this Canon. Check the address, the tunnel or the reverse proxy.', unchecked: 'Not checked yet.' },
-    link: '/settings?tab=mcp',
+    fix: { none: 'Set the public address in Settings → Church.', http: 'The public address must start with https:// (codes would otherwise cross the internet unencrypted).', unreachable: 'The public address doesn’t reach this Canon. Check the address, the tunnel or the reverse proxy.', unchecked: 'Not checked yet.' },
+    link: '/settings?tab=church',
   },
   library: {
     name: 'The lending library is on and its rules are saved',

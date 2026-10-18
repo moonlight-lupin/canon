@@ -108,15 +108,18 @@ adminRoutes.get('/archives/:year/download', requireAdmin, (req, res, next) => {
   }
 });
 adminRoutes.get('/mcp/tools', requireAdmin, h(() => toolCatalog()));
-adminRoutes.get('/mcp/endpoint', requireAdmin, h((req) => ({
-  url: `${externalBase(req)}/mcp`,
+// The public address (0.21.0: in Settings → Church, not only for AI): what phones, share links, the visitor form,
+// e-mails, claims and the lending library's self-service use to reach Canon from the internet — and claude.ai.
+const publicAddress = () => ({
   public_url_set: !!publicUrl(),
   public_url: getSettings().public_url,
   trust_proxy: getSettings().trust_proxy,
   /** set by an IT administrator in the environment; overrides the Settings value */
   env_override: !!config.publicUrl,
-})));
-adminRoutes.put('/mcp/public-url', requireAdmin, h((req) => {
+});
+adminRoutes.get('/mcp/endpoint', requireAdmin, h((req) => ({ url: `${externalBase(req)}/mcp`, ...publicAddress() })));
+adminRoutes.get('/public-address', requireAdmin, h(() => publicAddress()));
+adminRoutes.put('/public-address', requireAdmin, h((req) => {
   const b = z.object({ public_url: z.string().max(300), trust_proxy: z.boolean().optional() }).parse(req.body);
   const n = normalisePublicUrl(b.public_url);
   if ('error' in n) throw Object.assign(new Error(n.error), { status: 400 });
@@ -124,7 +127,7 @@ adminRoutes.put('/mcp/public-url', requireAdmin, h((req) => {
   return { public_url: s.public_url, trust_proxy: s.trust_proxy };
 }));
 /** Check that the public address really reaches this Canon (fetches its OAuth metadata over the internet). */
-adminRoutes.post('/mcp/check-public-url', requireAdmin, h(async (req) => {
+adminRoutes.post('/public-address/check', requireAdmin, h(async (req) => {
   const n = normalisePublicUrl(z.string().max(300).parse(req.body.public_url ?? publicUrl()));
   if ('error' in n) return { ok: false, message: n.error };
   if (!n.url) return { ok: false, message: 'No public address entered.' };
@@ -136,7 +139,7 @@ adminRoutes.post('/mcp/check-public-url', requireAdmin, h(async (req) => {
     if (meta.resource.replace(/\/+$/, '') !== `${n.url}/mcp`) {
       return { ok: false, message: `Canon answered, but it reports ${meta.resource}. Save the public address first, then check again.` };
     }
-    return { ok: true, message: 'Canon is reachable at this address. You can add the connector in claude.ai.' };
+    return { ok: true, message: 'Canon is reachable at this address.' };
   } catch (e) {
     return { ok: false, message: `Could not reach ${n.url} (${(e as Error).name === 'TimeoutError' ? 'timed out' : (e as Error).message}). Check the tunnel is running.` };
   }

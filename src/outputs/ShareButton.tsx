@@ -46,7 +46,7 @@ export function ShareButton({
     <div className="stack">
       <ShareBox serviceId={serviceId} shareToken={shareToken} onChange={onChange} />
       <AttendeeBox serviceId={serviceId} info={attendee.data} setInfo={attendee.setData} />
-      {link && !link.public && (shareToken || attendee.data?.token) && <div className="small muted">{t('No public address is set (Settings → AI / MCP): these links open only on the church’s own network.')}</div>}
+      {link && !link.public && (shareToken || attendee.data?.token) && <div className="small muted">{t('No public address is set (Settings → Church): these links open only on the church’s own network.')}</div>}
     </div>
   );
   if (!compact) return boxes;
@@ -156,7 +156,7 @@ function AttendeeBox({ serviceId, info, setInfo }: { serviceId: number; info: At
             </fieldset>
           </div>
           {info.local_only
-            && <div className="callout warn small">{t('This link points at this computer only, so phones cannot open it. Set a public address in Settings → AI / MCP, or connect this computer to the church network.')}</div>}
+            && <div className="callout warn small">{t('This link points at this computer only, so phones cannot open it. Set a public address in Settings → Church, or connect this computer to the church network.')}</div>}
         </>
       ) : (
         <button type="button" className="btn sm" disabled={busy} onClick={() => save({ enabled: true })}><Icon name="link" />{t('Enable link')}</button>

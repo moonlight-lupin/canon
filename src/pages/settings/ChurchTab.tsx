@@ -1,4 +1,4 @@
-// Settings → Church: name, languages, paper, contact details and the public address.
+// Settings → Church: name, languages, paper, contact details and the public address (0.21.0: moved here from AI / MCP).
 import { useEffect, useState } from 'react';
 import { api, useApi } from '../../api.ts';
 import { Link } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n.tsx';
 import { LogoField } from '../../components/LogoField.tsx';
 import { ErrorBox, Field, L10nInput, Loading, Seg, useAction, useSession } from '../../components/ui.tsx';
 import { CongregationsCard } from '../../components/Congregations.tsx';
+import { PublicUrlField, type PublicAddressInfo } from './common.tsx';
 import type { PaperSize, Settings as SettingsT } from '../../types-client.ts';
 import '../people.css';
 
@@ -34,6 +35,7 @@ export function ChurchTab() {
   const { t } = useI18n();
   const { reloadSettings } = useSession();
   const settings = useApi<SettingsT>('/settings');
+  const publicAddress = useApi<PublicAddressInfo>('/public-address');
   const [d, setD] = useState<SettingsT | null>(null);
   const { run, busy } = useAction();
   useEffect(() => {
@@ -101,6 +103,8 @@ export function ChurchTab() {
       </div>
       <div className="row end"><button className="btn primary" onClick={save} disabled={busy}>{t('Save')}</button></div>
     </div>
+    {/* how people reach Canon from the internet (links, phones, e-mails, AI): saved on its own, as it is checked first */}
+    {publicAddress.data && <div className="card"><PublicUrlField info={publicAddress.data} onSaved={publicAddress.reload} /></div>}
     <CongregationsCard churchLangs={d.languages} />
     </div>
   );

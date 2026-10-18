@@ -111,7 +111,7 @@ claude.ai needs a public **https** address. The compose file includes an optiona
    ```bash
    docker compose --profile tunnel up -d
    ```
-4. In Canon, go to **Settings → AI / MCP → Public address**. Enter `https://canon.your-church.org`, then press **Check** and **Save**.
+4. In Canon, go to **Settings → Church → Public address**. Enter `https://canon.your-church.org`, then press **Check** and **Save**.
 
 Other reverse proxies (Caddy, Nginx, Traefik) also work. Point them at port 3000 and enter the public address in Settings in the same way.
 
