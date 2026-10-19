@@ -25,7 +25,9 @@ L: 赞美真神万福之根，世上万民都当颂扬，
 2. `@meter(4, 4)` is the time signature (`@meter(3, 4)`, `@meter(6, 8)`).
 3. `N: { … }` holds the notes. The braces let the notes run over several source lines. **Without them, two `N:`
    lines become two parts sung at the same time**, stacked like a choir score.
-4. `L:` lines hold the words, one line per stanza or language, in the order they are printed under the music.
+4. `L:` lines hold the words, one line per stanza and language. Name each after its stanza — `L(1):`, `L(2):`,
+   `L(R):` — so the slides show each stanza's own words with its melody and the bulletin numbers them; a plain `L:`
+   goes with every stanza (a one-verse response). A line with Chinese characters is taken as the Chinese one.
 
 ## Notes
 

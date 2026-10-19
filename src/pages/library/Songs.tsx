@@ -421,7 +421,7 @@ function MelodySection({ value, onChange, canEdit }: { value: string; onChange: 
     <div>
       <div className="row" style={{ marginBottom: 6 }}>
         <h3>{t('Melody in numbered notation')}</h3>
-        <InfoTip text={t('The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza or language. Canon draws it as you type, and the musicians find it with the sheet music (Outputs → Sheet music). Saved with the song. Like sheet music it stays inside Canon: not on the share pages or the slides, and for AI assistants only when an administrator allows it (Settings → AI / MCP).')} />
+        <InfoTip text={t('The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza and language: L(1): for stanza 1, L(2): for stanza 2 …, or L: for every stanza. Canon draws it as you type; the slides show each stanza’s melody above its words and the bulletin prints it under the song’s title (both can be turned off in their templates). Saved with the song. Not on the share pages, and for AI assistants only when an administrator allows it (Settings → AI / MCP).')} />
         <div className="grow" />
         <GuideLink anchor="melodies" label={t('How to write it')} />
       </div>

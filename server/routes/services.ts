@@ -1,5 +1,6 @@
 // REST routes for service templates and services. Mounted inside /api after authentication.
 import { serviceScores } from '../repo/scores.ts';
+import { serviceMelodies } from '../repo/melodies.ts';
 import { attendeeInfo, setAttendee } from '../repo/attendee-link.ts';
 import express from 'express';
 import { z } from 'zod';
@@ -105,6 +106,8 @@ serviceRoutes.get('/services/:id/approvals/:approval', h((req) => appr.getApprov
 serviceRoutes.post('/services/:id/share', h((req) => ({ token: svc.setShare(id(req), !!req.body.enabled) })));
 // the songs of the service in order, with their sheet music (Outputs → Sheet music)
 serviceRoutes.get('/services/:id/scores', h((req) => serviceScores(id(req))));
+// its songs' melodies in numbered notation, by song id, for its slides and bulletin (0.21.3)
+serviceRoutes.get('/services/:id/melodies', h((req) => serviceMelodies(id(req))));
 // the attendees' bulletin link (one per service) and where its QR code shows
 const origin = (req: express.Request) => `${req.protocol}://${req.get('host')}`;
 serviceRoutes.get('/services/:id/attendee-link', h((req) => attendeeInfo(id(req), origin(req))));

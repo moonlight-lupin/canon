@@ -20,6 +20,10 @@ ENV NODE_ENV=production \
     CANON_PORT=3000 \
     CANON_DOCKER=1
 WORKDIR /app
+# fonts for the melodies drawn into the Word bulletin and PowerPoint slides (0.21.3): numbered notation is drawn as text,
+# Chinese words included, and the slim image has no fonts at all
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist

@@ -40,5 +40,16 @@ export function setMelody(songId: number, source: string): string | null {
   return text || null;
 }
 
+/**
+ * The melodies of a service's songs, by song id (0.21.3: drawn on its slides and bulletin). Only for signed-in staff:
+ * the render that AI tools, share pages and approvals use doesn't carry them.
+ */
+export function serviceMelodies(serviceId: number): Record<number, string> {
+  return Object.fromEntries(all<{ song_id: number; source: string }>(
+    `SELECT DISTINCT m.song_id, m.source FROM service_items i JOIN song_melodies m ON m.song_id = i.ref_id
+     WHERE i.service_id = ? AND i.kind = 'song'`, serviceId,
+  ).map((r) => [r.song_id, r.source]));
+}
+
 /** The songs that have a melody (for the Library list). */
 export const melodySongIds = (): number[] => all<{ song_id: number }>('SELECT song_id FROM song_melodies ORDER BY song_id').map((r) => r.song_id);

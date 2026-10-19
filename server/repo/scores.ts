@@ -7,7 +7,6 @@ import { all, get, run, tx } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
 import { PICTURE_OR_PDF, realType } from '../lib/image.ts';
 import { renderService } from './render.ts';
-import { melodyFor } from './melodies.ts';
 
 export interface SongScore { id: number; song_id: number; name: string; mime: string; size: number; sort: number; created_at: string }
 
@@ -75,8 +74,6 @@ export function serviceScores(serviceId: number) {
       // the stanzas sung (as numbered in the hymnal), refrains left out
       stanzas: [...new Set(it.song!.stanzas.map((s) => s.label).filter((l) => /^\d+$/.test(l)))],
       scores: scoresFor(it.song!.id),
-      // its melody in numbered notation (0.21.0), drawn on the page; not passed on to AI tools
-      melody: melodyFor(it.song!.id),
     })),
   };
 }

@@ -1,5 +1,6 @@
 // Bulletin: the cover, and building a bulletin from its template's page layout.
 import { Fragment } from 'react';
+import type { MelodyPicture } from '../components/jianpu.ts';
 import type { L10n, Lang, RenderedItem, RenderedService } from '../types-client.ts';
 import { Bi, LABEL, LANG_ATTR, biParts, dateParts, hasAny, timeRange, type Layout } from './content.tsx';
 import { CrossMark, logoUrl, useLogo } from '../components/brand.tsx';
@@ -107,6 +108,8 @@ export interface BulletinBuild {
   blocks: BulletinBlock[];
   /** one-off toolbar switches: serving tables / roster, announcements and service notes */
   include?: { serving: boolean; announcements: boolean };
+  /** songs' melodies already drawn, by item id (0.21.3; the template's show_melodies) */
+  melodies?: Record<number, MelodyPicture | null>;
 }
 
 /** The weekly texts of the bulletin (announcements, pastor's note …) per section key. */
@@ -126,7 +129,7 @@ export function buildBulletin(b: BulletinBuild): { main: Block[]; back: Block[];
     order_style: o.order_style, hymn_number: o.hymn_number, sermon_brackets: o.sermon_brackets,
     separateText: hasSection(L, 'full_texts'), separateAnn: hasSection(L, 'announcements'), bannerCover: banner && hasSection(L, 'cover'),
   };
-  const ord = buildOrder(r, langs, b.layout, b.decide, b.show, fmt);
+  const ord = buildOrder(r, langs, b.layout, b.decide, b.show, fmt, o.show_melodies ? b.melodies : undefined);
   const content = bulletinContent(r);
   // the library's blocks (live while editing), plus blocks Canon adds for this service (negative ids, e.g. the visitor form's QR)
   const blockList = [...(b.blocks.length ? b.blocks : r.bulletin.blocks ?? []).filter((x) => x.id > 0), ...(r.bulletin.blocks ?? []).filter((x) => x.id < 0)];

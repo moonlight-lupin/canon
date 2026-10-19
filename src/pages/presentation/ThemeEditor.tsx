@@ -6,7 +6,8 @@ import { api } from '../../api.ts';
 import { useContentLangs, useI18n } from '../../i18n.tsx';
 import { Bi, Field, L10nInput, Seg, confirmAction, useAction, useSession, useToast } from '../../components/ui.tsx';
 import { Icon } from '../../components/icons.tsx';
-import { SlideFace } from '../../outputs/SlideFace.tsx';
+import { SlideFace, SlideMelodiesCtx } from '../../outputs/SlideFace.tsx';
+import { SAMPLE_MELODIES } from '../presentation-sample.ts';
 import { DeckSizeCtx, SlideThemeCtx, Stage, sigOf } from '../../outputs/slide-fit.tsx';
 import { useDeckSizes } from '../../outputs/SlideFace.tsx';
 import { buildSlides, type SlideDef } from '../../outputs/slideModel.ts';
@@ -64,11 +65,12 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
   const setV = (p: Partial<SlideThemeVars>) => setDraft((d) => ({ ...d, vars: { ...d.vars, ...p } }));
   const bg = bgOf(draft);
   const compiled = useMemo(() => compileSafe('draft', draft.vars, draft.css, bg), [draft.vars, draft.css, bg]);
-  const slides = useMemo(() => buildSlides(r, langs, draft.vars), [r, langs, draft.vars]);
+  const slides = useMemo(() => buildSlides(r, langs, draft.vars, SAMPLE_MELODIES), [r, langs, draft.vars]);
   const previewTheme = useMemo(() => ({ id: 'draft', sig: sigOf(compiled.css), aspect: draft.vars.aspect }), [compiled.css, draft.vars.aspect]);
   const deck = useDeckSizes({ slides, langs, split: false, r, theme: previewTheme, enabled: v.uniform_size });
   const preview = useMemo(() => {
-    const lyrics = slides.find((s) => s.type === 'lyrics' && Object.keys(s.lines ?? {}).length > 1) ?? slides.find((s) => s.type === 'lyrics');
+    // with melodies on, the sample's Doxology shows its band
+    const lyrics = slides.find((s) => s.type === 'lyrics' && s.melody) ?? slides.find((s) => s.type === 'lyrics' && Object.keys(s.lines ?? {}).length > 1) ?? slides.find((s) => s.type === 'lyrics');
     return [slides[0], lyrics, slides.find((s) => s.type === 'scripture'), slides.find((s) => s.type === 'text')].filter((s): s is SlideDef => !!s);
   }, [slides]);
   const [big, setBig] = useState(1);
@@ -163,6 +165,7 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
   const previewPane = (
     <div className="tp-preview">
       <style>{compiled.css}</style>
+      <SlideMelodiesCtx.Provider value={SAMPLE_MELODIES}>
       <SlideThemeCtx.Provider value={previewTheme}>
         <DeckSizeCtx.Provider value={deck.ctx}>
           {deck.measurer}
@@ -177,6 +180,7 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
           </div>
         </DeckSizeCtx.Provider>
       </SlideThemeCtx.Provider>
+      </SlideMelodiesCtx.Provider>
       <span className="field-hint">{dirty ? t('Showing your unsaved changes.') : t('Drawn exactly as the projector shows it.')}</span>
     </div>
   );
@@ -298,6 +302,10 @@ export function ThemeEditor({ theme, isDefault, langs, r, onBack, acts, onSaved 
             <label className="check">
               <input type="checkbox" checked={v.uniform_size} onChange={(e) => setV({ uniform_size: e.target.checked })} />{t('Same text size on every slide')}
               <InfoTip text={t('Hymns, readings and liturgy all use the size that fits the fullest slide, so the words do not grow and shrink from slide to slide. Turn it off to make each slide as large as it can be.')} />
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={v.show_melody} onChange={(e) => setV({ show_melody: e.target.checked })} />{t('Show melodies above the words')}
+              <InfoTip text={t('For a song with a melody in numbered notation (Library → the song), the stanza’s melody is shown above its words, in the slide’s languages. A long stanza over several slides shares its lines of music between them.')} />
             </label>
           </Step>
 

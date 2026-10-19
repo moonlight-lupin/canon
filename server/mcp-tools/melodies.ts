@@ -40,7 +40,7 @@ export const MELODY_TOOLS: ToolDef[] = [
   },
   {
     name: 'canon_save_melody', module: 'library', access: 'write', requiresMelodies: true, title: 'Save a melody', annotations: WRITE,
-    description: 'Save a song\'s melody in numbered notation (jianpu, jpFun text; notation: resource canon://guide/jianpu). Check it first with canon_melody {source}: a melody with errors is refused (the errors come back). A song that already has a melody (a musician\'s work) is replaced only with replace: true — ask the user first. Only songs the administrator allows (public domain, or all songs under the church\'s licence). Write one L: line of words per stanza and language. Afterwards ask the user to look at it in Library → the song → Melody in numbered notation. Example: {"song_id":12,"source":"@1(G4)\\n@meter(4, 4)\\nN: { 1 2 3 1 | 5 - - - | }"}.',
+    description: 'Save a song\'s melody in numbered notation (jianpu, jpFun text; notation: resource canon://guide/jianpu). Check it first with canon_melody {source}: a melody with errors is refused (the errors come back). A song that already has a melody (a musician\'s work) is replaced only with replace: true — ask the user first. Only songs the administrator allows (public domain, or all songs under the church\'s licence). Write one L: line of words per stanza and language, named after the stanza (L(1):, L(2):, L(R):): the slides show each stanza\'s melody above its words and the bulletin prints it under the song\'s title. Afterwards ask the user to look at it in Library → the song → Melody in numbered notation. Example: {"song_id":12,"source":"@1(G4)\\n@meter(4, 4)\\nN: { 1 2 3 1 | 5 - - - | }"}.',
     input: {
       song_id: Id,
       source: Source,

@@ -15,7 +15,7 @@ import {
   ANNOUNCEMENTS_KEY, SECTION_TYPES, bulletinDecision, newSection, normaliseLayout,
   type BulletinBlock, type BulletinOptions, type BulletinSection, type BulletinSectionType,
 } from '../../shared/presentation.ts';
-import { sampleLangs, sampleService } from './presentation-sample.ts';
+import { SAMPLE_MELODIES, sampleLangs, sampleService } from './presentation-sample.ts';
 import { BLOCK_KIND_LABEL } from './Blocks.tsx';
 import type { L10n, RenderedService, TeamWithRoles } from '../types-client.ts';
 import './bulletin-layout-editor.css';
@@ -394,6 +394,7 @@ export function BulletinSample({ options: o }: { options: BulletinOptions }) {
         show={show}
         options={options}
         blocks={blockList ?? []}
+        melodies={SAMPLE_MELODIES}
         variant="sample"
         scale={scale}
       />

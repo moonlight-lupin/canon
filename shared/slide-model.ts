@@ -49,7 +49,14 @@ export interface SlideDef {
   bg?: { id: number; v: string };
   /** 'image' slides: a picture from Library → Images, the whole slide */
   image?: RenderedImage;
+  /**
+   * a song's melody in a band above the words (0.21.3): the song, the stanza's label, and which of the stanza's slides
+   * this is (its lines of music are shared out between them in order)
+   */
+  melody?: SlideMelody;
 }
+
+export interface SlideMelody { song: number; label: string; part: number; parts: number }
 
 /** At most this many blocks share one slide (more would make the QR codes too small to scan). */
 export const MAX_SLIDE_BLOCKS = 4;
@@ -81,8 +88,9 @@ const splitLines = (s: string | undefined): Line[] =>
  * lines at three a slide give 2 + 2). Languages with different line counts are spread proportionally so they finish
  * on the same slide. The stanza label (1, 2, Refrain …) is on every slide of the stanza; the later ones also carry `cont`.
  */
-function songSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
+function songSlides(it: RenderedItem, langs: Lang[], limits?: SlideDeckOptions | null, melodies?: Record<number, string> | null): SlideDef[] {
   const s = it.song!;
+  const melody = limits?.show_melody !== false && !!melodies?.[s.id];
   const out: SlideDef[] = [];
   s.stanzas.forEach((st, i) => {
     const sl = langs.filter((l) => st.text[l]?.trim());
@@ -97,6 +105,7 @@ function songSlides(it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits
       out.push({
         key: `${it.id}-s${i}${chunks.length > 1 ? `.${j}` : ''}`, type: 'lyrics', itemId: it.id, heading: s.number ? it.subtitle : s.title,
         label, ...(j > 0 ? { cont: true } : {}), refrain: isRefrain(st.label), lines,
+        ...(melody ? { melody: { song: s.id, label: st.label, part: j, parts: chunks.length } } : {}),
       });
     });
   });
@@ -191,6 +200,8 @@ function titleSlide(it: RenderedItem): SlideDef {
 export interface SlideDeckOptions extends Partial<LineLimits> {
   closing?: boolean;
   closing_text?: L10n;
+  /** songs' melodies above their words (the slide template's switch; on unless false) */
+  show_melody?: boolean;
 }
 
 /**
@@ -198,13 +209,13 @@ export interface SlideDeckOptions extends Partial<LineLimits> {
  * caps the lines (lyric lines or sentences) per language on a slide; the limit depends on how many of the shown
  * languages an item actually has.
  */
-export function buildSlides(r: RenderedService, langs: Lang[], limits?: SlideDeckOptions | null): SlideDef[] {
+export function buildSlides(r: RenderedService, langs: Lang[], limits?: SlideDeckOptions | null, melodies?: Record<number, string> | null): SlideDef[] {
   const slides: SlideDef[] = [];
   // the bulletin link's QR code (for people as they arrive) sits in a corner of the title slide, on screen before the service
   const corner = (r.opening_blocks ?? []).filter(showable)[0];
   slides.push({ key: 'title', type: 'title', itemId: null, kind: 'service', heading: r.church.name, big: r.title, sub: hasAny(r.theme) ? r.theme : undefined, ...(corner ? { corner } : {}) });
   for (const it of r.items) {
-    const own: SlideDef[] = it.on_slides ? itemSlides(r, it, langs, limits) : [];
+    const own: SlideDef[] = it.on_slides ? itemSlides(r, it, langs, limits, melodies) : [];
     // pictures (Library → Images): a slide each after the item's own; an item not otherwise on the slides shows only these
     (it.slide_images ?? []).forEach((image, i) => own.push({ key: `${it.id}-img-${i}`, type: 'image', itemId: it.id, kind: it.kind, heading: it.title, image }));
     // QR codes / notes: one slide after the item's own; an item that is not on the slides shows only this one
@@ -219,7 +230,7 @@ export function buildSlides(r: RenderedService, langs: Lang[], limits?: SlideDec
   return slides;
 }
 
-function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[], limits?: Partial<LineLimits> | null): SlideDef[] {
+function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[], limits?: SlideDeckOptions | null, melodies?: Record<number, string> | null): SlideDef[] {
   if (it.kind === 'section') return [{ key: `${it.id}-sec`, type: 'section', itemId: it.id, kind: it.kind, big: it.title }];
   if (it.kind === 'sermon') {
     const m: string[] = [];
@@ -230,7 +241,7 @@ function itemSlides(r: RenderedService, it: RenderedItem, langs: Lang[], limits?
   let s: SlideDef[] = [];
   // the cover (title and who leads it) instead of the words, or before them
   if (it.slide_cover !== 'cover') {
-    if (it.song?.stanzas.length) s = songSlides(it, langs, limits);
+    if (it.song?.stanzas.length) s = songSlides(it, langs, limits, melodies);
     else if (it.kind === 'scripture') s = scriptureSlides(it, langs, limits);
     else if (it.paras) s = textSlides(it, langs, limits);
   }

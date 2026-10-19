@@ -1,6 +1,6 @@
 // Word (.docx) order of service / bulletin, built with the `docx` package.
 // A5 portrait pages: the church prints A4 landscape folded into an A5 booklet (Word: "Book fold").
-import { AlignmentType, BorderStyle, Document, Footer, Packer, PageNumber, Paragraph, Table, TextRun } from 'docx';
+import { AlignmentType, BorderStyle, Document, Footer, ImageRun, Packer, PageNumber, Paragraph, Table, TextRun } from 'docx';
 import type { Lang } from '../../shared/types.ts';
 import type { RenderedService } from '../../shared/render-types.ts';
 import { OUTPUT_LABEL } from '../../shared/output-labels.ts';
@@ -9,8 +9,10 @@ import {
 } from '../../shared/presentation.ts';
 import {
   ACCENT, setDocStyle, bi, centered, DOC, fontsFor, GREY, has, isCjk, lineRuns, MARGIN, MAX_COLUMNS, MM, PAGE_H,
-  PAGE_W, pageBreak, pick, RULE, run, splitLines, SZ,
+  PAGE_W, pageBreak, pick, PX, RULE, run, splitLines, SZ,
 } from './docx-base.ts';
+import { serviceMelodies } from '../repo/melodies.ts';
+import { melodyImages } from '../lib/jianpu-image.ts';
 import {
   announcementParas, backMatter, bannerBlock, blockParas, headerBlock, itemContent, itemHeader, OrderTable,
   rosterBlock, sectionHeading, sermonNotesPage, servingNextWeek, servingThisWeek, textHeading, textLinesOf, whatLines,
@@ -36,6 +38,23 @@ export async function serviceDocx(r: RenderedService): Promise<Buffer> {
   const content = r.bulletin?.content ?? {};
   const readings = new Set(r.items.filter((x) => x.in_bulletin && x.kind === 'scripture').map((x) => bi(x.subtitle, langs)));
 
+  // songs' melodies under their titles (0.21.3; the template's show_melodies): an SVG Word 365 draws sharp, with a PNG
+  // for older Word; the stanzas that print, in the bulletin's languages, stanza numbers kept
+  const melodies = o.show_melodies ? serviceMelodies(r.id) : {};
+  const draw = melodyImages();
+  const melodyOf = async (it: RenderedService['items'][number]): Promise<Paragraph | null> => {
+    const source = it.song ? melodies[it.song.id] : undefined;
+    if (!source || !it.song) return null;
+    const stanzas = it.bulletin_full === 'first_stanza' ? it.song.stanzas.slice(0, 1) : it.song.stanzas;
+    const pic = await draw(source, { labels: [...new Set(stanzas.map((x) => x.label))], langs, keepNames: true }, { pixelWidth: 1800, pageWidth: 900 });
+    if (!pic) return null;
+    const width = PX((PAGE_W - 2 * MARGIN) / MM);
+    return new Paragraph({
+      alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: 40, after: 60 },
+      children: [new ImageRun({ type: 'svg', data: Buffer.from(pic.svg), fallback: { type: 'png', data: pic.png }, transformation: { width, height: Math.round((width * pic.height) / pic.width) } })],
+    });
+  };
+
   // the order of service, and the words gathered for a full-texts section
   const order: (Paragraph | Table)[] = [];
   const fullText: (Paragraph | Table)[] = [];
@@ -48,6 +67,8 @@ export async function serviceDocx(r: RenderedService): Promise<Buffer> {
       continue;
     }
     let body: (Paragraph | Table)[] = [];
+    const melody = await melodyOf(it);
+    let melodyPlaced = false;
     // with an announcements section the item stays in the order, its words print in that section
     if (!(it.kind === 'announcements' && separateAnn)) {
       const full = it.bulletin_full ?? true;
@@ -57,6 +78,11 @@ export async function serviceDocx(r: RenderedService): Promise<Buffer> {
         const head = it.text_title && has(it.text_title, langs) ? it.text_title : it.song ? it.song.title : has(it.subtitle, langs) ? it.subtitle : it.title;
         const title = bi(Object.fromEntries(langs.map((l) => [l, o.sermon_brackets && isCjk(l) ? bracket(pick(head, l), l) : pick(head, l)])), langs, '  ·  ');
         fullText.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: fullText.length ? 200 : 0, after: 60 }, children: [run(title, { bold: true, size: SZ.item, font: DOC.head })] }));
+        // the melody with the words, under their title
+        if (melody) {
+          fullText.push(melody);
+          melodyPlaced = true;
+        }
         fullText.push(...body);
         body = [];
       }
@@ -64,9 +90,13 @@ export async function serviceDocx(r: RenderedService): Promise<Buffer> {
     const subs = whatLines(it, langs, r, o, readings);
     if (table) {
       rows.item(bi(it.title, langs), subs, whoText(it, langs, o), o.show_times ? it.start : null);
+      // the table breaks for the melody (under the song's row) and for the words
+      if (melody && !melodyPlaced) order.push(...rows.flush(), melody);
       if (body.length) order.push(...rows.flush(), ...body);
     } else {
-      order.push(...itemHeader(it, langs, subs, body.length > 0, o));
+      // under the song's title: the title stays with its melody
+      order.push(...itemHeader(it, langs, subs, body.length > 0 || (!!melody && !melodyPlaced), o));
+      if (melody && !melodyPlaced) order.push(melody);
       order.push(...body);
     }
   }

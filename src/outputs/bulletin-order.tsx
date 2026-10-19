@@ -1,5 +1,6 @@
 // Bulletin: the order of service and the other blocks a bulletin is made of.
 import type { ReactNode } from 'react';
+import type { MelodyPicture } from '../components/jianpu.ts';
 import type { L10n, Lang, RenderedItem, RenderedService } from '../types-client.ts';
 import { Bi, LABEL, LANG_ATTR, biParts, biText, hasAny, itemPieces, itemSubtitles, type Layout, type Piece } from './content.tsx';
 import { logoUrl, useLogo } from '../components/brand.tsx';
@@ -144,12 +145,18 @@ export function notesLines(notes: string | null, prefix: string): Block[] {
     .map((p, i) => ({ key: `${prefix}n${i}`, node: <p className={`bl-an${isNumberedLine(p) ? ' num' : ''}`}>{p.trim()}</p> }));
 }
 
+/** A melody under a song's title: its height is known before drawing (the picture's ratio), so pages measure right. */
+function melodyBlock(id: number, pic: MelodyPicture): Block {
+  return { key: `m${id}`, node: <div className="bl-melody" style={{ aspectRatio: `1 / ${pic.ratio.toFixed(4)}` }} dangerouslySetInnerHTML={{ __html: pic.svg }} /> };
+}
+
 /**
  * The order of service as blocks, and the words gathered for a full-texts section. `decide` says per item whether
  * its words are printed (true), only its title / reference (false) or, for hymns, the first stanza only.
  */
 export function buildOrder(
   r: RenderedService, langs: Lang[], layout: Layout, decide: (it: RenderedItem) => BulletinFull, show: ItemShow, f: FlowFormat,
+  melodies?: Record<number, MelodyPicture | null>,
 ): { order: Block[]; fullText: Block[] } {
   const table = f.order_style === 'table';
   const blocks: Block[] = [];
@@ -165,6 +172,9 @@ export function buildOrder(
       continue;
     }
     const subs = whatLines(it, r, langs, f, readings);
+    // a song's melody in numbered notation (0.21.3), drawn before the pages are measured
+    const pic = it.song ? melodies?.[it.id] ?? null : null;
+    let melodyPlaced = false;
     let pieces: Piece[] = [];
     // with an announcements section the item stays in the order (a timed item) but its words print there
     if (!(it.kind === 'announcements' && f.separateAnn)) {
@@ -176,6 +186,11 @@ export function buildOrder(
         const head = it.text_title && hasAny(it.text_title) ? it.text_title : it.song ? it.song.title : hasAny(it.subtitle) ? it.subtitle : it.title;
         const titled = Object.fromEntries(langs.map((l) => [l, f.sermon_brackets && langInfo(l).cjk ? bracket(head[l] ?? '', l) : (head[l] ?? '')]));
         fullText.push({ key: `fh${it.id}`, node: <div className="bl-fthead"><Bi v={titled} langs={langs} sep="  ·  " /></div>, keep: true });
+        // the melody with the words, under their title
+        if (pic) {
+          fullText.push({ ...melodyBlock(it.id, pic), keep: true });
+          melodyPlaced = true;
+        }
         for (const p of pieces) {
           if (p.glue) fullText[fullText.length - 1].keep = true;
           fullText.push(pieceBlock(p, `f${it.id}-`));
@@ -187,6 +202,11 @@ export function buildOrder(
       blocks.push({ key: `h${it.id}`, node: <TableRow it={it} subs={subs} who={whoOf(it, langs, show)} langs={langs} alt={row++ % 2 === 1} time={show.times} />, keep: pieces.length > 0 });
     } else {
       blocks.push({ key: `h${it.id}`, node: <ItemHead it={it} subs={subs} langs={langs} compact={!pieces.length} show={show} />, keep: pieces.length > 0 });
+    }
+    // under the song's title: the title stays with its melody
+    if (pic && !melodyPlaced) {
+      blocks[blocks.length - 1].keep = true;
+      blocks.push({ ...melodyBlock(it.id, pic), keep: pieces.length > 0 });
     }
     for (const p of pieces) {
       if (p.glue) blocks[blocks.length - 1].keep = true;

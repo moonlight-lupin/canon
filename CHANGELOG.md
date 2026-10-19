@@ -4,6 +4,19 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.21.3 — Melodies on the slides and in the bulletin; Sheet music is the scans again
+
+- **Outputs → Sheet music shows only the uploaded scans and PDFs again.** It is the pianist's page, and a melody in numbered notation has no chords or harmony to play from. A song with a melody but no scans counts as "without sheet music" again.
+- **The slides show each stanza's melody above its words**, in a band across the top of the slide, in the slide's colours and languages. A long stanza spread over several slides shares out its lines of music between them. Slide templates have **Show melodies above the words** (on by default).
+- **The bulletin prints a song's melody under its title** (or under its title in a separate words section), for the stanzas being sung, in the bulletin's languages. Bulletin templates have **Melodies under song titles (numbered notation)** (on by default). The page layout measures the melodies, so pages still break in the right places.
+- **The PowerPoint and Word downloads have them too.** The server draws each melody (in a thread of its own, with the same limits as the check) and turns it into a picture: a PNG on the slide; in Word a sharp drawing with a PNG for older versions. The Docker image now installs fonts (Noto CJK and DejaVu, about 60 MB) for the notes and the Chinese words.
+- **Name each line of words after its stanza**: `L(1):`, `L(2):`, `L(R):` for a refrain. A slide shows only its stanza's lines; the bulletin numbers them. A plain `L:` goes with every stanza, as in the four melodies Canon's library brings. A line with Chinese characters is the Chinese one. The guide, the notation reference (`canon://guide/jianpu`, the skill's `references/jianpu.md`), the `write_melody` playbook and `canon_save_melody` say so.
+- Melodies are still not on the share pages or the attendees' bulletin link, and not part of a song's fields for AI tools.
+- **The full-screen slide (Outputs → Slides, as projected) fills the screen.** It had been only as tall as its words, so the words sat near the top instead of in the middle and the footer was not at the bottom; the presenter view, the template previews and the PowerPoint download were right.
+- `@resvg/resvg-js` 2.6.2 (MPL-2.0) is pinned to that exact version, for the pictures in the downloads.
+- Tests: each stanza's lines of words, by language; a stanza over several slides shares out its lines of music; the template switches, on for templates from before; the PowerPoint and Word files carry the picture only where there is a melody, none with the switch off, and a melody that can't be drawn is skipped; Sheet music and a service's render carry no melody; the melodies need a sign-in.
+- No database change.
+
 ## 0.21.2 — Melodies for the Doxology, Gloria Patri, Threefold Amen and The Lord Is in His Holy Temple
 
 - **Canon's library brings four melodies in numbered notation**: the Doxology (OLD HUNDREDTH, in G), Gloria Patri (GREATOREX, in E♭), the Threefold Amen (Danish, in F) and The Lord Is in His Holy Temple (Root's QUAM DILECTA, in D♭), with their words in English and, for the Doxology and the Amen, Chinese. Each was read note by note from a public-domain source (the Cyber Hymnal / CCEL and Hymnary.org) and passes Canon's own check.

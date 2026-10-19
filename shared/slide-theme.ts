@@ -63,6 +63,8 @@ export interface SlideThemeVars {
   max_lines_single: number;
   /** one text size for all hymn, scripture and liturgy slides of a service (else each slide fits on its own) */
   uniform_size: boolean;
+  /** a song's melody in numbered notation (when it has one) in a band above each stanza's words (0.21.3) */
+  show_melody: boolean;
   /** screen shape: widescreen 16:9 (1920 × 1080) or the older 4:3 (1440 × 1080) projectors */
   aspect: SlideAspect;
 }
@@ -140,6 +142,7 @@ export const DEFAULT_THEME_VARS: SlideThemeVars = {
   max_lines_multi: DEFAULT_LINE_LIMITS.max_lines_multi,
   max_lines_single: DEFAULT_LINE_LIMITS.max_lines_single,
   uniform_size: true,
+  show_melody: true,
   aspect: '16:9',
 };
 
@@ -230,6 +233,7 @@ export function normaliseThemeVars(input: unknown, base: SlideThemeVars = DEFAUL
     max_lines_multi: Math.round(clamp(v.max_lines_multi, 1, 6, base.max_lines_multi ?? DEFAULT_LINE_LIMITS.max_lines_multi)),
     max_lines_single: Math.round(clamp(v.max_lines_single, 1, 8, base.max_lines_single ?? DEFAULT_LINE_LIMITS.max_lines_single)),
     uniform_size: typeof v.uniform_size === 'boolean' ? v.uniform_size : (base.uniform_size ?? true),
+    show_melody: typeof v.show_melody === 'boolean' ? v.show_melody : (base.show_melody ?? true),
     aspect: v.aspect === '4:3' || v.aspect === '16:9' ? v.aspect : (base.aspect ?? '16:9'),
   };
 }

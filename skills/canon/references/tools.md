@@ -24,7 +24,7 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | bookkeeping (optional) | `canon_books` (accounts, funds, tags, balances), `canon_books_report` (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger), `canon_books_journals`, `canon_bank_statements` (statements, lines to match, reconciliation) | `canon_draft_journal` (drafts only — a person posts; `statement_line` ties it to a bank line), `canon_draft_reversal` (drafts the reversal of a posted journal) |
 | library → sheet music (only when shared) | `canon_sheet_music` (`service_id` or `song_id`; `pictures: true` returns image pages) | — |
 | library (write) | — | `canon_sheet_music_upload_link` (`song_id` or `number` "HP 178"; the user adds pages from a phone) |
-| library → melodies (only when shared) | `canon_melody` (`song_id`: the melody and its check; `source`: check jianpu text without saving) | `canon_save_melody` (`song_id`, `source`; refused with errors; `replace: true` to replace one) |
+| library → melodies (only when shared) | `canon_melody` (`song_id`: the melody and its check; `source`: check jianpu text without saving) | `canon_save_melody` (`song_id`, `source`, words named by stanza `L(1):`; refused with errors; `replace: true` to replace one) |
 | admin (administrators only, when on) | `canon_admin_overview`, `canon_admin_accounts`, `canon_admin_change_log`, `canon_admin_record_views`, `canon_admin_settings` (e-mail `via` smtp / agentmail) | `canon_admin_backup_now`, `canon_admin_run_checks` |
 
 - Sheet music: read the pictures to answer about the music; never retype or pass it on (copyright) — except as a melody with `canon_save_melody`, for the songs the administrator allows.

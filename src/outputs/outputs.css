@@ -237,6 +237,14 @@
 .sl-posture { display: var(--slide-show-posture); margin-left: 0.8em; padding: 0.05em 0.6em; border: 2px solid var(--slide-accent); border-radius: 0.4em; color: var(--slide-accent); font-style: normal; }
 .sl-box { flex: 1; min-height: 0; margin: 20px 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .sl-fit { width: 100%; line-height: var(--slide-line-height); overflow-wrap: break-word; }
+/* a stanza's melody in numbered notation above its words (0.21.3): a fixed share of the slide (MELODY_BAND), drawn in
+   the template's words colour; the words fit the rest */
+.sl-melody { flex: none; position: relative; height: 32%; max-height: 330px; margin-top: 8px; color: var(--slide-fg); }
+/* pinned to the band (a percentage height inside it doesn't resolve): the drawing fits it, centred */
+.sl-melody svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+/* a song's melody under its title in the bulletin (0.21.3): full width, its height set from the drawing's ratio */
+.bl-melody { width: 100%; margin: 0.8mm 0 1.6mm; break-inside: avoid; color: #111; }
+.bl-melody svg { display: block; width: 100%; height: 100%; }
 .sl-foot {
   height: 40px; flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: baseline; gap: 2em;
   font: 26px var(--sans); color: var(--s-muted); letter-spacing: 0.03em; white-space: nowrap;
@@ -303,6 +311,8 @@
 .sl-block-cap { font-size: 0.8em; line-height: 1.3; color: var(--s-fg); font-family: var(--sans); font-variant-numeric: lining-nums; }
 .sl-block-text { font-size: 1.25em; line-height: 1.3; color: var(--s-fg); }
 .sl-block-text.b { font-weight: 700; }
+/* the slide fills the stage (it had been only as tall as its words: not centred, the footer not at the bottom) */
+.sl-fade { height: 100%; }
 @media (prefers-reduced-motion: no-preference) {
   .sl-fade { animation: sl-fade 150ms ease-out; }
 }
@@ -447,8 +457,6 @@
 .sm-song-title { font-size: 17px; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
 .sm-stanzas { margin-left: auto; font: 600 11px var(--sans); letter-spacing: 0.06em; color: #7a6224; }
 .sm-page { display: block; width: 100%; height: auto; margin: 0 0 10px; border: 1px solid #ece6d8; break-inside: avoid; }
-.sm-jianpu { margin: 0 0 10px; }
-.sm-jianpu .jianpu-pages svg { break-inside: avoid; }
 .sm-pdf { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed #ddd4c0; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
 .sm-print-note { display: none; }
 @media print {

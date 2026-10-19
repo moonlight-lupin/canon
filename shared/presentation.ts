@@ -69,6 +69,8 @@ export interface BulletinOptions {
   order_style: 'list' | 'table';
   /** print the posture (All stand / 众立); in a table it fills the "who" column when nobody leads the item */
   show_posture: boolean;
+  /** a song's melody in numbered notation (when it has one) under the song's title (0.21.3) */
+  show_melodies: boolean;
   hymn_number: HymnNumberStyle;
   /** sermon and creed / catechism titles in 【】 (Chinese, Japanese, Korean) or “ ” (other languages) */
   sermon_brackets: boolean;
@@ -118,6 +120,7 @@ const LEGACY_DEFAULT: Omit<BulletinOptions, 'page_layout'> = {
   show_times: false,
   order_style: 'list',
   show_posture: false,
+  show_melodies: true,
   hymn_number: 'abbr',
   sermon_brackets: false,
   full_text_section: 'inline',
@@ -178,6 +181,7 @@ export function normaliseBulletinOptions(input: unknown, base: BulletinOptions =
     show_times: b(o.show_times, base.show_times),
     order_style: one(o.order_style, ['list', 'table'] as const, base.order_style ?? d.order_style),
     show_posture: b(o.show_posture, base.show_posture ?? d.show_posture),
+    show_melodies: b(o.show_melodies, base.show_melodies ?? d.show_melodies),
     hymn_number: one(o.hymn_number, ['abbr', 'number', 'none'] as const, base.hymn_number ?? d.hymn_number),
     sermon_brackets: b(o.sermon_brackets, base.sermon_brackets ?? d.sermon_brackets),
     full_text_section: one(o.full_text_section, ['inline', 'separate'] as const, base.full_text_section ?? d.full_text_section),

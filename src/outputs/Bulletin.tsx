@@ -6,6 +6,7 @@
 // as a list or a three-column table, full texts, the weekly announcements, a pastor's note, fixed texts, serving
 // tables, QR codes …) with page breaks and a back-cover group that always lands on the last page.
 import { useFitWidth } from '../components/onscreen.ts';
+import { melodyPicture, type MelodyPicture } from '../components/jianpu.ts';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../api.ts';
@@ -41,6 +42,8 @@ export default function Bulletin() {
   const error = apError ?? live.error;
   const templates = approvedId ? (approval ? (approval.snapshot.bulletin_template ? [approval.snapshot.bulletin_template] : []) : undefined) : liveTemplates.data;
   const blockList = approvedId ? approval?.snapshot.blocks : liveBlocks.data;
+  // the songs' melodies, drawn under their titles (0.21.3); staff only, so not in the render or an approval's copy
+  const melodiesApi = useApi<Record<number, string>>(id ? `/services/${id}/melodies` : null);
 
   // The bulletin template sets everything below (service → church default → "Full words booklet"). Another template
   // can be picked here for this printout, and each toolbar control is a one-off override on top of it.
@@ -132,6 +135,7 @@ export default function Bulletin() {
         show={show}
         options={o}
         blocks={blockList ?? []}
+        melodies={melodiesApi.data ?? (melodiesApi.error ? {} : undefined)}
         include={{ serving: roster, announcements: notes }}
         showSheets={booklet && showSheets}
       />
@@ -161,15 +165,43 @@ export function paddingWarning(t: (s: string) => string, total: number, blanks: 
 }
 
 /**
+ * The melodies of the songs in the bulletin, drawn (0.21.3): for each song with one, the stanzas that print (the first
+ * only when the template prints the first stanza) in the bulletin's languages, stanza numbers kept. null until every
+ * one is drawn (or has failed), so the pages are measured once, with the melodies in them.
+ */
+function useMelodyPictures(r: RenderedService, langs: Lang[], decide: (it: RenderedItem) => BulletinFull, melodies: Record<number, string> | undefined) {
+  const wanted = useMemo(() => {
+    if (!melodies) return null;
+    return r.items.filter((it) => it.in_bulletin && it.song && melodies[it.song.id]).map((it) => {
+      const stanzas = decide(it) === 'first_stanza' ? it.song!.stanzas.slice(0, 1) : it.song!.stanzas;
+      return { id: it.id, source: melodies[it.song!.id], labels: [...new Set(stanzas.map((s) => s.label))] };
+    });
+  }, [r, melodies, decide]);
+  const [pics, setPics] = useState<Record<number, MelodyPicture | null> | null>(null);
+  const sig = wanted ? JSON.stringify([wanted, langs]) : '';
+  useEffect(() => {
+    let live = true;
+    setPics(null);
+    if (!wanted) return;
+    void Promise.all(wanted.map((w) => melodyPicture(w.source, { labels: w.labels, langs, keepNames: true }).then((p) => [w.id, p] as const)))
+      .then((list) => live && setPics(Object.fromEntries(list)));
+    return () => { live = false; };
+  }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { pics: wanted ? pics : null, pending: !melodies || (!!wanted && wanted.length > 0 && !pics) };
+}
+
+/**
  * The bulletin's pages. `variant` 'print' (the bulletin screen: page previews plus the print sheets) or 'sample'
  * (the template editor: pages only, drawn at `scale`).
  */
 export function BulletinPages({
-  r, spec, langs, layout, cover, pt, decide, show, options, blocks, include, showSheets = false, variant = 'print', scale = 1,
+  r, spec, langs, layout, cover, pt, decide, show, options, blocks, include, showSheets = false, variant = 'print', scale = 1, melodies,
 }: {
   r: RenderedService; spec: PaperSpec; langs: Lang[]; layout: Layout; cover: CoverStyle; pt: number;
   decide: (it: RenderedItem) => BulletinFull; show: ItemShow; options: BulletinOptions; blocks: BulletinBlock[];
   include?: { serving: boolean; announcements: boolean }; showSheets?: boolean; variant?: 'print' | 'sample'; scale?: number;
+  /** the songs' melodies by song id (undefined while they load) */
+  melodies?: Record<number, string>;
 }) {
   const { t } = useI18n();
   const booklet = !!spec.sheet;
@@ -183,11 +215,13 @@ export function BulletinPages({
     document.fonts?.ready.then(() => setFontTick((n) => n + 1)).catch(() => {});
   }, []);
 
+  // songs' melodies under their titles (0.21.3): all drawn before the pages are built, so measuring sees their height
+  const { pics, pending: drawing } = useMelodyPictures(r, langs, decide, options.show_melodies ? melodies : {});
   const { main, back, spareNotes } = useMemo(() => {
     const expand = (bs: Block[]): Block[] => bs.flatMap((b) => (splitKeys.has(b.key) && b.split ? expand(b.split()).map((x, i) => (i === 0 ? { ...x, breakBefore: b.breakBefore } : x)) : [b]));
-    const built = buildBulletin({ r, langs, layout, decide, show, options, cover, blocks, include });
+    const built = buildBulletin({ r, langs, layout, decide, show, options, cover, blocks, include, melodies: pics ?? undefined });
     return { main: expand(built.main), back: expand(built.back), spareNotes: built.spareNotes };
-  }, [r, langs, layout, decide, show, options, cover, blocks, include?.serving, include?.announcements, splitKeys]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [r, langs, layout, decide, show, options, cover, blocks, include?.serving, include?.announcements, splitKeys, pics]); // eslint-disable-line react-hooks/exhaustive-deps
   const all = useMemo(() => [...main, ...back], [main, back]);
   const byKey = useMemo(() => new Map(all.map((b) => [b.key, b])), [all]);
 
@@ -287,7 +321,7 @@ export function BulletinPages({
     return (
       <div className="bl-sample">
         {measure}
-        {!plan ? <Loading /> : (
+        {!plan || drawing ? <Loading /> : (
           <>
             {info}
             <div className="bl-doc bl-sample-pages" style={{ ...docStyle, zoom: scale } as CSSProperties}>
@@ -303,7 +337,7 @@ export function BulletinPages({
     <>
       <style>{printCss}</style>
       {measure}
-      {!plan ? (
+      {!plan || drawing ? (
         <Loading />
       ) : (
         <>

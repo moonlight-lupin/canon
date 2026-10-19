@@ -15,6 +15,9 @@ import { blockImageKey } from '../../shared/presentation.ts';
 import { DEFAULT_THEME_VARS, type FontScript, type SlideThemeVars } from '../../shared/slide-theme.ts';
 import { pickFont, SYSTEM_UI_FONT, type FontSystem } from '../../shared/slide-fonts.ts';
 import { assetRow, getTheme, qrPng } from '../repo/presentation.ts';
+import { serviceMelodies } from '../repo/melodies.ts';
+import { melodyImages, type MelodyImage } from '../lib/jianpu-image.ts';
+import { MELODY_BAND } from '../../shared/jianpu-prep.ts';
 
 type TextProps = PptxGenJS.TextProps;
 
@@ -120,7 +123,9 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
   const { vars: v, id: themeId } = themeVars(r);
   const shape = SHAPES[v.aspect === '4:3' ? '4:3' : '16:9'];
   const W = shape.w;
-  const slides = buildSlides(r, langs, v);
+  // songs' melodies above their stanzas (0.21.3; the template's show_melody)
+  const melodies = v.show_melody ? serviceMelodies(r.id) : {};
+  const slides = buildSlides(r, langs, v, melodies);
   const accent = hex(v.accent_from_season && r.season.color ? r.season.color : v.accent);
   const align = v.align === 'left' ? 'left' : 'center';
 
@@ -152,6 +157,9 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
   const padX = W * 0.0625;
   const body = { x: padX, y: 1.0, w: W - 2 * padX, h: H - 1.0 - 0.75 };
   const lh = v.line_height;
+  // a slide with a melody: the melody in a band at the top of the body, the words below it
+  const band = H * MELODY_BAND;
+  const bodyOf = (s: SlideDef) => (s.melody ? { ...body, y: body.y + band, h: body.h - band } : body);
 
   // a language's own size against the others (slide template → Fonts)
   const k = (l: Lang) => v.lang_scale?.[l] ?? 1;
@@ -176,7 +184,7 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
   // one size for every hymn, reading and liturgy slide (the fullest one decides), as on the projector
   const fitted = slides.map((s) => {
     const max = MAX_PT[s.type] * v.scale;
-    if (s.lines || s.verses) return fitSize(bodyParas(s), max, body.w, body.h, lh);
+    if (s.lines || s.verses) return fitSize(bodyParas(s), max, body.w, bodyOf(s).h, lh);
     if (s.blocks) return max;
     return fitSize(titleParas(s), max, body.w, body.h, 1.15);
   });
@@ -215,6 +223,12 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
     return pictures.get(id)!;
   };
 
+  // the melodies, drawn once each (as on the projector: in the words' colour, no background)
+  const draw = melodyImages();
+  const melodyPics = await Promise.all(slides.map((s) => (s.melody && melodies[s.melody.song]
+    ? draw(melodies[s.melody.song], { labels: [s.melody.label], langs, keepNames: false, part: s.melody.part, parts: s.melody.parts }, { color: `#${hex(v.fg)}`, pixelWidth: 2400, pageWidth: 1100 })
+    : Promise.resolve(null))));
+
   slides.forEach((s, i) => {
     const sl = pptx.addSlide({ masterName: 'CANON' });
     // a picture: the whole picture on the template's background, or filling the slide (its edges cut off)
@@ -252,6 +266,15 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
       sl.addText(biText(postureL10n(s.posture, langs), langs, ' · '), { x: padX + body.w * 0.75, y: 0.3, w: body.w * 0.25, h: 0.55, fontFace: UI_FONT, fontSize: 15, bold: true, color: accent, align: 'right', valign: 'middle' });
     }
 
+    // a stanza's melody, centred in its band
+    const pic: MelodyImage | null = melodyPics[i];
+    if (pic) {
+      const k = Math.min(body.w / pic.width, (band - 0.1) / pic.height);
+      const w = pic.width * k;
+      const h = pic.height * k;
+      sl.addImage({ data: `image/png;base64,${pic.png.toString('base64')}`, x: body.x + (body.w - w) / 2, y: body.y + (band - h) / 2, w, h });
+    }
+
     if (s.lines || s.verses) {
       const pt = deck ? Math.min(deck, fitted[i]) : fitted[i];
       const present = langs.filter((l) => (s.lines?.[l]?.length ?? 0) + (s.verses?.[l]?.length ?? 0) > 0);
@@ -273,7 +296,7 @@ export async function servicePptx(r: RenderedService, opts: { langs?: Lang[]; sy
           });
         }
       });
-      sl.addText(runs, { ...body, fontSize: pt, color: hex(v.fg), align, valign: 'middle', lineSpacingMultiple: lh, paraSpaceAfter: 0 });
+      sl.addText(runs, { ...bodyOf(s), fontSize: pt, color: hex(v.fg), align, valign: 'middle', lineSpacingMultiple: lh, paraSpaceAfter: 0 });
     } else if (s.blocks) {
       blocksOn(sl, s, s.blocks, langs, { W, padX, body, v, accent, blockImg, fontFor: font });
     } else {

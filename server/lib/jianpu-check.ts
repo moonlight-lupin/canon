@@ -18,10 +18,11 @@ export interface JianpuCheck {
 export const CHECK_TIME_LIMIT_MS = 8000;
 const MEMORY_MB = 256;
 
-function inWorker(source: string, timeLimitMs: number): Promise<MelodyResult> {
+/** Check (or draw) one melody in a worker thread with a memory and a time limit; what ends the thread comes back as C_TOO_SLOW. */
+export function inWorker(source: string, timeLimitMs: number, draw = false): Promise<MelodyResult> {
   return new Promise((resolve) => {
     const failed = (code: string, message = ''): MelodyResult => ({ svgs: [], problems: [{ code, error: true, line: 1, column: 1, message }], changed: [], autoBreaks: 0, lineCount: 0 });
-    const w = new Worker(new URL('./jianpu-worker.ts', import.meta.url), { workerData: { source }, resourceLimits: { maxOldGenerationSizeMb: MEMORY_MB, maxYoungGenerationSizeMb: 32 } });
+    const w = new Worker(new URL('./jianpu-worker.ts', import.meta.url), { workerData: { source, draw }, resourceLimits: { maxOldGenerationSizeMb: MEMORY_MB, maxYoungGenerationSizeMb: 32 } });
     let settled = false;
     const end = (r: MelodyResult) => {
       if (settled) return;

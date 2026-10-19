@@ -1,5 +1,5 @@
 // Slides: what one slide shows, and measuring a whole deck off-screen to choose its text size.
-import { Fragment, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { L10n, Lang, RenderedService } from '../types-client.ts';
 import { backgroundUrl, blockImageUrl, blockQrSrc, imageUrl } from '../../shared/presentation.ts';
 import type { SlideAspect } from '../../shared/slide-theme.ts';
@@ -13,7 +13,31 @@ import {
   type Blank, deckCache, DeckSizeCtx, type DeckSizes, type FitGroup, fitGroup, fitsBox, GROUP_MAX, MAX_FONT, sigOf,
   SlideThemeCtx, stageWidth, useAutoFit,
 } from './slide-fit.tsx';
+import { melodyPicture, type MelodyPicture } from '../components/jianpu.ts';
 import './outputs.css';
+
+/** The service's songs' melodies by song id (GET /services/:id/melodies), for the band above a stanza's words (0.21.3). */
+export const SlideMelodiesCtx = createContext<Record<number, string> | null>(null);
+
+/**
+ * A stanza's melody in the band above its words: its lines of words in the slide's languages (no stanza number: the
+ * slide shows it), the part of the music that goes with this slide, in the template's words colour. The band has a
+ * fixed height, so fitting the words never waits for the drawing; while measuring it stays empty.
+ */
+function MelodyBand({ s, langs, measuring }: { s: SlideDef; langs: Lang[]; measuring?: boolean }) {
+  const melodies = useContext(SlideMelodiesCtx);
+  const m = s.melody!;
+  const source = melodies?.[m.song];
+  const [pic, setPic] = useState<MelodyPicture | null>(null);
+  useEffect(() => {
+    let live = true;
+    setPic(null);
+    if (!source || measuring) return;
+    void melodyPicture(source, { labels: [m.label], langs, keepNames: false, part: m.part, parts: m.parts }).then((p) => live && setPic(p));
+    return () => { live = false; };
+  }, [source, measuring, m.label, m.part, m.parts, langs.join()]);
+  return <div className="sl-melody slide-melody" dangerouslySetInnerHTML={pic ? { __html: pic.svg } : undefined} />;
+}
 
 /**
  * Lines of one language. Speaker labels (Leader / People) show when the item has more than one speaker: on the first
@@ -149,6 +173,7 @@ export function SlideFace({ s, langs, split, r, num, measuring }: { s: SlideDef;
         {s.cont && s.type === 'lyrics' && !s.label && <span className="sl-cont slide-cont" aria-label="continued">…</span>}
         {s.posture && <span className="sl-posture slide-posture">{biText(postureL10n(s.posture, langs), langs, ' · ')}</span>}
       </div>
+      {s.melody && <MelodyBand s={s} langs={langs} measuring={measuring} />}
       <div className="sl-box" ref={boxRef}>
         <div className="sl-fit" ref={fitRef}>{body}</div>
       </div>
@@ -307,7 +332,7 @@ export function useDeckSizes({ slides, langs, split, r, theme, enabled }: {
   const logoVersion = useLogo();
   const sig = useMemo(() => {
     if (!enabled || !r) return '';
-    const content = slides.filter((s) => fitGroup(s.type)).map((s) => [s.type, s.lines, s.verses, s.big, s.sub, s.meta]);
+    const content = slides.filter((s) => fitGroup(s.type)).map((s) => [s.type, s.lines, s.verses, s.big, s.sub, s.meta, s.melody ? 1 : 0]);
     return sigOf(JSON.stringify([theme.id, theme.sig, theme.aspect, langs, split, r.date, r.start_time, r.end_time, r.has_logo ? logoVersion : 0, content]));
   }, [enabled, r, slides, langs, split, theme.id, theme.sig, theme.aspect, logoVersion]);
   const [st, setSt] = useState<{ sig: string; sizes: DeckSizes; done: boolean } | null>(null);

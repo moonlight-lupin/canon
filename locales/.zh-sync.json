@@ -3780,6 +3780,10 @@
       "PayNow / 银行二维码请上传银行提供的正式图片，切勿自行生成。",
       "PayNow / 銀行二維碼請上傳銀行提供的正式圖片，切勿自行生成。"
     ],
+    "For a song with a melody in numbered notation (Library → the song), the stanza’s melody is shown above its words, in the slide’s languages. A long stanza over several slides shares its lines of music between them.": [
+      "诗歌有简谱旋律时（资料库 → 该诗歌），每节的旋律显示在歌词上方，用投影片的语言。一节分成几张投影片时，乐句会分配到各张投影片。",
+      "詩歌有簡譜旋律時（資料庫 → 該詩歌），每節的旋律顯示在歌詞上方，用投影片的語言。一節分成幾張投影片時，樂句會分配到各張投影片。"
+    ],
     "For accounting software that imports a manual journal file": [
       "用于导入手工分录文件的会计软件",
       "用於導入手工分錄文件的會計軟件"
@@ -5191,6 +5195,10 @@
     "Melodies": [
       "旋律",
       "旋律"
+    ],
+    "Melodies under song titles (numbered notation)": [
+      "诗歌标题下印简谱旋律",
+      "詩歌標題下印簡譜旋律"
     ],
     "Melody": [
       "旋律",
@@ -8644,6 +8652,10 @@
       "显示教会节期颜色",
       "顯示教會節期顏色"
     ],
+    "Show melodies above the words": [
+      "在歌词上方显示旋律",
+      "在歌詞上方顯示旋律"
+    ],
     "Show past co-workers": [
       "显示已卸任同工",
       "顯示已卸任同工"
@@ -9660,9 +9672,9 @@
       "合计相符。",
       "合計相符。"
     ],
-    "The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza or language. Canon draws it as you type, and the musicians find it with the sheet music (Outputs → Sheet music). Saved with the song. Like sheet music it stays inside Canon: not on the share pages or the slides, and for AI assistants only when an administrator allows it (Settings → AI / MCP).": [
-      "以简谱记下的曲调，用 jpFun 的写法输入，每节或每种语言在下面各写一行歌词。Canon 会边输入边画出简谱，乐手可在乐谱中找到它（输出 → 乐谱）。随诗歌一起保存。和乐谱一样只留在 Canon 内：不出现在分享页或投影片中；只有在管理员允许时（设置 → AI / MCP），AI 助手才能使用。",
-      "以簡譜記下的曲調，用 jpFun 的寫法輸入，每節或每種語言在下面各寫一行歌詞。Canon 會邊輸入邊畫出簡譜，樂手可在樂譜中找到它（輸出 → 樂譜）。隨詩歌一起保存。和樂譜一樣只留在 Canon 內：不出現在分享頁或投影片中；只有在管理員允許時（設置 → AI / MCP），AI 助手才能使用。"
+    "The tune in numbered notation (jianpu), typed in the notation of jpFun, with a line of words under it for each stanza and language: L(1): for stanza 1, L(2): for stanza 2 …, or L: for every stanza. Canon draws it as you type; the slides show each stanza’s melody above its words and the bulletin prints it under the song’s title (both can be turned off in their templates). Saved with the song. Not on the share pages, and for AI assistants only when an administrator allows it (Settings → AI / MCP).": [
+      "以简谱记下的曲调，用 jpFun 的写法输入，每节和每种语言在下面各写一行歌词：第 1 节写 L(1):，第 2 节写 L(2):……，各节通用的写 L:。Canon 会边输入边画出简谱；投影片会在每节歌词上方显示该节的旋律，次序单则印在诗歌标题下方（两者都可在模板中关闭）。随诗歌一起保存。不出现在分享页面；只有在管理员允许时（设置 → AI / MCP），AI 助手才能使用。",
+      "以簡譜記下的曲調，用 jpFun 的寫法輸入，每節和每種語言在下面各寫一行歌詞：第 1 節寫 L(1):，第 2 節寫 L(2):……，各節通用的寫 L:。Canon 會邊輸入邊畫出簡譜；投影片會在每節歌詞上方顯示該節的旋律，次序單則印在詩歌標題下方（兩者都可在模板中關閉）。隨詩歌一起保存。不出現在分享頁面；只有在管理員允許時（設置 → AI / MCP），AI 助手才能使用。"
     ],
     "The two passwords differ.": [
       "两次输入的密码不同。",
@@ -12558,7 +12570,7 @@
     ]
   },
   "guide": [
-    "413fb6bf6c41e6b8",
-    "b58fbe1e5fb5d706"
+    "91dd113a9f88692e",
+    "27cc79ea84e5af26"
   ]
 }

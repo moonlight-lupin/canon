@@ -12,7 +12,7 @@ import { Bi, biText, langOptions, langsFor, modeFor, type LangMode } from './con
 import { buildSlides, mapSlideIndex, slideText, type SlideDef } from './slideModel.ts';
 import './outputs.css';
 import { PresenterView, toggleFullscreen } from './PresenterView.tsx';
-import { SlideOrBlank, useDeckSizes } from './SlideFace.tsx';
+import { SlideMelodiesCtx, SlideOrBlank, useDeckSizes } from './SlideFace.tsx';
 import { type Blank, DeckSizeCtx, sigOf, SlideThemeCtx, Stage, type SyncState } from './slide-fit.tsx';
 import { withRights } from '../../shared/bible-rights.ts';
 
@@ -30,6 +30,9 @@ export default function Slides() {
   const error = apError ?? live.error;
   const themes = approvedId ? (approval ? (approval.snapshot.slide_theme ? [approval.snapshot.slide_theme] : []) : undefined) : liveThemes.data;
   const themesError = approvedId ? null : liveThemes.error;
+  // the songs' melodies, for the band above each stanza (0.21.3); staff only, so not in the render or an approval's copy
+  const melodiesApi = useApi<Record<number, string>>(id ? `/services/${id}/melodies` : null);
+  const melodies = melodiesApi.data ?? null;
 
   const [state, setState] = useState<SyncState>({ idx: 0, blank: 'none', mode: 'both', split: false, theme: null });
   const [modeInit, setModeInit] = useState(false);
@@ -67,7 +70,7 @@ export default function Slides() {
   const langs = useMemo(() => langsFor(state.mode, r?.languages ?? ['en']), [state.mode, r]);
   // lines per slide come from the theme; the limit depends on how many languages are shown
   const vars = theme?.vars;
-  const slides = useMemo(() => (r ? buildSlides(r, langs, vars) : []), [r, langs, vars]);
+  const slides = useMemo(() => (r ? buildSlides(r, langs, vars, melodies) : []), [r, langs, vars, melodies]);
   const deck = useDeckSizes({ slides, langs, split: state.split, r, theme: themeCtx, enabled: vars?.uniform_size ?? true });
   const n = slides.length;
   const idx = Math.min(state.idx, Math.max(0, n - 1));
@@ -106,7 +109,7 @@ export default function Slides() {
   /** Another language mode re-chunks the slides (more lines fit with one language): stay on the same words. */
   const setMode = (m: LangMode) => {
     if (!r || m === state.mode) return;
-    update({ mode: m, idx: mapSlideIndex(slides, idx, buildSlides(r, langsFor(m, r.languages), vars)) });
+    update({ mode: m, idx: mapSlideIndex(slides, idx, buildSlides(r, langsFor(m, r.languages), vars, melodies)) });
   };
 
   // ---- keyboard
@@ -236,6 +239,7 @@ export default function Slides() {
   const themeStyle = <style>{themeCss ?? ''}</style>;
   if (presenter) {
     return (
+      <SlideMelodiesCtx.Provider value={melodies}>
       <SlideThemeCtx.Provider value={themeCtx}>
       <DeckSizeCtx.Provider value={deck.ctx}>
       {themeStyle}
@@ -258,10 +262,12 @@ export default function Slides() {
       />
       </DeckSizeCtx.Provider>
       </SlideThemeCtx.Provider>
+      </SlideMelodiesCtx.Provider>
     );
   }
 
   return (
+    <SlideMelodiesCtx.Provider value={melodies}>
     <SlideThemeCtx.Provider value={themeCtx}>
     <DeckSizeCtx.Provider value={deck.ctx}>
     {themeStyle}
@@ -288,5 +294,6 @@ export default function Slides() {
     </div>
     </DeckSizeCtx.Provider>
     </SlideThemeCtx.Provider>
+    </SlideMelodiesCtx.Provider>
   );
 }

@@ -81,15 +81,23 @@ test('an editor saves, changes and clears a melody; a viewer reads it but cannot
   assert.equal(get('SELECT 1 FROM song_melodies WHERE song_id = ?', song.id), undefined);
 });
 
-test('a melody goes with its song, and is listed with the service’s sheet music', async () => {
+test('a melody goes with its song; the service’s melodies are for its slides and bulletin, not its sheet music (0.21.3)', async () => {
   const song = newSong('An Evening Hymn');
   const plain = newSong('A Hymn Without Music');
   mel.setMelody(song.id, TUNE);
   const s = svc.createService({ date: '2031-05-11' }).service;
   svc.addItem(s.id, { kind: 'song', ref_id: plain.id });
   svc.addItem(s.id, { kind: 'song', ref_id: song.id, stanzas: ['1'] });
+  // Sheet music is for the pianist: the uploaded pages only (jianpu has no chords or harmony to play from)
   const list = await call(as.viewer, 'GET', `/services/${s.id}/scores`);
-  assert.deepEqual(list.body.songs.map((x: Json) => [x.song.id, x.melody]), [[plain.id, null], [song.id, TUNE.trimEnd()]]);
+  assert.deepEqual(list.body.songs.map((x: Json) => [x.song.id, 'melody' in x]), [[plain.id, false], [song.id, false]]);
+  // the slides and bulletin get them here, by song id; staff only
+  const melodies = await call(as.viewer, 'GET', `/services/${s.id}/melodies`);
+  assert.equal(melodies.status, 200);
+  assert.deepEqual(melodies.body, { [song.id]: TUNE.trimEnd() });
+  assert.equal((await fetch(`${base}/api/services/${s.id}/melodies`)).status, 401, 'signed-in only');
+  // the render (AI tools, share pages, approvals) carries no melody
+  assert.doesNotMatch(JSON.stringify((await call(as.viewer, 'GET', `/services/${s.id}/render`)).body), /Morn- ing|@meter/);
 
   lib.songs.remove(song.id);
   assert.equal(get('SELECT 1 FROM song_melodies WHERE song_id = ?', song.id), undefined);

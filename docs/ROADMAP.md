@@ -41,6 +41,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.20.4 | Release notes formatted in About Canon → Updates, packages updated, unused translations taken out — done |
 | 0.21.0 | Melodies in numbered notation (jianpu): typed with a song, drawn as they are typed and on Outputs → Sheet music — done |
 | 0.21.1–0.21.2 | A rest takes a word (the notation guide corrected, a warning); melodies for the Doxology, Gloria Patri, Threefold Amen and The Lord Is in His Holy Temple in Canon's library — done |
+| 0.21.3 | Melodies on the slides (above each stanza) and in the bulletin (under the song's title), in the Word and PowerPoint downloads too; Sheet music back to the scans — done |
 | 0.22.0 | Recovery and operational acceptance: real-machine write-ups (a NAS, Windows) and a pilot cycle with a church (below) |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.
@@ -259,6 +260,6 @@ Before Canon is offered for unattended use or to replace a church's books outrig
 
 ## Later
 
-- **Melodies on the slides and in the bulletin** (after 0.21.0): the melody drawn by the server (with a font of its own, so Docker needs none) above a stanza's words on its first slide and under a hymn's heading in the bulletin, a template switch for each; only the stanzas sung, with the words taken from the song's stanzas.
+- **Melodies in the FreeShow export** (after 0.21.3): the stanza's melody above its words, as on Canon's own slides and in the PowerPoint download.
 - **Melodies from MusicXML** (jpFun already reads it): a hymn's melody brought in from a MusicXML file instead of typed.
 - **Child check-in and pick-up** for Sunday school: name labels and a collection code for the guardian.

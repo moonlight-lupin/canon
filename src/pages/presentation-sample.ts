@@ -63,6 +63,20 @@ function item(id: number, start: string, kind: RenderedItem['kind'], title: L10n
 }
 
 /** The sample service in the given languages. `churchName` and `seasonColours` come from Settings. */
+/** The sample service's melodies by song id (song 2 is the Doxology, as in Canon's library), for the template previews. */
+export const SAMPLE_MELODIES: Record<number, string> = {
+  2: `@1(G4)
+@meter(4, 4)
+N: {
+  1 1 7, 6, | 5, 1 2 3 | @br()
+  3 3 3 2 | 1 4 3 2 | @br()
+  1 2 3 2 | 1 6, 7, 1 | @br()
+  5 3 1 2 | 4 3 2 1 ||
+}
+L: Praise God, from whom all bless- ings flow; Praise him, all crea- tures here be- low; Praise him a- bove, ye heaven- ly host; Praise Fa- ther, Son, and Ho- ly Ghost.
+L: 赞美真神万福之根，世上万民都当颂扬，天上万军也当赞美，赞美圣父、圣子、圣灵。`,
+};
+
 export function sampleService(langs: Lang[], churchName: L10n, seasonColours: boolean): RenderedService {
   const today = new Date().toISOString().slice(0, 10);
   const season = seasonInfo(today);

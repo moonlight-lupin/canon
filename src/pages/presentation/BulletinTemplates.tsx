@@ -344,6 +344,7 @@ export function OrderOptions({ o, setO }: { o: BulletinOptions; setO: (p: Partia
       </div>
       <div className="pr-grid">
         <label className="check"><input type="checkbox" checked={o.show_posture} onChange={(e) => setO({ show_posture: e.target.checked })} />{t('Posture (All stand / 众立)')}</label>
+        <label className="check"><input type="checkbox" checked={o.show_melodies} onChange={(e) => setO({ show_melodies: e.target.checked })} />{t('Melodies under song titles (numbered notation)')}</label>
         <label className="check"><input type="checkbox" checked={o.sermon_brackets} onChange={(e) => setO({ sermon_brackets: e.target.checked })} />{t('Sermon and creed titles in 【】')}</label>
         <label className="check"><input type="checkbox" checked={o.show_leaders} onChange={(e) => setO({ show_leaders: e.target.checked })} />{t('Names of those leading each item')}</label>
         <label className="check"><input type="checkbox" checked={o.show_times} onChange={(e) => setO({ show_times: e.target.checked })} />{t('Time of each item')}</label>

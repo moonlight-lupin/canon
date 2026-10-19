@@ -274,6 +274,8 @@ export interface MelodyResult {
   /** where Canon started new lines itself (no @br() in the melody) */
   autoBreaks: number;
   lineCount: number;
+  /** each music line's top and bottom on the (first) page, notes and words together — for cropping (0.21.3) */
+  lines?: LineBox[];
 }
 
 const lineCol = (source: string, offset: number) => {
@@ -308,10 +310,85 @@ export function runJianpu(jp: JpFunLike, source: string, o: { draw: boolean; com
     if (tall) return { svgs: [], problems: [...problems, at(0, tall.code, true, '', tall.vars)], changed, autoBreaks: wrapped.at.length, lineCount: r.layout.lineCount };
     for (const w of [...wordsUnderRests(r, normal), ...leftoverWords(r, normal)]) problems.push(at(w.offset, w.code, w.error, '', w.vars));
     const svgs = o.draw ? jp.renderLayoutPagesToSvg(r.layout as never, o.svgOptions ?? {}) : [];
-    return { svgs, problems, changed, autoBreaks: wrapped.at.length, lineCount: r.layout.lineCount };
+    return { svgs, problems, changed, autoBreaks: wrapped.at.length, lineCount: r.layout.lineCount, ...(o.draw ? { lines: lineBoxes(r.layout) } : {}) };
   } catch (e) {
     // jpFun stops at the first error it can't get past, and throws it
     const d = e as Diag;
     return { svgs: [], problems: [...problems, at(originalOffset(d.span?.start ?? 0, wrapped.at), d.code ?? 'E_UNKNOWN', true, d.message ?? String(e))], changed, autoBreaks: wrapped.at.length, lineCount: 0 };
   }
 }
+
+// ---------------------------------------------------------------- 0.21.3: a stanza's melody, and part of a drawing
+
+/** Languages written in Chinese characters (a line of words with them is for these). */
+const CJK_LANGS = new Set(['zh', 'zh-Hant', 'ja', 'ko']);
+const HAS_CJK = /[\u3400-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/;
+const LYRIC_LINE = /^(\s*L)(\(([^)\n]*)\))?(\s*[:：])(.*)$/;
+
+/**
+ * The melody with only the lines of words for some stanzas and languages (the slides: one stanza; the bulletin: the
+ * stanzas sung). A line named after a stanza — `L(1):`, `L(R):` — goes with that stanza; an unnamed `L:` with every
+ * stanza. A line with Chinese (or other CJK) characters is for a CJK language, any other line for the rest. With
+ * `keepNames: false` the names are taken off, so jpFun doesn't print the stanza number (a slide shows it already).
+ */
+export function selectLyrics(source: string, o: { labels?: string[]; langs?: string[]; keepNames?: boolean } = {}): string {
+  const labels = o.labels ? new Set(o.labels.map((l) => l.trim().toUpperCase())) : null;
+  const langs = o.langs ?? [];
+  const wantCjk = !langs.length || langs.some((l) => CJK_LANGS.has(l));
+  const wantOther = !langs.length || langs.some((l) => !CJK_LANGS.has(l));
+  return source.split('\n').flatMap((line) => {
+    const m = LYRIC_LINE.exec(line);
+    if (!m) return [line];
+    const name = (m[3] ?? '').trim().split(/[\s.]/)[0].toUpperCase();
+    if (name && labels && !labels.has(name)) return [];
+    if (HAS_CJK.test(m[5]) ? !wantCjk : !wantOther) return [];
+    return [o.keepNames === false && m[2] ? `${m[1]}${m[4]}${m[5]}` : line];
+  }).join('\n');
+}
+
+export interface LineBox { top: number; bottom: number }
+
+/** Each music line's top and bottom: everything placed on it, notes and words (jpFun's layout objects and regions). */
+export function lineBoxes(layout: unknown): LineBox[] {
+  const l = layout as { objects?: { layoutLine?: number; box?: { y: number; h: number } }[]; attachments?: { regions?: { line?: number; y?: number; h?: number }[] }[] };
+  const out: LineBox[] = [];
+  const add = (line: number | undefined, y: number | undefined, h: number | undefined) => {
+    if (line == null || y == null || h == null || !Number.isFinite(y)) return;
+    const b = (out[line] ??= { top: y, bottom: y + h });
+    b.top = Math.min(b.top, y);
+    b.bottom = Math.max(b.bottom, y + h);
+  };
+  for (const o of l.objects ?? []) add(o.layoutLine, o.box?.y, o.box?.h);
+  for (const a of l.attachments ?? []) for (const g of a.regions ?? []) add(g.line, g.y, g.h);
+  return out.filter(Boolean);
+}
+
+/** Which music lines one of `parts` slides shows (a long stanza over several slides), in order. */
+export function partLines(count: number, part: number, parts: number): [number, number] {
+  if (parts <= 1 || count <= 1) return [0, count];
+  const from = Math.min(count - 1, Math.floor((part * count) / parts));
+  return [from, Math.max(from + 1, Math.min(count, Math.floor(((part + 1) * count) / parts)))];
+}
+
+/**
+ * Crop a jpFun SVG page to music lines [from, to): the cut falls half-way between neighbouring lines, so octave dots and
+ * words stay whole. Returns the SVG with a new viewBox (and width / height to match).
+ */
+export function cropSvg(svg: string, lines: LineBox[], from: number, to: number): string {
+  const vb = /viewBox="([\d.\s-]+)"/.exec(svg)?.[1].trim().split(/\s+/).map(Number);
+  if (!vb || vb.length !== 4 || !lines.length || (from <= 0 && to >= lines.length)) return svg;
+  const [x, , w, h] = vb;
+  const gap = 6;
+  const top = from <= 0 ? 0 : (lines[from - 1].bottom + lines[from].top) / 2 - gap / 2;
+  const bottom = to >= lines.length ? h : (lines[to - 1].bottom + lines[to].top) / 2 + gap / 2;
+  const height = Math.max(1, bottom - top);
+  return svg
+    .replace(/viewBox="[^"]*"/, `viewBox="${x} ${top.toFixed(2)} ${w} ${height.toFixed(2)}"`)
+    .replace(/(<svg[^>]*?)\sheight="[\d.]+"/, `$1 height="${height.toFixed(2)}"`);
+}
+
+/** A slide's melody band, as a share of the slide's height (the words fit the rest). */
+export const MELODY_BAND = 0.32;
+
+/** Paint a jpFun SVG in another colour (its ink is #000), e.g. a slide template's words colour or `currentColor`. */
+export const recolorSvg = (svg: string, color: string) => svg.replace(/(fill|stroke)="#000"/g, `$1="${color}"`);

@@ -2,7 +2,7 @@
 // drawn in the browser. jpFun runs in a worker (jianpu-worker.ts) with a time limit: a melody that takes too long is
 // stopped, and the page stays usable. The worker loads on first use, so pages without a melody don't download jpFun.
 // What happens around jpFun (Chinese-keyboard punctuation, limits, new lines, words left over) is shared/jianpu-prep.ts.
-import type { MelodyProblem, MelodyResult } from '../../shared/jianpu-prep.ts';
+import { cropSvg, partLines, recolorSvg, selectLyrics, type MelodyProblem, type MelodyResult } from '../../shared/jianpu-prep.ts';
 
 export type JianpuProblem = MelodyProblem;
 export interface JianpuResult { pages: SVGSVGElement[]; problems: JianpuProblem[]; changed: string[]; autoBreaks: number }
@@ -39,15 +39,51 @@ function draw(source: string): Promise<MelodyResult> {
 }
 
 /** Draw a melody: one SVG per page (none when it can't be drawn), and its problems by line and column. */
-export function renderJianpu(source: string): Promise<JianpuResult> {
+/** One melody at a time through the worker. */
+function queued(source: string): Promise<MelodyResult> {
   const next = queue.then(() => draw(source));
   queue = next.catch(() => undefined);
-  return next.then((r) => ({
+  return next;
+}
+
+export function renderJianpu(source: string): Promise<JianpuResult> {
+  return queued(source).then((r) => ({
     pages: r.svgs.map(cleanSvg).filter((x): x is SVGSVGElement => !!x),
     problems: r.problems,
     changed: r.changed,
     autoBreaks: r.autoBreaks,
   }));
+}
+
+/** A melody ready to place: cleaned SVG markup (ink in `currentColor`) and its height for a width of 1. */
+export interface MelodyPicture { svg: string; ratio: number }
+const pictures = new Map<string, Promise<MelodyPicture | null>>();
+
+/**
+ * One stanza's (or some stanzas') melody as SVG markup, for the slides and the bulletin (0.21.3): the lines of words for
+ * those stanzas and languages only (shared/jianpu-prep.ts selectLyrics), cropped to `part` of `parts` when a stanza
+ * is spread over several slides, no background, ink in currentColor. null when it can't be drawn.
+ */
+export function melodyPicture(source: string, sel: { labels?: string[]; langs?: string[]; keepNames?: boolean; part?: number; parts?: number }): Promise<MelodyPicture | null> {
+  const text = selectLyrics(source, sel);
+  const key = `${sel.part ?? 0}/${sel.parts ?? 1}\n${text}`;
+  let p = pictures.get(key);
+  if (!p) {
+    p = queued(text).then((r) => {
+      const svg = r.svgs[0];
+      if (!svg || r.problems.some((x) => x.error)) return null;
+      const lines = r.lines ?? [];
+      const [from, to] = partLines(lines.length, sel.part ?? 0, sel.parts ?? 1);
+      const el = cleanSvg(recolorSvg(cropSvg(svg, lines, from, to), 'currentColor').replace(/<rect x="0" y="0" width="[\d.]+" height="[\d.]+" fill="#fff"\s*\/>/, ''));
+      if (!el) return null;
+      const vb = (el.getAttribute('viewBox') ?? '').split(/\s+/).map(Number);
+      return { svg: new XMLSerializer().serializeToString(el), ratio: vb.length === 4 && vb[2] ? vb[3] / vb[2] : 0.2 };
+    }, () => null);
+    pictures.set(key, p);
+    // keep the cache small: the oldest drawings go first
+    if (pictures.size > 60) pictures.delete(pictures.keys().next().value!);
+  }
+  return p;
 }
 
 // What a drawn melody may contain. jpFun escapes the text it writes; this keeps anything else out all the same.
