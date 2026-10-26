@@ -12,6 +12,7 @@
 //     And (0.21.1) a rest takes a word like a note does, so words drift one place early after a rest without {}: Canon
 //     says which line of words has a word under a rest.
 // Problems Canon adds have codes starting C_ (their words are in shared/jianpu-messages.ts).
+import { jpFunVars } from './jianpu-messages.ts';
 
 /** The longest melody Canon keeps (characters); the editor counts down to it, the server refuses beyond it. */
 export const MAX_MELODY_CHARS = 50_000;
@@ -252,7 +253,7 @@ export interface JpFunLike {
   renderLayoutPagesToSvg: (layout: never, options?: Record<string, unknown>) => string[];
   ErrorDiagnostic: abstract new (...a: never[]) => unknown;
 }
-type Diag = { code?: string; message?: string; span?: { start: number } };
+type Diag = { code?: string; message?: string; span?: { start: number }; params?: Record<string, string> };
 
 export interface MelodyProblem {
   code: string;
@@ -261,7 +262,7 @@ export interface MelodyProblem {
   column: number;
   /** jpFun's own message (Chinese); empty for Canon's own problems */
   message: string;
-  /** the details for Canon's words (C_ codes; jpFun's are read from its message) */
+  /** the details for Canon's words (C_ codes; jpFun's from its params) */
   vars?: Record<string, string>;
 }
 
@@ -304,7 +305,7 @@ export function runJianpu(jp: JpFunLike, source: string, o: { draw: boolean; com
       const k = `${d.code} ${d.span?.start} ${d.message}`;
       if (seen.has(k)) continue;
       seen.add(k);
-      problems.push(at(originalOffset(d.span?.start ?? 0, wrapped.at), d.code ?? 'E_UNKNOWN', d instanceof jp.ErrorDiagnostic, d.message ?? ''));
+      problems.push(at(originalOffset(d.span?.start ?? 0, wrapped.at), d.code ?? 'E_UNKNOWN', d instanceof jp.ErrorDiagnostic, d.message ?? '', jpFunVars(d.params)));
     }
     const tall = tooManyLines(r.layout.lineCount);
     if (tall) return { svgs: [], problems: [...problems, at(0, tall.code, true, '', tall.vars)], changed, autoBreaks: wrapped.at.length, lineCount: r.layout.lineCount };
@@ -314,7 +315,7 @@ export function runJianpu(jp: JpFunLike, source: string, o: { draw: boolean; com
   } catch (e) {
     // jpFun stops at the first error it can't get past, and throws it
     const d = e as Diag;
-    return { svgs: [], problems: [...problems, at(originalOffset(d.span?.start ?? 0, wrapped.at), d.code ?? 'E_UNKNOWN', true, d.message ?? String(e))], changed, autoBreaks: wrapped.at.length, lineCount: 0 };
+    return { svgs: [], problems: [...problems, at(originalOffset(d.span?.start ?? 0, wrapped.at), d.code ?? 'E_UNKNOWN', true, d.message ?? String(e), jpFunVars(d.params))], changed, autoBreaks: wrapped.at.length, lineCount: 0 };
   }
 }
 

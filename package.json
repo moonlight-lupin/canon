@@ -1,6 +1,6 @@
 {
   "name": "canon",
-  "version": "0.21.3",
+  "version": "0.21.4",
   "private": true,
   "description": "Canon — local-first, multilingual church system: service planner with bulletins & slides, member and co-worker registers, groups, volunteer rota, and an OAuth MCP server for AI agents.",
   "license": "MIT",
@@ -45,7 +45,7 @@
     "better-sqlite3-multiple-ciphers": "13.0.3",
     "docx": "^9.8.1",
     "express": "^5.2.1",
-    "jpfun": "0.7.0",
+    "jpfun": "0.8.0",
     "nodemailer": "^10.0.14",
     "opencc-js": "^1.4.2",
     "pptxgenjs": "^4.0.1",

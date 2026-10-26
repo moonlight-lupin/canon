@@ -116,4 +116,4 @@ Keep the "Canon server" window open while Canon is in use, or run Canon in the b
 
 ## License
 
-[MIT](LICENSE) © 2026 moonlight-lupin. Third-party content keeps its own licence, as listed above and in the app under *About Canon*.
+[MIT](LICENSE) © 2026 moonlight-lupin. Third-party content keeps its own licence, as listed above and in the app under *About Canon*. The open-source packages Canon uses keep theirs (in `node_modules`, shipped with Canon): for example [jpFun](https://github.com/madderscientist/jpFun) (Apache-2.0), which draws melodies, with a few music symbols from [Bravura](https://github.com/steinbergmedia/bravura) (SIL Open Font License 1.1).

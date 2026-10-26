@@ -4,6 +4,15 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.21.4 — jpFun 0.8.0: Canon's words for melody problems take jpFun's own details
+
+- **jpFun 0.8.0** (pinned to that exact version). It now gives the details of each problem (the function, the value written, the key used instead, a bar's beats and time signature) as separate values, as Canon asked for upstream ([madderscientist/jpFun#4](https://github.com/madderscientist/jpFun/issues/4)). Canon's English and Chinese sentences under the drawing, and from `canon_melody`, take them from there instead of picking them out of jpFun's Chinese message, so a reworded message can no longer leave a detail blank.
+- **A key Canon can't read** (`@1(H4)`) is now one problem, saying which key is used instead (C4), the same as a key written unusually (`@1(g4)` → G4). Five of jpFun's problems that Canon had words for no longer exist in jpFun (an unclosed quotation mark, for example, is now reported as the unclosed `@…(`); their sentences are gone.
+- The four melodies in Canon's library, and every example in the guide and the notation reference, draw exactly as they did with jpFun 0.7.0.
+- jpFun 0.8.0 draws a few music symbols (turn, coda) from the Bravura font (SIL Open Font License 1.1); its licence ships with jpFun, and the README says so.
+- Tests: each sentence is filled from jpFun's details, with nothing left blank; every jpFun problem Canon has words for still exists in the pinned jpFun.
+- No database change.
+
 ## 0.21.3 — Melodies on the slides and in the bulletin; Sheet music is the scans again
 
 - **Outputs → Sheet music shows only the uploaded scans and PDFs again.** It is the pianist's page, and a melody in numbered notation has no chords or harmony to play from. A song with a melody but no scans counts as "without sheet music" again.

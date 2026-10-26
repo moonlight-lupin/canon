@@ -43,7 +43,7 @@ export async function checkJianpu(source: string, o: { timeLimitMs?: number } = 
   const r = await inWorker(source, o.timeLimitMs ?? CHECK_TIME_LIMIT_MS);
   const notes = normalizeJianpu(source).text;
   const problems = r.problems.map((p) => {
-    const hint = jianpuHint(p.code, p.message, p.vars);
+    const hint = jianpuHint(p.code, p.vars);
     return { level: p.error ? 'error' as const : 'warning' as const, code: p.code, line: p.line, column: p.column, message: hint ? fillHint(hint.template, hint.vars) : p.message, jpfun_message: p.message };
   });
   return {

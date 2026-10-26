@@ -57,7 +57,7 @@ export function JianpuView({ source, delay = 0, problems: showProblems = false, 
       {showProblems && problems.length > 0 && (
         <ul className="jianpu-problems small">
           {problems.map((p, i) => {
-            const hint = jianpuHint(p.code, p.message, p.vars);
+            const hint = jianpuHint(p.code, p.vars);
             const what = hint ? fillHint(t(hint.template), hint.vars) : p.message;
             return (
               <li key={i} className={p.error ? 'error' : 'muted'} title={hint && p.message ? p.message : undefined}>

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import zlib from 'node:zlib';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 
@@ -151,35 +152,45 @@ test('the guide’s melody examples are drawn by the pinned jpFun without errors
   }
 });
 
-test('Canon’s words for jpFun’s problems: the details are found in jpFun’s own messages', async () => {
-  const { compileScore } = await import('jpfun');
+test('Canon’s words for jpFun’s problems: the details come from jpFun’s params (0.8.0)', async () => {
+  const jp = await import('jpfun');
+  const { runJianpu } = await import('../shared/jianpu-prep.ts');
   const { jianpuHint, fillHint, JIANPU_HINTS } = await import('../shared/jianpu-messages.ts');
-  const problems = (src: string) => {
-    try {
-      const r = compileScore(src);
-      return [...r.diagnostics, ...r.layout.diagnostics];
-    } catch (e) {
-      return [e as { code: string; message: string }];
-    }
-  };
-  // a mistake each, and what Canon should say (when jpFun changes a message, this shows which hint lost its details)
+  // a mistake each, and what Canon should say (when jpFun renames a param, this shows which hint lost its details)
   const cases: [string, string, RegExp][] = [
     ['@meter(4)\nN: 1', 'E_MISSING_REQUIRED_ARG', /^@meter is missing a value it needs \(den\)/],
     ['@metre(4, 4)\nN: 1', 'W_UNKNOWN_FUNCTION', /^There is no @metre:/],
     ['@meter(4, 4\nN: 1', 'E_UNTERMINATED_CALL', /^@meter\( is not closed/],
     ['@1(H4)\nN: 1', 'W_KEY_TONALITY', /^The key “H4” .* so C4 is used/],
+    ['@1(g4)\nN: 1', 'W_KEY_TONALITY', /^The key “g4” .* so G4 is used/],
     ['@meter(3, 4)\nN: 1 2 3 | 1 2 3 4 |', 'W_METER_MISMATCH', /^This bar has 4 beats, but the time signature is 3\/4\.$/],
+    ['@meter(4, 4)\nN: 1 2 3 4 | @br(0) 5 - - - |', 'W_BR_OFFSET', /^@br\(\) takes a whole number/],
     ['L: abc', 'E_LYRICS_WITHOUT_VOICE_NOTES', /^An L: line/],
   ];
   for (const [src, code, said] of cases) {
-    const d = problems(src).find((x) => x.code === code);
-    assert.ok(d, `${JSON.stringify(src)} gives ${code}`);
-    const h = jianpuHint(d.code, d.message);
+    const p = runJianpu(jp as never, src, { draw: false }).problems.find((x) => x.code === code);
+    assert.ok(p, `${JSON.stringify(src)} gives ${code}`);
+    assert.ok(p.message, 'jpFun’s own message is kept too');
+    const h = jianpuHint(p.code, p.vars);
     assert.ok(h);
-    assert.match(fillHint(h.template, h.vars), said);
+    const said2 = fillHint(h.template, h.vars);
+    assert.match(said2, said);
+    assert.doesNotMatch(said2, /\{\w+\}/, 'every detail filled in');
   }
-  assert.equal(jianpuHint('E_SOMETHING_NEW', 'x'), null, 'other codes keep jpFun’s message');
+  assert.equal(jianpuHint('E_SOMETHING_NEW'), null, 'other codes keep jpFun’s message');
   for (const t of Object.values(JIANPU_HINTS)) assert.ok(/^[\x20-\x7e’“”…]+$/.test(t), `English: ${t}`);
+  // every jpFun code with a hint still exists in the pinned jpFun (0.8.0 dropped five)
+  const dist = path.join(path.dirname(fileURLToPath(import.meta.resolve('jpfun'))));
+  const codes = new Set<string>();
+  const walk = (dir: string) => {
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, f.name);
+      if (f.isDirectory()) walk(full);
+      else if (f.name.endsWith('.js') && !f.name.endsWith('.min.js')) for (const m of fs.readFileSync(full, 'utf8').matchAll(/"([EW]_[A-Za-z_]+)"/g)) codes.add(m[1]);
+    }
+  };
+  walk(dist);
+  for (const code of Object.keys(JIANPU_HINTS).filter((c) => !c.startsWith('C_'))) assert.ok(codes.has(code), `jpFun still has ${code}`);
 });
 
 test('the notation reference for agents: the same in docs and the skill, and its examples are drawn without problems', async () => {
