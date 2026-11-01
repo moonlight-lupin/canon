@@ -5,7 +5,7 @@
 // and settings are only ever changed in Canon itself.
 import { z } from 'zod';
 import { all } from '../db.ts';
-import { DateStr, Id, Limit, RO, WRITE, type ToolDef } from './common.ts';
+import { DateStr, Id, RO, WRITE, viewOptions, type ToolDef } from './common.ts';
 import { securityChecklist, listMemberViews } from '../repo/security.ts';
 import { listChanges } from '../repo/changelog.ts';
 import { backupDir, checkFolder, createBackup, lastBackupAt, listBackups, nextDue, prune } from '../repo/backups.ts';
@@ -34,97 +34,84 @@ function backupStatus() {
   };
 }
 
+const AdminView = z.enum(['overview', 'accounts', 'change_log', 'record_views', 'settings']);
+const LOG_OPTIONS = ['user_id', 'from', 'to', 'q', 'page', 'size'] as const;
+
 export const ADMIN_TOOLS: ToolDef[] = [
   {
-    name: 'canon_admin_overview', module: 'admin', access: 'read', title: 'Administration overview', annotations: RO,
-    description: 'For administrators: the security checklist (each item ok / warn / todo / info with what to do), backups (last, age, automatic schedule, copies kept, folder problems, encryption), and how many accounts there are, with two-step sign-in and locked accounts. Start here for "anything I should fix?".',
-    input: {},
-    handler: () => {
-      const users = all<{ n: number; twofa: number; locked: number }>(
-        "SELECT COUNT(*) AS n, SUM(totp_enabled = 1) AS twofa, SUM(locked_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) AS locked FROM users",
-      )[0];
-      return {
-        checklist: securityChecklist().map(({ key, status, title, detail }) => ({ key, status, title, detail })),
-        backups: backupStatus(),
-        accounts: { total: users?.n ?? 0, with_two_step: users?.twofa ?? 0, locked: users?.locked ?? 0 },
-      };
-    },
-  },
-  {
-    name: 'canon_admin_accounts', module: 'admin', access: 'read', title: 'Accounts', annotations: RO,
-    description: 'For administrators: every account — username, name, role, the church member it belongs to, two-step sign-in, locked, created and last signed in. Never passwords, sign-in secrets or recovery codes. Changing accounts is done in Canon (Settings → User accounts).',
-    input: {},
-    handler: () => all<{ id: number; username: string; display_name: string; role: string; person_name: string | null; totp_enabled: number; locked: number; created_at: string; last_login_at: string | null }>(
-      `SELECT u.id, u.username, u.display_name, u.role, u.totp_enabled, u.created_at, u.last_login_at,
-              u.locked_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS locked,
-              CASE WHEN p.id IS NOT NULL THEN TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) END AS person_name
-       FROM users u LEFT JOIN people p ON p.id = u.person_id ORDER BY u.id`,
-    ).map((u) => ({
-      id: u.id, username: u.username, name: u.display_name, role: u.role, role_name: roleName(u.role), member: u.person_name,
-      two_step: !!u.totp_enabled, locked: !!u.locked, created_at: u.created_at, last_sign_in: u.last_login_at,
-    })),
-  },
-  {
-    name: 'canon_admin_change_log', module: 'admin', access: 'read', title: 'Change log', annotations: RO,
-    description: 'For administrators: who changed what and when (Settings → Change log), newest first. Filters: entity (e.g. services, service_items, people, songs, settings, users, access_roles), entity_id, user_id, via (web / mcp / system), from, to, q (words). Each entry has the fields that changed; their old and new values only when members\' personal data is shared with AI assistants. Example: {"entity":"services","entity_id":12}.',
+    name: 'canon_admin', module: 'admin', access: 'read', title: 'Administration', annotations: RO,
+    description: 'For administrators, by view. overview (default; start here for "anything I should fix?"): the security checklist (each item ok / warn / todo / info with what to do), backups (last, age, automatic schedule, copies kept, folder problems, encryption), and how many accounts there are, with two-step sign-in and locked accounts. accounts: every account — username, name, role, the church member it belongs to, two-step sign-in, locked, created and last signed in; never passwords, sign-in secrets or recovery codes. change_log: who changed what and when (Settings → Change log), newest first; filters entity (e.g. services, service_items, people, songs, settings, users, access_roles), entity_id, user_id, via (web / mcp / system), from, to, q (words); each entry has the fields that changed, their old and new values only when members\' personal data is shared with AI assistants. record_views: every time someone opened a member\'s page, an AI assistant read a member, or the members list was exported (Settings → Security & privacy), newest first: when, who, which member, how; filters person_id, user_id, from, to, q; names only. settings: how Canon is set up — church name and languages, parts of Canon switched on, two-step sign-in rules, the public address, e-mail (sent by SMTP or AgentMail, configured and tested — never the password or API key), backups, how long logs and visitors\' details are kept, the visitor form, the lending library and what AI assistants may see. Accounts and settings are changed only in Canon. Example: {"view":"change_log","entity":"services","entity_id":12}.',
     input: {
+      view: AdminView.optional(),
       entity: z.string().max(40).optional(),
       entity_id: Id.optional(),
+      person_id: Id.optional(),
       user_id: Id.optional(),
       via: z.enum(['web', 'mcp', 'system']).optional(),
       from: DateStr.optional(),
       to: DateStr.optional(),
       q: z.string().max(100).optional(),
-      page: z.number().int().min(1).default(1),
-      size: Limit(30, 100),
+      page: z.number().int().min(1).optional(),
+      size: z.number().int().min(1).max(100).optional().describe('max 100'),
     },
     handler: (a, ctx) => {
-      // without personal data, words are looked for in the entry's name and summary only: a search of the old and new
-      // values (a phone number) would tell whose they are without showing them
-      const r = listChanges({ ...a, via: a.via as never, values: ctx.pii });
-      return {
-        total: r.total, page: r.page, size: r.size,
-        entries: r.rows.map((c) => ({
-          at: c.at, by: c.user_name, via: c.via, client: c.client, entity: c.entity, entity_id: c.entity_id, action: c.action, name: c.name, summary: c.summary,
-          ...(ctx.pii ? { changes: c.changes } : { changed: Object.keys(c.changes ?? {}) }),
-        })),
-        ...(ctx.pii ? {} : { note: 'old and new values are withheld (members’ personal data is not shared with AI assistants): field names only' }),
-      };
-    },
-  },
-  {
-    name: 'canon_admin_record_views', module: 'admin', access: 'read', title: 'Who viewed member records', annotations: RO,
-    description: 'For administrators: every time someone opened a member\'s page, an AI assistant read a member, or the members list was exported (Settings → Security & privacy), newest first: when, who, which member, how. Filters: person_id, user_id, from, to, q. Names only.',
-    input: {
-      person_id: Id.optional(),
-      user_id: Id.optional(),
-      from: DateStr.optional(),
-      to: DateStr.optional(),
-      q: z.string().max(100).optional(),
-      page: z.number().int().min(1).default(1),
-      size: Limit(30, 100),
-    },
-    handler: (a) => listMemberViews(a),
-  },
-  {
-    name: 'canon_admin_settings', module: 'admin', access: 'read', title: 'Settings overview', annotations: RO,
-    description: 'For administrators: how Canon is set up — church name and languages, parts of Canon switched on, two-step sign-in rules, the public address, e-mail (sent by SMTP or AgentMail, configured and tested — never the password or API key), backups, how long logs and visitors\' details are kept, the visitor form, the lending library and what AI assistants may see. Read only: settings are changed in Canon.',
-    input: {},
-    handler: () => {
-      const s = getSettings();
-      const mail = smtpHealth();
-      return {
-        church: { name: s.church_name, languages: s.languages },
-        modules: s.modules,
-        security: s.security,
-        public_address: publicUrl() || null,
-        email: { configured: smtpConfigured(), via: s.smtp.provider, from: s.smtp?.from_email || null, tested: mail.tested, failing: mail.failing },
-        backups: backupStatus(),
-        keeping: s.retention,
-        visitor_form: { enabled: !!s.visitor_form?.enabled },
-        lending: { self_service: !!s.lending?.self_service },
-        ai: { enabled: s.mcp.enabled, modules: s.mcp.modules, member_contact_details: s.mcp.expose_member_pii, visitors: s.mcp.visitors, sheet_music: !!s.mcp.sheet_music, melodies: s.mcp.melodies ?? 'off' },
-      };
+      const view: z.infer<typeof AdminView> = a.view ?? 'overview';
+      viewOptions(a, 'view', view, { overview: [], accounts: [], settings: [], change_log: ['entity', 'entity_id', 'via', ...LOG_OPTIONS], record_views: ['person_id', ...LOG_OPTIONS] });
+      const { view: _view, ...filters } = a;
+      const paged = { ...filters, page: a.page ?? 1, size: a.size ?? 30 };
+      switch (view) {
+        case 'overview': {
+          const users = all<{ n: number; twofa: number; locked: number }>(
+            "SELECT COUNT(*) AS n, SUM(totp_enabled = 1) AS twofa, SUM(locked_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) AS locked FROM users",
+          )[0];
+          return {
+            checklist: securityChecklist().map(({ key, status, title, detail }) => ({ key, status, title, detail })),
+            backups: backupStatus(),
+            accounts: { total: users?.n ?? 0, with_two_step: users?.twofa ?? 0, locked: users?.locked ?? 0 },
+          };
+        }
+        case 'accounts':
+          return all<{ id: number; username: string; display_name: string; role: string; person_name: string | null; totp_enabled: number; locked: number; created_at: string; last_login_at: string | null }>(
+            `SELECT u.id, u.username, u.display_name, u.role, u.totp_enabled, u.created_at, u.last_login_at,
+                    u.locked_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now') AS locked,
+                    CASE WHEN p.id IS NOT NULL THEN TRIM(IFNULL(p.preferred_name, p.first_name) || ' ' || p.last_name) END AS person_name
+             FROM users u LEFT JOIN people p ON p.id = u.person_id ORDER BY u.id`,
+          ).map((u) => ({
+            id: u.id, username: u.username, name: u.display_name, role: u.role, role_name: roleName(u.role), member: u.person_name,
+            two_step: !!u.totp_enabled, locked: !!u.locked, created_at: u.created_at, last_sign_in: u.last_login_at,
+          }));
+        case 'change_log': {
+          // without personal data, words are looked for in the entry's name and summary only: a search of the old and new
+          // values (a phone number) would tell whose they are without showing them
+          const r = listChanges({ ...paged, via: a.via as never, values: ctx.pii });
+          return {
+            total: r.total, page: r.page, size: r.size,
+            entries: r.rows.map((c) => ({
+              at: c.at, by: c.user_name, via: c.via, client: c.client, entity: c.entity, entity_id: c.entity_id, action: c.action, name: c.name, summary: c.summary,
+              ...(ctx.pii ? { changes: c.changes } : { changed: Object.keys(c.changes ?? {}) }),
+            })),
+            ...(ctx.pii ? {} : { note: 'old and new values are withheld (members’ personal data is not shared with AI assistants): field names only' }),
+          };
+        }
+        case 'record_views':
+          return listMemberViews(paged);
+        case 'settings': {
+          const s = getSettings();
+          const mail = smtpHealth();
+          return {
+            church: { name: s.church_name, languages: s.languages },
+            modules: s.modules,
+            security: s.security,
+            public_address: publicUrl() || null,
+            email: { configured: smtpConfigured(), via: s.smtp.provider, from: s.smtp?.from_email || null, tested: mail.tested, failing: mail.failing },
+            backups: backupStatus(),
+            keeping: s.retention,
+            visitor_form: { enabled: !!s.visitor_form?.enabled },
+            lending: { self_service: !!s.lending?.self_service },
+            ai: { enabled: s.mcp.enabled, modules: s.mcp.modules, member_contact_details: s.mcp.expose_member_pii, visitors: s.mcp.visitors, sheet_music: !!s.mcp.sheet_music, melodies: s.mcp.melodies ?? 'off' },
+          };
+        }
+      }
     },
   },
   {

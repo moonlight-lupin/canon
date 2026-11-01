@@ -67,7 +67,7 @@ function header(title: string, c: PromptCtx) {
     `# Canon playbook: ${title}`,
     '',
     `Today is ${c.today}. The church's languages are ${langList(c)}, primary first. Localised fields are L10n objects {"<lang>": "text"}; Simplified and Traditional Chinese convert automatically, so fill only one Chinese script.`,
-    'The full rules (worship order, privacy, copyright, batch semantics) are in the resource canon://guide/agents — read it first if you have not yet.',
+    'The full rules (worship order, privacy, copyright, batch semantics) are in the resource canon://guide/agents, or canon_whoami {"guide":"agents"} — read it first if you have not yet.',
   ];
 }
 
@@ -203,7 +203,7 @@ export const PROMPTS: PromptDef[] = [
         write
           ? lines(
               '7. Ask before applying. After a clear yes, send ONE canon_update_rota batch: assign {service_id, role_id, person_id}, set_status {assignment_id, status}, unassign {assignment_id} (only if the user asked; prefer set_status "declined"), or autofill {service_ids}. Report the roster warnings it returns.',
-              '8. For someone travelling, canon_set_unavailability {person_id, start_date, end_date, reason} — again only after confirmation.',
+              '8. For someone travelling, canon_update_rota with unavailable_add {person_id, start_date, end_date, reason} — again only after confirmation.',
             )
           : `7. ${readOnlyNote('the rota')}`,
         '',
@@ -471,7 +471,7 @@ export const PROMPTS: PromptDef[] = [
         `3. Report per kind: groups, sizes and leaders; groups without a leader or chair; terms ending before ${soon}; members on many groups (possible overload); very small or inactive groups.`,
         can(c, 'coworkers', 'read') ? '4. For committees, cross-check against canon_list_coworkers (e.g. elders on the Session, deacons on the Board of Deacons).' : null,
         can(c, 'groups', 'write')
-          ? '5. Suggest changes only. After a clear yes, canon_update_group_members — end a term by setting end_date (keep the history) rather than removing; canon_save_group for group details (active=false retires a group).'
+          ? '5. Suggest changes only. After a clear yes, canon_save_group: members operations — end a term by setting end_date (keep the history) rather than removing; fields for group details (active=false retires a group).'
           : `5. ${readOnlyNote('groups')}`,
         '',
         'Names and roles only; the groups tools return no contact details.',
@@ -508,7 +508,7 @@ export const PROMPTS: PromptDef[] = [
           ? step(`canon_offerings_report ${period}: total by fund and payment method (amounts are in cents — divide by 100), other currencies separately (never add them to the total), and cash counts still not verified. Report totals only; do not single out services or people.`)
           : null,
         can(c, 'volunteers', 'read') ? step(`canon_serving_report ${period}: roles that were short of people, people serving very often, and team members not rostered.`) : null,
-        can(c, 'services', 'read') ? step(`canon_scripture_report ${period}: chapters read and preached; canon_song_report ${period}: how many songs under copyright were sung (for the licence report).`) : null,
+        can(c, 'services', 'read') ? step(`canon_worship_report {"report":"scripture","from":"${from}","to":"${to}"}: chapters read and preached; canon_worship_report {"report":"songs","from":"${from}","to":"${to}"}: how many songs under copyright were sung (for the licence report).`) : null,
         can(c, 'members', 'read') ? step(`canon_membership_stats ${period}: how many joined or were baptised this month (numbers only; canon_find_people if the user wants names).`) : null,
         step('Write the report: a few headline numbers, then one short section per topic, then 2–4 points for the leaders to pray about or act on (e.g. visitors waiting for follow-up, a role that keeps being short). Plain language; no charts unless asked.'),
         step('Offer the user the report to copy. Staff can print the full figures from Records → Reports (and the treasurer the monthly offerings summary).'),
@@ -533,7 +533,7 @@ export const PROMPTS: PromptDef[] = [
       ...header(`write the melody of ${a.song ? q(a.song) : 'a song'} in numbered notation`, c),
       '',
       '## Before you start',
-      '- Read the resource canon://guide/jianpu: the notation, its catches (a melody over several lines goes inside N: { … }; a line break is @br() with its parentheses) and a worked example. Write only what it describes.',
+      '- Read the notation guide, canon_melody {"guide":true} (the same as the resource canon://guide/jianpu): the notation, its catches (a melody over several lines goes inside N: { … }; a line break is @br() with its parentheses) and a worked example. Write only what it describes.',
       c.melodies === 'public_domain'
         ? '- The administrator shares only public-domain songs\' melodies: if the song is not marked public domain, stop and say a musician should type it in Canon.'
         : '- The administrator allows every song\'s melody (the church\'s licence covers copying or arranging the music). Still write only the tune the church sings, from its own hymnal or the user — never from another publisher\'s edition you find elsewhere.',
@@ -548,7 +548,7 @@ export const PROMPTS: PromptDef[] = [
       '7. Save: canon_save_melody {"song_id":…,"source":…} (with "replace":true only after a yes). Ask the user to look at the drawing in Library → the song → Melody in numbered notation, and to compare it with the hymnal.',
       '',
       '## Notes',
-      '- The melody is for the church\'s musicians inside Canon. Don\'t give the jianpu text to anyone else or paste it outside this conversation.',
+      '- The melody goes on the church\'s slides and bulletin, under its licence. Don\'t give the jianpu text to anyone else or paste it outside this conversation.',
       ...ETIQUETTE,
     ),
   },
@@ -613,6 +613,11 @@ function readDoc(file: string): string {
   } catch {
     return `# Not available\n\nThis Canon installation does not include docs/${file}.`;
   }
+}
+
+/** A guide's text by its resource's name, for a client that can't read resources: tools hand these out too (0.21.5). */
+export function guideText(name: (typeof RESOURCES)[number]['name']): string {
+  return readDoc(RESOURCES.find((r) => r.name === name)!.file);
 }
 
 export function registerResources(server: McpServer) {

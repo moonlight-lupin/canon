@@ -1,15 +1,15 @@
 // MCP tools for groups: committees, fellowships, cell groups, ministries.
 // Groups are part of the people registers: names and roles only; contact details only when the admin exposes PII.
 // (server/mcp.ts audits 'groups' calls with argument keys only, like members / co-workers.)
-// Volunteer team rosters live in ./volunteers.ts (canon_update_team_members).
+// Volunteer team rosters live in ./volunteers.ts (canon_update_rota, team_ ops).
 import { z } from 'zod';
 import * as S from '../../shared/schemas.ts';
 import type { GroupKind } from '../../shared/types.ts';
-import { get } from '../db.ts';
+import { get, tx } from '../db.ts';
 import { BadRequest, NotFound } from '../lib/table.ts';
 import * as grp from '../repo/groups.ts';
 import { findCongregation } from '../repo/congregations.ts';
-import { DESTRUCTIVE, DateStr, Id, L10N_MERGE_NOTE, RO, WRITE, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
+import { DESTRUCTIVE, DateStr, Id, L10N_MERGE_NOTE, RO, mergeL10nFields, need, runBatch, type ToolDef } from './common.ts';
 
 const KIND_TEXT = 'kind: committee (Session 堂会, Board of Deacons 执事会, missions committee…) | fellowship 团契 | cell_group 小组 | sunday_school 主日学 (a class: teachers lead, pupils are members) | ministry | serving_team (a volunteer team: its members are the team roster; teams themselves are made in Volunteers) | other';
 const ROLE_TEXT = 'role is free text, e.g. Moderator, Chair 主席, Secretary 书记, Clerk, Treasurer 财务, Leader 组长, Member 组员';
@@ -101,19 +101,17 @@ export const GROUP_TOOLS: ToolDef[] = [
       : grp.listGroups({ kind: a.kind as GroupKind | undefined, inactive: !!a.include_inactive, congregation_id: a.congregation != null ? findCongregation(a.congregation)?.id ?? -1 : undefined }).map(groupSummary)),
   },
   {
-    name: 'canon_save_group', module: 'groups', access: 'write', title: 'Save a group', annotations: WRITE,
-    description: `Create a group (no id; fields.name and kind required) or update one (id; only the given fields change; active=false retires a group without deleting it). name is L10n {"en":"Session","zh":"堂会"} (${L10N_MERGE_NOTE}); ${KIND_TEXT}; meeting is free text such as "Fridays 8pm, church hall". Returns the group.`,
-    input: { id: Id.optional(), fields: S.GroupInput.partial().default({}) },
-    handler: (a) => (a.id ? grp.updateGroup(a.id, mergeL10nFields(grp.groups.get(a.id), a.fields, ['name'])) : grp.createGroup(S.GroupInput.parse(a.fields))),
-  },
-  {
-    name: 'canon_update_group_members', module: 'groups', access: 'write', title: 'Update group members', annotations: DESTRUCTIVE,
-    description: `Change a group's membership in one transaction: add {person_id, role?, start_date?, end_date?}; update {member_id or person_id, role / start_date / end_date — null clears}; remove {member_id or person_id}. ${ROLE_TEXT}. To end a term keep the history: update end_date rather than remove (ask the user before removing). All or nothing, with per-op errors. Returns the group with its members. Example: {"group_id":3,"ops":[{"op":"add","person_id":45,"role":"Clerk","start_date":"2026-01-01"},{"op":"update","person_id":31,"end_date":"2025-12-31"}]}.`,
-    input: { group_id: Id, ops: z.array(MemberOp).min(1).max(50) },
-    handler: (a, ctx) => {
-      grp.groups.get(a.group_id);
-      const results = runBatch(a.ops as MemberOp[], (o) => applyMemberOp(a.group_id, o));
-      return { results, group: groupDetail(a.group_id, ctx.pii) };
-    },
+    name: 'canon_save_group', module: 'groups', access: 'write', title: 'Save a group and its members', annotations: DESTRUCTIVE,
+    description: `Create a group (no id; fields.name and kind required) or update one (id; only the given fields change; active=false retires a group without deleting it), and change its membership. name is L10n {"en":"Session","zh":"堂会"} (${L10N_MERGE_NOTE}); ${KIND_TEXT}; meeting is free text such as "Fridays 8pm, church hall". members is a list of operations: add {person_id, role?, start_date?, end_date?}; update {member_id or person_id, role / start_date / end_date — null clears}; remove {member_id or person_id}. ${ROLE_TEXT}. To end a term keep the history: update end_date rather than remove (ask the user before removing). All or nothing, with per-op errors. Returns the group; with members, {results, group with its members}. Example: {"id":3,"members":[{"op":"add","person_id":45,"role":"Clerk","start_date":"2026-01-01"},{"op":"update","person_id":31,"end_date":"2025-12-31"}]}.`,
+    input: { id: Id.optional(), fields: S.GroupInput.partial().default({}), members: z.array(MemberOp).min(1).max(50).optional() },
+    handler: (a, ctx) => tx(() => {
+      const hasFields = Object.keys(a.fields).length > 0;
+      if (a.id && a.members && !hasFields) grp.groups.get(a.id);
+      const saved = a.id && a.members && !hasFields ? null : a.id ? grp.updateGroup(a.id, mergeL10nFields(grp.groups.get(a.id), a.fields, ['name'])) : grp.createGroup(S.GroupInput.parse(a.fields));
+      if (!a.members) return saved;
+      const groupId: number = saved?.id ?? a.id;
+      const results = runBatch(a.members as MemberOp[], (o) => applyMemberOp(groupId, o));
+      return { results, group: groupDetail(groupId, ctx.pii) };
+    }),
   },
 ];

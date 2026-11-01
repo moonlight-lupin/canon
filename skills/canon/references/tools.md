@@ -1,6 +1,6 @@
 # Canon tools, data and conventions
 
-`canon_whoami` (always available): who you act for, role, each module's access and why, contact-detail policy (members and `visitors`), languages, congregations, tools, playbooks, limits and instructions — call it first when unsure; `{"brief": true}` returns just the person, role, scopes and access levels. A module that is off for the role but whose tools for the person's own records remain (expense claims under `bookkeeping`) has `own` (and `own` in `brief`). Item kinds, stanzas, posture, slide blocks and song-merging rules: the handbook's "Writing services and songs" (canon://guide/agents).
+`canon_whoami` (always available): who you act for, role, each module's access and why, contact-detail policy (members and `visitors`), languages, congregations, tools, playbooks, limits and instructions — call it first when unsure; `{"brief": true}` returns just the person, role, scopes and access levels; `{"guide": "agents"}` returns the agent handbook. A module that is off for the role but whose tools for the person's own records remain (expense claims under `bookkeeping`) has `own` (and `own` in `brief`). Item kinds, stanzas, posture, slide blocks and song-merging rules: the handbook's "Writing services and songs" (canon://guide/agents).
 
 ## Tools by module
 
@@ -11,24 +11,24 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 | services | `canon_find_services`, `canon_get_service`, `canon_get_calendar` (services, meetings and events by date) | `canon_create_service`, `canon_update_service`, `canon_edit_order` (batch) |
 | templates | `canon_get_templates` | `canon_save_service_as_template` |
 | library | `canon_search_library`, `canon_get_library_item`, `canon_bible` | `canon_save_song`, `canon_save_text` |
-| volunteers | `canon_get_rota` | `canon_update_rota` (batch), `canon_update_team_members` (batch), `canon_set_unavailability` |
+| volunteers | `canon_get_rota` | `canon_update_rota` (batch: rota; `team_add` / `team_set_leader` / `team_remove`; `unavailable_add` / `unavailable_remove`) |
 | members | `canon_find_people`, `canon_get_person` (+ the church's own fields in `custom`) | `canon_save_person` (`fields.custom` for own fields), `canon_save_household` |
 | coworkers | `canon_list_coworkers` | `canon_save_coworker` |
-| groups | `canon_find_groups` (kinds include `sunday_school`) | `canon_save_group`, `canon_update_group_members` (batch; `leads` = leads the group) |
+| groups | `canon_find_groups` (kinds include `sunday_school`) | `canon_save_group` (with `members`, a batch; `leads` = leads the group) |
 | records | `canon_list_service_records`, `canon_get_service_record`, `canon_attendance_report` | `canon_save_service_record` (attendance, notes, visitors — never money) |
 | contributions (inside records, read only) | `canon_offerings_report` (+ offerings in the record tools) | — |
-| reports elsewhere | `canon_serving_report` (volunteers), `canon_song_report`, `canon_scripture_report` (services; chapters read and preached, by period or chosen `years` at most 20 apart), `canon_membership_stats` (members; numbers only, no names: who joined is in `canon_find_people`) | — |
+| reports elsewhere | `canon_serving_report` (volunteers), `canon_worship_report` (services; `report` songs, or scripture: chapters read and preached, by period or chosen `years` at most 20 apart), `canon_membership_stats` (members; numbers only, no names: who joined is in `canon_find_people`) | — |
 | lending (optional) | `canon_lending` (catalogue; a title's copies; `loans` open / overdue / returned; `isbn` lookup) | `canon_save_book` (titles and copies; not lending / returning) |
 | equipment (optional) | `canon_equipment` (register; `due` maintenance; one item by id or `number`) | `canon_save_equipment` (items; `maintenance` done) |
 | claims (book-keeping; anyone's own) | `canon_claims` (own claims, those to approve; all for book-keepers — within their congregation when the account is limited to one) | `canon_draft_claim` (from receipt photos the user shows; returns the link to attach photos and sign) |
-| bookkeeping (optional) | `canon_books` (accounts, funds, tags, balances), `canon_books_report` (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger), `canon_books_journals`, `canon_bank_statements` (statements, lines to match, reconciliation) | `canon_draft_journal` (drafts only — a person posts; `statement_line` ties it to a bank line), `canon_draft_reversal` (drafts the reversal of a posted journal) |
+| bookkeeping (optional) | `canon_books` by `view`: overview, the default (accounts, funds, tags, balances); report (trial balance, I&E, balance sheet, fund movements, by project / ministry / congregation, ledger); journals; statements (statements, lines to match, reconciliation) | `canon_draft_journal` (drafts only — a person posts; `statement_line` ties it to a bank line; `reverses` drafts the reversal of a posted journal) |
 | library → sheet music (only when shared) | `canon_sheet_music` (`service_id` or `song_id`; `pictures: true` returns image pages) | — |
 | library (write) | — | `canon_sheet_music_upload_link` (`song_id` or `number` "HP 178"; the user adds pages from a phone) |
-| library → melodies (only when shared) | `canon_melody` (`song_id`: the melody and its check; `source`: check jianpu text without saving) | `canon_save_melody` (`song_id`, `source`, words named by stanza `L(1):`; refused with errors; `replace: true` to replace one) |
-| admin (administrators only, when on) | `canon_admin_overview`, `canon_admin_accounts`, `canon_admin_change_log`, `canon_admin_record_views`, `canon_admin_settings` (e-mail `via` smtp / agentmail) | `canon_admin_backup_now`, `canon_admin_run_checks` |
+| library → melodies (only when shared) | `canon_melody` (`song_id`: the melody and its check; `source`: check jianpu text without saving; `guide: true`: the notation guide) | `canon_save_melody` (`song_id`, `source`, words named by stanza `L(1):`; refused with errors; `replace: true` to replace one) |
+| admin (administrators only, when on) | `canon_admin` by `view`: overview, the default; accounts; change_log; record_views; settings (e-mail `via` smtp / agentmail) | `canon_admin_backup_now`, `canon_admin_run_checks` |
 
 - Sheet music: read the pictures to answer about the music; never retype or pass it on (copyright) — except as a melody with `canon_save_melody`, for the songs the administrator allows.
-- Melodies: numbered notation (jianpu) in jpFun's notation — `references/jianpu.md`. Check with `canon_melody {"source"}` until `ok`; public-domain songs only, or all songs under the church's licence (`canon_whoami` → `melodies`). PDFs / very large scans aren't sent — give `open_in_canon`. You can't upload files: give `canon_sheet_music_upload_link`, or point to Library → Upload sheet music (files named "HP 178.jpg", "HP 178-2.jpg").
+- Melodies: numbered notation (jianpu) in jpFun's notation — `references/jianpu.md`, the same as `canon_melody {"guide": true}`. Check with `canon_melody {"source"}` until `ok`; public-domain songs only, or all songs under the church's licence (`canon_whoami` → `melodies`). PDFs / very large scans aren't sent — give `open_in_canon`. You can't upload files: give `canon_sheet_music_upload_link`, or point to Library → Upload sheet music (files named "HP 178.jpg", "HP 178-2.jpg").
 - Administration: never passwords or secrets; change-log values only when personal data is shared; ask before `canon_admin_backup_now`; accounts, roles and settings change only in Canon.
 - Spaces: `space_id` on create / update service (a church space; administrators keep the list in Canon); calendar items carry `space`. Avoid double-booking a space.
 - `find_*` / `search_*` → summaries; `get_*` → detail. `canon_get_service` returns words and Bible text only with `include_text: true`; `format: "text"` returns a run sheet.
@@ -46,8 +46,8 @@ Whether a tool appears depends on the administrator's module settings (off / rea
 - Book-keeping:
   - Amounts are in cents. Every line needs an account code and a fund code; read `canon_books` for the codes.
   - `canon_draft_journal` makes a DRAFT only. Confirm accounts and funds with the user first; the reply lists `problems` that stop posting (debits ≠ credits, a closed period, before the books start).
-  - Never post or change a posted journal: the treasurer posts in Canon. To correct one, `canon_draft_reversal` {journal: "2026-0042", memo} drafts its reversal (the original stands until the reversal is posted); then draft the right journal. Verified offerings already arrive as drafts by themselves.
-  - Bank: `canon_bank_statements` (no id: the statements; with id: open lines, suggestions, `draft_journal_id`, reconciliation).
+  - Never post or change a posted journal: the treasurer posts in Canon. To correct one, `canon_draft_journal` {reverses: "2026-0042", memo} drafts its reversal (the original stands until the reversal is posted); then draft the right journal. Verified offerings already arrive as drafts by themselves.
+  - Bank: `canon_books {"view": "statements"}` (no id: the statements; with id: open lines, suggestions, `draft_journal_id`, reconciliation).
     - For a line the books lack, `canon_draft_journal` with `statement_line` and a line on the bank account for the same amount (money in = debit).
     - Posting the draft matches the line. Importing statements and matching stay with people.
 - Expense claims:
@@ -90,7 +90,7 @@ Call to Worship → Invocation → Hymn of praise (stand) → Reading of the Law
 
 - Tool or prompt missing → module off or read-only in Settings → AI / MCP, a read-only connection, the user's role doesn't allow it, or that part of Canon is switched off (Settings → Modules; `canon_whoami` says so; with Volunteers off, no roster in `canon_get_service`, no `roster_summary`, and `with_roster` is refused).
 - Result too large (`ok: false`, "The result is too large …", over ~500 KB of text or 12 MB of pictures) → narrow it: a shorter period, one congregation, a smaller `limit` or the next page, fewer pictures.
-- Without personal data shared: `canon_find_people` `q` matches names only; the save tools refuse contact details, address, birth date and notes; `canon_admin_change_log` `q` searches names and summaries only.
+- Without personal data shared: `canon_find_people` `q` matches names only; the save tools refuse contact details, address, birth date and notes; `canon_admin` change_log `q` searches names and summaries only.
 - `member_care` missing → members off, or member details not exposed (the default).
 - "N of M operations failed — nothing was applied" → fix the per-op errors, resend the whole batch.
 - "No Bible is set up for language …" → an administrator adds one in Settings → Languages.

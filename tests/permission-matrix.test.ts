@@ -202,19 +202,19 @@ test('meetings — MCP: a planner reads but can\'t change them; switched off, th
   assert.ok(hiddenRec.isError, 'and its record');
   assert.match(hiddenRec.json.error, /not found/);
   // the scripture report: meetings asked for are refused; the default (services) leaves them out
-  const scr = await tool(mcp.admin, 'canon_scripture_report', { kind: 'meeting', from: '2037-03-01', to: '2037-03-31' });
+  const scr = await tool(mcp.admin, 'canon_worship_report', { report: 'scripture', kind: 'meeting', from: '2037-03-01', to: '2037-03-31' });
   assert.ok(scr.isError);
   assert.match(scr.json.error, /Meetings are not available/);
-  const scrAll = await tool(mcp.admin, 'canon_scripture_report', { kind: 'all', years: [2037] });
+  const scrAll = await tool(mcp.admin, 'canon_worship_report', { report: 'scripture', kind: 'all', years: [2037] });
   assert.ok(scrAll.isError, 'years too');
-  const scrDef = await tool(mcp.admin, 'canon_scripture_report', { from: '2037-03-01', to: '2037-03-31' });
+  const scrDef = await tool(mcp.admin, 'canon_worship_report', { report: 'scripture', from: '2037-03-01', to: '2037-03-31' });
   assert.ok(!scrDef.isError);
   assert.ok(!JSON.stringify(scrDef.json).includes(`"service_id":${ids.meeting}`), 'no meeting passages by default');
   assert.ok((await tool(mcp.admin, 'canon_attendance_report', { kind: 'meeting' })).isError, 'and meeting reports');
   assert.ok(!(await tool(mcp.admin, 'canon_get_service', { id: ids.sW })).isError);
   S.updateSettings({ modules: { ...S.getSettings().modules, meetings: true } });
   assert.ok(!(await tool(mcp.admin, 'canon_get_service', { id: ids.meeting })).isError);
-  const scrOn = await tool(mcp.admin, 'canon_scripture_report', { kind: 'meeting', from: '2037-03-01', to: '2037-03-31' });
+  const scrOn = await tool(mcp.admin, 'canon_worship_report', { report: 'scripture', kind: 'meeting', from: '2037-03-01', to: '2037-03-31' });
   assert.ok(!scrOn.isError);
   assert.ok(JSON.stringify(scrOn.json).includes('"service_id":' + ids.meeting), 'switched on: the meeting passage is there');
 });

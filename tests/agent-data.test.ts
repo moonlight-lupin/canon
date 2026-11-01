@@ -151,7 +151,7 @@ test('9. personal values seeded through the tools never appear in any read toolâ
   assert.equal(p.isError, false, p.text);
   const pid = p.json!.data.id as number;
   assert.equal((await call('canon_save_coworker', { fields: { person_id: pid, position: 'Youth worker', category: 'ministry_staff', employment: 'part_time', notes: SECRETS.cwNote } })).isError, false);
-  assert.equal((await call('canon_set_unavailability', { person_id: pid, start_date: '2031-06-01', end_date: '2031-06-14', reason: SECRETS.away })).isError, false);
+  assert.equal((await call('canon_update_rota', { ops: [{ op: 'unavailable_add', person_id: pid, start_date: '2031-06-01', end_date: '2031-06-14', reason: SECRETS.away }] })).isError, false);
   const svc = (await call('canon_create_service', { date: '2031-06-08' })).json!.data.service.id as number;
   const rec = await call('canon_save_service_record', { service_id: svc, attendance: 90, add_visitors: [{ name: 'Visiting Example', contact: SECRETS.visitorContact }] });
   assert.equal(rec.isError, false, rec.text);
@@ -172,9 +172,8 @@ test('9. personal values seeded through the tools never appear in any read toolâ
     canon_list_coworkers: [{}],
     canon_attendance_report: [{ from: '2031-01-01', to: '2031-12-31' }],
     canon_membership_stats: [{ from: '2031-01-01', to: '2031-12-31' }],
-    canon_admin_change_log: [{}, { q: 'Hidden' }],
-    canon_admin_record_views: [{}],
-    canon_books_report: [{ report: 'trial_balance' }],
+    canon_admin: [{}, { view: 'accounts' }, { view: 'settings' }, { view: 'change_log' }, { view: 'change_log', q: 'Hidden' }, { view: 'record_views' }],
+    canon_books: [{}, { report: 'trial_balance' }, { view: 'journals' }, { view: 'statements' }],
   };
   const outputs: string[] = [];
   for (const name of reads) for (const args of ARGS[name] ?? [{}]) outputs.push(`${name} ${JSON.stringify(args)}: ${(await call(name, args)).text}`);
@@ -183,7 +182,7 @@ test('9. personal values seeded through the tools never appear in any read toolâ
   for (const q of ['8111', 'hidden.person', 'Hidden Lane', 'Peanut']) {
     const people = (await call('canon_find_people', { q })).json!.data.people as Json[];
     assert.equal(people.length, 0, `find_people q=${q}`);
-    const log = (await call('canon_admin_change_log', { q })).json!.data;
+    const log = (await call('canon_admin', { view: 'change_log', q })).json!.data;
     assert.equal((log.entries ?? log.rows ?? log).length, 0, `change log q=${q}: ${JSON.stringify(log).slice(0, 300)}`);
   }
 });
@@ -231,7 +230,7 @@ test('10. a part of Canon switched off (Settings â†’ Modules) is gone for agents
   updateSettings({ modules: { ...modules, volunteers: false, lending: false } } as never);
   try {
     const tools = ((await rpc('tools/list')).result.tools as Json[]).map((t) => t.name as string);
-    for (const t of ['canon_get_rota', 'canon_update_rota', 'canon_set_unavailability', 'canon_serving_report', 'canon_update_team_members', 'canon_lending', 'canon_save_book']) assert.ok(!tools.includes(t), `${t} still listed`);
+    for (const t of ['canon_get_rota', 'canon_update_rota', 'canon_serving_report', 'canon_lending', 'canon_save_book']) assert.ok(!tools.includes(t), `${t} still listed`);
     const prompts = ((await rpc('prompts/list')).result.prompts as Json[]).map((p) => p.name as string);
     assert.ok(!prompts.includes('roster_check'), 'the rota playbook is hidden with the rota');
     for (const name of prompts) {
@@ -288,7 +287,7 @@ test('31. a tool result too large for an assistant is refused with what to narro
   assert.match(text, /too large.*narrow/i);
   assert.ok(MAX_RESULT_BYTES >= 200_000 && MAX_RESULT_BYTES <= 1_000_000);
   accessToken ||= await connect();
-  const many = await call('canon_scripture_report', { years: [1950, 2030] });
+  const many = await call('canon_worship_report', { report: 'scripture', years: [1950, 2030] });
   assert.equal(many.isError, true, 'years more than 20 apart are refused, as periods are');
 });
 
@@ -337,5 +336,104 @@ test('23. the settings screen counts the tools agents really get, from the serve
     assert.equal(cat.find((t) => t.name === 'canon_whoami')!.exposed, true, 'always offered');
   } finally {
     updateSettings({ modules } as never);
+  }
+});
+
+test('24. merged tools (0.21.5): the settings screen and what an agent is offered agree at each level, and every view works', async () => {
+  const { toolCatalog } = await import('../server/mcp.ts');
+  accessToken ||= await connect();
+  const offered = async () => ((await rpc('tools/list')).result.tools as Json[]).map((t) => t.name as string).sort();
+  const listedInSettings = () => toolCatalog().filter((t) => t.exposed).map((t) => t.name).sort();
+  const modules = getSettings().modules;
+  updateSettings({ modules: { ...modules, bookkeeping: true } } as never);
+  try {
+    // module by module, the same names on the screen and on the connection (an administrator's, read & write)
+    const expected: Record<string, { read: string[]; write: string[] }> = {
+      admin: { read: ['canon_admin'], write: ['canon_admin_backup_now', 'canon_admin_run_checks'] },
+      bookkeeping: { read: ['canon_books'], write: ['canon_draft_journal'] },
+      volunteers: { read: ['canon_get_rota'], write: ['canon_update_rota'] },
+      groups: { read: ['canon_find_groups'], write: ['canon_save_group'] },
+    };
+    for (const [m, e] of Object.entries(expected)) {
+      setMcp({ modules: { ...ALL, [m]: 'off' } });
+      let names = await offered();
+      assert.deepEqual(names, listedInSettings(), `${m} off`);
+      for (const n of [...e.read, ...e.write]) assert.ok(!names.includes(n), `${n} hidden while ${m} is off`);
+      setMcp({ modules: { ...ALL, [m]: 'read' } });
+      names = await offered();
+      assert.deepEqual(names, listedInSettings(), `${m} read`);
+      for (const n of e.read) assert.ok(names.includes(n), `${n} with ${m} read`);
+      for (const n of e.write) assert.ok(!names.includes(n), `${n} hidden with ${m} read`);
+      setMcp({ modules: { ...ALL, [m]: 'write' } });
+      names = await offered();
+      assert.deepEqual(names, listedInSettings(), `${m} write`);
+      for (const n of [...e.read, ...e.write]) assert.ok(names.includes(n), `${n} with ${m} write`);
+    }
+    const cat = toolCatalog();
+    assert.equal(cat.length, 47, 'the catalogue the screen counts');
+    for (const gone of ['canon_admin_overview', 'canon_books_report', 'canon_draft_reversal', 'canon_update_team_members', 'canon_set_unavailability', 'canon_update_group_members', 'canon_song_report']) assert.ok(!cat.some((t) => t.name === gone), gone);
+    assert.equal(cat.find((t) => t.name === 'canon_worship_report')!.module, 'services');
+
+    // the flags stay true of everything a merged tool does
+    setMcp({ modules: { ...ALL } });
+    const listed = (await rpc('tools/list')).result.tools as Json[];
+    for (const n of ['canon_admin', 'canon_books', 'canon_worship_report']) assert.equal(listed.find((t) => t.name === n)!.annotations.readOnlyHint, true, n);
+    for (const n of ['canon_update_rota', 'canon_save_group']) assert.equal(listed.find((t) => t.name === n)!.annotations.destructiveHint, true, n);
+
+    // every view over the connection
+    for (const view of [undefined, 'accounts', 'change_log', 'record_views', 'settings']) {
+      const r = await call('canon_admin', view ? { view } : {});
+      assert.equal(r.isError, false, `${view}: ${r.text}`);
+    }
+    assert.ok('checklist' in (await call('canon_admin', {})).json!.data, 'overview is the default');
+    for (const args of [{}, { report: 'trial_balance' }, { view: 'report', report: 'fund_movements' }, { view: 'journals' }, { view: 'statements' }]) {
+      const r = await call('canon_books', args);
+      assert.equal(r.isError, false, `${JSON.stringify(args)}: ${r.text}`);
+    }
+    for (const report of ['songs', 'scripture']) {
+      const r = await call('canon_worship_report', { report });
+      assert.equal(r.isError, false, `${report}: ${r.text}`);
+    }
+
+    // an option for another view is refused, not ignored
+    for (const [tool, args, said] of [
+      ['canon_admin', { entity: 'songs' }, /entity: not for view \\"overview\\"/],
+      ['canon_admin', { view: 'record_views', entity: 'songs' }, /entity: not for view \\"record_views\\"/],
+      ['canon_books', { status: 'draft' }, /status: not for view \\"overview\\"/],
+      ['canon_books', { view: 'report' }, /Name the report/],
+      ['canon_worship_report', { report: 'songs', all_books: true }, /all_books: not for report \\"songs\\"/],
+    ] as const) {
+      const r = await call(tool, args as Json);
+      assert.equal(r.isError, true, r.text);
+      assert.match(r.text, said);
+    }
+
+    // one batch, all or nothing, across a team and away dates
+    const person = (await call('canon_save_person', { fields: { first_name: 'Batch', last_name: 'Example' } })).json!.data.id as number;
+    assert.equal((await call('canon_get_rota', { person_id: person })).json!.data.unavailable.length, 0);
+    const bad = await call('canon_update_rota', { ops: [
+      { op: 'unavailable_add', person_id: person, start_date: '2031-08-01', end_date: '2031-08-07' },
+      { op: 'team_add', team_id: 999999, person_id: person },
+    ] });
+    assert.equal(bad.isError, true);
+    assert.equal((await call('canon_get_rota', { from: '2031-07-01', person_id: person })).json!.data.unavailable.length, 0, 'rolled back whole');
+    assert.equal((await call('canon_update_rota', { ops: [{ op: 'team_add', person_id: person }] })).isError, true, 'team_id is needed');
+
+    // a new group and its members together: all or nothing
+    const { all } = await import('../server/db.ts');
+    const count = () => all('SELECT id FROM groups').length;
+    const n = count();
+    const refused = await call('canon_save_group', { fields: { name: { en: 'Batch Committee' }, kind: 'committee' }, members: [{ op: 'add', person_id: 999999 }] });
+    assert.equal(refused.isError, true);
+    assert.equal(count(), n, 'no group without its members');
+    const made = await call('canon_save_group', { fields: { name: { en: 'Batch Committee' }, kind: 'committee' }, members: [{ op: 'add', person_id: person, role: 'Clerk' }] });
+    assert.equal(made.isError, false, made.text);
+    assert.equal(made.json!.data.group.members[0].person_id, person);
+    const gid = made.json!.data.group.id as number;
+    const plain = await call('canon_save_group', { id: gid, fields: { meeting: 'Fridays' } });
+    assert.equal(plain.json!.data.id, gid, 'without members, the group as before');
+  } finally {
+    updateSettings({ modules } as never);
+    setMcp({ modules: { ...ALL } });
   }
 });

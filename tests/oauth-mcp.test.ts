@@ -490,12 +490,12 @@ test('canon_update_rota: batch assign / set_status / unassign / autofill, all or
   assert.equal(mine.json!.data.schedule.length, 1);
   assert.equal(mine.json!.data.teams[0].team_id, team.id);
 
-  const un = await call(at, 'canon_set_unavailability', { person_id: a.id, start_date: '2026-10-20', end_date: '2026-10-27', reason: 'trip' });
+  const un = await call(at, 'canon_update_rota', { ops: [{ op: 'unavailable_add', person_id: a.id, start_date: '2026-10-20', end_date: '2026-10-27', reason: 'trip' }] });
   assert.equal(un.isError, false, un.text);
-  const backwards = await call(at, 'canon_set_unavailability', { person_id: a.id, start_date: '2026-10-27', end_date: '2026-10-20' });
+  const backwards = await call(at, 'canon_update_rota', { ops: [{ op: 'unavailable_add', person_id: a.id, start_date: '2026-10-27', end_date: '2026-10-20' }] });
   assert.equal(backwards.isError, true);
-  const gone = await call(at, 'canon_set_unavailability', { action: 'remove', id: un.json!.data.id });
-  assert.equal(gone.json!.data.removed, un.json!.data.id);
+  const gone = await call(at, 'canon_update_rota', { ops: [{ op: 'unavailable_remove', id: un.json!.data.results[0].id }] });
+  assert.equal(gone.json!.data.results[0].removed, un.json!.data.results[0].id);
 
   const auditRow = all<Json>(`SELECT args FROM mcp_audit WHERE tool = 'canon_update_rota' AND ok = 1 AND args LIKE '%autofill%'`);
   assert.equal(auditRow.length, 1, 'one audit row per batch');
@@ -721,6 +721,16 @@ test('congregations: tag services, members, groups; filter lists (web and agents
   // deleting a congregation keeps its services, untagged
   cong.deleteCongregation(en.id);
   assert.equal(svcRepo.services.get(a.id).congregation_id ?? null, null);
+});
+
+test('canon_whoami {guide: "agents"}: the handbook, for a client that can\u2019t read resources (0.21.5)', async () => {
+  const at = tokens.access_token;
+  const r = await call(at, 'canon_whoami', { guide: 'agents' });
+  assert.equal(r.isError, false, r.text);
+  assert.equal(r.json!.data.text, fs.readFileSync(path.join(import.meta.dirname, '..', 'docs', 'AGENT-PLAYBOOKS.md'), 'utf8'));
+  assert.equal(r.json!.data.user, undefined, 'only the handbook');
+  assert.equal((await call(at, 'canon_whoami', { guide: 'user' })).isError, true, 'the user guide stays a resource: too long for a tool result');
+  assert.match((await call(at, 'canon_whoami')).text, /canon_whoami \{\\"guide\\":\\"agents\\"\}/, 'whoami says how');
 });
 
 test('canon_whoami: always offered; role, access per module with reasons, limits', async () => {
@@ -1009,6 +1019,13 @@ test('melodies for agents (0.21.0): off by default; public-domain songs or all s
   assert.deepEqual(bad.json!.data.check.problems.map((p: Json) => [p.level, p.line, p.column]), [['error', 2, 1]]);
   assert.match(bad.json!.data.check.problems[0].message, /^@meter is missing a value it needs \(den\)/);
   assert.match(bad.json!.data.check.problems[0].jpfun_message, /缺少/);
+  // the notation guide, for a client that can't read resources (0.21.5); the catches are in the description itself
+  const guide = await call(at, 'canon_melody', { guide: true });
+  assert.equal(guide.isError, false, guide.text);
+  assert.equal(guide.json!.data.text, fs.readFileSync(path.join(import.meta.dirname, '..', 'docs', 'JIANPU-NOTATION.md'), 'utf8'));
+  const melodyTool = ((await mcp(at, 'tools/list')).body.result.tools as Json[]).find((t) => t.name === 'canon_melody')!;
+  for (const catchWord of ['N: {', '@br()', 'a rest (0) takes a word', 'guide: true']) assert.ok((melodyTool.description as string).includes(catchWord), catchWord);
+  assert.equal((await call(at, 'canon_melody', {})).isError, true, 'nothing asked for');
   const good = await call(at, 'canon_melody', { source: TUNE });
   assert.deepEqual(good.json!.data.check, { ok: true, problems: [], summary: { key: 'G4', meter: '4/4', lines: 1, lyric_lines: 1, new_lines_added_by_canon: 0 } });
 
@@ -1066,23 +1083,23 @@ test('administration for agents: administrators\' connections only, read only un
 
   setMcp({ modules: { admin: 'off' } });
   let names = await toolNames(tokens.access_token);
-  assert.ok(!names.some((n) => n.startsWith('canon_admin_')));
+  assert.ok(!names.some((n) => n.startsWith('canon_admin')));
   setMcp({ modules: { admin: 'read' } });
   names = await toolNames(tokens.access_token);
-  for (const n of ['canon_admin_overview', 'canon_admin_accounts', 'canon_admin_change_log', 'canon_admin_record_views', 'canon_admin_settings']) assert.ok(names.includes(n), n);
+  assert.ok(names.includes('canon_admin'));
   assert.ok(!names.includes('canon_admin_backup_now') && !names.includes('canon_admin_run_checks'), 'actions need Read & write');
 
-  const ov = await call(tokens.access_token, 'canon_admin_overview');
+  const ov = await call(tokens.access_token, 'canon_admin');
   assert.ok(ov.json!.data.checklist.some((c: Json) => c.key === 'disk'));
   assert.ok('backups' in ov.json!.data);
-  const acc = await call(tokens.access_token, 'canon_admin_accounts');
+  const acc = await call(tokens.access_token, 'canon_admin', { view: 'accounts' });
   assert.ok(acc.json!.data.some((u: Json) => u.username === 'admin' && u.role_name === 'Administrator'));
   assert.ok(!/password|totp_secret|recovery/i.test(acc.text), 'no secrets');
-  const st = await call(tokens.access_token, 'canon_admin_settings');
+  const st = await call(tokens.access_token, 'canon_admin', { view: 'settings' });
   assert.ok(!/smtp_password|has_password/i.test(st.text));
   // the change log: field names only while members' personal data is not shared
   setMcp({ expose_member_pii: false });
-  const log = await call(tokens.access_token, 'canon_admin_change_log', { size: 5 });
+  const log = await call(tokens.access_token, 'canon_admin', { view: 'change_log', size: 5 });
   assert.equal(log.isError, false, log.text);
   assert.ok(log.json!.data.entries.every((e: Json) => !('changes' in e)));
 
@@ -1090,7 +1107,7 @@ test('administration for agents: administrators\' connections only, read only un
   setMcp({ modules: { admin: 'write' } });
   const viewer = await login('viewer', 'correct-horse-2');
   const vt = await fullFlow(client.client_id, viewer);
-  assert.ok(!(await toolNames(vt.access_token)).some((n) => n.startsWith('canon_admin_')));
+  assert.ok(!(await toolNames(vt.access_token)).some((n) => n.startsWith('canon_admin')));
 
   names = await toolNames(tokens.access_token);
   assert.ok(names.includes('canon_admin_backup_now') && names.includes('canon_admin_run_checks'));

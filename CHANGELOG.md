@@ -4,6 +4,25 @@ What changed in each version of Canon. How to update and how to go back: [docs/U
 
 "Database" lines say when a version upgrades the database. Canon does this by itself on start and keeps a copy of the database from before (from 0.11.0).
 
+## 0.21.5 — Fewer AI tools: 59 become 47, with nothing lost; AI assistants can read the guides from tools
+
+- **AI assistants get 12 fewer tools and can do all the same things.** Tools were only merged when they share the same part of Canon, the same read or write access and the same conditions, so **Settings → AI / MCP** still means the same: each module's Off / Read only / Read & write gives the same abilities, and the screen's list and counts follow the tools by themselves. Accounts, personal data, audit records and all-or-nothing batches work as before.
+- **This renames tools.** An agent or script that names an old tool must change; a connected AI client picks up the new list when it reconnects. Old → new:
+  - `canon_admin_overview`, `_accounts`, `_change_log`, `_record_views`, `_settings` → `canon_admin` with `view` (`overview` is the default). `canon_admin_backup_now` and `canon_admin_run_checks` stay: they are actions.
+  - `canon_books_report`, `canon_books_journals`, `canon_bank_statements` → `canon_books` with `view`: `report`, `journals`, `statements` (`overview`, the default, is the old `canon_books`).
+  - `canon_draft_reversal` {journal} → `canon_draft_journal` {reverses}.
+  - `canon_update_team_members` → `canon_update_rota` operations `team_add`, `team_set_leader`, `team_remove`, each with `team_id`; the roster comes back in `teams`.
+  - `canon_set_unavailability` → `canon_update_rota` operations `unavailable_add`, `unavailable_remove`. Rota, roster and away-date changes can now share one all-or-nothing batch.
+  - `canon_update_group_members` {group_id, ops} → `canon_save_group` {id, members}. A new group and its members can now be saved together, all or nothing. `canon_save_group` is marked as able to remove things, because it can remove members.
+  - `canon_song_report`, `canon_scripture_report` → `canon_worship_report` with `report`: `songs`, `scripture`.
+- **An option meant for another view is refused**, instead of being ignored and returning the wrong thing.
+- The tool list is about 4% smaller for an AI assistant (the merged tools still describe every option). The Change log and AI activity keep the old names on entries from before.
+- **The guides reach every AI assistant.** The notation guide for melodies and the agent handbook were only MCP resources, and not every AI client can read those: an assistant could see where the guide was but not open it. `canon_melody {"guide": true}` now returns the notation guide and `canon_whoami {"guide": "agents"}` the handbook, with no new tools. The resources stay. The staff user guide stays a resource only: it is too long for a tool result.
+- **The usual catches are in `canon_melody`'s own description**, where every assistant sees them: a melody over several lines goes inside `N: { … }`, a new line is `@br()` with its parentheses, and a rest takes a word (write `{}`).
+- The `write_melody` playbook no longer says a melody is only for the musicians: since 0.21.3 it also goes on the slides and in the bulletin. The playbooks, the handbook, the skill and the server's instructions name the new way to read the guides.
+- Tests: every merged tool over the connection; the Settings list and what an agent is offered agree at each level; a batch mixing team and away-date changes rolls back whole; options for another view are refused; each guide comes back whole from its tool, and the catches stay in the description.
+- No database change.
+
 ## 0.21.4 — jpFun 0.8.0: Canon's words for melody problems take jpFun's own details
 
 - **jpFun 0.8.0** (pinned to that exact version). It now gives the details of each problem (the function, the value written, the key used instead, a bar's beats and time signature) as separate values, as Canon asked for upstream ([madderscientist/jpFun#4](https://github.com/madderscientist/jpFun/issues/4)). Canon's English and Chinese sentences under the drawing, and from `canon_melody`, take them from there instead of picking them out of jpFun's Chinese message, so a reworded message can no longer leave a detail blank.

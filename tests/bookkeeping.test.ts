@@ -294,14 +294,14 @@ test('AI assistants: read the books by code, draft a journal, never post it', as
   const posted = web(() => B.postJournal(B.saveDraft(null, { date: '2030-11-02', memo: 'Wrong fund (fictional)', lines: [
     { account_id: acc('5500'), fund_id: fund('GEN'), debit: 700, credit: 0 }, { account_id: acc('1100'), fund_id: fund('GEN'), debit: 0, credit: 700 },
   ] }).id));
-  const rv = (await mcp(() => tool('canon_draft_reversal').handler({ journal: posted.number, memo: 'Booked to the wrong fund' }, {} as never))) as Json;
+  const rv = (await mcp(() => tool('canon_draft_journal').handler({ reverses: posted.number, memo: 'Booked to the wrong fund' }, {} as never))) as Json;
   assert.equal(rv.status, 'draft');
   assert.equal(rv.kind, 'reversal');
   assert.equal(rv.reverses, posted.number);
   assert.equal(B.getJournal(posted.id).reversed_by_id, null, 'the posted journal stands until the reversal is posted');
   assert.throws(() => mcp(() => B.postJournal(rv.id)), /a person posts/);
-  assert.throws(() => mcp(() => tool('canon_draft_reversal').handler({ journal: '1999-0001' }, {} as never)), /No posted journal/);
-  const listed = (await mcp(() => tool('canon_books_journals').handler({ status: 'draft', limit: 50 }, {} as never))) as Json;
+  assert.throws(() => mcp(() => tool('canon_draft_journal').handler({ reverses: '1999-0001' }, {} as never)), /No posted journal/);
+  const listed = (await mcp(() => tool('canon_books').handler({ view: 'journals', status: 'draft', limit: 50 }, {} as never))) as Json;
   assert.ok(listed.journals.some((j: Json) => j.id === d.id && j.lines[0].account === '5500'));
   web(() => B.deleteDraft(d.id));
 });
@@ -345,16 +345,16 @@ test('AI assistants and the bank: read statements, draft for an open line; posti
   const csv = ['Date,Description,Amount', '03/06/2031,INTEREST (fictional),1.25', '04/06/2031,CHARGE (fictional),-2.00'].join('\n');
   const imp = await call(as.treasurer, 'POST', '/bookkeeping/bank/statements', { account_id: acc('1110'), file: Buffer.from(csv).toString('base64'), layout: { header_row: 0, date: 'Date', description: 'Description', amount: 'Amount', date_format: 'DD/MM/YYYY' } });
   assert.equal(imp.status, 200, imp.text);
-  const list = (await mcp(() => tool('canon_bank_statements').handler({ account: '1110', open_only: true }, {} as never))) as Json;
+  const list = (await mcp(() => tool('canon_books').handler({ view: 'statements', account: '1110', open_only: true }, {} as never))) as Json;
   assert.equal(list.statements[0].to_match, 2);
-  const one = (await mcp(() => tool('canon_bank_statements').handler({ id: imp.body.statement_id, open_only: true }, {} as never))) as Json;
+  const one = (await mcp(() => tool('canon_books').handler({ view: 'statements', id: imp.body.statement_id, open_only: true }, {} as never))) as Json;
   const interest = one.lines.find((l: Json) => l.amount_cents === 125);
   const d = (await mcp(() => tool('canon_draft_journal').handler({ date: '2031-06-03', memo: 'Interest', statement_line: interest.id, lines: [
     { account: '1110', fund: 'GEN', debit_cents: 125 }, { account: '4400', fund: 'GEN', credit_cents: 125 },
   ] }, {} as never))) as Json;
   assert.equal(d.statement_line.matches_when_posted, true);
   assert.equal(d.kind, 'bank');
-  const again = (await mcp(() => tool('canon_bank_statements').handler({ id: imp.body.statement_id, open_only: true }, {} as never))) as Json;
+  const again = (await mcp(() => tool('canon_books').handler({ view: 'statements', id: imp.body.statement_id, open_only: true }, {} as never))) as Json;
   assert.equal(again.lines.find((l: Json) => l.id === interest.id).draft_journal_id, d.id);
   assert.throws(() => mcp(() => B.postJournal(d.id)), /a person posts/);
   await call(as.treasurer, 'POST', `/bookkeeping/journals/${d.id}/post`);

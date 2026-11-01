@@ -81,9 +81,9 @@ async function call(name: string, args: Json = {}) {
 }
 
 const GROUP_READ = ['canon_find_groups'];
-const GROUP_WRITE = ['canon_save_group', 'canon_update_group_members'];
+const GROUP_WRITE = ['canon_save_group'];
 const TEAM_READ = ['canon_get_rota'];
-const TEAM_WRITE = ['canon_update_team_members'];
+const TEAM_WRITE = ['canon_update_rota'];
 
 let tan: { id: number };
 let lim: { id: number };
@@ -124,8 +124,7 @@ test('groups module off hides every group tool; read hides writes', async () => 
   names = await toolNames();
   for (const n of [...GROUP_READ, ...GROUP_WRITE]) assert.ok(names.includes(n), n);
   const listed = (await mcp('tools/list')).result.tools as Json[];
-  assert.equal(listed.find((t) => t.name === 'canon_update_group_members')!.annotations.destructiveHint, true);
-  assert.equal(listed.find((t) => t.name === 'canon_save_group')!.annotations.destructiveHint, false);
+  assert.equal(listed.find((t) => t.name === 'canon_save_group')!.annotations.destructiveHint, true, 'it can remove members');
   assert.equal(listed.find((t) => t.name === 'canon_find_groups')!.annotations.readOnlyHint, true);
 });
 
@@ -141,7 +140,7 @@ test('team roster tools follow the volunteers module', async () => {
   names = await toolNames();
   for (const n of [...TEAM_READ, ...TEAM_WRITE]) assert.ok(names.includes(n), n);
   const listed = (await mcp('tools/list')).result.tools as Json[];
-  assert.equal(listed.find((t) => t.name === 'canon_update_team_members')!.annotations.destructiveHint, true);
+  assert.equal(listed.find((t) => t.name === 'canon_update_rota')!.annotations.destructiveHint, true);
 });
 
 test('committee CRUD over MCP; batch membership edits; names and roles only without PII', async () => {
@@ -151,9 +150,7 @@ test('committee CRUD over MCP; batch membership edits; names and roles only with
   const noKind = await call('canon_save_group', { fields: { name: { en: 'X' } } });
   assert.equal(noKind.isError, true, 'create needs kind');
 
-  const added = await call('canon_update_group_members', {
-    group_id: gid,
-    ops: [
+  const added = await call('canon_save_group', { id: gid, members: [
       { op: 'add', person_id: tan.id, role: 'Moderator', start_date: '2025-01-01' },
       { op: 'add', person_id: lim.id, role: 'Member' },
     ],
@@ -163,9 +160,7 @@ test('committee CRUD over MCP; batch membership edits; names and roles only with
   const limMember = added.json!.data.results[1].member_id;
 
   // atomicity: the valid role change is rolled back because the duplicate add fails
-  const dup = await call('canon_update_group_members', {
-    group_id: gid,
-    ops: [{ op: 'update', person_id: lim.id, role: 'Treasurer' }, { op: 'add', person_id: lim.id }],
+  const dup = await call('canon_save_group', { id: gid, members: [{ op: 'update', person_id: lim.id, role: 'Treasurer' }, { op: 'add', person_id: lim.id }],
   });
   assert.equal(dup.isError, true);
   assert.equal(dup.json!.errors.length, 1);
@@ -173,7 +168,7 @@ test('committee CRUD over MCP; batch membership edits; names and roles only with
   assert.match(dup.json!.errors[0].error, /already/);
   assert.equal(all<Json>('SELECT role FROM group_members WHERE id = ?', limMember)[0].role, 'Member', 'nothing applied');
 
-  const u = await call('canon_update_group_members', { group_id: gid, ops: [{ op: 'update', member_id: limMember, role: 'Clerk' }] });
+  const u = await call('canon_save_group', { id: gid, members: [{ op: 'update', member_id: limMember, role: 'Clerk' }] });
   assert.equal(u.json!.data.results[0].role, 'Clerk');
 
   const list = await call('canon_find_groups', { kind: 'committee' });
@@ -200,10 +195,10 @@ test('committee CRUD over MCP; batch membership edits; names and roles only with
   assert.equal((await call('canon_find_groups', {})).json!.data.length, 0);
   assert.equal((await call('canon_find_groups', { include_inactive: true })).json!.data.length, 1);
 
-  const rm = await call('canon_update_group_members', { group_id: gid, ops: [{ op: 'remove', person_id: lim.id }] });
+  const rm = await call('canon_save_group', { id: gid, members: [{ op: 'remove', person_id: lim.id }] });
   assert.equal(rm.isError, false, rm.text);
   assert.equal(rm.json!.data.group.members.length, 1);
-  const wrongGroup = await call('canon_update_group_members', { group_id: gid, ops: [{ op: 'remove', member_id: 999999 }] });
+  const wrongGroup = await call('canon_save_group', { id: gid, members: [{ op: 'remove', member_id: 999999 }] });
   assert.equal(wrongGroup.isError, true);
 });
 
@@ -216,32 +211,31 @@ test('team members: auto-join on qualification, cascade, leaders, team without r
   assert.deepEqual(team.members.map((m: Json) => m.person_id), [tan.id]);
   assert.deepEqual(team.roles[0].qualified.map((m: Json) => m.person_id), [tan.id]);
 
-  const blocked = await call('canon_update_team_members', { team_id: av.id, ops: [{ op: 'remove', person_id: tan.id }] });
+  const blocked = await call('canon_update_rota', { ops: [{ op: 'team_remove', team_id: av.id, person_id: tan.id }] });
   assert.equal(blocked.isError, true);
   assert.match(blocked.json!.errors[0].error, /Still qualified for 1 role/);
-  const cascaded = await call('canon_update_team_members', { team_id: av.id, ops: [{ op: 'remove', person_id: tan.id, cascade: true }] });
+  const cascaded = await call('canon_update_rota', { ops: [{ op: 'team_remove', team_id: av.id, person_id: tan.id, cascade: true }] });
   assert.deepEqual(cascaded.json!.data.results[0].removed_qualifications, [sound.id]);
   assert.equal(all('SELECT 1 FROM role_members WHERE role_id = ?', sound.id).length, 0);
 
   const choir = vol.teams.insert({ name: { en: 'Choir', zh: '诗班' } });
-  const r = await call('canon_update_team_members', {
-    team_id: choir.id,
-    ops: [{ op: 'add', person_id: tan.id }, { op: 'add', person_id: lim.id }, { op: 'set_leader', person_id: lim.id }],
+  const r = await call('canon_update_rota', {
+    ops: [{ op: 'team_add', team_id: choir.id, person_id: tan.id }, { op: 'team_add', team_id: choir.id, person_id: lim.id }, { op: 'team_set_leader', team_id: choir.id, person_id: lim.id }],
   });
   assert.equal(r.isError, false, r.text);
-  assert.equal(r.json!.data.members.length, 2);
-  assert.equal(r.json!.data.members[0].person_id, lim.id, 'leaders first');
-  assert.equal(r.json!.data.members[0].is_leader, true);
+  assert.equal(r.json!.data.teams[0].members.length, 2);
+  assert.equal(r.json!.data.teams[0].members[0].person_id, lim.id, 'leaders first');
+  assert.equal(r.json!.data.teams[0].members[0].is_leader, true);
   rota = await call('canon_get_rota', {});
   team = rota.json!.data.teams.find((t: Json) => t.id === choir.id);
   assert.equal(team.roles.length, 0);
   assert.equal(team.members.length, 2);
 
   // set_leader on someone not in the team fails the whole batch
-  const bad = await call('canon_update_team_members', { team_id: choir.id, ops: [{ op: 'remove', person_id: tan.id }, { op: 'set_leader', person_id: 999999 }] });
+  const bad = await call('canon_update_rota', { ops: [{ op: 'team_remove', team_id: choir.id, person_id: tan.id }, { op: 'team_set_leader', team_id: choir.id, person_id: 999999 }] });
   assert.equal(bad.isError, true);
   assert.equal(all('SELECT 1 FROM group_members gm JOIN teams t ON t.group_id = gm.group_id WHERE t.id = ? AND gm.person_id = ?', choir.id, tan.id).length, 1, 'remove rolled back');
-  const plain = await call('canon_update_team_members', { team_id: choir.id, ops: [{ op: 'remove', person_id: tan.id }] });
+  const plain = await call('canon_update_rota', { ops: [{ op: 'team_remove', team_id: choir.id, person_id: tan.id }] });
   assert.equal(plain.isError, false, plain.text);
 });
 
@@ -251,14 +245,14 @@ test('audit stores the fields a call used, with values only of safe fields (ids,
   assert.ok(groupRows.length >= 8);
   const blob = JSON.stringify(groupRows);
   for (const leak of ['Session', '堂会', 'Moderator', 'Clerk', '2025-01-01', 'Monthly']) assert.ok(!blob.includes(leak), `audit leaked ${leak}`);
-  const batch = groupRows.filter((r) => r.tool === 'canon_update_group_members');
+  const batch = groupRows.filter((r) => r.tool === 'canon_save_group' && JSON.parse(r.args).members);
   assert.equal(batch.length, 5, 'one row per batch call');
   const first = JSON.parse(batch[0].args);
-  assert.deepEqual(first.ops.map((o: Json) => o.op), ['add', 'add']);
-  assert.deepEqual(Object.keys(first.ops[0]).sort(), ['op', 'person_id', 'role', 'start_date']);
-  assert.equal(typeof first.group_id, 'number');
-  assert.equal(first.ops[0].role, '…', 'a role in a group is withheld');
-  assert.deepEqual(JSON.parse(batch[1].args).ops.map((o: Json) => o.op), ['update', 'add']);
+  assert.deepEqual(first.members.map((o: Json) => o.op), ['add', 'add']);
+  assert.deepEqual(Object.keys(first.members[0]).sort(), ['op', 'person_id', 'role', 'start_date']);
+  assert.equal(typeof first.id, 'number');
+  assert.equal(first.members[0].role, '…', 'a role in a group is withheld');
+  assert.deepEqual(JSON.parse(batch[1].args).members.map((o: Json) => o.op), ['update', 'add']);
   assert.equal(batch[1].ok, 0);
   const create = groupRows.find((r) => r.tool === 'canon_save_group')!;
   const fields = JSON.parse(create.args).fields;
@@ -266,7 +260,7 @@ test('audit stores the fields a call used, with values only of safe fields (ids,
   assert.deepEqual(fields.name, { en: '…', zh: '…' });
   // the hidden call made while the module was off is audited as unknown/sensitive (keys only)
   assert.ok(rows.some((r) => r.tool === 'canon_find_groups' && r.ok === 0));
-  const team = rows.filter((r) => r.tool === 'canon_update_team_members');
+  const team = rows.filter((r) => r.tool === 'canon_update_rota' && /team_/.test(r.args));
   assert.equal(team[0].module, 'volunteers');
   assert.match(team.map((r) => r.args).join(), /"team_id":\d+/, 'every module: ids kept');
   assert.match(team.map((r) => r.args).join(), /"cascade":"…"/, 'every module: other values withheld');

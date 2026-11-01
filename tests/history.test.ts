@@ -210,8 +210,8 @@ async function call(at: string, name: string, args: Json = {}) {
   return { isError: !!res.isError, text, json };
 }
 
-test('the tool count stays at 59 (0.21.0: canon_melody, canon_save_melody)', () => {
-  assert.equal(TOOLS.length, 59);
+test('the tool count stays at 47 (0.21.5: 12 merged, nothing lost)', () => {
+  assert.equal(TOOLS.length, 47);
 });
 
 test('MCP: a read-only viewer token gets precedent through the existing tools', async () => {

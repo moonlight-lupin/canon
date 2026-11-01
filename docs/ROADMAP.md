@@ -43,6 +43,7 @@ What is planned for Canon after v0.17. Plans change: each release is scoped in d
 | 0.21.1–0.21.2 | A rest takes a word (the notation guide corrected, a warning); melodies for the Doxology, Gloria Patri, Threefold Amen and The Lord Is in His Holy Temple in Canon's library — done |
 | 0.21.3 | Melodies on the slides (above each stanza) and in the bulletin (under the song's title), in the Word and PowerPoint downloads too; Sheet music back to the scans — done |
 | 0.21.4 | jpFun 0.8.0: the details in Canon's words for melody problems come from jpFun itself (the upstream issue Canon raised) — done |
+| 0.21.5 | Fewer AI tools: 59 become 47 with full parity, following Settings → AI / MCP as before; the notation guide and agent handbook readable from tools, for AI clients that can't read resources — done |
 | 0.22.0 | Recovery and operational acceptance: real-machine write-ups (a NAS, Windows) and a pilot cycle with a church (below) |
 
 **Scope:** Canon stays focused on worship and church records — planning services, the library, the rota, service records and the church's own administration. It is not meant to become a full church CRM: there is no per-person giving (pledges, envelopes, giving statements), and churches that use a CRM can bring their member list in by CSV.

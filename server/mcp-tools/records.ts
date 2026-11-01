@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { Visitor } from '../../shared/records.ts';
 import * as rec from '../repo/records.ts';
 import * as reports from '../repo/reports.ts';
-import { DateStr, Id, RO, WRITE, addDays, canRead, today, type Ctx, type ToolDef } from './common.ts';
+import { viewOptions, DateStr, Id, RO, WRITE, addDays, canRead, today, type Ctx, type ToolDef } from './common.ts';
 import { get as dbGet } from '../db.ts';
 import { checkRef } from '../lib/walls.ts';
 import { moneyAccess, roleDef } from '../lib/permissions.ts';
@@ -184,16 +184,13 @@ export const RECORD_TOOLS: ToolDef[] = [
     handler: (a, ctx) => reports.servingReport(periodOf(a, ctx)),
   },
   {
-    name: 'canon_song_report', module: 'services', access: 'read', title: 'Song usage report', annotations: RO,
-    description: 'What was sung in the services of a period (default: the last 12 months): each song with times sung, first/last date, public domain or copyright and CCLI song number (for a licence usage report), and library songs not sung in the period (with when they were last sung). Example: {"from":"2026-01-01","to":"2026-12-31"}.',
-    input: PeriodInput,
-    handler: (a, ctx) => reports.songsReport(periodOf(a, ctx)),
-  },
-  {
-    name: 'canon_scripture_report', module: 'services', access: 'read', title: 'Scripture coverage report', annotations: RO,
-    description: 'Which chapters of the Bible were read (Scripture items) and preached (sermon passages), over a period (default: the last 12 months) or over chosen years that need not follow each other (`years`: [2023, 2025]). Returns totals (chapters covered of 1,189; Old and New Testament; books), per book the chapters read / preached (only books with any, unless all_books), the passages with dates, and the years that have services. Useful for planning a reading or preaching series on neglected books. Example: {"years":[2024,2025]}.',
-    input: { ...PeriodInput, years: z.array(z.number().int().min(1900).max(2200)).max(50).optional(), all_books: z.boolean().optional().describe('include books with nothing read or preached') },
+    name: 'canon_worship_report', module: 'services', access: 'read', title: 'Songs sung and Scripture covered', annotations: RO,
+    description: 'What was sung or read in worship over a period (default: the last 12 months). report "songs": each song with times sung, first/last date, public domain or copyright and CCLI song number (for a licence usage report), and library songs not sung in the period (with when they were last sung). report "scripture": which chapters of the Bible were read (Scripture items) and preached (sermon passages), over a period or over chosen years that need not follow each other (`years`: [2023, 2025]); totals (chapters covered of 1,189; Old and New Testament; books), per book the chapters read / preached (only books with any, unless all_books), the passages with dates, and the years that have services; useful for planning a reading or preaching series on neglected books. Examples: {"report":"songs","from":"2026-01-01","to":"2026-12-31"}, {"report":"scripture","years":[2024,2025]}.',
+    input: { report: z.enum(['songs', 'scripture']), ...PeriodInput, years: z.array(z.number().int().min(1900).max(2200)).max(50).optional().describe('scripture'), all_books: z.boolean().optional().describe('scripture: include books with nothing read or preached') },
     handler: (a, ctx) => {
+      const period = ['from', 'to', 'congregation_id', 'kind', 'group_id'];
+      viewOptions(a, 'report', a.report, { songs: period, scripture: [...period, 'years', 'all_books'] });
+      if (a.report === 'songs') return reports.songsReport(periodOf(a, ctx));
       const r = reports.scriptureReport({ ...periodOf(a, ctx), years: a.years });
       const books = r.books.filter((b) => a.all_books || b.read.some(Boolean) || b.preached.some(Boolean)).map((b) => ({
         book: b.en, zh: b.zh, chapters: b.chapters,

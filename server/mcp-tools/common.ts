@@ -152,6 +152,12 @@ export function runBatch<O extends { op: string }, R>(ops: O[], apply: (op: O, i
   });
 }
 
+/** One tool with several views (0.21.5): an option that belongs to another view would be ignored without a word, so it is refused. */
+export function viewOptions(a: Args, key: string, view: string, options: Record<string, readonly string[]>) {
+  const stray = Object.keys(a).filter((k) => k !== key && a[k] !== undefined && !options[view].includes(k));
+  if (stray.length) throw new InputError(`${stray.join(', ')}: not for ${key} "${view}".`);
+}
+
 /** `need(a.x, 'x', 'add')` — a field required by one op type of a flat batch schema. */
 export function need<T>(v: T | null | undefined, field: string, op: string): T {
   if (v === undefined || v === null) throw new InputError(`${field} is required for "${op}"`);

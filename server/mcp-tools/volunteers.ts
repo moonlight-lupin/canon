@@ -18,13 +18,20 @@ const unavailableLine = (u: ReturnType<typeof vol.listUnavailability>[number], c
 // ---------------------------------------------------------------- rota batch
 
 const RotaOp = z.object({
-  op: z.enum(['assign', 'set_status', 'unassign', 'autofill']),
+  op: z.enum(['assign', 'set_status', 'unassign', 'autofill', 'team_add', 'team_set_leader', 'team_remove', 'unavailable_add', 'unavailable_remove']),
   service_id: Id.optional(),
   role_id: Id.optional(),
   person_id: Id.optional(),
   assignment_id: Id.optional().describe('set_status / unassign (or give service_id + role_id + person_id)'),
   status: Status.optional(),
   service_ids: z.array(Id).max(30).optional().describe('autofill'),
+  team_id: Id.optional().describe('team_add / team_set_leader / team_remove'),
+  is_leader: z.boolean().optional().describe('team_add / team_set_leader (default true for team_set_leader)'),
+  cascade: z.boolean().optional().describe('team_remove: also drop their role qualifications in this team'),
+  id: Id.optional().describe('unavailable_remove'),
+  start_date: DateStr.optional().describe('unavailable_add'),
+  end_date: DateStr.optional().describe('unavailable_add'),
+  reason: S.UnavailabilityInput.shape.reason.describe('unavailable_add'),
 });
 type RotaOp = z.infer<typeof RotaOp>;
 
@@ -38,7 +45,7 @@ function findAssignment(o: RotaOp) {
   return vol.assignments.get(a.id);
 }
 
-function applyRotaOp(o: RotaOp, touched: Set<number>) {
+function applyRotaOp(o: RotaOp, touched: Set<number>, teams: Set<number>) {
   switch (o.op) {
     case 'assign': {
       const a = vol.assign(need(o.service_id, 'service_id', o.op), need(o.role_id, 'role_id', o.op), need(o.person_id, 'person_id', o.op), o.status as AssignmentStatus | undefined);
@@ -66,31 +73,36 @@ function applyRotaOp(o: RotaOp, touched: Set<number>) {
         created: created.map((x) => ({ assignment_id: x.id, service_id: x.service_id, role_id: x.role_id, person_id: x.person_id, person: x.person_name })),
       };
     }
-  }
-}
-
-// ---------------------------------------------------------------- team roster batch
-
-const TeamOp = z.object({
-  op: z.enum(['add', 'remove', 'set_leader']),
-  person_id: Id,
-  is_leader: z.boolean().optional().describe('add / set_leader (default true for set_leader)'),
-  cascade: z.boolean().optional().describe('remove: also drop their role qualifications in this team'),
-});
-type TeamOp = z.infer<typeof TeamOp>;
-
-function applyTeamOp(teamId: number, o: TeamOp) {
-  switch (o.op) {
-    case 'add': {
-      const m = grp.addTeamMember(teamId, o.person_id, o.is_leader);
-      return { op: o.op, person_id: m.person_id, is_leader: m.is_leader };
+    case 'team_add': {
+      const team = need(o.team_id, 'team_id', o.op);
+      const m = grp.addTeamMember(team, need(o.person_id, 'person_id', o.op), o.is_leader);
+      teams.add(team);
+      return { op: o.op, team_id: team, person_id: m.person_id, is_leader: m.is_leader };
     }
-    case 'set_leader': {
-      const m = grp.setTeamLeader(teamId, o.person_id, o.is_leader ?? true);
-      return { op: o.op, person_id: m.person_id, is_leader: m.is_leader };
+    case 'team_set_leader': {
+      const team = need(o.team_id, 'team_id', o.op);
+      const m = grp.setTeamLeader(team, need(o.person_id, 'person_id', o.op), o.is_leader ?? true);
+      teams.add(team);
+      return { op: o.op, team_id: team, person_id: m.person_id, is_leader: m.is_leader };
     }
-    case 'remove':
-      return { op: o.op, person_id: o.person_id, ...grp.removeTeamMember(teamId, o.person_id, !!o.cascade) };
+    case 'team_remove': {
+      const team = need(o.team_id, 'team_id', o.op);
+      const person = need(o.person_id, 'person_id', o.op);
+      const removed = grp.removeTeamMember(team, person, !!o.cascade);
+      teams.add(team);
+      return { op: o.op, team_id: team, person_id: person, ...removed };
+    }
+    case 'unavailable_add': {
+      const input = S.UnavailabilityInput.parse({ person_id: o.person_id, start_date: o.start_date, end_date: o.end_date, reason: o.reason });
+      if (input.end_date < input.start_date) throw new InputError('end_date is before start_date');
+      const u = vol.unavailability.insert(input);
+      return { op: o.op, id: u.id, person_id: u.person_id, start_date: u.start_date, end_date: u.end_date };
+    }
+    case 'unavailable_remove': {
+      const u = vol.unavailability.get(need(o.id, 'id', o.op));
+      vol.unavailability.remove(u.id);
+      return { op: o.op, removed: u.id, person_id: u.person_id };
+    }
   }
 }
 
@@ -138,44 +150,16 @@ export const VOLUNTEER_TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'canon_update_rota', module: 'volunteers', access: 'write', title: 'Update the rota', annotations: DESTRUCTIVE,
-    description: 'Apply a batch of rota changes in one transaction: assign {service_id, role_id, person_id, status?} (if already assigned only the status changes); set_status {assignment_id, status: scheduled|confirmed|declined}; unassign {assignment_id} (prefer set_status "declined" when someone declined; ask before removing); autofill {service_ids} fills empty slots fairly with qualified, available people (existing assignments are never changed). set_status / unassign also accept service_id + role_id + person_id instead of assignment_id. All or nothing: if any op fails nothing changes and per-op errors are returned. Returns the results and the roster warnings of the services touched — tell the user about them. Example: {"ops":[{"op":"assign","service_id":12,"role_id":3,"person_id":45},{"op":"autofill","service_ids":[12,13]}]}.',
+    name: 'canon_update_rota', module: 'volunteers', access: 'write', title: 'Update the rota, teams and unavailability', annotations: DESTRUCTIVE,
+    description: 'Apply a batch of changes to the rota, the team rosters and who is away, in one transaction. Rota: assign {service_id, role_id, person_id, status?} (if already assigned only the status changes); set_status {assignment_id, status: scheduled|confirmed|declined}; unassign {assignment_id} (prefer set_status "declined" when someone declined; ask before removing); autofill {service_ids} fills empty slots fairly with qualified, available people (existing assignments are never changed). set_status / unassign also accept service_id + role_id + person_id instead of assignment_id. Teams (team ids from canon_get_rota): team_add {team_id, person_id, is_leader?}; team_set_leader {team_id, person_id, is_leader}; team_remove {team_id, person_id, cascade?} fails while the person is still qualified for roles in the team unless cascade=true, which drops those qualifications too (past rota assignments are kept). Being qualified for a role adds a person to its team automatically. Away: unavailable_add {person_id, start_date, end_date inclusive, reason?} (e.g. travelling); unavailable_remove {id from canon_get_rota}. All or nothing: if any op fails nothing changes and per-op errors are returned. Returns the results, the roster warnings of the services touched — tell the user about them — and the roster of each team changed. Example: {"ops":[{"op":"assign","service_id":12,"role_id":3,"person_id":45},{"op":"autofill","service_ids":[12,13]},{"op":"team_add","team_id":2,"person_id":45,"is_leader":true},{"op":"unavailable_add","person_id":45,"start_date":"2026-11-01","end_date":"2026-11-14","reason":"overseas"}]}.',
     input: { ops: z.array(RotaOp).min(1).max(50) },
     handler: (a) => {
       const touched = new Set<number>();
-      const results = runBatch(a.ops as RotaOp[], (o) => applyRotaOp(o, touched));
+      const teams = new Set<number>();
+      const results = runBatch(a.ops as RotaOp[], (o) => applyRotaOp(o, touched, teams));
       const warnings = [...touched].flatMap((sid) => vol.rosterWarnings(sid).map((w) => ({ service_id: sid, ...w })));
-      return { results, warnings: warnings.length ? warnings : undefined };
-    },
-  },
-  {
-    name: 'canon_update_team_members', module: 'volunteers', access: 'write', title: 'Update a team roster', annotations: DESTRUCTIVE,
-    description: 'Change who is on a volunteer team (team ids from canon_get_rota) in one transaction: add {person_id, is_leader?}, set_leader {person_id, is_leader}, remove {person_id, cascade?}. Removing fails while the person is still qualified for roles in the team unless cascade=true, which drops those qualifications too (past rota assignments are kept). Being qualified for a role adds a person to its team automatically. All or nothing, with per-op errors. Returns the team roster. Example: {"team_id":2,"ops":[{"op":"add","person_id":45,"is_leader":true},{"op":"remove","person_id":31}]}.',
-    input: { team_id: Id, ops: z.array(TeamOp).min(1).max(50) },
-    handler: (a) => {
-      const results = runBatch(a.ops as TeamOp[], (o) => applyTeamOp(a.team_id, o));
-      const members = grp.teamMembers(a.team_id).map((m) => ({ person_id: m.person_id, name: m.name, is_leader: m.is_leader, roles: m.roles }));
-      return { team_id: a.team_id, results, members };
-    },
-  },
-  {
-    name: 'canon_set_unavailability', module: 'volunteers', access: 'write', title: 'Set unavailability', annotations: DESTRUCTIVE,
-    description: 'Record that a person is unavailable from start_date to end_date inclusive (e.g. travelling), or remove a record (action "remove" with its id from canon_get_rota). Returns the record, or {removed}. Example: {"person_id":45,"start_date":"2026-11-01","end_date":"2026-11-14","reason":"overseas"}.',
-    input: {
-      action: z.enum(['add', 'remove']).default('add'),
-      id: Id.optional().describe('remove'),
-      ...S.UnavailabilityInput.partial().shape,
-    },
-    handler: (a) => {
-      if (a.action === 'remove') {
-        const u = vol.unavailability.get(need(a.id, 'id', 'remove'));
-        vol.unavailability.remove(u.id);
-        return { removed: u.id, person_id: u.person_id };
-      }
-      const input = S.UnavailabilityInput.parse({ person_id: a.person_id, start_date: a.start_date, end_date: a.end_date, reason: a.reason });
-      if (input.end_date < input.start_date) throw new InputError('end_date is before start_date');
-      const u = vol.unavailability.insert(input);
-      return { id: u.id, person_id: u.person_id, start_date: u.start_date, end_date: u.end_date };
+      const rosters = [...teams].map((id) => ({ team_id: id, members: grp.teamMembers(id).map((m) => ({ person_id: m.person_id, name: m.name, is_leader: m.is_leader, roles: m.roles })) }));
+      return { results, warnings: warnings.length ? warnings : undefined, teams: rosters.length ? rosters : undefined };
     },
   },
 ];
